@@ -1,0 +1,13 @@
+$step = 1
+$name = "林青"
+$email = "lin@example.org"
+$team = "设计团队"
+$date = "2026-11-12"
+$mode = "hybrid"
+$notes = "希望把客户调研和设计交付连接起来。"
+$invite = true
+steps = Row([Badge($step > 1 ? "✓ 基本资料" : "1 基本资料",$step == 1 ? "info" : "success","user"),Icon("chevron-right","sm","faint"),Badge("2 工作方式",$step == 2 ? "info" : "neutral","settings"),Icon("chevron-right","sm","faint"),Badge("3 确认提交",$step == 3 ? "info" : "neutral","check")],2)
+profile = $step == 1 ? Grid([Card([Icon("user","lg","info"),Title("建立你的工作空间","md"),Text("填写基础信息。下一步可选择协作方式和启动日期。"),Caption("大约需要 2 分钟 · 所有输入只保存在当前卡片")],"soft",3,3),Col([Input($name,"姓名","text","你的姓名"),Input($email,"工作邮箱","text","name@example.org"),Select($team,["设计团队","产品团队","工程团队"],"团队")],3)],2,250,4) : null
+preferences = $step == 2 ? Col([Grid([DatePicker($date,"启动日期","2026-11-08","2027-12-31"),Select($team,["设计团队","产品团队","工程团队"],"团队")],2,220,3),RadioGroup($mode,[{value:"remote",label:"远程优先",description:"异步协作，文档作为共同上下文。"},{value:"hybrid",label:"混合协作",description:"每周两天共创，其余时间专注交付。"},{value:"office",label:"线下共创",description:"固定工作空间，快速讨论和评审。"}],"选择工作方式","cards"),TextArea($notes,"你的目标","告诉我们最想改善的工作体验",3),Checkbox($invite,"创建后邀请团队成员")],3) : null
+review = $step == 3 ? Card([Title("准备就绪","md"),Table(["项目","你的选择"],[["姓名",$name],["邮箱",$email],["团队",$team],["启动日期",$date],["协作模式",$mode]]),Caption($notes),Badge($invite ? "将邀请团队成员" : "稍后邀请","info","users")],"soft",3,3) : null
+root = Col([Card([Row([Col([Title("团队入驻","lg"),Caption("完整的多步骤原生表单，而不是一张空白输入卡")],1),Badge("步骤 " + $step + " / 3","purple")],3,"center","between"),steps,Divider(),Form([profile,preferences,review]),Divider(),Row([Button("上一步",@Set($step,$step > 1 ? $step - 1 : 1),"outline",null,"md","arrow-left",$step == 1),$step < 3 ? Button("下一步",@Set($step,$step + 1),"solid",null,"md","arrow-right") : Button("提交入驻计划",@ToAssistant("请根据这些资料帮我创建团队入驻计划。",{name:$name,email:$email,team:$team,date:$date,mode:$mode}),"solid",null,"md","send")],3),Caption("原生日期选择、描述型单选卡、多行备注和确认摘要；返回上一步不会丢失输入。")],"outline",4,3)])

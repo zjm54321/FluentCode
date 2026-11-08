@@ -1,0 +1,314 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "aaa2972f9380147a821255dd93ced3a41424dc1db7c3508b207a6f7b4693ba5a",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Slider",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$n"
+              },
+              "min": 1,
+              "max": 10,
+              "step": 1,
+              "label": "Quantity"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Total: "
+                },
+                "right": {
+                  "k": "BinOp",
+                  "op": "*",
+                  "left": {
+                    "k": "StateRef",
+                    "n": "$n"
+                  },
+                  "right": {
+                    "k": "Num",
+                    "v": 12
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$n": 2
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Slider",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$n",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "min": 1,
+            "max": 10,
+            "step": 1,
+            "label": "Quantity"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Total: 24"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 27,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": []
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Slider",
+              "path": "/value",
+              "message": "missing required field \"/value\" — signature: Slider(value*: number, min*: number, max*: number, step: number, label: string, unit: string, marks: array)",
+              "statementId": "root"
+            },
+            {
+              "code": "missing-required",
+              "component": "Slider",
+              "path": "/min",
+              "message": "missing required field \"/min\" — signature: Slider(value*: number, min*: number, max*: number, step: number, label: string, unit: string, marks: array)",
+              "statementId": "root"
+            },
+            {
+              "code": "missing-required",
+              "component": "Slider",
+              "path": "/max",
+              "message": "missing required field \"/max\" — signature: Slider(value*: number, min*: number, max*: number, step: number, label: string, unit: string, marks: array)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$n": 2
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 54,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$n"
+                  },
+                  "min": 1,
+                  "max": 10,
+                  "step": 1,
+                  "label": "Quantity"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "T"
+          ],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 2
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 81,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$n"
+                  },
+                  "min": 1,
+                  "max": 10,
+                  "step": 1,
+                  "label": "Quantity"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Total: "
+                    },
+                    "right": {
+                      "k": "BinOp",
+                      "op": "*",
+                      "left": {
+                        "k": "StateRef",
+                        "n": "$n"
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 12
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$n": 2
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

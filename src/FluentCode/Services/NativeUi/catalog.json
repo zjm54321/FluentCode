@@ -1,0 +1,4201 @@
+{
+  "formatVersion": 1,
+  "langCoreVersion": "1.1.0",
+  "library": "fluentcode-native-ui@0.2.0",
+  "root": "Col",
+  "limits": {
+    "sourceLength": 65536,
+    "nodes": 4096,
+    "depth": 64,
+    "stringLength": 16384
+  },
+  "definitions": {
+    "Col": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "gap": {
+          "type": "number"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "stretch"
+          ]
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Vertical layout."
+    },
+    "Row": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "gap": {
+          "type": "number"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "stretch"
+          ]
+        },
+        "justify": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "between"
+          ]
+        },
+        "wrap": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Horizontal layout."
+    },
+    "Card": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "outline",
+            "soft"
+          ]
+        },
+        "padding": {
+          "type": "number"
+        },
+        "gap": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Native panel."
+    },
+    "Divider": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "Title": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "3xl"
+          ]
+        },
+        "color": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Heading or large number."
+    },
+    "Text": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {}
+            }
+          ]
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "xs",
+            "sm",
+            "md",
+            "lg"
+          ]
+        },
+        "color": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "medium",
+            "semibold"
+          ]
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "lineThrough": {
+          "type": "boolean"
+        },
+        "tabularNums": {
+          "type": "boolean"
+        },
+        "maxLines": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Paragraph; text can mix strings and nodes."
+    },
+    "Caption": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Secondary text."
+    },
+    "Badge": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "neutral",
+            "info",
+            "success",
+            "warning",
+            "danger",
+            "purple",
+            "pink"
+          ]
+        },
+        "icon": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Small tag."
+    },
+    "Markdown": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Native prose, lists, code and tables; no external resources."
+    },
+    "Button": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ActionExpression"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "solid",
+            "outline",
+            "soft",
+            "ghost"
+          ]
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "primary",
+            "danger",
+            "success"
+          ]
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "sm",
+            "md",
+            "lg"
+          ]
+        },
+        "icon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "block": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false,
+      "description": "Click action. With no action, sends its label to the assistant. size sm/md/lg selects 32/40/48px. Buttons fill Grid cells and button-only Rows. Omit size on short-label keypad keys for adaptive height: 0.8 times column width, clamped to 40–56px; explicit size overrides it."
+    },
+    "ActionExpression": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "open_url"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "url"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "continue_conversation"
+            },
+            "context": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "params": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Input": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "number"
+          ]
+        },
+        "placeholder": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "additionalProperties": false,
+      "description": "Text/number input bound to a $variable."
+    },
+    "Select": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "value",
+                  "label"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "label": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "options"
+      ],
+      "additionalProperties": false,
+      "description": "Dropdown bound to a $variable."
+    },
+    "Slider": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "step": {
+          "type": "number"
+        },
+        "label": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "value",
+        "min",
+        "max"
+      ],
+      "additionalProperties": false,
+      "description": "Numeric range bound to a $variable."
+    },
+    "Checkbox": {
+      "type": "object",
+      "properties": {
+        "checked": {
+          "type": "boolean"
+        },
+        "label": {
+          "type": "string"
+        },
+        "lineThrough": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "checked",
+        "label"
+      ],
+      "additionalProperties": false,
+      "description": "Boolean input bound to a $variable."
+    },
+    "Chart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "bar",
+            "line",
+            "area",
+            "pie",
+            "donut",
+            "scatter"
+          ]
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number"
+              ]
+            }
+          }
+        },
+        "x": {
+          "type": "string"
+        },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "number",
+            "currency",
+            "percent"
+          ]
+        },
+        "currency": {
+          "type": "string"
+        },
+        "stacked": {
+          "type": "boolean"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "data"
+      ],
+      "additionalProperties": false,
+      "description": "Native chart. Rows of data; x is the category key (numeric for scatter); series defaults to numeric keys other than x (up to 8). Percent values are like 45, not 0.45; currency is an ISO code like EUR. Stacking applies to bar/area; height clamps to 140–480 px."
+    },
+    "Table": {
+      "type": "object",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {}
+          }
+        }
+      },
+      "required": [
+        "columns",
+        "rows"
+      ],
+      "additionalProperties": false,
+      "description": "Native sortable, resizable table. Each row lists cells in column order; cells may be components. Numeric columns align right."
+    },
+    "TextArea": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "rows": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "additionalProperties": false,
+      "description": "Multiline text field bound to a $variable; rows clamps to 2–20."
+    },
+    "SegmentedControl": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "value",
+                  "label"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "block": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value",
+        "options"
+      ],
+      "additionalProperties": false,
+      "description": "Two to four short choices. Options are strings or {value,label}; block fills the available width."
+    },
+    "RadioGroup": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "value",
+                  "label"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "label": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "list",
+            "pills",
+            "cards"
+          ]
+        }
+      },
+      "required": [
+        "value",
+        "options"
+      ],
+      "additionalProperties": false,
+      "description": "Single choice. list uses radio buttons; pills uses segmented choices; cards includes descriptions."
+    },
+    "DatePicker": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "additionalProperties": false,
+      "description": "Native calendar picker; value/min/max use YYYY-MM-DD."
+    },
+    "Timer": {
+      "type": "object",
+      "properties": {
+        "seconds": {
+          "type": "number"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "seconds"
+      ],
+      "additionalProperties": false,
+      "description": "Countdown with start/pause/reset; decrements bound seconds to zero. Pauses when the card leaves the visual tree."
+    },
+    "IconButton": {
+      "type": "object",
+      "properties": {
+        "icon": {
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/ActionExpression"
+        },
+        "label": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "outline",
+            "ghost",
+            "solid"
+          ]
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "sm",
+            "md",
+            "lg"
+          ]
+        }
+      },
+      "required": [
+        "icon"
+      ],
+      "additionalProperties": false,
+      "description": "Icon-only button. Supply a label for accessibility; no implicit assistant action. size sm/md/lg selects 32/40/48px."
+    },
+    "Pressable": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "action": {
+          "$ref": "#/$defs/ActionExpression"
+        },
+        "selected": {
+          "type": "boolean"
+        },
+        "padding": {
+          "type": "number"
+        },
+        "background": {
+          "type": "string"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "sm",
+                "md",
+                "lg",
+                "xl",
+                "full"
+              ]
+            },
+            {
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Keyboard-accessible clickable tile; nested controls retain their own input."
+    },
+    "Box": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "row",
+            "col"
+          ]
+        },
+        "gap": {
+          "type": "number"
+        },
+        "padding": {
+          "type": "number"
+        },
+        "background": {
+          "type": "string"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "sm",
+                "md",
+                "lg",
+                "xl",
+                "full"
+              ]
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "border": {
+          "type": "boolean"
+        },
+        "width": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "height": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "flex": {
+          "type": "number"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "stretch"
+          ]
+        },
+        "justify": {
+          "type": "string",
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "between"
+          ]
+        },
+        "wrap": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Flex container, column by default. Lengths are pixels or percentages; gap/padding are 4px steps."
+    },
+    "Grid": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "columns": {
+          "type": "number"
+        },
+        "minChildWidth": {
+          "type": "number"
+        },
+        "gap": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Equal columns (default 2, maximum 12); minChildWidth reduces columns on narrow cards."
+    },
+    "Form": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Groups fields; current state accompanies @ToAssistant."
+    },
+    "Spacer": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "Fills free space in a Row."
+    },
+    "Carousel": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "itemWidth": {
+          "type": "number"
+        },
+        "gap": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Horizontally scrolling native items; itemWidth defaults to 240 px (80–640)."
+    },
+    "Popover": {
+      "type": "object",
+      "properties": {
+        "trigger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {}
+            }
+          ]
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {}
+            }
+          ]
+        }
+      },
+      "required": [
+        "trigger",
+        "content"
+      ],
+      "additionalProperties": false,
+      "description": "Click trigger to show content in a native flyout. Slots are strings or lists of components."
+    },
+    "Label": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Field or group label."
+    },
+    "Link": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "url"
+      ],
+      "additionalProperties": false,
+      "description": "http(s) external link; always asks for confirmation showing the full URL."
+    },
+    "ListItem": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "marker": {
+          "type": "string"
+        },
+        "children": {
+          "type": "array",
+          "items": {}
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "description": "List entry; marker replaces its bullet/number, e.g. a time or emoji."
+    },
+    "List": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/ListItem"
+              }
+            ]
+          }
+        },
+        "marker": {
+          "type": "string",
+          "enum": [
+            "bullet",
+            "number",
+            "none"
+          ]
+        },
+        "timeline": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false,
+      "description": "List of strings/ListItem; timeline connects markers."
+    },
+    "Quote": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "cite": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "Quotation/callout with a side rule and optional attribution."
+    },
+    "Code": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "additionalProperties": false,
+      "description": "Native code block with copy; never executes code."
+    },
+    "Math": {
+      "type": "object",
+      "properties": {
+        "tex": {
+          "type": "string"
+        },
+        "inline": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tex"
+      ],
+      "additionalProperties": false,
+      "description": "LaTeX source displayed as native text in v1 (not typeset)."
+    },
+    "Flashcard": {
+      "type": "object",
+      "properties": {
+        "front": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {}
+            }
+          ]
+        },
+        "back": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {}
+            }
+          ]
+        },
+        "hint": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "front",
+        "back"
+      ],
+      "additionalProperties": false,
+      "description": "Tap to flip front/back; flip state is retained with the card."
+    },
+    "Celebration": {
+      "type": "object",
+      "properties": {
+        "when": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "when"
+      ],
+      "additionalProperties": false,
+      "description": "Native celebratory feedback when the condition changes from false to true."
+    },
+    "Image": {
+      "type": "object",
+      "properties": {
+        "src": {
+          "type": "string"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "aspectRatio": {
+          "type": "number"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "sm",
+                "md",
+                "lg",
+                "xl",
+                "full"
+              ]
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "fit": {
+          "type": "string",
+          "enum": [
+            "cover",
+            "contain"
+          ]
+        }
+      },
+      "required": [
+        "src",
+        "alt"
+      ],
+      "additionalProperties": false,
+      "description": "User/tool-provided HTTPS image. Never fetched automatically: a 点击加载 placeholder shows the full URL first. No automatic search fallback."
+    },
+    "Video": {
+      "type": "object",
+      "properties": {
+        "src": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "src"
+      ],
+      "additionalProperties": false,
+      "description": "HTTPS video played inside a native MediaPlayerElement with transport controls and full-window support. Shows full URL; click to load, never autoplay. Redirects stay HTTPS; up to 128 MB, system-supported codecs. Pauses on unload."
+    },
+    "Audio": {
+      "type": "object",
+      "properties": {
+        "src": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "src"
+      ],
+      "additionalProperties": false,
+      "description": "HTTPS audio played inside a native MediaPlayerElement with transport controls. Shows full URL; click to load, never autoplay. Redirects stay HTTPS; up to 128 MB, system-supported codecs. Pauses on unload."
+    },
+    "ImageGallery": {
+      "type": "object",
+      "properties": {
+        "images": {
+          "minItems": 1,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "src": {
+                "type": "string"
+              },
+              "alt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "src",
+              "alt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "title": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "images"
+      ],
+      "additionalProperties": false,
+      "description": "Click-loaded image gallery, 1–12 HTTPS images (8 MB each). Full URLs shown before load. Large native FlipView preview; click the preview for a full-size scrollable viewer. height clamps to 180–480px."
+    },
+    "SearchImage": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "aspectRatio": {
+          "type": "number"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "sm",
+                "md",
+                "lg",
+                "xl",
+                "full"
+              ]
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "fit": {
+          "type": "string",
+          "enum": [
+            "cover",
+            "contain"
+          ]
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false,
+      "description": "Photo-search card with a confirmed external search link; no automatic network requests or in-app image search."
+    },
+    "Icon": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "sm",
+            "md",
+            "lg",
+            "xl"
+          ]
+        },
+        "color": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "description": "Lucide-style name mapped to native Segoe Fluent Icons."
+    },
+    "MapMarker": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lng": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "category": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "lat",
+        "lng"
+      ],
+      "additionalProperties": false,
+      "description": "WGS-84 latitude/longitude marker. Always supply WGS-84, not GCJ-02 or BD-09; the native renderer converts for the user's map provider."
+    },
+    "Map": {
+      "type": "object",
+      "properties": {
+        "markers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MapMarker"
+          }
+        },
+        "route": {
+          "type": "boolean"
+        },
+        "selected": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "markers"
+      ],
+      "additionalProperties": false,
+      "description": "Interactive Mapsui map with pan/zoom, selectable markers and fit-to-markers. Always use WGS-84 lat/lng. Location list renders first; 加载地图 fetches tiles only after the user's click. Provider is configured in Settings (OSM default, AMap with GCJ-02 conversion, TianDiTu key, custom XYZ; Baidu disabled). route joins markers in order, NOT a routing service. selected is the marker label; height clamps to 180–640px. Provider attribution stays visible; tile failure keeps the location list."
+    },
+    "YouTube": {
+      "type": "object",
+      "properties": {
+        "video": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "video"
+      ],
+      "additionalProperties": false,
+      "description": "Known YouTube ID or HTTPS youtube.com/youtu.be URL. Full watch URL displayed; thumbnail fetched only after clicking load. Click the thumbnail/watch button to open FluentCode's existing in-app browser tab. No WebView or embedded player inside the card."
+    },
+    "Svg": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "viewBox": {
+          "type": "string"
+        },
+        "width": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "height": {
+          "type": [
+            "number",
+            "string"
+          ]
+        }
+      },
+      "required": [
+        "children",
+        "viewBox"
+      ],
+      "additionalProperties": false,
+      "description": "Native vector drawing with viewBox scaling. Shapes accept expressions; no HTML/SVG document execution or resources."
+    },
+    "G": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {}
+        },
+        "transform": {
+          "type": "string"
+        },
+        "opacity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "children"
+      ],
+      "additionalProperties": false,
+      "description": "Drawing group. Transforms: translate, rotate, scale, skewX, skewY, matrix with numeric arguments."
+    },
+    "Circle": {
+      "type": "object",
+      "properties": {
+        "cx": {
+          "type": "number"
+        },
+        "cy": {
+          "type": "number"
+        },
+        "r": {
+          "type": "number"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "stroke": {
+          "type": "string"
+        },
+        "strokeWidth": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "cx",
+        "cy",
+        "r"
+      ],
+      "additionalProperties": false,
+      "description": "Circle; fill/stroke accept theme colors."
+    },
+    "Ellipse": {
+      "type": "object",
+      "properties": {
+        "cx": {
+          "type": "number"
+        },
+        "cy": {
+          "type": "number"
+        },
+        "rx": {
+          "type": "number"
+        },
+        "ry": {
+          "type": "number"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "stroke": {
+          "type": "string"
+        },
+        "strokeWidth": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "cx",
+        "cy",
+        "rx",
+        "ry"
+      ],
+      "additionalProperties": false,
+      "description": "Ellipse."
+    },
+    "Rect": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "stroke": {
+          "type": "string"
+        },
+        "strokeWidth": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        },
+        "rx": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false,
+      "description": "Rectangle, optional corner radius."
+    },
+    "Line": {
+      "type": "object",
+      "properties": {
+        "x1": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "x2": {
+          "type": "number"
+        },
+        "y2": {
+          "type": "number"
+        },
+        "stroke": {
+          "type": "string"
+        },
+        "strokeWidth": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x1",
+        "y1",
+        "x2",
+        "y2"
+      ],
+      "additionalProperties": false,
+      "description": "Line segment."
+    },
+    "Path": {
+      "type": "object",
+      "properties": {
+        "d": {
+          "type": "string"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "stroke": {
+          "type": "string"
+        },
+        "strokeWidth": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "d"
+      ],
+      "additionalProperties": false,
+      "description": "Vector path, commands M/L/H/V/C/S/Q/T/A/Z only, never resource URLs."
+    },
+    "Polyline": {
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "string"
+        },
+        "stroke": {
+          "type": "string"
+        },
+        "strokeWidth": {
+          "type": "number"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "opacity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "points"
+      ],
+      "additionalProperties": false,
+      "description": "Open polyline; points like \"0,0 10,5 20,0\"."
+    },
+    "Polygon": {
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "string"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "stroke": {
+          "type": "string"
+        },
+        "strokeWidth": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "points"
+      ],
+      "additionalProperties": false,
+      "description": "Closed polygon with numeric points."
+    },
+    "SvgText": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "size": {
+          "type": "number"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "anchor": {
+          "type": "string",
+          "enum": [
+            "start",
+            "middle",
+            "end"
+          ]
+        },
+        "weight": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "medium",
+            "semibold"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "x",
+        "y"
+      ],
+      "additionalProperties": false,
+      "description": "Drawing text at x/y; anchor controls horizontal alignment."
+    }
+  },
+  "components": {
+    "Col": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "gap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "align",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "stretch"
+            ]
+          }
+        }
+      ]
+    },
+    "Row": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "gap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "align",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "stretch"
+            ]
+          }
+        },
+        {
+          "name": "justify",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "between"
+            ]
+          }
+        },
+        {
+          "name": "wrap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    "Card": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "variant",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "outline",
+              "soft"
+            ]
+          }
+        },
+        {
+          "name": "padding",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "gap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Divider": {
+      "props": []
+    },
+    "Title": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "size",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg",
+              "xl",
+              "2xl",
+              "3xl"
+            ]
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Text": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        {
+          "name": "size",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "xs",
+              "sm",
+              "md",
+              "lg"
+            ]
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "weight",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "medium",
+              "semibold"
+            ]
+          }
+        },
+        {
+          "name": "italic",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "lineThrough",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "tabularNums",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "maxLines",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Caption": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Badge": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "info",
+              "success",
+              "warning",
+              "danger",
+              "purple",
+              "pink"
+            ]
+          }
+        },
+        {
+          "name": "icon",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Markdown": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Button": {
+      "props": [
+        {
+          "name": "label",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "action",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "$ref": "#/$defs/ActionExpression"
+          }
+        },
+        {
+          "name": "variant",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "solid",
+              "outline",
+              "soft",
+              "ghost"
+            ]
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "primary",
+              "danger",
+              "success"
+            ]
+          }
+        },
+        {
+          "name": "size",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg"
+            ]
+          }
+        },
+        {
+          "name": "icon",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "disabled",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "block",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    "Input": {
+      "props": [
+        {
+          "name": "value",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": [
+              "string",
+              "number"
+            ]
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "type",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "number"
+            ]
+          }
+        },
+        {
+          "name": "placeholder",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Select": {
+      "props": [
+        {
+          "name": "value",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "options",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "placeholder",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Slider": {
+      "props": [
+        {
+          "name": "value",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "step",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "unit",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "marks",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "number"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value",
+                "label"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "Checkbox": {
+      "props": [
+        {
+          "name": "checked",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "label",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "lineThrough",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    "Chart": {
+      "props": [
+        {
+          "name": "type",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "bar",
+              "line",
+              "area",
+              "pie",
+              "donut",
+              "scatter"
+            ]
+          }
+        },
+        {
+          "name": "data",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "x",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "series",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "format",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "number",
+              "currency",
+              "percent"
+            ]
+          }
+        },
+        {
+          "name": "currency",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "stacked",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "height",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Table": {
+      "props": [
+        {
+          "name": "columns",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "rows",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {}
+            }
+          }
+        }
+      ]
+    },
+    "TextArea": {
+      "props": [
+        {
+          "name": "value",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "placeholder",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "rows",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "SegmentedControl": {
+      "props": [
+        {
+          "name": "value",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "options",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "block",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    "RadioGroup": {
+      "props": [
+        {
+          "name": "value",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "options",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "variant",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "list",
+              "pills",
+              "cards"
+            ]
+          }
+        }
+      ]
+    },
+    "DatePicker": {
+      "props": [
+        {
+          "name": "value",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "min",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "max",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Timer": {
+      "props": [
+        {
+          "name": "seconds",
+          "required": true,
+          "reactive": true,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "IconButton": {
+      "props": [
+        {
+          "name": "icon",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "action",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "$ref": "#/$defs/ActionExpression"
+          }
+        },
+        {
+          "name": "label",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "variant",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "outline",
+              "ghost",
+              "solid"
+            ]
+          }
+        },
+        {
+          "name": "size",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg"
+            ]
+          }
+        }
+      ]
+    },
+    "Pressable": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "action",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "$ref": "#/$defs/ActionExpression"
+          }
+        },
+        {
+          "name": "selected",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "padding",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "background",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "radius",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sm",
+                  "md",
+                  "lg",
+                  "xl",
+                  "full"
+                ]
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Box": {
+      "props": [
+        {
+          "name": "children",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "direction",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "row",
+              "col"
+            ]
+          }
+        },
+        {
+          "name": "gap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "padding",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "background",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "radius",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sm",
+                  "md",
+                  "lg",
+                  "xl",
+                  "full"
+                ]
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        },
+        {
+          "name": "border",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "width",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": [
+              "number",
+              "string"
+            ]
+          }
+        },
+        {
+          "name": "height",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": [
+              "number",
+              "string"
+            ]
+          }
+        },
+        {
+          "name": "flex",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "align",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "stretch"
+            ]
+          }
+        },
+        {
+          "name": "justify",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "between"
+            ]
+          }
+        },
+        {
+          "name": "wrap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    "Grid": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "columns",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "minChildWidth",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "gap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Form": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        }
+      ]
+    },
+    "Spacer": {
+      "props": []
+    },
+    "Carousel": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "itemWidth",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "gap",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Popover": {
+      "props": [
+        {
+          "name": "trigger",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        {
+          "name": "content",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Label": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Link": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "url",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "ListItem": {
+      "props": [
+        {
+          "name": "title",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "description",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "marker",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "children",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        }
+      ]
+    },
+    "List": {
+      "props": [
+        {
+          "name": "items",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/$defs/ListItem"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "marker",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "bullet",
+              "number",
+              "none"
+            ]
+          }
+        },
+        {
+          "name": "timeline",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    "Quote": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "cite",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Code": {
+      "props": [
+        {
+          "name": "code",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "language",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Math": {
+      "props": [
+        {
+          "name": "tex",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "inline",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    "Flashcard": {
+      "props": [
+        {
+          "name": "front",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        {
+          "name": "back",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          }
+        },
+        {
+          "name": "hint",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Celebration": {
+      "props": [
+        {
+          "name": "when",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        }
+      ]
+    },
+    "Image": {
+      "props": [
+        {
+          "name": "src",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "alt",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "aspectRatio",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "radius",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sm",
+                  "md",
+                  "lg",
+                  "xl",
+                  "full"
+                ]
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fit",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "cover",
+              "contain"
+            ]
+          }
+        }
+      ]
+    },
+    "Video": {
+      "props": [
+        {
+          "name": "src",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "title",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "height",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Audio": {
+      "props": [
+        {
+          "name": "src",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "title",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "ImageGallery": {
+      "props": [
+        {
+          "name": "images",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "minItems": 1,
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "src": {
+                  "type": "string"
+                },
+                "alt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "src",
+                "alt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "name": "title",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "height",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "SearchImage": {
+      "props": [
+        {
+          "name": "query",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "aspectRatio",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "radius",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sm",
+                  "md",
+                  "lg",
+                  "xl",
+                  "full"
+                ]
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        },
+        {
+          "name": "fit",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "cover",
+              "contain"
+            ]
+          }
+        }
+      ]
+    },
+    "Icon": {
+      "props": [
+        {
+          "name": "name",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "size",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg",
+              "xl"
+            ]
+          }
+        },
+        {
+          "name": "color",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "MapMarker": {
+      "props": [
+        {
+          "name": "label",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "lat",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          }
+        },
+        {
+          "name": "lng",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        },
+        {
+          "name": "category",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "icon",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Map": {
+      "props": [
+        {
+          "name": "markers",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/MapMarker"
+            }
+          }
+        },
+        {
+          "name": "route",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "selected",
+          "required": false,
+          "reactive": true,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "height",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "YouTube": {
+      "props": [
+        {
+          "name": "video",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "title",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Svg": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "viewBox",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "width",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": [
+              "number",
+              "string"
+            ]
+          }
+        },
+        {
+          "name": "height",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": [
+              "number",
+              "string"
+            ]
+          }
+        }
+      ]
+    },
+    "G": {
+      "props": [
+        {
+          "name": "children",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        {
+          "name": "transform",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "opacity",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Circle": {
+      "props": [
+        {
+          "name": "cx",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "cy",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "r",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "fill",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "stroke",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "strokeWidth",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "opacity",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Ellipse": {
+      "props": [
+        {
+          "name": "cx",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "cy",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "rx",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "ry",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "fill",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "stroke",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "strokeWidth",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "opacity",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Rect": {
+      "props": [
+        {
+          "name": "x",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "y",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "width",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "height",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "fill",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "stroke",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "strokeWidth",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "opacity",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "rx",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Line": {
+      "props": [
+        {
+          "name": "x1",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "y1",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "x2",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "y2",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "stroke",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "strokeWidth",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "opacity",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Path": {
+      "props": [
+        {
+          "name": "d",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fill",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "stroke",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "strokeWidth",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "opacity",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Polyline": {
+      "props": [
+        {
+          "name": "points",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "stroke",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "strokeWidth",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "fill",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "opacity",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Polygon": {
+      "props": [
+        {
+          "name": "points",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fill",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "stroke",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "strokeWidth",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "opacity",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "SvgText": {
+      "props": [
+        {
+          "name": "text",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "x",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "y",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "size",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "fill",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "anchor",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "start",
+              "middle",
+              "end"
+            ]
+          }
+        },
+        {
+          "name": "weight",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "medium",
+              "semibold"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

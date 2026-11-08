@@ -1,0 +1,337 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "6a94060249c15ed339d8ba07f835fe41ce6eda1066a382e4904992662e226feb",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Form",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Input",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$name"
+              },
+              "label": "Name"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "Ask",
+              "action": {
+                "k": "Comp",
+                "name": "ToAssistant",
+                "args": [
+                  {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Help me plan for "
+                    },
+                    "right": {
+                      "k": "StateRef",
+                      "n": "$name"
+                    }
+                  }
+                ],
+                "mappedProps": {
+                  "message": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Help me plan for "
+                    },
+                    "right": {
+                      "k": "StateRef",
+                      "n": "$name"
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$name": ""
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Form",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Input",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$name",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "label": "Name"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Button",
+          "props": {
+            "label": "Ask",
+            "action": {
+              "steps": [
+                {
+                  "type": "continue_conversation",
+                  "message": "Help me plan for "
+                }
+              ]
+            }
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 35,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Form",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$name"
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$name": ""
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 70,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Form",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$name"
+                  },
+                  "label": "Name"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Ask",
+                  "action": null
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "ToAssista"
+          ],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$name": ""
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 105,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Form",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$name"
+                  },
+                  "label": "Name"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Ask",
+                  "action": {
+                    "k": "Comp",
+                    "name": "ToAssistant",
+                    "args": [
+                      {
+                        "k": "BinOp",
+                        "op": "+",
+                        "left": {
+                          "k": "Str",
+                          "v": "Help me plan for "
+                        },
+                        "right": {
+                          "k": "StateRef",
+                          "n": "$name"
+                        }
+                      }
+                    ],
+                    "mappedProps": {
+                      "message": {
+                        "k": "BinOp",
+                        "op": "+",
+                        "left": {
+                          "k": "Str",
+                          "v": "Help me plan for "
+                        },
+                        "right": {
+                          "k": "StateRef",
+                          "n": "$name"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$name": ""
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

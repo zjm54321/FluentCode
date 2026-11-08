@@ -1,0 +1,1 @@
+root = ImageGallery([{src:"https://example.org/one.png",alt:"Overview"},{src:"https://example.org/two.png",alt:"Detail"}], "Gallery", 320)

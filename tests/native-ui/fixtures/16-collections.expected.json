@@ -1,0 +1,353 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "123cc887920ddd417093d1b68e7e983a8f2ed82a104444bdecfb0ed45b8f77c3",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          null,
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "A"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Divider",
+            "props": {},
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": [
+                "mixed",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "tag"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [
+        "unknown"
+      ],
+      "orphaned": [
+        "data"
+      ],
+      "statementCount": 2,
+      "errors": [
+        {
+          "code": "null-required",
+          "component": "Text",
+          "path": "/text",
+          "message": "required field \"/text\" cannot be null — signature: Text(text*, size: \"xs\"|\"sm\"|\"md\"|\"lg\", color: string, weight: \"normal\"|\"medium\"|\"semibold\", italic: boolean, lineThrough: boolean, tabularNums: boolean, maxLines: number)",
+          "statementId": "root"
+        }
+      ]
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        null,
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "A"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Divider",
+          "props": {},
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": [
+              "mixed",
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "tag"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 46,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              null,
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "A"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "unknown",
+            "nul"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "null-required",
+              "component": "Text",
+              "path": "/text",
+              "message": "required field \"/text\" cannot be null — signature: Text(text*, size: \"xs\"|\"sm\"|\"md\"|\"lg\", color: string, weight: \"normal\"|\"medium\"|\"semibold\", italic: boolean, lineThrough: boolean, tabularNums: boolean, maxLines: number)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 92,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              null,
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "A"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": [
+                    "mixed",
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "tag"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "unknown"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "null-required",
+              "component": "Text",
+              "path": "/text",
+              "message": "required field \"/text\" cannot be null — signature: Text(text*, size: \"xs\"|\"sm\"|\"md\"|\"lg\", color: string, weight: \"normal\"|\"medium\"|\"semibold\", italic: boolean, lineThrough: boolean, tabularNums: boolean, maxLines: number)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 139,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              null,
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "A"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": [
+                    "mixed",
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "tag"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "unknown"
+          ],
+          "orphaned": [
+            "data"
+          ],
+          "statementCount": 2,
+          "errors": [
+            {
+              "code": "null-required",
+              "component": "Text",
+              "path": "/text",
+              "message": "required field \"/text\" cannot be null — signature: Text(text*, size: \"xs\"|\"sm\"|\"md\"|\"lg\", color: string, weight: \"normal\"|\"medium\"|\"semibold\", italic: boolean, lineThrough: boolean, tabularNums: boolean, maxLines: number)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

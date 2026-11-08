@@ -77,6 +77,8 @@ public sealed partial class OpenCodePage
     {
         _conversationView.SubagentSessionRequested += OnSubagentSessionRequested;
         _conversationView.TerminalRequested += OpenTerminalView;
+        _conversationView.NativeUiAssistantRequested += OnNativeUiAssistantRequested;
+        _conversationView.NativeUiBrowserRequested += OnNativeUiBrowserRequested;
     }
 
     /// <summary>Unloaded 清理：退订会话视图事件，避免重复订阅与迟到回调。</summary>
@@ -84,6 +86,8 @@ public sealed partial class OpenCodePage
     {
         _conversationView.SubagentSessionRequested -= OnSubagentSessionRequested;
         _conversationView.TerminalRequested -= OpenTerminalView;
+        _conversationView.NativeUiAssistantRequested -= OnNativeUiAssistantRequested;
+        _conversationView.NativeUiBrowserRequested -= OnNativeUiBrowserRequested;
     }
 
     /// <summary>

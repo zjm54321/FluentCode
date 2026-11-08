@@ -1,0 +1,8 @@
+Here's a native card.
+```openui
+# a comment with unmatched " ([
+root = Card([Text('single \' quote'), Text("https://example.org/#anchor"), Text("escaped \u4f60\nline")]) // another comment
+```
+```openui-js
+throw new Error("never executed");
+```

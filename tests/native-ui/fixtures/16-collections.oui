@@ -1,0 +1,2 @@
+root = Col([null, Text("A"), unknown, Text(null), Divider(), Text(["mixed", Badge("tag")])])
+data = {one:[1,-2,1.5e2],two:true,three:null}

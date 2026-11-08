@@ -1,0 +1,1 @@
+root = Card([Text("Count: " + Count([1,2])), Text(@NoSuchFunction(1)), Text(@Sum([1,2]))])

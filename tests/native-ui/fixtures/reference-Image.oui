@@ -1,0 +1,1 @@
+root = Image("https://example.org/photo.png", "Photo")

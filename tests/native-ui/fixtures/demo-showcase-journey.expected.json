@@ -1,0 +1,1897 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "928efe1e86bf5dea56b5c98795665f239cba668def02a0509a9e40095c51ced7",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "交付时间线",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "从客户问题到可用原生体验，每一步都有负责人和产出"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": {
+                            "k": "Ternary",
+                            "cond": {
+                              "k": "StateRef",
+                              "n": "$done"
+                            },
+                            "then": {
+                              "k": "Str",
+                              "v": "发布清单已确认"
+                            },
+                            "else": {
+                              "k": "Str",
+                              "v": "第 3 / 4 阶段"
+                            }
+                          },
+                          "color": {
+                            "k": "Ternary",
+                            "cond": {
+                              "k": "StateRef",
+                              "n": "$done"
+                            },
+                            "then": {
+                              "k": "Str",
+                              "v": "success"
+                            },
+                            "else": {
+                              "k": "Str",
+                              "v": "purple"
+                            }
+                          },
+                          "icon": "git-branch"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "gap": 3,
+                    "align": "center",
+                    "justify": "between"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "check-circle",
+                                "size": "lg",
+                                "color": "success"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": {
+                                  "k": "Ternary",
+                                  "cond": {
+                                    "k": "StateRef",
+                                    "n": "$done"
+                                  },
+                                  "then": {
+                                    "k": "Str",
+                                    "v": "3 / 4"
+                                  },
+                                  "else": {
+                                    "k": "Str",
+                                    "v": "2 / 4"
+                                  }
+                                },
+                                "size": "xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "已完成的里程碑"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "users",
+                                "size": "lg",
+                                "color": "info"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "3 位",
+                                "size": "xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "跨职能负责人"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "calendar",
+                                "size": "lg",
+                                "color": "purple"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "11 月 12 日",
+                                "size": "xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "目标发布时间"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "columns": 3,
+                    "minChildWidth": 180,
+                    "gap": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "List",
+                  "props": {
+                    "items": [
+                      {
+                        "type": "element",
+                        "typeName": "ListItem",
+                        "props": {
+                          "title": "需求对齐",
+                          "description": "访谈 8 位客户，确定三个关键场景。",
+                          "marker": "11/02",
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "已完成",
+                                "color": "success",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "负责人：Maya · 交付物：问题清单与机会地图"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "ListItem",
+                        "props": {
+                          "title": "原型评审",
+                          "description": "把复杂流程压缩到三个清晰步骤。",
+                          "marker": "11/05",
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "已完成",
+                                "color": "success",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "负责人：林青 · 交付物：可点击原型"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "ListItem",
+                        "props": {
+                          "title": "原生体验验证",
+                          "description": "检查输入、键盘导航、深浅主题和图表可读性。",
+                          "marker": "11/08",
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "进行中",
+                                "color": "info",
+                                "icon": "clock"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "负责人：Alex · 关注：低对比状态和窄屏布局"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "ListItem",
+                        "props": {
+                          "title": "团队发布",
+                          "description": {
+                            "k": "Ternary",
+                            "cond": {
+                              "k": "StateRef",
+                              "n": "$done"
+                            },
+                            "then": {
+                              "k": "Str",
+                              "v": "发布清单已确认，可以安排交付。"
+                            },
+                            "else": {
+                              "k": "Str",
+                              "v": "整理文档并准备团队演示。"
+                            }
+                          },
+                          "marker": "11/12",
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": {
+                                  "k": "Ternary",
+                                  "cond": {
+                                    "k": "StateRef",
+                                    "n": "$done"
+                                  },
+                                  "then": {
+                                    "k": "Str",
+                                    "v": "已确认"
+                                  },
+                                  "else": {
+                                    "k": "Str",
+                                    "v": "待开始"
+                                  }
+                                },
+                                "color": {
+                                  "k": "Ternary",
+                                  "cond": {
+                                    "k": "StateRef",
+                                    "n": "$done"
+                                  },
+                                  "then": {
+                                    "k": "Str",
+                                    "v": "success"
+                                  },
+                                  "else": {
+                                    "k": "Str",
+                                    "v": "neutral"
+                                  }
+                                },
+                                "icon": "calendar"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "交付物：操作指南、已知限制与后续计划"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "marker": "none",
+                    "timeline": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Divider",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Checkbox",
+                  "props": {
+                    "checked": {
+                      "k": "StateRef",
+                      "n": "$done"
+                    },
+                    "label": "我已确认发布清单和负责人"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "生成交付摘要",
+                          "action": {
+                            "k": "Comp",
+                            "name": "ToAssistant",
+                            "args": [
+                              {
+                                "k": "Str",
+                                "v": "请把这份里程碑和负责人整理成一份交付摘要。"
+                              },
+                              {
+                                "k": "Obj",
+                                "entries": [
+                                  [
+                                    "releaseReady",
+                                    {
+                                      "k": "StateRef",
+                                      "n": "$done"
+                                    }
+                                  ]
+                                ]
+                              }
+                            ],
+                            "mappedProps": {
+                              "message": {
+                                "k": "Str",
+                                "v": "请把这份里程碑和负责人整理成一份交付摘要。"
+                              },
+                              "context": {
+                                "k": "Obj",
+                                "entries": [
+                                  [
+                                    "releaseReady",
+                                    {
+                                      "k": "StateRef",
+                                      "n": "$done"
+                                    }
+                                  ]
+                                ]
+                              }
+                            }
+                          },
+                          "variant": "solid",
+                          "color": null,
+                          "size": "md",
+                          "icon": "file-text"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "重置确认",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Reset",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$done"
+                              }
+                            ]
+                          },
+                          "variant": "outline",
+                          "color": null,
+                          "size": "md",
+                          "icon": "rotate-ccw"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "gap": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "时间线标记、描述、状态标签和次要说明均保留；确认状态只影响当前卡片。"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": "outline",
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 3,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$done": false
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "交付时间线",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "从客户问题到可用原生体验，每一步都有负责人和产出"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "第 3 / 4 阶段",
+                        "color": "purple",
+                        "icon": "git-branch"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "check-circle",
+                              "size": "lg",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "2 / 4",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "已完成的里程碑"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "users",
+                              "size": "lg",
+                              "color": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "3 位",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "跨职能负责人"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "calendar",
+                              "size": "lg",
+                              "color": "purple"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "11 月 12 日",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "目标发布时间"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 180,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "List",
+                "props": {
+                  "items": [
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "需求对齐",
+                        "description": "访谈 8 位客户，确定三个关键场景。",
+                        "marker": "11/02",
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "已完成",
+                              "color": "success",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "负责人：Maya · 交付物：问题清单与机会地图"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "原型评审",
+                        "description": "把复杂流程压缩到三个清晰步骤。",
+                        "marker": "11/05",
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "已完成",
+                              "color": "success",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "负责人：林青 · 交付物：可点击原型"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "原生体验验证",
+                        "description": "检查输入、键盘导航、深浅主题和图表可读性。",
+                        "marker": "11/08",
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "进行中",
+                              "color": "info",
+                              "icon": "clock"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "负责人：Alex · 关注：低对比状态和窄屏布局"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "团队发布",
+                        "description": "整理文档并准备团队演示。",
+                        "marker": "11/12",
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "待开始",
+                              "color": "neutral",
+                              "icon": "calendar"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "交付物：操作指南、已知限制与后续计划"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "marker": "none",
+                  "timeline": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "__reactive": "assign",
+                    "target": "$done",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "我已确认发布清单和负责人"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "生成交付摘要",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "continue_conversation",
+                              "message": "请把这份里程碑和负责人整理成一份交付摘要。",
+                              "context": {
+                                "releaseReady": false
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "solid",
+                        "color": null,
+                        "size": "md",
+                        "icon": "file-text"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "重置确认",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "reset",
+                              "targets": [
+                                "$done"
+                              ]
+                            }
+                          ]
+                        },
+                        "variant": "outline",
+                        "color": null,
+                        "size": "md",
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "时间线标记、描述、状态标签和次要说明均保留；确认状态只影响当前卡片。"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": "outline",
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 447,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": [
+            {
+              "code": "no-root",
+              "component": "Col",
+              "path": "",
+              "message": "No root statement, and no statement calls the root component Col"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$done": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 894,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "交付时间线",
+                                    "size": "lg"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "从客户问题到可用原生体验，每一步都有负责人和产出"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "StateRef",
+                                  "n": "$done"
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "发布清单已确认"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "第 3 / 4 阶段"
+                                }
+                              },
+                              "color": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "StateRef",
+                                  "n": "$done"
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "success"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "purple"
+                                }
+                              },
+                              "icon": "git-branch"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "check-circle",
+                                    "size": "lg",
+                                    "color": "success"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": {
+                                      "k": "Ternary",
+                                      "cond": {
+                                        "k": "StateRef",
+                                        "n": "$done"
+                                      },
+                                      "then": {
+                                        "k": "Str",
+                                        "v": "3 / 4"
+                                      },
+                                      "else": {
+                                        "k": "Str",
+                                        "v": "2 / 4"
+                                      }
+                                    },
+                                    "size": "xl"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": true
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "已完成的里程碑"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 2
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "users",
+                                    "size": "lg",
+                                    "color": "info"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "3 位",
+                                    "size": "x"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [
+            "milestones"
+          ],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$done": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1342,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "交付时间线",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "从客户问题到可用原生体验，每一步都有负责人和产出"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "StateRef",
+                                  "n": "$done"
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "发布清单已确认"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "第 3 / 4 阶段"
+                                }
+                              },
+                              "color": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "StateRef",
+                                  "n": "$done"
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "success"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "purple"
+                                }
+                              },
+                              "icon": "git-branch"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "check-circle",
+                                    "size": "lg",
+                                    "color": "success"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": {
+                                      "k": "Ternary",
+                                      "cond": {
+                                        "k": "StateRef",
+                                        "n": "$done"
+                                      },
+                                      "then": {
+                                        "k": "Str",
+                                        "v": "3 / 4"
+                                      },
+                                      "else": {
+                                        "k": "Str",
+                                        "v": "2 / 4"
+                                      }
+                                    },
+                                    "size": "xl"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": true
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "已完成的里程碑"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "users",
+                                    "size": "lg",
+                                    "color": "info"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "3 位",
+                                    "size": "xl"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "跨职能负责人"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "calendar",
+                                    "size": "lg",
+                                    "color": "purple"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "11 月 12 日",
+                                    "size": "xl"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "目标发布时间"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "columns": 3,
+                        "minChildWidth": 180,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "List",
+                      "props": {
+                        "items": [
+                          {
+                            "type": "element",
+                            "typeName": "ListItem",
+                            "props": {
+                              "title": "需求对齐",
+                              "description": "访谈 8 位客户，确定三个关键场景。",
+                              "marker": "11/02",
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "已完成",
+                                    "color": "success",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "负责人：Maya · 交付物：问题清单与机会地图"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "ListItem",
+                            "props": {
+                              "title": "原型评审",
+                              "description": "把复杂流程压缩到三个清晰步骤。",
+                              "marker": "11/05",
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "已完成",
+                                    "color": "success",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "负责人：林青 · 交付物：可点击原型"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "ListItem",
+                            "props": {
+                              "title": "原生体验验证",
+                              "description": "检查输入、键盘导航、深浅主题和图表可读性。",
+                              "marker": "11/08",
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "进行中",
+                                    "color": "info",
+                                    "icon": "clock"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "负责人：Alex · 关注：低对比状态和窄屏布局"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "ListItem",
+                            "props": {
+                              "title": "团队发布",
+                              "description": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "StateRef",
+                                  "n": "$done"
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "发布清单已确认，可以安排交付。"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "整理文档并准备团队演示。"
+                                }
+                              },
+                              "marker": "11/12",
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": {
+                                      "k": "Ternary",
+                                      "cond": {
+                                        "k": "StateRef",
+                                        "n": "$done"
+                                      },
+                                      "then": {
+                                        "k": "Str",
+                                        "v": "已确认"
+                                      },
+                                      "else": {
+                                        "k": "Str",
+                                        "v": "待开始"
+                                      }
+                                    },
+                                    "color": {
+                                      "k": "Ternary",
+                                      "cond": {
+                                        "k": "StateRef",
+                                        "n": "$done"
+                                      },
+                                      "then": {
+                                        "k": "Str",
+                                        "v": "success"
+                                      },
+                                      "else": {
+                                        "k": "Str",
+                                        "v": "neutral"
+                                      }
+                                    },
+                                    "icon": "calendar"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": true
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "交付物：操作指南、已知限制与后续计划"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "marker": "none",
+                        "timeline": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Divider",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Checkbox",
+                      "props": {
+                        "checked": {
+                          "k": "StateRef",
+                          "n": "$done"
+                        },
+                        "label": "我已确认发布清单和负责人"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "生成交付摘要",
+                              "action": {
+                                "k": "Comp",
+                                "name": "ToAssistant",
+                                "args": [
+                                  {
+                                    "k": "Str",
+                                    "v": "请把这份里程碑和负责人整理成一份交付摘要。"
+                                  },
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "releaseReady",
+                                        {
+                                          "k": "StateRef",
+                                          "n": "$done"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "message": {
+                                    "k": "Str",
+                                    "v": "请把这份里程碑和负责人整理成一份交付摘要。"
+                                  },
+                                  "context": {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "releaseReady",
+                                        {
+                                          "k": "StateRef",
+                                          "n": "$done"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                }
+                              },
+                              "variant": "solid",
+                              "color": null,
+                              "size": "md",
+                              "icon": "file-text"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "重置确认",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Reset",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$done"
+                                  }
+                                ]
+                              },
+                              "variant": "outline",
+                              "color": null,
+                              "size": "md",
+                              "icon": "rotate-ccw"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "时间线标记、描述、状态标签和次要说明均保留；确认状态只影响当前卡片。"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "outline",
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$done": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

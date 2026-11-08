@@ -1,0 +1,13 @@
+$entry = 0
+$acc = 0
+$op = ""
+$hasOp = false
+$fresh = true
+$memory = 0
+result = $op == "+" ? $acc + $entry : $op == "−" ? $acc - $entry : $op == "×" ? $acc * $entry : $op == "÷" ? $acc / $entry : $entry
+root = Col([Card([Row([Title("计算器", "md"), Badge("本地运算", "info")], 2, "center", "between"), Title("" + @Round($entry, 8), "3xl"), Caption("M: " + @Round($memory, 8) + "   " + ($hasOp ? $acc + " " + $op : "")), Row([Button("M+", @Set($memory, $memory + $entry), "soft", null, null, null, null, true), Button("MR", Action([@Set($entry, $memory), @Set($fresh, true)]), "soft", null, null, null, null, true), Button("MC", @Reset($memory), "soft", null, null, null, null, true), Button("C", @Reset($entry,$acc,$op,$hasOp,$fresh), "outline", null, null, null, null, true)]), Divider(), Row([@Each([7,8,9], digit, Button("" + digit, Action([@Set($entry, $fresh ? digit : $entry * 10 + digit), @Set($fresh, false)]), "outline", null, null, null, null, true)), divide]), Row([@Each([4,5,6], digit, Button("" + digit, Action([@Set($entry, $fresh ? digit : $entry * 10 + digit), @Set($fresh, false)]), "outline", null, null, null, null, true)), multiply]), Row([@Each([1,2,3], digit, Button("" + digit, Action([@Set($entry, $fresh ? digit : $entry * 10 + digit), @Set($fresh, false)]), "outline", null, null, null, null, true)), minus]), Row([Button("±", @Set($entry, -$entry), "outline", null, null, null, null, true), Button("0", Action([@Set($entry, $fresh ? 0 : $entry * 10), @Set($fresh, false)]), "outline", null, null, null, null, true), equals, plus]), Caption("M+ 累加当前数字；MR 读出；MC 清空存储。C 只清算式；± 切换正负。")], "outline", 4, 3)])
+plus = Button("+", Action([@Set($acc, $hasOp ? result : $entry), @Set($op, "+"), @Set($hasOp, true), @Set($fresh, true)]), "soft", null, null, null, null, true)
+minus = Button("−", Action([@Set($acc, $hasOp ? result : $entry), @Set($op, "−"), @Set($hasOp, true), @Set($fresh, true)]), "soft", null, null, null, null, true)
+multiply = Button("×", Action([@Set($acc, $hasOp ? result : $entry), @Set($op, "×"), @Set($hasOp, true), @Set($fresh, true)]), "soft", null, null, null, null, true)
+divide = Button("÷", Action([@Set($acc, $hasOp ? result : $entry), @Set($op, "÷"), @Set($hasOp, true), @Set($fresh, true)]), "soft", null, null, null, null, true)
+equals = Button("=", Action([@Set($entry, result), @Set($hasOp, false), @Set($op, ""), @Set($fresh, true)]), "solid", null, null, null, null, true)

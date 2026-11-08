@@ -1,0 +1,2 @@
+$note = ""
+root = Col([TextArea($note, "Notes"), Text($note)])

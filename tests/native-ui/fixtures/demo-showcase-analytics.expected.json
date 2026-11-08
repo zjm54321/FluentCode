@@ -1,0 +1,4099 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "3c3dc1e9368323f639a7e2263344a4da47f7f89769285fbb138b47fec5a1c197",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "经营概览",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Northstar 工作室 · 多渠道收入与客户增长"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "实时快照",
+                          "color": "success",
+                          "icon": "check-circle"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 3,
+                    "align": "center",
+                    "justify": "between"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SegmentedControl",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$period"
+                    },
+                    "options": [
+                      "本周",
+                      "本月",
+                      "本季度"
+                    ],
+                    "block": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "k": "Comp",
+                        "name": "Each",
+                        "args": [
+                          {
+                            "k": "Arr",
+                            "els": [
+                              {
+                                "k": "Obj",
+                                "entries": [
+                                  [
+                                    "icon",
+                                    {
+                                      "k": "Str",
+                                      "v": "dollar-sign"
+                                    }
+                                  ],
+                                  [
+                                    "label",
+                                    {
+                                      "k": "Str",
+                                      "v": "总收入"
+                                    }
+                                  ],
+                                  [
+                                    "value",
+                                    {
+                                      "k": "Str",
+                                      "v": "¥128,430"
+                                    }
+                                  ],
+                                  [
+                                    "delta",
+                                    {
+                                      "k": "Str",
+                                      "v": "+18.6%"
+                                    }
+                                  ],
+                                  [
+                                    "tone",
+                                    {
+                                      "k": "Str",
+                                      "v": "success"
+                                    }
+                                  ]
+                                ]
+                              },
+                              {
+                                "k": "Obj",
+                                "entries": [
+                                  [
+                                    "icon",
+                                    {
+                                      "k": "Str",
+                                      "v": "users"
+                                    }
+                                  ],
+                                  [
+                                    "label",
+                                    {
+                                      "k": "Str",
+                                      "v": "活跃客户"
+                                    }
+                                  ],
+                                  [
+                                    "value",
+                                    {
+                                      "k": "Str",
+                                      "v": "2,846"
+                                    }
+                                  ],
+                                  [
+                                    "delta",
+                                    {
+                                      "k": "Str",
+                                      "v": "+12.4%"
+                                    }
+                                  ],
+                                  [
+                                    "tone",
+                                    {
+                                      "k": "Str",
+                                      "v": "info"
+                                    }
+                                  ]
+                                ]
+                              },
+                              {
+                                "k": "Obj",
+                                "entries": [
+                                  [
+                                    "icon",
+                                    {
+                                      "k": "Str",
+                                      "v": "shopping-cart"
+                                    }
+                                  ],
+                                  [
+                                    "label",
+                                    {
+                                      "k": "Str",
+                                      "v": "订单数"
+                                    }
+                                  ],
+                                  [
+                                    "value",
+                                    {
+                                      "k": "Str",
+                                      "v": "1,204"
+                                    }
+                                  ],
+                                  [
+                                    "delta",
+                                    {
+                                      "k": "Str",
+                                      "v": "+8.2%"
+                                    }
+                                  ],
+                                  [
+                                    "tone",
+                                    {
+                                      "k": "Str",
+                                      "v": "purple"
+                                    }
+                                  ]
+                                ]
+                              },
+                              {
+                                "k": "Obj",
+                                "entries": [
+                                  [
+                                    "icon",
+                                    {
+                                      "k": "Str",
+                                      "v": "check-circle"
+                                    }
+                                  ],
+                                  [
+                                    "label",
+                                    {
+                                      "k": "Str",
+                                      "v": "转化率"
+                                    }
+                                  ],
+                                  [
+                                    "value",
+                                    {
+                                      "k": "Str",
+                                      "v": "4.82%"
+                                    }
+                                  ],
+                                  [
+                                    "delta",
+                                    {
+                                      "k": "Str",
+                                      "v": "+0.6pp"
+                                    }
+                                  ],
+                                  [
+                                    "tone",
+                                    {
+                                      "k": "Str",
+                                      "v": "pink"
+                                    }
+                                  ]
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "k": "Ref",
+                            "n": "m"
+                          },
+                          {
+                            "k": "Comp",
+                            "name": "Card",
+                            "args": [
+                              {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Comp",
+                                    "name": "Row",
+                                    "args": [
+                                      {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "Comp",
+                                            "name": "Icon",
+                                            "args": [
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "icon"
+                                              },
+                                              {
+                                                "k": "Str",
+                                                "v": "md"
+                                              },
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "tone"
+                                              }
+                                            ],
+                                            "mappedProps": {
+                                              "name": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "icon"
+                                              },
+                                              "size": {
+                                                "k": "Str",
+                                                "v": "md"
+                                              },
+                                              "color": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "tone"
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "k": "Comp",
+                                            "name": "Caption",
+                                            "args": [
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "label"
+                                              }
+                                            ],
+                                            "mappedProps": {
+                                              "text": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "label"
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "k": "Num",
+                                        "v": 2
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "children": {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "Comp",
+                                            "name": "Icon",
+                                            "args": [
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "icon"
+                                              },
+                                              {
+                                                "k": "Str",
+                                                "v": "md"
+                                              },
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "tone"
+                                              }
+                                            ],
+                                            "mappedProps": {
+                                              "name": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "icon"
+                                              },
+                                              "size": {
+                                                "k": "Str",
+                                                "v": "md"
+                                              },
+                                              "color": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "tone"
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "k": "Comp",
+                                            "name": "Caption",
+                                            "args": [
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "label"
+                                              }
+                                            ],
+                                            "mappedProps": {
+                                              "text": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "label"
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "gap": {
+                                        "k": "Num",
+                                        "v": 2
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "k": "Comp",
+                                    "name": "Title",
+                                    "args": [
+                                      {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "value"
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": "xl"
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "text": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "value"
+                                      },
+                                      "size": {
+                                        "k": "Str",
+                                        "v": "xl"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "k": "Comp",
+                                    "name": "Badge",
+                                    "args": [
+                                      {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "delta"
+                                      },
+                                      {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "tone"
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": "arrow-up-right"
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "text": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "delta"
+                                      },
+                                      "color": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "tone"
+                                      },
+                                      "icon": {
+                                        "k": "Str",
+                                        "v": "arrow-up-right"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "k": "Comp",
+                                    "name": "Caption",
+                                    "args": [
+                                      {
+                                        "k": "Str",
+                                        "v": "较上一周期"
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "text": {
+                                        "k": "Str",
+                                        "v": "较上一周期"
+                                      }
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Str",
+                                "v": "soft"
+                              },
+                              {
+                                "k": "Num",
+                                "v": 3
+                              },
+                              {
+                                "k": "Num",
+                                "v": 2
+                              }
+                            ],
+                            "mappedProps": {
+                              "children": {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Comp",
+                                    "name": "Row",
+                                    "args": [
+                                      {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "Comp",
+                                            "name": "Icon",
+                                            "args": [
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "icon"
+                                              },
+                                              {
+                                                "k": "Str",
+                                                "v": "md"
+                                              },
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "tone"
+                                              }
+                                            ],
+                                            "mappedProps": {
+                                              "name": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "icon"
+                                              },
+                                              "size": {
+                                                "k": "Str",
+                                                "v": "md"
+                                              },
+                                              "color": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "tone"
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "k": "Comp",
+                                            "name": "Caption",
+                                            "args": [
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "label"
+                                              }
+                                            ],
+                                            "mappedProps": {
+                                              "text": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "label"
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "k": "Num",
+                                        "v": 2
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "children": {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "Comp",
+                                            "name": "Icon",
+                                            "args": [
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "icon"
+                                              },
+                                              {
+                                                "k": "Str",
+                                                "v": "md"
+                                              },
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "tone"
+                                              }
+                                            ],
+                                            "mappedProps": {
+                                              "name": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "icon"
+                                              },
+                                              "size": {
+                                                "k": "Str",
+                                                "v": "md"
+                                              },
+                                              "color": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "tone"
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "k": "Comp",
+                                            "name": "Caption",
+                                            "args": [
+                                              {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "label"
+                                              }
+                                            ],
+                                            "mappedProps": {
+                                              "text": {
+                                                "k": "Member",
+                                                "obj": {
+                                                  "k": "Ref",
+                                                  "n": "m"
+                                                },
+                                                "field": "label"
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "gap": {
+                                        "k": "Num",
+                                        "v": 2
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "k": "Comp",
+                                    "name": "Title",
+                                    "args": [
+                                      {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "value"
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": "xl"
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "text": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "value"
+                                      },
+                                      "size": {
+                                        "k": "Str",
+                                        "v": "xl"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "k": "Comp",
+                                    "name": "Badge",
+                                    "args": [
+                                      {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "delta"
+                                      },
+                                      {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "tone"
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": "arrow-up-right"
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "text": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "delta"
+                                      },
+                                      "color": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "m"
+                                        },
+                                        "field": "tone"
+                                      },
+                                      "icon": {
+                                        "k": "Str",
+                                        "v": "arrow-up-right"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "k": "Comp",
+                                    "name": "Caption",
+                                    "args": [
+                                      {
+                                        "k": "Str",
+                                        "v": "较上一周期"
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "text": {
+                                        "k": "Str",
+                                        "v": "较上一周期"
+                                      }
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": {
+                                "k": "Str",
+                                "v": "soft"
+                              },
+                              "padding": {
+                                "k": "Num",
+                                "v": 3
+                              },
+                              "gap": {
+                                "k": "Num",
+                                "v": 2
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "columns": 4,
+                    "minChildWidth": 150,
+                    "gap": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "stats"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "StateRef",
+                              "n": "$period"
+                            },
+                            "right": {
+                              "k": "Str",
+                              "v": " · 渠道贡献"
+                            }
+                          },
+                          "size": "md"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Popover",
+                        "props": {
+                          "trigger": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "info"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "content": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "每个系列使用统一的六色原生图表调色板；数据为离线演示。"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2,
+                    "align": "center",
+                    "justify": "between"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Chart",
+                  "props": {
+                    "type": "bar",
+                    "data": [
+                      {
+                        "day": "周一",
+                        "direct": 42,
+                        "search": 30,
+                        "social": 18,
+                        "email": 15,
+                        "partner": 12,
+                        "other": 8
+                      },
+                      {
+                        "day": "周二",
+                        "direct": 58,
+                        "search": 36,
+                        "social": 24,
+                        "email": 18,
+                        "partner": 16,
+                        "other": 9
+                      },
+                      {
+                        "day": "周三",
+                        "direct": 51,
+                        "search": 44,
+                        "social": 27,
+                        "email": 21,
+                        "partner": 14,
+                        "other": 11
+                      },
+                      {
+                        "day": "周四",
+                        "direct": 72,
+                        "search": 48,
+                        "social": 31,
+                        "email": 25,
+                        "partner": 20,
+                        "other": 13
+                      },
+                      {
+                        "day": "周五",
+                        "direct": 84,
+                        "search": 62,
+                        "social": 38,
+                        "email": 29,
+                        "partner": 24,
+                        "other": 16
+                      }
+                    ],
+                    "x": "day",
+                    "series": [
+                      "direct",
+                      "search",
+                      "social",
+                      "email",
+                      "partner",
+                      "other"
+                    ],
+                    "format": "currency",
+                    "currency": "CNY",
+                    "stacked": true,
+                    "height": 220
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Divider",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "重点客户",
+                    "size": "md"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Table",
+                  "props": {
+                    "columns": [
+                      "客户 / 套餐",
+                      "状态",
+                      "本月收入",
+                      "负责人"
+                    ],
+                    "rows": [
+                      [
+                        {
+                          "type": "element",
+                          "typeName": "Text",
+                          "props": {
+                            "text": "Atlas · 企业版",
+                            "size": "sm",
+                            "color": null,
+                            "weight": "semibold"
+                          },
+                          "partial": false,
+                          "hasDynamicProps": false
+                        },
+                        {
+                          "type": "element",
+                          "typeName": "Badge",
+                          "props": {
+                            "text": "续费中",
+                            "color": "success",
+                            "icon": "check"
+                          },
+                          "partial": false,
+                          "hasDynamicProps": false
+                        },
+                        42800,
+                        "林青"
+                      ],
+                      [
+                        {
+                          "type": "element",
+                          "typeName": "Text",
+                          "props": {
+                            "text": "Orbit · 团队版",
+                            "size": "sm",
+                            "color": null,
+                            "weight": "semibold"
+                          },
+                          "partial": false,
+                          "hasDynamicProps": false
+                        },
+                        {
+                          "type": "element",
+                          "typeName": "Badge",
+                          "props": {
+                            "text": "增长",
+                            "color": "purple",
+                            "icon": "arrow-up-right"
+                          },
+                          "partial": false,
+                          "hasDynamicProps": false
+                        },
+                        28600,
+                        "陈溪"
+                      ],
+                      [
+                        {
+                          "type": "element",
+                          "typeName": "Text",
+                          "props": {
+                            "text": "Lumen · 专业版",
+                            "size": "sm",
+                            "color": null,
+                            "weight": "semibold"
+                          },
+                          "partial": false,
+                          "hasDynamicProps": false
+                        },
+                        {
+                          "type": "element",
+                          "typeName": "Badge",
+                          "props": {
+                            "text": "待跟进",
+                            "color": "warning",
+                            "icon": "clock"
+                          },
+                          "partial": false,
+                          "hasDynamicProps": false
+                        },
+                        18400,
+                        "Maya"
+                      ]
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "更新于 09:41 · 3 个重点客户 · 金额为人民币"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "生成经营简报",
+                          "action": {
+                            "k": "Comp",
+                            "name": "ToAssistant",
+                            "args": [
+                              {
+                                "k": "Str",
+                                "v": "请根据这份经营概览整理本周的增长机会。"
+                              },
+                              {
+                                "k": "Obj",
+                                "entries": [
+                                  [
+                                    "period",
+                                    {
+                                      "k": "StateRef",
+                                      "n": "$period"
+                                    }
+                                  ]
+                                ]
+                              }
+                            ],
+                            "mappedProps": {
+                              "message": {
+                                "k": "Str",
+                                "v": "请根据这份经营概览整理本周的增长机会。"
+                              },
+                              "context": {
+                                "k": "Obj",
+                                "entries": [
+                                  [
+                                    "period",
+                                    {
+                                      "k": "StateRef",
+                                      "n": "$period"
+                                    }
+                                  ]
+                                ]
+                              }
+                            }
+                          },
+                          "variant": "outline",
+                          "color": null,
+                          "size": "sm",
+                          "icon": "sparkles"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "gap": 3,
+                    "align": "center",
+                    "justify": "between"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "variant": "outline",
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 5,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$period": "本周"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "经营概览",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Northstar 工作室 · 多渠道收入与客户增长"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "实时快照",
+                        "color": "success",
+                        "icon": "check-circle"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$period",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    "本周",
+                    "本月",
+                    "本季度"
+                  ],
+                  "block": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    [
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Row",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Icon",
+                                    "props": {
+                                      "name": "dollar-sign",
+                                      "size": "md",
+                                      "color": "success"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": true
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "总收入"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": true
+                                  }
+                                ],
+                                "gap": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "¥128,430",
+                                "size": "xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "+18.6%",
+                                "color": "success",
+                                "icon": "arrow-up-right"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "较上一周期"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Row",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Icon",
+                                    "props": {
+                                      "name": "users",
+                                      "size": "md",
+                                      "color": "info"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": true
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "活跃客户"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": true
+                                  }
+                                ],
+                                "gap": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "2,846",
+                                "size": "xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "+12.4%",
+                                "color": "info",
+                                "icon": "arrow-up-right"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "较上一周期"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Row",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Icon",
+                                    "props": {
+                                      "name": "shopping-cart",
+                                      "size": "md",
+                                      "color": "purple"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": true
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "订单数"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": true
+                                  }
+                                ],
+                                "gap": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "1,204",
+                                "size": "xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "+8.2%",
+                                "color": "purple",
+                                "icon": "arrow-up-right"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "较上一周期"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Row",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Icon",
+                                    "props": {
+                                      "name": "check-circle",
+                                      "size": "md",
+                                      "color": "pink"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": true
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "转化率"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": true
+                                  }
+                                ],
+                                "gap": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "4.82%",
+                                "size": "xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "+0.6pp",
+                                "color": "pink",
+                                "icon": "arrow-up-right"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "较上一周期"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ]
+                  ],
+                  "columns": 4,
+                  "minChildWidth": 150,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "stats"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "本周 · 渠道贡献",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Popover",
+                      "props": {
+                        "trigger": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "content": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "每个系列使用统一的六色原生图表调色板；数据为离线演示。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Chart",
+                "props": {
+                  "type": "bar",
+                  "data": [
+                    {
+                      "day": "周一",
+                      "direct": 42,
+                      "search": 30,
+                      "social": 18,
+                      "email": 15,
+                      "partner": 12,
+                      "other": 8
+                    },
+                    {
+                      "day": "周二",
+                      "direct": 58,
+                      "search": 36,
+                      "social": 24,
+                      "email": 18,
+                      "partner": 16,
+                      "other": 9
+                    },
+                    {
+                      "day": "周三",
+                      "direct": 51,
+                      "search": 44,
+                      "social": 27,
+                      "email": 21,
+                      "partner": 14,
+                      "other": 11
+                    },
+                    {
+                      "day": "周四",
+                      "direct": 72,
+                      "search": 48,
+                      "social": 31,
+                      "email": 25,
+                      "partner": 20,
+                      "other": 13
+                    },
+                    {
+                      "day": "周五",
+                      "direct": 84,
+                      "search": 62,
+                      "social": 38,
+                      "email": 29,
+                      "partner": 24,
+                      "other": 16
+                    }
+                  ],
+                  "x": "day",
+                  "series": [
+                    "direct",
+                    "search",
+                    "social",
+                    "email",
+                    "partner",
+                    "other"
+                  ],
+                  "format": "currency",
+                  "currency": "CNY",
+                  "stacked": true,
+                  "height": 220
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "重点客户",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "客户 / 套餐",
+                    "状态",
+                    "本月收入",
+                    "负责人"
+                  ],
+                  "rows": [
+                    [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Atlas · 企业版",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "续费中",
+                          "color": "success",
+                          "icon": "check"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      42800,
+                      "林青"
+                    ],
+                    [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Orbit · 团队版",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "增长",
+                          "color": "purple",
+                          "icon": "arrow-up-right"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      28600,
+                      "陈溪"
+                    ],
+                    [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Lumen · 专业版",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "待跟进",
+                          "color": "warning",
+                          "icon": "clock"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      18400,
+                      "Maya"
+                    ]
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "更新于 09:41 · 3 个重点客户 · 金额为人民币"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "生成经营简报",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "continue_conversation",
+                              "message": "请根据这份经营概览整理本周的增长机会。",
+                              "context": {
+                                "period": "本周"
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "outline",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "sparkles"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "variant": "outline",
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 608,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": [
+            {
+              "code": "no-root",
+              "component": "Col",
+              "path": "",
+              "message": "No root statement, and no statement calls the root component Col"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$period": "本周"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1217,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "经营概览",
+                                    "size": "lg"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Northstar 工作室 · 多渠道收入与客户增长"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "实时快照",
+                              "color": "success",
+                              "icon": "check-circle"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$period"
+                        },
+                        "options": [
+                          "本周",
+                          "本月",
+                          "本季度"
+                        ],
+                        "block": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "k": "Comp",
+                            "name": "Each",
+                            "args": [
+                              {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "icon",
+                                        {
+                                          "k": "Str",
+                                          "v": "dollar-sign"
+                                        }
+                                      ],
+                                      [
+                                        "label",
+                                        {
+                                          "k": "Str",
+                                          "v": "总收入"
+                                        }
+                                      ],
+                                      [
+                                        "value",
+                                        {
+                                          "k": "Str",
+                                          "v": "¥128,430"
+                                        }
+                                      ],
+                                      [
+                                        "delta",
+                                        {
+                                          "k": "Str",
+                                          "v": "+18.6%"
+                                        }
+                                      ],
+                                      [
+                                        "tone",
+                                        {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      ]
+                                    ]
+                                  },
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "icon",
+                                        {
+                                          "k": "Str",
+                                          "v": "users"
+                                        }
+                                      ],
+                                      [
+                                        "label",
+                                        {
+                                          "k": "Str",
+                                          "v": "活跃客户"
+                                        }
+                                      ],
+                                      [
+                                        "value",
+                                        {
+                                          "k": "Str",
+                                          "v": "2,846"
+                                        }
+                                      ],
+                                      [
+                                        "delta",
+                                        {
+                                          "k": "Str",
+                                          "v": "+12.4%"
+                                        }
+                                      ],
+                                      [
+                                        "tone",
+                                        {
+                                          "k": "Str",
+                                          "v": "info"
+                                        }
+                                      ]
+                                    ]
+                                  },
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "icon",
+                                        {
+                                          "k": "Str",
+                                          "v": "shopping-cart"
+                                        }
+                                      ],
+                                      [
+                                        "label",
+                                        {
+                                          "k": "Str",
+                                          "v": "订单数"
+                                        }
+                                      ],
+                                      [
+                                        "value",
+                                        {
+                                          "k": "Str",
+                                          "v": "1,204"
+                                        }
+                                      ],
+                                      [
+                                        "delta",
+                                        {
+                                          "k": "Str",
+                                          "v": "+8.2%"
+                                        }
+                                      ],
+                                      [
+                                        "tone",
+                                        {
+                                          "k": "Str",
+                                          "v": "purple"
+                                        }
+                                      ]
+                                    ]
+                                  },
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "icon",
+                                        {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        }
+                                      ],
+                                      [
+                                        "label",
+                                        {
+                                          "k": "Str",
+                                          "v": "转化率"
+                                        }
+                                      ],
+                                      [
+                                        "value",
+                                        {
+                                          "k": "Str",
+                                          "v": "4.82%"
+                                        }
+                                      ],
+                                      [
+                                        "delta",
+                                        {
+                                          "k": "Str",
+                                          "v": "+0.6pp"
+                                        }
+                                      ],
+                                      [
+                                        "tone",
+                                        {
+                                          "k": "Str",
+                                          "v": "pink"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Ref",
+                                "n": "m"
+                              },
+                              {
+                                "k": "Comp",
+                                "name": "Card",
+                                "args": [
+                                  {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "Comp",
+                                        "name": "Row",
+                                        "args": [
+                                          {
+                                            "k": "Arr",
+                                            "els": [
+                                              {
+                                                "k": "Comp",
+                                                "name": "Icon",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "name": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  "size": {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  "color": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "k": "Comp",
+                                                "name": "Caption",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "text": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "k": "Num",
+                                            "v": 2
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "children": {
+                                            "k": "Arr",
+                                            "els": [
+                                              {
+                                                "k": "Comp",
+                                                "name": "Icon",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "name": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  "size": {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  "color": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "k": "Comp",
+                                                "name": "Caption",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "text": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          "gap": {
+                                            "k": "Num",
+                                            "v": 2
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Title",
+                                        "args": [
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "value"
+                                          },
+                                          {
+                                            "k": "Str",
+                                            "v": "xl"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "value"
+                                          },
+                                          "size": {
+                                            "k": "Str",
+                                            "v": "xl"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Badge",
+                                        "args": [
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "delta"
+                                          },
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "tone"
+                                          },
+                                          {
+                                            "k": "Str",
+                                            "v": "arrow-up-right"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "delta"
+                                          },
+                                          "color": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "tone"
+                                          },
+                                          "icon": {
+                                            "k": "Str",
+                                            "v": "arrow-up-right"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Caption",
+                                        "args": [
+                                          {
+                                            "k": "Str",
+                                            "v": "较上一周期"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Str",
+                                            "v": "较上一周期"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": "soft"
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 3
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 2
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "children": {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "Comp",
+                                        "name": "Row",
+                                        "args": [
+                                          {
+                                            "k": "Arr",
+                                            "els": [
+                                              {
+                                                "k": "Comp",
+                                                "name": "Icon",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "name": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  "size": {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  "color": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "k": "Comp",
+                                                "name": "Caption",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "text": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "k": "Num",
+                                            "v": 2
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "children": {
+                                            "k": "Arr",
+                                            "els": [
+                                              {
+                                                "k": "Comp",
+                                                "name": "Icon",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "name": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  "size": {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  "color": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "k": "Comp",
+                                                "name": "Caption",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "text": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          "gap": {
+                                            "k": "Num",
+                                            "v": 2
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Title",
+                                        "args": [
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "value"
+                                          },
+                                          {
+                                            "k": "Str",
+                                            "v": "xl"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "value"
+                                          },
+                                          "size": {
+                                            "k": "Str",
+                                            "v": "xl"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Badge",
+                                        "args": [
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "delta"
+                                          },
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "tone"
+                                          },
+                                          {
+                                            "k": "Str",
+                                            "v": "arrow-up-right"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "delta"
+                                          },
+                                          "color": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "tone"
+                                          },
+                                          "icon": {
+                                            "k": "Str",
+                                            "v": "arrow-up-right"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Caption",
+                                        "args": [
+                                          {
+                                            "k": "Str",
+                                            "v": "较上一周期"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Str",
+                                            "v": "较上一周期"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  "variant": {
+                                    "k": "Str",
+                                    "v": "soft"
+                                  },
+                                  "padding": {
+                                    "k": "Num",
+                                    "v": 3
+                                  },
+                                  "gap": {
+                                    "k": "Num",
+                                    "v": 2
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ],
+                        "columns": 4,
+                        "minChildWidth": 150,
+                        "gap": 3
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true,
+                      "statementId": "stats"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$period"
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": " · 渠道贡献"
+                                }
+                              },
+                              "size": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Popover",
+                            "props": {
+                              "trigger": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "info"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "content": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "每个系列使用统一的六色原生图表调色板；数据为离线演示。"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "dat"
+          ],
+          "orphaned": [
+            "data"
+          ],
+          "statementCount": 5,
+          "errors": [
+            {
+              "code": "null-required",
+              "component": "Chart",
+              "path": "/data",
+              "message": "required field \"/data\" cannot be null — signature: Chart(type*: \"bar\"|\"line\"|\"area\"|\"pie\"|\"donut\"|\"scatter\", data*: array, x: string, series: array, format: \"number\"|\"currency\"|\"percent\", currency: string, stacked: boolean, height: number)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$period": "本周"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1826,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "经营概览",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Northstar 工作室 · 多渠道收入与客户增长"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "实时快照",
+                              "color": "success",
+                              "icon": "check-circle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$period"
+                        },
+                        "options": [
+                          "本周",
+                          "本月",
+                          "本季度"
+                        ],
+                        "block": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "k": "Comp",
+                            "name": "Each",
+                            "args": [
+                              {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "icon",
+                                        {
+                                          "k": "Str",
+                                          "v": "dollar-sign"
+                                        }
+                                      ],
+                                      [
+                                        "label",
+                                        {
+                                          "k": "Str",
+                                          "v": "总收入"
+                                        }
+                                      ],
+                                      [
+                                        "value",
+                                        {
+                                          "k": "Str",
+                                          "v": "¥128,430"
+                                        }
+                                      ],
+                                      [
+                                        "delta",
+                                        {
+                                          "k": "Str",
+                                          "v": "+18.6%"
+                                        }
+                                      ],
+                                      [
+                                        "tone",
+                                        {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      ]
+                                    ]
+                                  },
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "icon",
+                                        {
+                                          "k": "Str",
+                                          "v": "users"
+                                        }
+                                      ],
+                                      [
+                                        "label",
+                                        {
+                                          "k": "Str",
+                                          "v": "活跃客户"
+                                        }
+                                      ],
+                                      [
+                                        "value",
+                                        {
+                                          "k": "Str",
+                                          "v": "2,846"
+                                        }
+                                      ],
+                                      [
+                                        "delta",
+                                        {
+                                          "k": "Str",
+                                          "v": "+12.4%"
+                                        }
+                                      ],
+                                      [
+                                        "tone",
+                                        {
+                                          "k": "Str",
+                                          "v": "info"
+                                        }
+                                      ]
+                                    ]
+                                  },
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "icon",
+                                        {
+                                          "k": "Str",
+                                          "v": "shopping-cart"
+                                        }
+                                      ],
+                                      [
+                                        "label",
+                                        {
+                                          "k": "Str",
+                                          "v": "订单数"
+                                        }
+                                      ],
+                                      [
+                                        "value",
+                                        {
+                                          "k": "Str",
+                                          "v": "1,204"
+                                        }
+                                      ],
+                                      [
+                                        "delta",
+                                        {
+                                          "k": "Str",
+                                          "v": "+8.2%"
+                                        }
+                                      ],
+                                      [
+                                        "tone",
+                                        {
+                                          "k": "Str",
+                                          "v": "purple"
+                                        }
+                                      ]
+                                    ]
+                                  },
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "icon",
+                                        {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        }
+                                      ],
+                                      [
+                                        "label",
+                                        {
+                                          "k": "Str",
+                                          "v": "转化率"
+                                        }
+                                      ],
+                                      [
+                                        "value",
+                                        {
+                                          "k": "Str",
+                                          "v": "4.82%"
+                                        }
+                                      ],
+                                      [
+                                        "delta",
+                                        {
+                                          "k": "Str",
+                                          "v": "+0.6pp"
+                                        }
+                                      ],
+                                      [
+                                        "tone",
+                                        {
+                                          "k": "Str",
+                                          "v": "pink"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Ref",
+                                "n": "m"
+                              },
+                              {
+                                "k": "Comp",
+                                "name": "Card",
+                                "args": [
+                                  {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "Comp",
+                                        "name": "Row",
+                                        "args": [
+                                          {
+                                            "k": "Arr",
+                                            "els": [
+                                              {
+                                                "k": "Comp",
+                                                "name": "Icon",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "name": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  "size": {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  "color": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "k": "Comp",
+                                                "name": "Caption",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "text": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "k": "Num",
+                                            "v": 2
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "children": {
+                                            "k": "Arr",
+                                            "els": [
+                                              {
+                                                "k": "Comp",
+                                                "name": "Icon",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "name": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  "size": {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  "color": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "k": "Comp",
+                                                "name": "Caption",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "text": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          "gap": {
+                                            "k": "Num",
+                                            "v": 2
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Title",
+                                        "args": [
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "value"
+                                          },
+                                          {
+                                            "k": "Str",
+                                            "v": "xl"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "value"
+                                          },
+                                          "size": {
+                                            "k": "Str",
+                                            "v": "xl"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Badge",
+                                        "args": [
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "delta"
+                                          },
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "tone"
+                                          },
+                                          {
+                                            "k": "Str",
+                                            "v": "arrow-up-right"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "delta"
+                                          },
+                                          "color": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "tone"
+                                          },
+                                          "icon": {
+                                            "k": "Str",
+                                            "v": "arrow-up-right"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Caption",
+                                        "args": [
+                                          {
+                                            "k": "Str",
+                                            "v": "较上一周期"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Str",
+                                            "v": "较上一周期"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": "soft"
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 3
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 2
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "children": {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "Comp",
+                                        "name": "Row",
+                                        "args": [
+                                          {
+                                            "k": "Arr",
+                                            "els": [
+                                              {
+                                                "k": "Comp",
+                                                "name": "Icon",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "name": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  "size": {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  "color": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "k": "Comp",
+                                                "name": "Caption",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "text": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "k": "Num",
+                                            "v": 2
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "children": {
+                                            "k": "Arr",
+                                            "els": [
+                                              {
+                                                "k": "Comp",
+                                                "name": "Icon",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "name": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "icon"
+                                                  },
+                                                  "size": {
+                                                    "k": "Str",
+                                                    "v": "md"
+                                                  },
+                                                  "color": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "tone"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "k": "Comp",
+                                                "name": "Caption",
+                                                "args": [
+                                                  {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                ],
+                                                "mappedProps": {
+                                                  "text": {
+                                                    "k": "Member",
+                                                    "obj": {
+                                                      "k": "Ref",
+                                                      "n": "m"
+                                                    },
+                                                    "field": "label"
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          },
+                                          "gap": {
+                                            "k": "Num",
+                                            "v": 2
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Title",
+                                        "args": [
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "value"
+                                          },
+                                          {
+                                            "k": "Str",
+                                            "v": "xl"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "value"
+                                          },
+                                          "size": {
+                                            "k": "Str",
+                                            "v": "xl"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Badge",
+                                        "args": [
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "delta"
+                                          },
+                                          {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "tone"
+                                          },
+                                          {
+                                            "k": "Str",
+                                            "v": "arrow-up-right"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "delta"
+                                          },
+                                          "color": {
+                                            "k": "Member",
+                                            "obj": {
+                                              "k": "Ref",
+                                              "n": "m"
+                                            },
+                                            "field": "tone"
+                                          },
+                                          "icon": {
+                                            "k": "Str",
+                                            "v": "arrow-up-right"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "k": "Comp",
+                                        "name": "Caption",
+                                        "args": [
+                                          {
+                                            "k": "Str",
+                                            "v": "较上一周期"
+                                          }
+                                        ],
+                                        "mappedProps": {
+                                          "text": {
+                                            "k": "Str",
+                                            "v": "较上一周期"
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  "variant": {
+                                    "k": "Str",
+                                    "v": "soft"
+                                  },
+                                  "padding": {
+                                    "k": "Num",
+                                    "v": 3
+                                  },
+                                  "gap": {
+                                    "k": "Num",
+                                    "v": 2
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        ],
+                        "columns": 4,
+                        "minChildWidth": 150,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "stats"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$period"
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": " · 渠道贡献"
+                                }
+                              },
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Popover",
+                            "props": {
+                              "trigger": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "info"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "content": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "每个系列使用统一的六色原生图表调色板；数据为离线演示。"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Chart",
+                      "props": {
+                        "type": "bar",
+                        "data": [
+                          {
+                            "day": "周一",
+                            "direct": 42,
+                            "search": 30,
+                            "social": 18,
+                            "email": 15,
+                            "partner": 12,
+                            "other": 8
+                          },
+                          {
+                            "day": "周二",
+                            "direct": 58,
+                            "search": 36,
+                            "social": 24,
+                            "email": 18,
+                            "partner": 16,
+                            "other": 9
+                          },
+                          {
+                            "day": "周三",
+                            "direct": 51,
+                            "search": 44,
+                            "social": 27,
+                            "email": 21,
+                            "partner": 14,
+                            "other": 11
+                          },
+                          {
+                            "day": "周四",
+                            "direct": 72,
+                            "search": 48,
+                            "social": 31,
+                            "email": 25,
+                            "partner": 20,
+                            "other": 13
+                          },
+                          {
+                            "day": "周五",
+                            "direct": 84,
+                            "search": 62,
+                            "social": 38,
+                            "email": 29,
+                            "partner": 24,
+                            "other": 16
+                          }
+                        ],
+                        "x": "day",
+                        "series": [
+                          "direct",
+                          "search",
+                          "social",
+                          "email",
+                          "partner",
+                          "other"
+                        ],
+                        "format": "currency",
+                        "currency": "CNY",
+                        "stacked": true,
+                        "height": 220
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Divider",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "重点客户",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Table",
+                      "props": {
+                        "columns": [
+                          "客户 / 套餐",
+                          "状态",
+                          "本月收入",
+                          "负责人"
+                        ],
+                        "rows": [
+                          [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Atlas · 企业版",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "semibold"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "续费中",
+                                "color": "success",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            42800,
+                            "林青"
+                          ],
+                          [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Orbit · 团队版",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "semibold"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "增长",
+                                "color": "purple",
+                                "icon": "arrow-up-right"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            28600,
+                            "陈溪"
+                          ],
+                          [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Lumen · 专业版",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "semibold"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "待跟进",
+                                "color": "warning",
+                                "icon": "clock"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            18400,
+                            "Maya"
+                          ]
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "更新于 09:41 · 3 个重点客户 · 金额为人民币"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "生成经营简报",
+                              "action": {
+                                "k": "Comp",
+                                "name": "ToAssistant",
+                                "args": [
+                                  {
+                                    "k": "Str",
+                                    "v": "请根据这份经营概览整理本周的增长机会。"
+                                  },
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "period",
+                                        {
+                                          "k": "StateRef",
+                                          "n": "$period"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "message": {
+                                    "k": "Str",
+                                    "v": "请根据这份经营概览整理本周的增长机会。"
+                                  },
+                                  "context": {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "period",
+                                        {
+                                          "k": "StateRef",
+                                          "n": "$period"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                }
+                              },
+                              "variant": "outline",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "sparkles"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "variant": "outline",
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$period": "本周"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

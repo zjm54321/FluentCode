@@ -103,7 +103,7 @@ public sealed partial class SettingsView : UserControl
     /// </summary>
     public bool HasUnsavedChanges =>
         !_unloaded &&
-        _browserDirty;
+        (_browserDirty || _mapDirty);
 
     /// <summary>
     /// 由外层宿主（应用内设置页 <c>SettingsPage</c>）在离开承载本控件的页面后调用：
@@ -119,7 +119,7 @@ public sealed partial class SettingsView : UserControl
     public async Task<SettingsLeaveChoice> ConfirmLeaveAsync()
     {
         ConfirmChoice choice = await ConfirmCoreAsync(
-            "浏览器设置尚未保存",
+            "设置尚未保存",
             "离开前要保存这些修改吗？",
             "保存并离开",
             "放弃并离开");
@@ -146,6 +146,7 @@ public sealed partial class SettingsView : UserControl
         }
 
         if (_browserDirty && !await SaveBrowserAsync()) return false;
+        if (_mapDirty && !await SaveNativeUiMapAsync()) return false;
         return true;
     }
 
@@ -158,6 +159,7 @@ public sealed partial class SettingsView : UserControl
         }
 
         _browserDirty = false; ApplyBrowserToUi();
+        _mapDirty = false; ApplyNativeUiMapToUi();
     }
 
     /// <summary>
@@ -284,6 +286,7 @@ public sealed partial class SettingsView : UserControl
             ApplyFontsToUi();
             _terminalAppearance?.Apply(_settings.TerminalAppearance);
             ApplyBrowserToUi();
+            ApplyNativeUiMapToUi();
         }
         finally
         {
@@ -329,6 +332,7 @@ public sealed partial class SettingsView : UserControl
         _categories.Add(new CategoryEntry("\uE790", "外观", BuildAppearanceSection()));
         _categories.Add(new CategoryEntry("\uE756", "终端", BuildTerminalSection()));
         _categories.Add(new CategoryEntry("\uE774", "浏览器", BuildBrowserSection()));
+        _categories.Add(new CategoryEntry("\uE707", "原生卡片", BuildNativeUiMapSection()));
         _categories.Add(new CategoryEntry("\uE713", "常规", BuildGeneralSection()));
         foreach (CategoryEntry category in _categories)
         {

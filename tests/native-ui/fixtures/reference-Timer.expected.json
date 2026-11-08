@@ -1,0 +1,308 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "fb72366dabb15fc372e7be9b14a7dbbef4599a6717f75620bddc251484e9ac95",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Timer",
+            "props": {
+              "seconds": {
+                "k": "StateRef",
+                "n": "$left"
+              },
+              "label": "Focus"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "Ternary",
+                "cond": {
+                  "k": "BinOp",
+                  "op": "==",
+                  "left": {
+                    "k": "StateRef",
+                    "n": "$left"
+                  },
+                  "right": {
+                    "k": "Num",
+                    "v": 0
+                  }
+                },
+                "then": {
+                  "k": "Str",
+                  "v": "Done"
+                },
+                "else": {
+                  "k": "Str",
+                  "v": "Time left"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$left": 60
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Timer",
+          "props": {
+            "seconds": {
+              "__reactive": "assign",
+              "target": "$left",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "label": "Focus"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Time left"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 29,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": []
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Timer",
+              "path": "/seconds",
+              "message": "missing required field \"/seconds\" — signature: Timer(seconds*: number, label: string)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$left": 60
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 58,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Timer",
+                "props": {
+                  "seconds": {
+                    "k": "StateRef",
+                    "n": "$left"
+                  },
+                  "label": "Focus"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "Assign",
+                    "target": "$left",
+                    "value": {
+                      "k": "Null"
+                    }
+                  },
+                  "size": null
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$left": 60
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 88,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Timer",
+                "props": {
+                  "seconds": {
+                    "k": "StateRef",
+                    "n": "$left"
+                  },
+                  "label": "Focus"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "Ternary",
+                    "cond": {
+                      "k": "BinOp",
+                      "op": "==",
+                      "left": {
+                        "k": "StateRef",
+                        "n": "$left"
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 0
+                      }
+                    },
+                    "then": {
+                      "k": "Str",
+                      "v": "Done"
+                    },
+                    "else": {
+                      "k": "Str",
+                      "v": "Time left"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$left": 60
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,252 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "2e1bea402e5df39d342edb43d42ec3c03ce91d339c3155cf7ed40d37f6256f3f",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "List",
+      "props": {
+        "items": [
+          {
+            "type": "element",
+            "typeName": "ListItem",
+            "props": {
+              "title": "Start",
+              "description": "Gather data",
+              "marker": "1"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "ListItem",
+            "props": {
+              "title": "Finish",
+              "description": "Review",
+              "marker": "2"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "marker": "number",
+        "timeline": true
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "List",
+    "props": {
+      "items": [
+        {
+          "type": "element",
+          "typeName": "ListItem",
+          "props": {
+            "title": "Start",
+            "description": "Gather data",
+            "marker": "1"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "ListItem",
+          "props": {
+            "title": "Finish",
+            "description": "Review",
+            "marker": "2"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "marker": "number",
+      "timeline": true
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 34,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "List",
+          "props": {
+            "items": [
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "Start",
+                  "description": "Ga"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 69,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "List",
+          "props": {
+            "items": [
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "Start",
+                  "description": "Gather data",
+                  "marker": "1"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "Finish"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 104,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "List",
+          "props": {
+            "items": [
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "Start",
+                  "description": "Gather data",
+                  "marker": "1"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "Finish",
+                  "description": "Review",
+                  "marker": "2"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "marker": "number",
+            "timeline": true
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

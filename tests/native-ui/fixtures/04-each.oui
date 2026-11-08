@@ -1,0 +1,3 @@
+$selected = ""
+items = [{id:1,label:"One"},{id:2,label:"Two"}]
+root = Col([@Each(items, item, Button(item.label, Action([@Set($selected, item.label), @ToAssistant("Choose " + item.id)]))), Text("Picked " + $selected)])

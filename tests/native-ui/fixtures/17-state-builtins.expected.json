@@ -1,0 +1,1497 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "cd6f7d38a5c22c795e9b73bab4b60392a3f958a3baa2af796c1383fb42af1db0",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Count "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Count",
+                  "args": [
+                    {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  ],
+                  "mappedProps": {
+                    "array": {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Avg "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Avg",
+                  "args": [
+                    {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  ],
+                  "mappedProps": {
+                    "numbers": {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Min "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Min",
+                  "args": [
+                    {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  ],
+                  "mappedProps": {
+                    "numbers": {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Max "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Max",
+                  "args": [
+                    {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  ],
+                  "mappedProps": {
+                    "numbers": {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "First "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "First",
+                  "args": [
+                    {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  ],
+                  "mappedProps": {
+                    "array": {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Last "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Last",
+                  "args": [
+                    {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  ],
+                  "mappedProps": {
+                    "array": {
+                      "k": "StateRef",
+                      "n": "$numbers"
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Abs "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Abs",
+                  "args": [
+                    {
+                      "k": "Num",
+                      "v": -4
+                    }
+                  ],
+                  "mappedProps": {
+                    "number": {
+                      "k": "Num",
+                      "v": -4
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Floor "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Floor",
+                  "args": [
+                    {
+                      "k": "Num",
+                      "v": 1.9
+                    }
+                  ],
+                  "mappedProps": {
+                    "number": {
+                      "k": "Num",
+                      "v": 1.9
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Ceil "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Ceil",
+                  "args": [
+                    {
+                      "k": "Num",
+                      "v": 1.1
+                    }
+                  ],
+                  "mappedProps": {
+                    "number": {
+                      "k": "Num",
+                      "v": 1.1
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Sort "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Sort",
+                  "args": [
+                    {
+                      "k": "Arr",
+                      "els": [
+                        {
+                          "k": "Num",
+                          "v": 3
+                        },
+                        {
+                          "k": "Num",
+                          "v": 1
+                        },
+                        {
+                          "k": "Num",
+                          "v": 2
+                        }
+                      ]
+                    },
+                    {
+                      "k": "Str",
+                      "v": ""
+                    }
+                  ],
+                  "mappedProps": {
+                    "array": {
+                      "k": "Arr",
+                      "els": [
+                        {
+                          "k": "Num",
+                          "v": 3
+                        },
+                        {
+                          "k": "Num",
+                          "v": 1
+                        },
+                        {
+                          "k": "Num",
+                          "v": 2
+                        }
+                      ]
+                    },
+                    "field": {
+                      "k": "Str",
+                      "v": ""
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Filter "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Count",
+                  "args": [
+                    {
+                      "k": "Comp",
+                      "name": "Filter",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        },
+                        {
+                          "k": "Str",
+                          "v": ""
+                        },
+                        {
+                          "k": "Str",
+                          "v": ">"
+                        },
+                        {
+                          "k": "Num",
+                          "v": 1
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        },
+                        "field": {
+                          "k": "Str",
+                          "v": ""
+                        },
+                        "operator": {
+                          "k": "Str",
+                          "v": ">"
+                        },
+                        "value": {
+                          "k": "Num",
+                          "v": 1
+                        }
+                      }
+                    }
+                  ],
+                  "mappedProps": {
+                    "array": {
+                      "k": "Comp",
+                      "name": "Filter",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        },
+                        {
+                          "k": "Str",
+                          "v": ""
+                        },
+                        {
+                          "k": "Str",
+                          "v": ">"
+                        },
+                        {
+                          "k": "Num",
+                          "v": 1
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        },
+                        "field": {
+                          "k": "Str",
+                          "v": ""
+                        },
+                        "operator": {
+                          "k": "Str",
+                          "v": ">"
+                        },
+                        "value": {
+                          "k": "Num",
+                          "v": 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 4,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$numbers": [
+        1,
+        2,
+        3
+      ],
+      "$sum": 6,
+      "$rounded": [
+        1.3,
+        -1.2
+      ]
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Count 3"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Avg 2"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Min 1"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Max 3"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "First 1"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Last 3"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Abs 4"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Floor 1"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Ceil 2"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Sort 1,2,3"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Filter 2"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 153,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Count "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Count",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Avg "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Avg",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "numbers": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$numbers": [
+            1,
+            2,
+            3
+          ],
+          "$sum": 6,
+          "$rounded": [
+            1.3,
+            -1.2
+          ]
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 307,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Count "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Count",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Avg "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Avg",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "numbers": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Min "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Min",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "numbers": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Max "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Max",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "numbers": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "First "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "First",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Last "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Last",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Abs "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Abs",
+                      "args": [
+                        {
+                          "k": "Num",
+                          "v": -4
+                        }
+                      ],
+                      "mappedProps": {
+                        "number": {
+                          "k": "Num",
+                          "v": -4
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$numbers": [
+            1,
+            2,
+            3
+          ],
+          "$sum": 6,
+          "$rounded": [
+            1.3,
+            -1.2
+          ]
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 461,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Count "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Count",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Avg "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Avg",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "numbers": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Min "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Min",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "numbers": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Max "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Max",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "numbers": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "First "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "First",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Last "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Last",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "StateRef",
+                          "n": "$numbers"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Abs "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Abs",
+                      "args": [
+                        {
+                          "k": "Num",
+                          "v": -4
+                        }
+                      ],
+                      "mappedProps": {
+                        "number": {
+                          "k": "Num",
+                          "v": -4
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Floor "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Floor",
+                      "args": [
+                        {
+                          "k": "Num",
+                          "v": 1.9
+                        }
+                      ],
+                      "mappedProps": {
+                        "number": {
+                          "k": "Num",
+                          "v": 1.9
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Ceil "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Ceil",
+                      "args": [
+                        {
+                          "k": "Num",
+                          "v": 1.1
+                        }
+                      ],
+                      "mappedProps": {
+                        "number": {
+                          "k": "Num",
+                          "v": 1.1
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Sort "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Sort",
+                      "args": [
+                        {
+                          "k": "Arr",
+                          "els": [
+                            {
+                              "k": "Num",
+                              "v": 3
+                            },
+                            {
+                              "k": "Num",
+                              "v": 1
+                            },
+                            {
+                              "k": "Num",
+                              "v": 2
+                            }
+                          ]
+                        },
+                        {
+                          "k": "Str",
+                          "v": ""
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "Arr",
+                          "els": [
+                            {
+                              "k": "Num",
+                              "v": 3
+                            },
+                            {
+                              "k": "Num",
+                              "v": 1
+                            },
+                            {
+                              "k": "Num",
+                              "v": 2
+                            }
+                          ]
+                        },
+                        "field": {
+                          "k": "Str",
+                          "v": ""
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Filter "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Count",
+                      "args": [
+                        {
+                          "k": "Comp",
+                          "name": "Filter",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$numbers"
+                            },
+                            {
+                              "k": "Str",
+                              "v": ""
+                            },
+                            {
+                              "k": "Str",
+                              "v": ">"
+                            },
+                            {
+                              "k": "Num",
+                              "v": 1
+                            }
+                          ],
+                          "mappedProps": {
+                            "array": {
+                              "k": "StateRef",
+                              "n": "$numbers"
+                            },
+                            "field": {
+                              "k": "Str",
+                              "v": ""
+                            },
+                            "operator": {
+                              "k": "Str",
+                              "v": ">"
+                            },
+                            "value": {
+                              "k": "Num",
+                              "v": 1
+                            }
+                          }
+                        }
+                      ],
+                      "mappedProps": {
+                        "array": {
+                          "k": "Comp",
+                          "name": "Filter",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$numbers"
+                            },
+                            {
+                              "k": "Str",
+                              "v": ""
+                            },
+                            {
+                              "k": "Str",
+                              "v": ">"
+                            },
+                            {
+                              "k": "Num",
+                              "v": 1
+                            }
+                          ],
+                          "mappedProps": {
+                            "array": {
+                              "k": "StateRef",
+                              "n": "$numbers"
+                            },
+                            "field": {
+                              "k": "Str",
+                              "v": ""
+                            },
+                            "operator": {
+                              "k": "Str",
+                              "v": ">"
+                            },
+                            "value": {
+                              "k": "Num",
+                              "v": 1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$numbers": [
+            1,
+            2,
+            3
+          ],
+          "$sum": 6,
+          "$rounded": [
+            1.3,
+            -1.2
+          ]
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

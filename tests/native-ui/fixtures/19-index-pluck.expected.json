@@ -1,0 +1,607 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "2c48ead0a9642edbe1947f40c5d327286fc1b9c86c9f5d7d19fe900a78334b41",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "Member",
+                "obj": {
+                  "k": "Index",
+                  "obj": {
+                    "k": "StateRef",
+                    "n": "$rows"
+                  },
+                  "index": {
+                    "k": "Num",
+                    "v": 1
+                  }
+                },
+                "field": "name"
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Sum "
+                },
+                "right": {
+                  "k": "Comp",
+                  "name": "Sum",
+                  "args": [
+                    {
+                      "k": "Member",
+                      "obj": {
+                        "k": "StateRef",
+                        "n": "$rows"
+                      },
+                      "field": "amount"
+                    }
+                  ],
+                  "mappedProps": {
+                    "numbers": {
+                      "k": "Member",
+                      "obj": {
+                        "k": "StateRef",
+                        "n": "$rows"
+                      },
+                      "field": "amount"
+                    }
+                  }
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Length "
+                },
+                "right": {
+                  "k": "Member",
+                  "obj": {
+                    "k": "StateRef",
+                    "n": "$rows"
+                  },
+                  "field": "length"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "Key "
+                },
+                "right": {
+                  "k": "Member",
+                  "obj": {
+                    "k": "Obj",
+                    "entries": [
+                      [
+                        "x",
+                        {
+                          "k": "Num",
+                          "v": 12
+                        }
+                      ]
+                    ]
+                  },
+                  "field": "x"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "single "
+                },
+                "right": {
+                  "k": "Str",
+                  "v": "a\tb"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$rows": [
+        {
+          "name": "A",
+          "amount": 10
+        },
+        {
+          "name": "B",
+          "amount": 20
+        }
+      ]
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "B"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Sum 30"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Length 2"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Key 12"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "single a\tb"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 69,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": []
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Text",
+              "path": "/text",
+              "message": "missing required field \"/text\" — signature: Text(text*, size: \"xs\"|\"sm\"|\"md\"|\"lg\", color: string, weight: \"normal\"|\"medium\"|\"semibold\", italic: boolean, lineThrough: boolean, tabularNums: boolean, maxLines: number)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$rows": [
+            {
+              "name": "A",
+              "amount": 10
+            },
+            {
+              "name": "B",
+              "amount": 20
+            }
+          ]
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 138,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "Member",
+                    "obj": {
+                      "k": "Index",
+                      "obj": {
+                        "k": "StateRef",
+                        "n": "$rows"
+                      },
+                      "index": {
+                        "k": "Num",
+                        "v": 1
+                      }
+                    },
+                    "field": "name"
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Sum "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Sum",
+                      "args": [
+                        {
+                          "k": "Member",
+                          "obj": {
+                            "k": "StateRef",
+                            "n": "$rows"
+                          },
+                          "field": "amount"
+                        }
+                      ],
+                      "mappedProps": {
+                        "numbers": {
+                          "k": "Member",
+                          "obj": {
+                            "k": "StateRef",
+                            "n": "$rows"
+                          },
+                          "field": "amount"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Length "
+                    },
+                    "right": {
+                      "k": "Null"
+                    }
+                  },
+                  "size": null
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$rows": [
+            {
+              "name": "A",
+              "amount": 10
+            },
+            {
+              "name": "B",
+              "amount": 20
+            }
+          ]
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 207,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "Member",
+                    "obj": {
+                      "k": "Index",
+                      "obj": {
+                        "k": "StateRef",
+                        "n": "$rows"
+                      },
+                      "index": {
+                        "k": "Num",
+                        "v": 1
+                      }
+                    },
+                    "field": "name"
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Sum "
+                    },
+                    "right": {
+                      "k": "Comp",
+                      "name": "Sum",
+                      "args": [
+                        {
+                          "k": "Member",
+                          "obj": {
+                            "k": "StateRef",
+                            "n": "$rows"
+                          },
+                          "field": "amount"
+                        }
+                      ],
+                      "mappedProps": {
+                        "numbers": {
+                          "k": "Member",
+                          "obj": {
+                            "k": "StateRef",
+                            "n": "$rows"
+                          },
+                          "field": "amount"
+                        }
+                      }
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Length "
+                    },
+                    "right": {
+                      "k": "Member",
+                      "obj": {
+                        "k": "StateRef",
+                        "n": "$rows"
+                      },
+                      "field": "length"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "Key "
+                    },
+                    "right": {
+                      "k": "Member",
+                      "obj": {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "x",
+                            {
+                              "k": "Num",
+                              "v": 12
+                            }
+                          ]
+                        ]
+                      },
+                      "field": "x"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "single "
+                    },
+                    "right": {
+                      "k": "Str",
+                      "v": "a\tb"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$rows": [
+            {
+              "name": "A",
+              "amount": 10
+            },
+            {
+              "name": "B",
+              "amount": 20
+            }
+          ]
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

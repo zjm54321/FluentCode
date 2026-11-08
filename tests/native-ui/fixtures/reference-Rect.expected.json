@@ -1,0 +1,207 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "c14b13b941f9b99631b9c0ded6c410d5f74dd85e79b42a9c6b4f410587e1fa63",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Svg",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Rect",
+            "props": {
+              "x": 10,
+              "y": 10,
+              "width": 80,
+              "height": 40,
+              "fill": "success",
+              "stroke": null,
+              "strokeWidth": null,
+              "opacity": null,
+              "rx": 8
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "viewBox": "0 0 100 100"
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Svg",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Rect",
+          "props": {
+            "x": 10,
+            "y": 10,
+            "width": 80,
+            "height": 40,
+            "fill": "success",
+            "stroke": null,
+            "strokeWidth": null,
+            "opacity": null,
+            "rx": 8
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "viewBox": "0 0 100 100"
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 24,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Rect",
+              "path": "/height",
+              "message": "missing required field \"/height\" — signature: Rect(x*: number, y*: number, width*: number, height*: number, fill: string, stroke: string, strokeWidth: number, opacity: number, rx: number)",
+              "statementId": "root"
+            },
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 49,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 74,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Svg",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Rect",
+                "props": {
+                  "x": 10,
+                  "y": 10,
+                  "width": 80,
+                  "height": 40,
+                  "fill": "success",
+                  "stroke": null,
+                  "strokeWidth": null,
+                  "opacity": null,
+                  "rx": 8
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "viewBox": "0 0 100 100"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

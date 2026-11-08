@@ -1,0 +1,3 @@
+root = Col([loop, missing, Text("still here")])
+loop = other
+other = loop

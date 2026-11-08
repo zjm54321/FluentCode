@@ -1,0 +1,2 @@
+title = Title("Fallback")
+page = Col([title])

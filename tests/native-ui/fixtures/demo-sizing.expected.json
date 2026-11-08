@@ -1,0 +1,2379 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "30db470c39e9b3285e02b9eade509e71b703d6a262e4a44ae04e53318b8aba7e",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "按键尺寸",
+                          "size": "md"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "AI 可选 · 原生自适应",
+                          "color": "info",
+                          "icon": "grid"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2,
+                    "align": "center",
+                    "justify": "between"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "size 明确指定时优先；不指定时，短标签按键跟随列宽。"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Label",
+                  "props": {
+                    "text": "Button · sm 32 / md 40 / lg 48"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "小号",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            ]
+                          },
+                          "variant": "soft",
+                          "color": null,
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "中号",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            ]
+                          },
+                          "variant": "soft",
+                          "color": null,
+                          "size": "md"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "大号",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            ]
+                          },
+                          "variant": "soft",
+                          "color": null,
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Label",
+                  "props": {
+                    "text": "IconButton · sm 32 / md 40 / lg 48"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "IconButton",
+                        "props": {
+                          "icon": "minus",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "-",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            ]
+                          },
+                          "label": "小号减一",
+                          "variant": "outline",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "IconButton",
+                        "props": {
+                          "icon": "plus",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            ]
+                          },
+                          "label": "中号加一",
+                          "variant": "outline",
+                          "size": "md"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "IconButton",
+                        "props": {
+                          "icon": "check",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Reset",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              }
+                            ]
+                          },
+                          "label": "大号重置",
+                          "variant": "solid",
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Divider",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Label",
+                  "props": {
+                    "text": "自适应键盘 · 高度 = 列宽 × 0.8，限制在 40–56 px"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "7",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "Num",
+                                "v": 7
+                              }
+                            ]
+                          },
+                          "variant": "outline"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "8",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "Num",
+                                "v": 8
+                              }
+                            ]
+                          },
+                          "variant": "outline"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "9",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "Num",
+                                "v": 9
+                              }
+                            ]
+                          },
+                          "variant": "outline"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "+",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            ]
+                          },
+                          "variant": "soft"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "4",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "Num",
+                                "v": 4
+                              }
+                            ]
+                          },
+                          "variant": "outline"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "5",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "Num",
+                                "v": 5
+                              }
+                            ]
+                          },
+                          "variant": "outline"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "6",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "Num",
+                                "v": 6
+                              }
+                            ]
+                          },
+                          "variant": "outline"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "=",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$count"
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "*",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 2
+                                }
+                              }
+                            ]
+                          },
+                          "variant": "solid"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "columns": 4,
+                    "minChildWidth": 120,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "当前结果"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": ""
+                            },
+                            "right": {
+                              "k": "StateRef",
+                              "n": "$count"
+                            }
+                          },
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "浅色与深色均保留对比；soft 比深色卡片略亮。"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": "soft",
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "variant": "outline",
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$count": 0
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "按键尺寸",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "AI 可选 · 原生自适应",
+                        "color": "info",
+                        "icon": "grid"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "size 明确指定时优先；不指定时，短标签按键跟随列宽。"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Label",
+                "props": {
+                  "text": "Button · sm 32 / md 40 / lg 48"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "小号",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "中号",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "soft",
+                        "color": null,
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "大号",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "soft",
+                        "color": null,
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Label",
+                "props": {
+                  "text": "IconButton · sm 32 / md 40 / lg 48"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "minus",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "BinOp",
+                                "op": "-",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "label": "小号减一",
+                        "variant": "outline",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "plus",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "label": "中号加一",
+                        "variant": "outline",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "check",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "reset",
+                              "targets": [
+                                "$count"
+                              ]
+                            }
+                          ]
+                        },
+                        "label": "大号重置",
+                        "variant": "solid",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Label",
+                "props": {
+                  "text": "自适应键盘 · 高度 = 列宽 × 0.8，限制在 40–56 px"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "7",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "Num",
+                                "v": 7
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "outline"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "8",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "Num",
+                                "v": 8
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "outline"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "9",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "Num",
+                                "v": 9
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "outline"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "+",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 1
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "soft"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "4",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "Num",
+                                "v": 4
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "outline"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "5",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "Num",
+                                "v": 5
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "outline"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "6",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "Num",
+                                "v": 6
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "outline"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "=",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$count",
+                              "valueAST": {
+                                "k": "BinOp",
+                                "op": "*",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 2
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "solid"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 4,
+                  "minChildWidth": 120,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "当前结果"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "0",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "浅色与深色均保留对比；soft 比深色卡片略亮。"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "variant": "outline",
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 394,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "按键尺寸",
+                              "size": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "AI 可选 · 原生自适应",
+                              "color": "info",
+                              "icon": "grid"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "size 明确指定时优先；不指定时，短标签按键跟随列宽。"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "Button · sm 32 / md 40 / lg 48"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "小号",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "soft",
+                              "color": null,
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "中号",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "soft",
+                              "color": null,
+                              "size": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "大号",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "soft",
+                              "color": null,
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "Labe"
+          ],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$count": 0
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 788,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "按键尺寸",
+                              "size": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "AI 可选 · 原生自适应",
+                              "color": "info",
+                              "icon": "grid"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "size 明确指定时优先；不指定时，短标签按键跟随列宽。"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "Button · sm 32 / md 40 / lg 48"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "小号",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "soft",
+                              "color": null,
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "中号",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "soft",
+                              "color": null,
+                              "size": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "大号",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "soft",
+                              "color": null,
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "IconButton · sm 32 / md 40 / lg 48"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "minus",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "-",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "label": "小号减一",
+                              "variant": "outline",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "plus",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "label": "中号加一",
+                              "variant": "outline",
+                              "size": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "check",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Reset",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  }
+                                ]
+                              },
+                              "label": "大号重置",
+                              "variant": "solid",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Divider",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "自适应键盘 · 高度 = 列宽 × 0.8，限制在 40–56 px"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "7",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 7
+                                  }
+                                ]
+                              },
+                              "variant": "outline"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "8",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 8
+                                  }
+                                ]
+                              },
+                              "variant": "outline"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$count": 0
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1183,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "按键尺寸",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "AI 可选 · 原生自适应",
+                              "color": "info",
+                              "icon": "grid"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "size 明确指定时优先；不指定时，短标签按键跟随列宽。"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "Button · sm 32 / md 40 / lg 48"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "小号",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "soft",
+                              "color": null,
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "中号",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "soft",
+                              "color": null,
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "大号",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "soft",
+                              "color": null,
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "IconButton · sm 32 / md 40 / lg 48"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "minus",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "-",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "label": "小号减一",
+                              "variant": "outline",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "plus",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "label": "中号加一",
+                              "variant": "outline",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "check",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Reset",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  }
+                                ]
+                              },
+                              "label": "大号重置",
+                              "variant": "solid",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Divider",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "自适应键盘 · 高度 = 列宽 × 0.8，限制在 40–56 px"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "7",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 7
+                                  }
+                                ]
+                              },
+                              "variant": "outline"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "8",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 8
+                                  }
+                                ]
+                              },
+                              "variant": "outline"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "9",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 9
+                                  }
+                                ]
+                              },
+                              "variant": "outline"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "+",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 1
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "soft"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "4",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 4
+                                  }
+                                ]
+                              },
+                              "variant": "outline"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "5",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 5
+                                  }
+                                ]
+                              },
+                              "variant": "outline"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "6",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 6
+                                  }
+                                ]
+                              },
+                              "variant": "outline"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "=",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$count"
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "*",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$count"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 2
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "solid"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "columns": 4,
+                        "minChildWidth": 120,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "当前结果"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": ""
+                                },
+                                "right": {
+                                  "k": "StateRef",
+                                  "n": "$count"
+                                }
+                              },
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "浅色与深色均保留对比；soft 比深色卡片略亮。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "variant": "outline",
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$count": 0
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

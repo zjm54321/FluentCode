@@ -1,0 +1,11 @@
+$days = 4
+$people = 2
+$stay = "comfort"
+$museum = true
+$note = "保留自由探索的时间。"
+rate = $stay == "simple" ? 280 : $stay == "comfort" ? 480 : 760
+lodging = $days * rate
+food = $days * $people * 120
+activities = $museum ? $people * 180 : 0
+total = lodging + food + activities
+root = Col([Card([Row([Col([Title("旅行预算规划器","lg"),Caption("调整人数、天数和住宿；图表、明细与总价实时联动")],1),Badge("本地计算","success","calculator")],3,"center","between"),Grid([Col([Slider($days,1,10,1,"旅行天数","天",[{value:1,label:"1"},{value:5,label:"5"},{value:10,label:"10"}]),Input($people,"同行人数","number","2"),RadioGroup($stay,[{value:"simple",label:"轻装出行",description:"¥280 / 晚 · 把预算留给体验"},{value:"comfort",label:"舒适平衡",description:"¥480 / 晚 · 位置与空间兼顾"},{value:"special",label:"特别犒赏",description:"¥760 / 晚 · 更从容的住宿体验"}],"住宿偏好","cards"),Checkbox($museum,"加入博物馆通票 · ¥180 / 人")],3),Col([Card([Caption("预计总预算"),Title("¥" + @Round(total,0),"2xl"),Badge("人均 ¥" + @Round(total / $people,0),"purple","users"),Caption($days + " 天 · " + $people + " 人 · 含住宿、餐饮和活动")],"soft",3,3),Chart("donut",[{category:"住宿",amount:lodging},{category:"餐饮",amount:food},{category:"活动",amount:activities}],"category",["amount"],"currency","CNY",false,180),Table(["项目","预算"],[["住宿",lodging],["餐饮",food],["活动",activities]])],3)],2,280,4),TextArea($note,"补充偏好","你最在意什么？",2),Row([Button("生成我的行程",@ToAssistant("请根据我的预算和偏好生成一份留有自由时间的旅行计划。",{days:$days,people:$people,stay:$stay,total:total,note:$note}),"solid",null,"md","sparkles"),Button("恢复默认",@Reset($days,$people,$stay,$museum,$note),"outline",null,"md","rotate-ccw")],3),Caption("演示预算不包含机票；输入只用于这张卡片的计算与显式提交。")],"outline",4,3)])

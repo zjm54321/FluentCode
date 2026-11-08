@@ -1,0 +1,2 @@
+$n = 0
+root = Col([Text("Count: " + $n), Button("Add", @Set($n, $n + 1))])

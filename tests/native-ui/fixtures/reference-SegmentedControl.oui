@@ -1,0 +1,2 @@
+$v = "Day"
+root = Col([SegmentedControl($v, ["Day", "Week", "Month"], true), Text($v)])

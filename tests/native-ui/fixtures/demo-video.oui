@@ -1,0 +1,1 @@
+root = Card([Title("项目视频", "lg"), Text("原生播放控件 · 点击加载 · 不会自动播放"), Video("https://media.example.org/project/preview.mp4", "两秒离线演示片段", 300), Caption("完整来源地址在加载按钮上方；系统支持的编码，最大 128 MB。")], "outline", 4, 3)

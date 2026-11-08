@@ -1,0 +1,2 @@
+$selected = "故宫"
+root = Card([Row([Title("北京文化漫步", "lg"), Badge("WGS-84", "info")], 2, "center", "between"), Text("从故宫到天坛，按地点顺序连接；不是驾车路线。"), Map([MapMarker("故宫",39.916345,116.397155,"文化","landmark"),MapMarker("景山公园",39.925005,116.396730,"公园","trees"),MapMarker("天坛",39.882217,116.406572,"文化","map-pin")], true, $selected, 320), Caption("当前地点：" + $selected), Caption("点击加载后才联系设置中的地图提供方。可平移、缩放、选择地点与显示全部。")], "outline", 4, 3)

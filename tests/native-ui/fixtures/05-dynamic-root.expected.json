@@ -1,0 +1,613 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "d3ee280172035fd93674818fdafc5c1c9514b6a2fdc7417e0230c8d642e24dbd",
+  "parse": {
+    "root": null,
+    "rootExpression": {
+      "k": "Ternary",
+      "cond": {
+        "k": "StateRef",
+        "n": "$compact"
+      },
+      "then": {
+        "k": "Comp",
+        "name": "Card",
+        "args": [
+          {
+            "k": "Arr",
+            "els": [
+              {
+                "k": "Comp",
+                "name": "Text",
+                "args": [
+                  {
+                    "k": "Str",
+                    "v": "Small"
+                  }
+                ],
+                "mappedProps": {
+                  "text": {
+                    "k": "Str",
+                    "v": "Small"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "mappedProps": {
+          "children": {
+            "k": "Arr",
+            "els": [
+              {
+                "k": "Comp",
+                "name": "Text",
+                "args": [
+                  {
+                    "k": "Str",
+                    "v": "Small"
+                  }
+                ],
+                "mappedProps": {
+                  "text": {
+                    "k": "Str",
+                    "v": "Small"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "else": {
+        "k": "Comp",
+        "name": "Col",
+        "args": [
+          {
+            "k": "Arr",
+            "els": [
+              {
+                "k": "Comp",
+                "name": "Title",
+                "args": [
+                  {
+                    "k": "Str",
+                    "v": "Full"
+                  }
+                ],
+                "mappedProps": {
+                  "text": {
+                    "k": "Str",
+                    "v": "Full"
+                  }
+                }
+              },
+              {
+                "k": "Comp",
+                "name": "Card",
+                "args": [
+                  {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Comp",
+                        "name": "Text",
+                        "args": [
+                          {
+                            "k": "Str",
+                            "v": "More"
+                          }
+                        ],
+                        "mappedProps": {
+                          "text": {
+                            "k": "Str",
+                            "v": "More"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "mappedProps": {
+                  "children": {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Comp",
+                        "name": "Text",
+                        "args": [
+                          {
+                            "k": "Str",
+                            "v": "More"
+                          }
+                        ],
+                        "mappedProps": {
+                          "text": {
+                            "k": "Str",
+                            "v": "More"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "mappedProps": {
+          "children": {
+            "k": "Arr",
+            "els": [
+              {
+                "k": "Comp",
+                "name": "Title",
+                "args": [
+                  {
+                    "k": "Str",
+                    "v": "Full"
+                  }
+                ],
+                "mappedProps": {
+                  "text": {
+                    "k": "Str",
+                    "v": "Full"
+                  }
+                }
+              },
+              {
+                "k": "Comp",
+                "name": "Card",
+                "args": [
+                  {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Comp",
+                        "name": "Text",
+                        "args": [
+                          {
+                            "k": "Str",
+                            "v": "More"
+                          }
+                        ],
+                        "mappedProps": {
+                          "text": {
+                            "k": "Str",
+                            "v": "More"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "mappedProps": {
+                  "children": {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Comp",
+                        "name": "Text",
+                        "args": [
+                          {
+                            "k": "Str",
+                            "v": "More"
+                          }
+                        ],
+                        "mappedProps": {
+                          "text": {
+                            "k": "Str",
+                            "v": "More"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 4,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$compact": true
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Small"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 43,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "compact"
+          ],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": [
+            {
+              "code": "no-root",
+              "component": "Col",
+              "path": "",
+              "message": "root does not evaluate to a component",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$compact": true
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 87,
+      "result": {
+        "root": null,
+        "rootExpression": {
+          "k": "Ternary",
+          "cond": {
+            "k": "StateRef",
+            "n": "$compact"
+          },
+          "then": {
+            "k": "Comp",
+            "name": "Card",
+            "args": [
+              {
+                "k": "Arr",
+                "els": [
+                  {
+                    "k": "Comp",
+                    "name": "Text",
+                    "args": [
+                      {
+                        "k": "Str",
+                        "v": "Small"
+                      }
+                    ],
+                    "mappedProps": {
+                      "text": {
+                        "k": "Str",
+                        "v": "Small"
+                      }
+                    }
+                  }
+                ]
+              }
+            ],
+            "mappedProps": {
+              "children": {
+                "k": "Arr",
+                "els": [
+                  {
+                    "k": "Comp",
+                    "name": "Text",
+                    "args": [
+                      {
+                        "k": "Str",
+                        "v": "Small"
+                      }
+                    ],
+                    "mappedProps": {
+                      "text": {
+                        "k": "Str",
+                        "v": "Small"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "k": "Ph",
+            "n": "full"
+          }
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "full"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$compact": true
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 131,
+      "result": {
+        "root": null,
+        "rootExpression": {
+          "k": "Ternary",
+          "cond": {
+            "k": "StateRef",
+            "n": "$compact"
+          },
+          "then": {
+            "k": "Comp",
+            "name": "Card",
+            "args": [
+              {
+                "k": "Arr",
+                "els": [
+                  {
+                    "k": "Comp",
+                    "name": "Text",
+                    "args": [
+                      {
+                        "k": "Str",
+                        "v": "Small"
+                      }
+                    ],
+                    "mappedProps": {
+                      "text": {
+                        "k": "Str",
+                        "v": "Small"
+                      }
+                    }
+                  }
+                ]
+              }
+            ],
+            "mappedProps": {
+              "children": {
+                "k": "Arr",
+                "els": [
+                  {
+                    "k": "Comp",
+                    "name": "Text",
+                    "args": [
+                      {
+                        "k": "Str",
+                        "v": "Small"
+                      }
+                    ],
+                    "mappedProps": {
+                      "text": {
+                        "k": "Str",
+                        "v": "Small"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "k": "Comp",
+            "name": "Col",
+            "args": [
+              {
+                "k": "Arr",
+                "els": [
+                  {
+                    "k": "Comp",
+                    "name": "Title",
+                    "args": [
+                      {
+                        "k": "Str",
+                        "v": "Full"
+                      }
+                    ],
+                    "mappedProps": {
+                      "text": {
+                        "k": "Str",
+                        "v": "Full"
+                      }
+                    }
+                  },
+                  {
+                    "k": "Comp",
+                    "name": "Card",
+                    "args": [
+                      {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Comp",
+                            "name": "Text",
+                            "args": [
+                              {
+                                "k": "Str",
+                                "v": "More"
+                              }
+                            ],
+                            "mappedProps": {
+                              "text": {
+                                "k": "Str",
+                                "v": "More"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "mappedProps": {
+                      "children": {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Comp",
+                            "name": "Text",
+                            "args": [
+                              {
+                                "k": "Str",
+                                "v": "More"
+                              }
+                            ],
+                            "mappedProps": {
+                              "text": {
+                                "k": "Str",
+                                "v": "More"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            ],
+            "mappedProps": {
+              "children": {
+                "k": "Arr",
+                "els": [
+                  {
+                    "k": "Comp",
+                    "name": "Title",
+                    "args": [
+                      {
+                        "k": "Str",
+                        "v": "Full"
+                      }
+                    ],
+                    "mappedProps": {
+                      "text": {
+                        "k": "Str",
+                        "v": "Full"
+                      }
+                    }
+                  },
+                  {
+                    "k": "Comp",
+                    "name": "Card",
+                    "args": [
+                      {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Comp",
+                            "name": "Text",
+                            "args": [
+                              {
+                                "k": "Str",
+                                "v": "More"
+                              }
+                            ],
+                            "mappedProps": {
+                              "text": {
+                                "k": "Str",
+                                "v": "More"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "mappedProps": {
+                      "children": {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Comp",
+                            "name": "Text",
+                            "args": [
+                              {
+                                "k": "Str",
+                                "v": "More"
+                              }
+                            ],
+                            "mappedProps": {
+                              "text": {
+                                "k": "Str",
+                                "v": "More"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$compact": true
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

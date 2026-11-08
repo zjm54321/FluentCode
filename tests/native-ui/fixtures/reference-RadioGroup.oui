@@ -1,0 +1,2 @@
+$v = "safe"
+root = Col([RadioGroup($v, [{value:"safe",label:"Safe",description:"More checks"},"Fast"], "Mode", "cards"), Text($v)])

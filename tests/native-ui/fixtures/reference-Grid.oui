@@ -1,0 +1,1 @@
+root = Grid([Card([Text("A")]), Card([Text("B")])], 2, 180, 3)

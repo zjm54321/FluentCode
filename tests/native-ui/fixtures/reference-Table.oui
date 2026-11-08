@@ -1,0 +1,1 @@
+root = Table(["Plan", "Status", "Price"], [["Basic", Badge("Ready", "success"), 12],["Pro", Badge("Trial"), 24]])

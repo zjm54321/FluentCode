@@ -1,0 +1,1 @@
+root = Chart("bar", [{month:"Jan",sales:12},{month:"Feb",sales:18}], "month", ["sales"])

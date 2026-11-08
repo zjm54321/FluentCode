@@ -1,0 +1,2 @@
+$name = ""
+root = Col([Input($name, "Name"), Text("Hello " + $name)])

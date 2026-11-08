@@ -1,0 +1,262 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "f269fec99b53f0be798a61234b7eebf08b5485159ecd6d4b7169275247281591",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Table",
+      "props": {
+        "columns": [
+          "Plan",
+          "Status",
+          "Price"
+        ],
+        "rows": [
+          [
+            "Basic",
+            {
+              "type": "element",
+              "typeName": "Badge",
+              "props": {
+                "text": "Ready",
+                "color": "success"
+              },
+              "partial": false,
+              "hasDynamicProps": false
+            },
+            12
+          ],
+          [
+            "Pro",
+            {
+              "type": "element",
+              "typeName": "Badge",
+              "props": {
+                "text": "Trial"
+              },
+              "partial": false,
+              "hasDynamicProps": false
+            },
+            24
+          ]
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Table",
+    "props": {
+      "columns": [
+        "Plan",
+        "Status",
+        "Price"
+      ],
+      "rows": [
+        [
+          "Basic",
+          {
+            "type": "element",
+            "typeName": "Badge",
+            "props": {
+              "text": "Ready",
+              "color": "success"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          12
+        ],
+        [
+          "Pro",
+          {
+            "type": "element",
+            "typeName": "Badge",
+            "props": {
+              "text": "Trial"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          24
+        ]
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 38,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Table",
+              "path": "/rows",
+              "message": "missing required field \"/rows\" — signature: Table(columns*: array, rows*: array)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 76,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Table",
+          "props": {
+            "columns": [
+              "Plan",
+              "Status",
+              "Price"
+            ],
+            "rows": [
+              [
+                "Basic",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Ready",
+                    "color": "success"
+                  },
+                  "partial": true,
+                  "hasDynamicProps": false
+                }
+              ]
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 114,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Table",
+          "props": {
+            "columns": [
+              "Plan",
+              "Status",
+              "Price"
+            ],
+            "rows": [
+              [
+                "Basic",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Ready",
+                    "color": "success"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                12
+              ],
+              [
+                "Pro",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Trial"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                24
+              ]
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

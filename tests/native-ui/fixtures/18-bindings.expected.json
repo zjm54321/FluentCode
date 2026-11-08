@@ -1,0 +1,575 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "b73fa464c2e926128bce3d04966e891f3c75d8ec05a72020c723eeac3753986f",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Input",
+            "props": {
+              "value": {
+                "k": "Assign",
+                "target": "$amount",
+                "value": {
+                  "k": "BinOp",
+                  "op": "*",
+                  "left": {
+                    "k": "StateRef",
+                    "n": "$value"
+                  },
+                  "right": {
+                    "k": "Num",
+                    "v": 2
+                  }
+                }
+              },
+              "label": "Double",
+              "type": "number"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Slider",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$amount"
+              },
+              "min": 0,
+              "max": 100,
+              "step": 1,
+              "label": "Amount"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Checkbox",
+            "props": {
+              "checked": {
+                "k": "StateRef",
+                "n": "$done"
+              },
+              "label": "Done",
+              "lineThrough": true
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Select",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$choice"
+              },
+              "options": [
+                "a",
+                {
+                  "value": "b",
+                  "label": "Bee"
+                }
+              ],
+              "label": "Choice"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "Reset",
+              "action": {
+                "k": "Comp",
+                "name": "Reset",
+                "args": [
+                  {
+                    "k": "StateRef",
+                    "n": "$amount"
+                  },
+                  {
+                    "k": "StateRef",
+                    "n": "$done"
+                  },
+                  {
+                    "k": "StateRef",
+                    "n": "$choice"
+                  }
+                ]
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 4,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$amount": 0,
+      "$done": false,
+      "$choice": "a",
+      "$value": null
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Input",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$amount",
+              "expr": {
+                "k": "BinOp",
+                "op": "*",
+                "left": {
+                  "k": "StateRef",
+                  "n": "$value"
+                },
+                "right": {
+                  "k": "Num",
+                  "v": 2
+                }
+              }
+            },
+            "label": "Double",
+            "type": "number"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Slider",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$amount",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "label": "Amount"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Checkbox",
+          "props": {
+            "checked": {
+              "__reactive": "assign",
+              "target": "$done",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "label": "Done",
+            "lineThrough": true
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Select",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$choice",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "options": [
+              "a",
+              {
+                "value": "b",
+                "label": "Bee"
+              }
+            ],
+            "label": "Choice"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Button",
+          "props": {
+            "label": "Reset",
+            "action": {
+              "steps": [
+                {
+                  "type": "reset",
+                  "targets": [
+                    "$amount",
+                    "$done",
+                    "$choice"
+                  ]
+                }
+              ]
+            }
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 92,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "k": "Assign",
+                    "target": "$amount",
+                    "value": {
+                      "k": "BinOp",
+                      "op": "*",
+                      "left": {
+                        "k": "StateRef",
+                        "n": "$value"
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 2
+                      }
+                    }
+                  },
+                  "label": "Double",
+                  "type": "n"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$amount": 0,
+          "$done": false,
+          "$choice": "a",
+          "$value": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 184,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "k": "Assign",
+                    "target": "$amount",
+                    "value": {
+                      "k": "BinOp",
+                      "op": "*",
+                      "left": {
+                        "k": "StateRef",
+                        "n": "$value"
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 2
+                      }
+                    }
+                  },
+                  "label": "Double",
+                  "type": "number"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$amount"
+                  },
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "label": "Amount"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "k": "StateRef",
+                    "n": "$done"
+                  },
+                  "label": "Done",
+                  "lineThrough": true
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Select",
+              "path": "/options",
+              "message": "missing required field \"/options\" — signature: Select(value*: string, options*: array, label: string, placeholder: string)",
+              "statementId": "root"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$amount": 0,
+          "$done": false,
+          "$choice": "a",
+          "$value": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 277,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "k": "Assign",
+                    "target": "$amount",
+                    "value": {
+                      "k": "BinOp",
+                      "op": "*",
+                      "left": {
+                        "k": "StateRef",
+                        "n": "$value"
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 2
+                      }
+                    }
+                  },
+                  "label": "Double",
+                  "type": "number"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$amount"
+                  },
+                  "min": 0,
+                  "max": 100,
+                  "step": 1,
+                  "label": "Amount"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "k": "StateRef",
+                    "n": "$done"
+                  },
+                  "label": "Done",
+                  "lineThrough": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Select",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$choice"
+                  },
+                  "options": [
+                    "a",
+                    {
+                      "value": "b",
+                      "label": "Bee"
+                    }
+                  ],
+                  "label": "Choice"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Reset",
+                  "action": {
+                    "k": "Comp",
+                    "name": "Reset",
+                    "args": [
+                      {
+                        "k": "StateRef",
+                        "n": "$amount"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$done"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$choice"
+                      }
+                    ]
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$amount": 0,
+          "$done": false,
+          "$choice": "a",
+          "$value": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

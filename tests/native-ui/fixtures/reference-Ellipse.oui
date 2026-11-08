@@ -1,0 +1,1 @@
+root = Svg([Ellipse(50,50,40,20,"purple")], "0 0 100 100")

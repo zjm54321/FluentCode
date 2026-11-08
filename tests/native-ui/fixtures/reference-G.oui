@@ -1,0 +1,1 @@
+root = Svg([G([Rect(0,0,20,20,"success")], "translate(10 10)")], "0 0 100 100")

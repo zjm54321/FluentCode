@@ -1,0 +1,162 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using FluentCode.Services.NativeUi;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Media.Core;
+using Windows.Media.Playback;
+using Windows.Storage.Streams;
+
+namespace FluentCode.Pages.OpenCode;
+
+internal sealed partial class NativeUiRenderer
+{
+    internal Func<string, Task<NativeUiHostResult>>? OpenBrowser { get; set; }
+    internal Func<string, string, CancellationToken, Task<NativeUiMediaAsset>>? MediaAssetLoader { get; set; }
+    private Task<NativeUiMediaAsset> Asset(string source, string kind, CancellationToken cancellationToken) => (MediaAssetLoader ?? NativeUiMediaAssets.LoadAsync)(source, kind, cancellationToken);
+    private static async Task<InMemoryRandomAccessStream> AssetStream(byte[] bytes)
+    {
+        var stream = new InMemoryRandomAccessStream();
+        using (var writer = new DataWriter(stream)) { writer.WriteBytes(bytes); await writer.StoreAsync(); writer.DetachStream(); }
+        stream.Seek(0); return stream;
+    }
+    private Visual CreateMedia(string type)
+    {
+        var title = NativeUiComponentTheme.Text(""); var url = NativeUiComponentTheme.Text("", true); var load = new Button { Content = "点击加载" };
+        var player = new MediaPlayer { AutoPlay = false }; var transport = new MediaTransportControls { IsCompact = false };
+        var element = new MediaPlayerElement { AreTransportControlsEnabled = true, AutoPlay = false, TransportControls = transport, Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Stretch };
+        element.SetMediaPlayer(player); var status = NativeUiComponentTheme.Text("点击后加载到卡片；不会自动播放。", true);
+        var fullWindow = new Button { Content = "全窗口播放", Visibility = Visibility.Collapsed }; fullWindow.Click += (_, _) => element.IsFullWindow = !element.IsFullWindow;
+        var panel = new StackPanel { Spacing = 8, Children = { title, url, load, element, fullWindow, status } }; var visual = new Visual(panel);
+        var gate = new NativeUiLoadGate(); CancellationTokenSource? pending = null; InMemoryRandomAccessStream? stream = null; MediaSource? media = null; var version = 0;
+        void Stop()
+        {
+            version++; pending?.Cancel(); pending?.Dispose(); pending = null; player.Pause(); player.Source = null;
+            media?.Dispose(); media = null; stream?.Dispose(); stream = null; element.IsFullWindow = false; element.Visibility = fullWindow.Visibility = Visibility.Collapsed;
+        }
+        player.MediaOpened += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) status.Text = "已加载 · 使用原生播放控件；视频可切换全窗口。"; });
+        player.MediaFailed += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) { status.Text = "媒体无法播放；请检查格式、编码或地址后重试。"; load.IsEnabled = true; } });
+        void OnUnloaded(object sender, RoutedEventArgs args) { if (!visual.Disposed) player.Pause(); }
+        element.Unloaded += OnUnloaded;
+        load.Click += async (_, _) =>
+        {
+            if (visual.Disposed || !NativeUiMediaPolicy.Https(gate.Source) || !gate.Request()) return;
+            Stop(); pending = new(); var token = pending.Token; var generation = version; load.IsEnabled = false; status.Text = "正在加载…";
+            try
+            {
+                var asset = await Asset(gate.Source, type == "Audio" ? "audio" : "video", token);
+                if (visual.Disposed || generation != version) return;
+                var loaded = await AssetStream(asset.Bytes); if (visual.Disposed || generation != version) { loaded.Dispose(); return; }
+                stream = loaded; media = MediaSource.CreateFromStream(stream, asset.ContentType); player.Source = media;
+                element.Visibility = Visibility.Visible; load.Content = "重新加载"; status.Text = "媒体已加载；点击原生播放按钮开始。";
+                fullWindow.Visibility = type == "Video" ? Visibility.Visible : Visibility.Collapsed;
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception) { if (!visual.Disposed && generation == version) status.Text = "加载失败；仅支持 HTTPS 与系统支持的媒体格式（最大 128 MB）。"; }
+            finally { if (!visual.Disposed && generation == version) load.IsEnabled = true; }
+        };
+        visual.Apply = node =>
+        {
+            var source = S(node, "src"); if (source != gate.Source) { Stop(); gate.Bind(source); load.Content = "点击加载"; }
+            title.Text = S(node, "title") is { Length: > 0 } label ? label : type == "Audio" ? "音频" : "视频"; url.Text = source;
+            load.IsEnabled = NativeUiMediaPolicy.Https(source); element.Height = type == "Audio" ? 96 : Math.Clamp(N(node, "height", 300), 180, 480);
+            AutomationProperties.SetName(element, title.Text); AutomationProperties.SetAutomationId(element, "NativeUi" + type);
+            ToolTipService.SetToolTip(load, source);
+        };
+        visual.Cleanup = () => { element.Unloaded -= OnUnloaded; Stop(); element.SetMediaPlayer(null); player.Dispose(); }; return visual;
+    }
+    private Visual CreateGallery()
+    {
+        var title = NativeUiComponentTheme.Text(""); var urls = NativeUiComponentTheme.Text("", true); var load = new Button { Content = "加载图片集" }; var status = NativeUiComponentTheme.Text("点击后加载图片；选择大图可全尺寸查看。", true);
+        var flip = new FlipView { Height = 320, Visibility = Visibility.Collapsed }; var panel = new StackPanel { Spacing = 8, Children = { title, urls, load, flip, status } };
+        var visual = new Visual(panel); var gate = new NativeUiLoadGate(); CancellationTokenSource? pending = null; var generation = 0; ContentDialog? viewer = null;
+        IReadOnlyDictionary<string, object?>[] images = [];
+        void Reset() { generation++; pending?.Cancel(); pending?.Dispose(); pending = null; flip.Items.Clear(); flip.Visibility = Visibility.Collapsed; viewer?.Hide(); viewer = null; }
+        load.Click += async (_, _) =>
+        {
+            if (visual.Disposed || !gate.Request()) return;
+            Reset(); pending = new(); var token = pending.Token; var version = generation; load.IsEnabled = false; status.Text = "正在加载图片集…";
+            try
+            {
+                foreach (var entry in images)
+                {
+                    var source = NativeUiValues.Text(entry.GetValueOrDefault("src")); var alt = NativeUiValues.Text(entry.GetValueOrDefault("alt"));
+                    var asset = await Asset(source, "image", token); if (visual.Disposed || version != generation) return;
+                    using var stream = await AssetStream(asset.Bytes); var bitmap = new BitmapImage(); await bitmap.SetSourceAsync(stream);
+                    if (visual.Disposed || version != generation) return;
+                    var image = new Image { Source = bitmap, Stretch = Stretch.Uniform, MaxHeight = 480 }; AutomationProperties.SetName(image, alt);
+                    var open = new Button { Content = image, HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch, Padding = new(0) };
+                    AutomationProperties.SetName(open, "全尺寸查看：" + alt);
+                    open.Click += async (_, _) =>
+                    {
+                        if (visual.Disposed || viewer is not null) return;
+                        var full = new Image { Source = bitmap, Stretch = Stretch.None }; AutomationProperties.SetName(full, alt);
+                        viewer = new ContentDialog { XamlRoot = panel.XamlRoot, Title = alt, CloseButtonText = "关闭", FullSizeDesired = true, Content = new ScrollViewer { Content = full, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Enabled, MaxHeight = 720 } };
+                        var leases = new List<IDisposable>();
+                        void Suppress(DependencyObject root)
+                        {
+                            if (root is OpenCodePersistentPtyRenderer terminal) { leases.Add(terminal.SuppressAirspace(snapshot: true)); return; }
+                            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) Suppress(VisualTreeHelper.GetChild(root, i));
+                        }
+                        if (panel.XamlRoot?.Content is { } root) Suppress(root);
+                        try { await viewer.ShowAsync(); } finally { foreach (var lease in leases) lease.Dispose(); viewer = null; }
+                    };
+                    flip.Items.Add(new StackPanel { Spacing = 4, Children = { open, NativeUiComponentTheme.Text(alt, true) } });
+                }
+                flip.Visibility = Visibility.Visible; status.Text = images.Length + " 张图片 · 使用左右箭头切换，点击大图全尺寸查看。"; load.Content = "重新加载图片集";
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception) { if (!visual.Disposed && version == generation) status.Text = "图片加载失败；请检查 HTTPS 地址和图片大小。"; }
+            finally { if (!visual.Disposed && version == generation) load.IsEnabled = true; }
+        };
+        visual.Apply = node =>
+        {
+            images = (P(node, "images") as IReadOnlyList<object?> ?? []).OfType<IReadOnlyDictionary<string, object?>>().Take(12).ToArray();
+            var source = string.Join("\n", images.Select(item => NativeUiValues.Text(item.GetValueOrDefault("src"))));
+            if (source != gate.Source) { Reset(); gate.Bind(source); load.Content = "加载图片集"; }
+            urls.Text = source; title.Text = S(node, "title"); flip.Height = Math.Clamp(N(node, "height", 320), 180, 480);
+            load.IsEnabled = images.Length > 0 && images.All(item => NativeUiMediaPolicy.Https(NativeUiValues.Text(item.GetValueOrDefault("src"))));
+            AutomationProperties.SetAutomationId(flip, "NativeUiGallery");
+        };
+        visual.Cleanup = Reset; return visual;
+    }
+    private Visual CreateYouTube()
+    {
+        var title = NativeUiComponentTheme.Text(""); var url = NativeUiComponentTheme.Text("", true); var load = new Button { Content = "加载 YouTube 缩略图" }; var open = new Button { Content = "在应用内浏览器观看" };
+        var thumbnail = new Image { Height = 260, Stretch = Stretch.Uniform, Visibility = Visibility.Collapsed }; var status = NativeUiComponentTheme.Text("点击才会请求缩略图；视频在应用内浏览器标签页播放，不嵌入卡片。", true);
+        var panel = new StackPanel { Spacing = 8, Children = { title, url, thumbnail, load, open, status } }; var visual = new Visual(panel);
+        var gate = new NativeUiLoadGate(); CancellationTokenSource? pending = null; var version = 0; string? id = null;
+        async Task Open() { if (visual.Disposed || id is null) return; var result = OpenBrowser is { } browser ? await browser("https://www.youtube.com/watch?v=" + id) : new NativeUiHostResult(false, "当前会话浏览器不可用"); status.Text = result.Message; }
+        open.Click += async (_, _) => await Open(); thumbnail.Tapped += async (_, _) => await Open();
+        load.Click += async (_, _) =>
+        {
+            if (visual.Disposed || id is null || !gate.Request()) return;
+            pending?.Cancel(); pending?.Dispose(); pending = new(); var token = pending.Token; var generation = ++version; load.IsEnabled = false;
+            try
+            {
+                var asset = await Asset("https://i.ytimg.com/vi/" + id + "/hqdefault.jpg", "image", token);
+                if (visual.Disposed || generation != version) return;
+                using var stream = await AssetStream(asset.Bytes); var bitmap = new BitmapImage(); await bitmap.SetSourceAsync(stream);
+                if (visual.Disposed || generation != version) return; thumbnail.Source = bitmap; thumbnail.Visibility = Visibility.Visible;
+                status.Text = "缩略图已加载；点击缩略图或按钮在应用内浏览器观看。";
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception) { if (!visual.Disposed && generation == version) status.Text = "缩略图加载失败；仍可在应用内浏览器观看。"; }
+            finally { if (!visual.Disposed && generation == version) load.IsEnabled = true; }
+        };
+        visual.Apply = node =>
+        {
+            id = NativeUiMediaPolicy.YouTubeId(S(node, "video")); var source = id is null ? "" : "https://www.youtube.com/watch?v=" + id;
+            if (gate.Source != source) { version++; pending?.Cancel(); gate.Bind(source); thumbnail.Source = null; thumbnail.Visibility = Visibility.Collapsed; }
+            title.Text = S(node, "title") is { Length: > 0 } label ? label : "YouTube 视频"; url.Text = source; load.IsEnabled = open.IsEnabled = id is not null; AutomationProperties.SetName(thumbnail, title.Text);
+        };
+        visual.Cleanup = () => { version++; pending?.Cancel(); pending?.Dispose(); thumbnail.Source = null; }; return visual;
+    }
+}

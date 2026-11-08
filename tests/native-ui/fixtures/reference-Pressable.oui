@@ -1,0 +1,2 @@
+$v = false
+root = Col([Pressable([Text("Choose")], @Set($v, !$v), $v), Text($v ? "Chosen" : "Choose a tile")])

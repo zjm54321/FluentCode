@@ -1,0 +1,1 @@
+root = Code("console.log(42)", "javascript")

@@ -133,6 +133,9 @@ public sealed record AppSettings
     /// <summary>Session browser preferences, independent of OpenCode connection credentials.</summary>
     public BrowserSettings Browser { get; init; } = new();
 
+    /// <summary>Native map provider preferences; API keys remain DPAPI credential references.</summary>
+    public NativeUiMapSettings NativeUiMap { get; init; } = new();
+
     /// <summary>链接与图片芯片：联网补全（站点图标）默认关闭；可改单色图标。</summary>
     public LinkChipSettings LinkChips { get; init; } = new();
 

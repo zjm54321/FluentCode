@@ -1,0 +1,1 @@
+root = Box([Text("Panel")], "col", 3, 4, "surface", "lg", true)
