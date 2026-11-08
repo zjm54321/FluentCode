@@ -496,7 +496,8 @@ namespace FluentCode.Pages
         private void UpdateSessionTabsEmptyState(){} // Actual native actor/selection routing is source-linked in opencode-tabs.
         private Task LoadBlankMetadataAsync(OpenCodeBlankDraftPreferences basis,OpenCodeComposerToken token)=>Task.CompletedTask; // I/O boundary; real defaults loader tested by opencode-draft-slots.
         // Native placement/indicator boundary; actual retired actor handlers are linked in opencode-draft-slots.
-        private sealed class SessionTabEntry(TabViewItem item){internal readonly TabViewItem Item=item;internal OpenCodeDraftSlotKey? DraftSlotKey;internal readonly ProgressRing Working=new();internal readonly Button Attention=new();}
+        private sealed class SessionTabEntry(TabViewItem item){internal readonly TabViewItem Item=item;internal OpenCodeDraftSlotKey? DraftSlotKey;internal readonly TabStatusStub Status=new();}
+        private sealed class TabStatusStub { internal void Clear(){} }
         private readonly Dictionary<string,SessionTabEntry> _sessionTabs=new();
         private readonly Dictionary<string,string> _sessionTitles=new();
         private void SelectSessionTabSilently(string? id)=>SessionTabs.SelectedItem=_homeActive?null:id is not null&&_sessionTabs.TryGetValue(id,out var s)?s.Item:_newSessionTab;

@@ -223,7 +223,7 @@ internal static partial class Program
             && sync.Contains("_loaded && _ring.IsActive && _ring.IsIndeterminate", StringComparison.Ordinal),
             "joins the clock only while loaded and active; reduced motion leaves a still arc");
         Check(sync.Contains("AutomationProperties.SetName(ring, accessibleName);", StringComparison.Ordinal), "every synced ring is named");
-        var composition = Read("OpenCodeWorkingShimmer.cs");
+        var composition = Read("OpenCodeWorkingClockComposition.cs");
         Check(composition.Contains("Loop(compositor, set, RingPhaseProperty, OpenCodeWorkingClock.RingPeriod, Clock.RingPhase);", StringComparison.Ordinal)
             && composition.Contains("set.StopAnimation(RingPhaseProperty);", StringComparison.Ordinal),
             "one RingPhase per compositor, aligned to the absolute clock and stopped with it");

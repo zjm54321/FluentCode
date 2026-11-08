@@ -19,6 +19,9 @@ public enum OpenCodeStateUnknownReason
 /// <summary>会话完成标记：Outcome 为完成结论，IdleWatermark 为完成时刻的观察水位。</summary>
 public sealed record OpenCodeCompletionMark(string Outcome, double IdleWatermark);
 
+/// <summary>事件流中的当前重试；仅由页面按会话叠加，存储层不设置。</summary>
+public sealed record OpenCodeSessionRetryMark(int Attempt, double At, string? Message);
+
 /// <summary>
 /// 单个会话的 UI 状态。Working/PendingAction 均为三值：null 表示未知。
 /// UnknownReason 与 MutationProtected 不构成 Pending。
@@ -34,6 +37,12 @@ public sealed record OpenCodeSessionUiState(
 {
     /// <summary>独立 question 事实；null 表示未观测或证据已过期。</summary>
     public bool? QuestionPending { get; init; }
+
+    public OpenCodeSessionRetryMark? Retry { get; init; }
+
+    /// <summary>独立子智能体工作事实；null 表示未观测或证据已过期。</summary>
+    public bool? BackgroundWorking { get; init; }
+    public int BackgroundChildCount { get; init; }
 
     /// <summary>有 Completion 且（无 ViewedWatermark 或 IdleWatermark 更大）时为未读。</summary>
     public bool IsUnread =>
@@ -80,6 +89,8 @@ public sealed record OpenCodeSessionUiObservation(
     double? ViewedWatermark = null)
 {
     public OpenCodeSessionUiFact? QuestionPending { get; init; }
+    public OpenCodeSessionUiFact? BackgroundWorking { get; init; }
+    public int BackgroundChildCount { get; init; }
     /// <summary>Fresh complete history proves there is no completion through this message watermark.
     /// Unlike a null Completion (no update), this can retire a disproven historical mark, not a real unread result.</summary>
     public double? CompletionAbsentThrough { get; init; }

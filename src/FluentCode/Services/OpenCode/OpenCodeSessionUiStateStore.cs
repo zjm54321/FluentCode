@@ -130,6 +130,7 @@ public sealed class OpenCodeSessionUiStateStore
         var working = FilterFact(observation.Working, existing?.Working, now);
         var pendingAction = FilterFact(observation.PendingAction, existing?.PendingAction, now);
         var questionPending = FilterFact(observation.QuestionPending, existing?.QuestionPending, now);
+        var backgroundWorking = FilterFact(observation.BackgroundWorking, existing?.BackgroundWorking, now);
         var completion = FilterCompletion(observation.Completion);
         var viewed = FilterViewedWatermark(observation.ViewedWatermark);
         var mutationProtected = observation.MutationProtected;
@@ -139,6 +140,7 @@ public sealed class OpenCodeSessionUiStateStore
             && working is null
             && pendingAction is null
             && questionPending is null
+            && backgroundWorking is null
             && completion is null
             && viewed is null
             && mutationProtected is null && absentThrough is null)
@@ -179,6 +181,18 @@ public sealed class OpenCodeSessionUiStateStore
             if (Differs(existing.QuestionPending, normalized))
             {
                 existing.QuestionPending = normalized;
+                changed = true;
+            }
+        }
+
+        if (backgroundWorking is { } backgroundFact)
+        {
+            var normalized = NormalizeFact(backgroundFact, now);
+            var count = normalized.Value == true ? Math.Max(0, observation.BackgroundChildCount) : 0;
+            if (Differs(existing.BackgroundWorking, normalized) || existing.BackgroundChildCount != count)
+            {
+                existing.BackgroundWorking = normalized;
+                existing.BackgroundChildCount = count;
                 changed = true;
             }
         }
@@ -277,6 +291,17 @@ public sealed class OpenCodeSessionUiStateStore
             if (!normalized.Equals(questionPending))
             {
                 entry.QuestionPending = normalized;
+                changed = true;
+            }
+        }
+
+        if (entry.BackgroundWorking is { } backgroundWorking)
+        {
+            var normalized = NormalizeFact(backgroundWorking, now);
+            if (!normalized.Equals(backgroundWorking))
+            {
+                entry.BackgroundWorking = normalized;
+                if (normalized.Value != true) entry.BackgroundChildCount = 0;
                 changed = true;
             }
         }
@@ -443,7 +468,12 @@ public sealed class OpenCodeSessionUiStateStore
             entry.MutationProtected,
             entry.Completion,
             entry.ViewedWatermark,
-            unknownReason) { QuestionPending = entry.QuestionPending?.Value };
+            unknownReason)
+        {
+            QuestionPending = entry.QuestionPending?.Value,
+            BackgroundWorking = entry.BackgroundWorking?.Value,
+            BackgroundChildCount = entry.BackgroundWorking?.Value == true ? entry.BackgroundChildCount : 0,
+        };
     }
 
     /// <summary>单会话的待应用事实，可写属性供后续增量接口填充。</summary>
@@ -454,6 +484,8 @@ public sealed class OpenCodeSessionUiStateStore
 
         public OpenCodeSessionUiFact? PendingAction { get; set; }
         public OpenCodeSessionUiFact? QuestionPending { get; set; }
+        public OpenCodeSessionUiFact? BackgroundWorking { get; set; }
+        public int BackgroundChildCount { get; set; }
 
         public bool MutationProtected { get; set; }
 

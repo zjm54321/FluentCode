@@ -17,7 +17,8 @@ internal static class Program
         HistoricalWatermarksAndAttention();
         BindingSnapshotsAndVersions();
         IndependentQuestionEvidence();
-        Console.WriteLine($"PASS: 4 session-ui-state scenario groups, {_assertions} assertions; public production APIs, fixed caller clock, offline only.");
+        IndependentBackgroundEvidence();
+        Console.WriteLine($"PASS: 5 session-ui-state scenario groups, {_assertions} assertions; public production APIs, fixed caller clock, offline only.");
     }
 
     private static void Check(bool condition, string label)
@@ -88,6 +89,49 @@ internal static class Program
         Apply(store, Observation() with { QuestionPending = Fact(true, 101) }, 101, false, "question.old-source-after-rebind");
         Apply(store, new(Endpoint, Revision + 1, "ses_a") { QuestionPending = Fact(false, 101) }, 101, true, "question.new-revision-false");
         Check(State(store).QuestionPending == false, "question.false-valid-without-other-facts");
+    }
+
+    private static void IndependentBackgroundEvidence()
+    {
+        var store = Store();
+        Apply(store, Observation() with { BackgroundChildCount = 3 }, 0, false, "background.count-without-fact-does-not-register");
+        Apply(store, Observation() with { BackgroundWorking = Fact(true, 0), BackgroundChildCount = 2 }, 0, true, "background.only-registers");
+        Check(State(store).BackgroundWorking == true && State(store).BackgroundChildCount == 2
+            && State(store).Working is null && State(store).PendingAction is null && State(store).Retry is null,
+            "background.independent-from-main-pending-and-page-only-retry");
+        var frozen = State(store);
+        Apply(store, Observation() with { BackgroundWorking = Fact(true, 0), BackgroundChildCount = 1 }, 1, true, "background.count-only-change");
+        Check(State(store).BackgroundChildCount == 1 && frozen.BackgroundChildCount == 2, "background.count-snapshot-immutable");
+        Apply(store, Observation() with { BackgroundWorking = Fact(false, -1) }, 1, false, "background.older-rejected");
+        Apply(store, Observation() with { BackgroundWorking = Fact(false, 2) }, 1, false, "background.future-rejected");
+        Apply(store, Observation() with { Working = Fact(false, 10), PendingAction = Fact(false, 10),
+            QuestionPending = Fact(true, 10), Completion = new("succeeded", 100), ViewedWatermark = 50 }, 10, true, "background.other-facts-newer");
+        Apply(store, Observation() with { BackgroundChildCount = 9 }, 14, false, "background.missing-fact-does-not-change-count-or-renew");
+        Expire(store, 14.9999999, false, "background.last-fresh-tick");
+        Expire(store, 15, true, "background.exact-expiry");
+        Check(State(store).BackgroundWorking is null && State(store).BackgroundChildCount == 0
+            && State(store).Working == false && State(store).QuestionPending == true && State(store).IsUnread
+            && State(store).UnknownReason == OpenCodeStateUnknownReason.None, "background.expiry-is-independent-and-clears-count");
+        Apply(store, Observation() with { BackgroundWorking = Fact(true, 0), BackgroundChildCount = 2 }, 15, false, "background.expired-replay-rejected");
+        Apply(store, Observation() with { BackgroundWorking = Fact(false, 16), BackgroundChildCount = 5 }, 16, true, "background.newer-false");
+        Check(State(store).BackgroundWorking == false && State(store).BackgroundChildCount == 0, "background.false-clears-count");
+        Apply(store, Observation() with { BackgroundWorking = Fact(null, 17), BackgroundChildCount = 4 }, 17, true, "background.explicit-unknown");
+        Check(State(store).BackgroundWorking is null && State(store).BackgroundChildCount == 0, "background.unknown-has-no-count");
+        var saved = State(store);
+        Apply(store, Observation() with { Revision = Revision + 1, BackgroundWorking = Fact(true, 100), BackgroundChildCount = 8 }, 100, false, "background.wrong-revision-no-expiry");
+        Check(State(store) == saved, "background.rejected-binding-has-no-side-effects");
+
+        var connected = true;
+        var leased = new OpenCodeSessionUiFact(true, At(0)) { CurrentEventStream = () => connected };
+        var live = Store();
+        Apply(live, Observation() with { BackgroundWorking = leased, BackgroundChildCount = 3 }, 0, true, "background.live-epoch");
+        Expire(live, 60, false, "background.continuous-event-evidence-stays-current");
+        Check(State(live).BackgroundWorking == true && State(live).BackgroundChildCount == 3, "background.healthy-lease-retains-count");
+        connected = false;
+        Expire(live, 60, true, "background.disconnect-expires-lease");
+        Check(State(live).BackgroundWorking is null && State(live).BackgroundChildCount == 0, "background.disconnected-count-cleared");
+        live.Reset(Endpoint, Revision + 1);
+        Check(live.GetSnapshot().Sessions.IsEmpty, "background.reset-removes-fact-and-count");
     }
 
     private static void IndependentEvidenceAndExpiry()

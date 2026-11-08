@@ -60,3 +60,51 @@ if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 Write-Output "Headless compilation passed (SDK $($sdk.Name); warnings treated as errors)."
 & $dotnet $assembly $repo 2>&1 | Tee-Object -FilePath (Join-Path $output 'tests.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
+
+# Execute the actual tab classifier, header/state methods and status slot with inert WinUI
+# surfaces. This verifies geometry/automation contracts, not native rendering or Narrator audio.
+function Extract-TabMember([string]$Text, [string]$Name) {
+    $matches = [regex]::Matches($Text, ('(?ms)^    (?:private|internal) [^\r\n]*\b' + [regex]::Escape($Name) + '\([^\r\n]*\)\r?\n    \{.*?^    \}'))
+    if ($matches.Count -ne 1) { throw "Missing/ambiguous production tab member: $Name" }
+    return $matches[0].Value
+}
+$tabsSource = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCodePage.Tabs.cs")
+$stateSource = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCodePage.SessionStateUi.cs")
+$entry = [regex]::Matches($tabsSource, '(?ms)^    private sealed class SessionTabEntry\([^\r\n]+\)\r?\n    \{.*?^    \}')
+$tone = [regex]::Matches($stateSource, '(?ms)^    internal enum SessionIndicatorTone\r?\n    \{.*?^    \}')
+if ($entry.Count -ne 1 -or $tone.Count -ne 1) { throw 'Missing/ambiguous production tab entry or indicator enum.' }
+$tabMembers = @($entry[0].Value, $tone[0].Value, (Extract-TabMember $stateSource 'ClassifySessionIndicator'))
+foreach ($name in @('CreateSessionTab', 'ApplySessionTabState', 'SetTabItemStatus')) { $tabMembers += Extract-TabMember $tabsSource $name }
+$tabGenerated = Join-Path $output 'TabStatus.PageMembers.cs'
+@'
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using FluentCode.Pages.OpenCode;
+using FluentCode.Services.OpenCode;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Controls;
+namespace FluentCode.Pages;
+public sealed partial class OpenCodePage {
+'@ + "`n" + ($tabMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $tabGenerated
+$tabAssembly = Join-Path $output 'OpenCodeTabStatusTests.dll'
+$tabArguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $tabAssembly + '"'))
+$tabArguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
+$motionSource = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCode/OpenCodeWorkingPhrases.cs")
+$motion = [regex]::Matches($motionSource, '(?ms)^internal static class OpenCodeWorkingMotion\r?\n\{.*?^\}')
+if ($motion.Count -ne 1) { throw 'Missing/ambiguous production working-motion constants.' }
+$motionGenerated = Join-Path $output 'TabStatus.WorkingMotion.cs'
+"using System; namespace FluentCode.Pages.OpenCode;`n" + $motion[0].Value | Set-Content -Encoding UTF8 $motionGenerated
+$tabSources = @("$repo/src/FluentCode/Services/OpenCode/OpenCodeSessionUiState.cs",
+    "$repo/src/FluentCode/Pages/OpenCode/OpenCodeTabStatusSlot.cs", $tabGenerated,
+    $motionGenerated, (Join-Path $PSScriptRoot 'TabStatus.TestHost.cs'), (Join-Path $PSScriptRoot 'TabStatusTests.cs'))
+$tabArguments += $tabSources | ForEach-Object { '"' + $_ + '"' }
+$tabResponse = Join-Path $output 'tab-status.compile.rsp'
+$tabArguments | Set-Content -Encoding UTF8 $tabResponse
+& $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$tabResponse" 2>&1 | Tee-Object -FilePath (Join-Path $output 'tab-status.compile.log')
+if ($LASTEXITCODE -ne 0) { throw "Tab status compilation failed: $LASTEXITCODE" }
+'{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'OpenCodeTabStatusTests.runtimeconfig.json')
+& $dotnet $tabAssembly $repo 2>&1 | Tee-Object -FilePath (Join-Path $output 'tab-status.tests.log')
+if ($LASTEXITCODE -ne 0) { throw "Tab status tests failed: $LASTEXITCODE" }

@@ -22,6 +22,7 @@ public sealed partial class OpenCodePage
     private readonly ConcurrentQueue<(CancellationTokenSource Owner, OpenCodeEvent Event)> _eventQueue = new();
     private readonly Queue<(CancellationTokenSource Owner, OpenCodeEvent Event)> _workflowEventQueue = new();
     private readonly Dictionary<string, (bool Working, long Version)> _liveSessionStatuses = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OpenCodeSessionRetryMark> _liveSessionRetries = new(StringComparer.Ordinal);
     private long _liveStatusVersion;
     private bool _eventProjectionDirty;
     private bool _statusRefreshRunning;
@@ -60,6 +61,7 @@ public sealed partial class OpenCodePage
         while (_eventQueue.TryDequeue(out _)) { }
         _workflowEventQueue.Clear();
         _liveSessionStatuses.Clear();
+        _liveSessionRetries.Clear();
         RefreshSessionStateUi();
         RefreshComposerSessionActivity();
         RefreshConversationSessionActivity();
@@ -288,8 +290,10 @@ public sealed partial class OpenCodePage
                 if (runningEvent || terminalEvent)
                 {
                     _liveSessionStatuses[id] = (working, ++_liveStatusVersion);
+                    OnSessionBackgroundActivity(id, working);
                     // Advance the REST race fence for every event, but don't republish identical UI state.
-                    var statusChanged = old.Version == 0 || old.Working != working;
+                    var retryChanged = UpdateLiveSessionRetry(item, id, runningEvent, terminalEvent);
+                    var statusChanged = old.Version == 0 || old.Working != working || retryChanged;
                     repeatedStatusOnly = !statusChanged && item.Type == "session.status";
                     statusesChanged |= statusChanged;
                     selectedStatusChanged |= statusChanged && id == _selectedSessionId;
@@ -367,6 +371,7 @@ public sealed partial class OpenCodePage
                 window = historyIsLatestWindow ? acceptedHistory : ProjectMessageHistory(new List<OpenCodeMessage>(_latestMessages));
             }
             RefreshConversationSessionActivity();
+            RetainHistoryChildEvidence(selected, MergeMessageHistory());
             ObserveExecutionState(selected, window);
             NotifyViewAcknowledgementRendered(window, _hostWindowVisible);
             UpdateEmptyState();
@@ -395,14 +400,46 @@ public sealed partial class OpenCodePage
                 && target.GetString() == id) == true);
     }
 
+    private bool UpdateLiveSessionRetry(OpenCodeEvent item, string sessionId, bool runningEvent, bool terminalEvent)
+    {
+        var data = item.Data;
+        var retryEvent = item.Type == "session.retry.scheduled";
+        var deadlineKey = "at";
+        string? message = null;
+        if (item.Type == "session.status" && data.TryGetProperty("status", out var status)
+            && status.ValueKind == JsonValueKind.Object && status.TryGetProperty("type", out var kind)
+            && kind.ValueKind == JsonValueKind.String && kind.GetString() == "retry")
+        {
+            retryEvent = true;
+            data = status;
+            deadlineKey = "next";
+            if (data.TryGetProperty("message", out var why) && why.ValueKind == JsonValueKind.String) message = why.GetString();
+        }
+        else if (retryEvent)
+        {
+            if (!data.TryGetProperty("error", out var error) || error.ValueKind != JsonValueKind.Object) return false;
+            if (error.TryGetProperty("message", out var why) && why.ValueKind == JsonValueKind.String) message = why.GetString();
+        }
+        if (!retryEvent) return (runningEvent || terminalEvent) && _liveSessionRetries.Remove(sessionId);
+        if (!data.TryGetProperty("attempt", out var attemptValue) || attemptValue.ValueKind != JsonValueKind.Number
+            || !attemptValue.TryGetInt32(out var attempt) || attempt <= 0
+            || !data.TryGetProperty(deadlineKey, out var atValue) || atValue.ValueKind != JsonValueKind.Number
+            || !atValue.TryGetDouble(out var at) || !double.IsFinite(at)) return false;
+        var retry = new OpenCodeSessionRetryMark(attempt, at, message);
+        if (_liveSessionRetries.GetValueOrDefault(sessionId) == retry) return false;
+        _liveSessionRetries[sessionId] = retry;
+        return true;
+    }
+
     partial void ApplyLiveSessionStatuses(Dictionary<string, OpenCodeSessionUiState> states)
     {
         foreach (var (id, value) in _liveSessionStatuses)
         {
             states.TryGetValue(id, out var previous);
-            states[id] = new(id, value.Working, previous?.PendingAction, previous?.MutationProtected ?? false,
-                previous?.Completion, previous?.ViewedWatermark, OpenCodeStateUnknownReason.None)
-                { QuestionPending = previous?.QuestionPending };
+            var retry = value.Working ? _liveSessionRetries.GetValueOrDefault(id) : null;
+            states[id] = previous is null
+                ? new(id, value.Working, null, false, null, null, OpenCodeStateUnknownReason.None) { Retry = retry }
+                : previous with { Working = value.Working, UnknownReason = OpenCodeStateUnknownReason.None, Retry = retry };
         }
     }
 
@@ -411,6 +448,7 @@ public sealed partial class OpenCodePage
     partial void OnAgentTreeConnected();
     partial void OnAgentTreeReset();
     partial void OnAgentTreeActivityChanged();
+    partial void OnSessionBackgroundActivity(string sessionId, bool working);
 
     partial void RefreshConversationSessionActivity()
     {

@@ -25,9 +25,8 @@ public sealed partial class OpenCodePage
     internal bool IsSelectedSessionWorkingIndicated => _selectedSessionWorkingIndicated;
 
     /// <summary>
-    /// 工作环/状态点的语义（F6）：Working = 强调色旋转；WorkingNeedsAction = 注意色（黄）旋转（工作中且等待提问/权限）；
-    /// NeedsAction = 注意色静止环（未在工作但等待提问/权限）；Failed = 严重色（红）静止环（未读的失败/中断完成）；
-    /// Unread = 普通未读圆点；None = 不显示。
+    /// 标签状态位的语义：等待处理为注意色实心叹号，重试为静止刷新箭头；主会话/子智能体工作为强调色/灰色同步环；
+    /// 未读失败为红色环加叉，未读中断为灰色环加横线，普通未读为圆点；空闲时收起。
     /// </summary>
     internal enum SessionIndicatorTone
     {
@@ -35,20 +34,25 @@ public sealed partial class OpenCodePage
         Working,
         WorkingNeedsAction,
         NeedsAction,
+        Retrying,
         Failed,
+        Interrupted,
+        BackgroundWorking,
         Unread,
     }
 
-    /// <summary>纯函数：由会话 UI 状态得出指示器语义（未知字段不臆测为待处理/失败）。</summary>
+    /// <summary>纯函数：等待你 > 重试 > 工作中 > 未读失败/中断 > 子智能体 > 未读 > 空闲；未知字段不臆测。</summary>
     internal static SessionIndicatorTone ClassifySessionIndicator(OpenCodeSessionUiState? state)
     {
         if (state is null) return SessionIndicatorTone.None;
+        if (state.PendingAction == true)
+            return state.Working == true ? SessionIndicatorTone.WorkingNeedsAction : SessionIndicatorTone.NeedsAction;
         if (state.Working == true)
-            return state.PendingAction == true ? SessionIndicatorTone.WorkingNeedsAction : SessionIndicatorTone.Working;
-        if (state.PendingAction == true) return SessionIndicatorTone.NeedsAction;
-        if (state.IsUnread)
-            return state.Completion?.Outcome is "failed" or "interrupted" ? SessionIndicatorTone.Failed : SessionIndicatorTone.Unread;
-        return SessionIndicatorTone.None;
+            return state.Retry is not null ? SessionIndicatorTone.Retrying : SessionIndicatorTone.Working;
+        if (state.IsUnread && state.Completion?.Outcome == "failed") return SessionIndicatorTone.Failed;
+        if (state.IsUnread && state.Completion?.Outcome == "interrupted") return SessionIndicatorTone.Interrupted;
+        if (state.BackgroundWorking == true) return SessionIndicatorTone.BackgroundWorking;
+        return state.IsUnread ? SessionIndicatorTone.Unread : SessionIndicatorTone.None;
     }
 
     private static readonly IReadOnlyDictionary<string, OpenCodeSessionUiState> NoSessionUiStates =

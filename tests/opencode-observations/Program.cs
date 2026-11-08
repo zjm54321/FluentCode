@@ -43,6 +43,7 @@ static partial class Checks
             ("toast body/button routing and F2 regression", ToastRouting),
             ("pagination anchors, short pages and exhausted budgets", Pagination),
             ("cross-turn outcome and evidence age", Evidence),
+            ("background facts/counts preserve evidence, reach actual App store and clear when children finish", BackgroundFacts),
             ("never-run configuration history and unchanged protection", ConfigurationHistory),
             ("internal wakeups preserve idle, real unread results and attention", InternalMessages),
             ("startup/reconnect never invent unread completions", RestartBaseline),

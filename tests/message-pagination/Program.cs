@@ -334,6 +334,8 @@ internal static partial class Program
                 ("held SSE readiness does not block REST paint; bounded first-ready/reconnect repair", FirstPaintAndRepair),
                 ("inflight deltas beat snapshot; stale readiness ignored; workflow reconciliation deferred", SnapshotAndReadinessFences),
                 ("authoritative SSE/active REST publish composer activity without stale overwrite", ActivityPublication),
+                ("per-session retry changes/clears republish tab status without changing Working", RetryTabPublication),
+                ("connected SSE child-only work reaches grey-tab classification; terminal clears; source/session/continuity stay fenced", ConnectedBackgroundTabs),
                 ("background child completion refreshes parent row/result/count/tree without parent part events", BackgroundChildCompletion),
                 ("healthy SSE skips periodic messages/status HTTP; reconnect and session switch restore fallback", HealthyStreamSkipsPolling),
                 ("SSE execution window excludes retained older history across rollback boundaries", StreamExecutionWindowExcludesOlderHistory),
