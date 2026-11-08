@@ -226,9 +226,10 @@ public sealed partial class OpenCodeNotificationMonitor
 
     /// <summary>Explicit opened-and-visible session only. Reads the server watermark anew; never DateTime.Now.
     /// The caller's source/selection fence guards POST initiation, including exact-watermark receipt retries.</summary>
-    internal async Task<double?> AcknowledgeSessionAsync(string session, double coveredIdle, Func<Action, bool> fence, CancellationToken token)
+    internal async Task<double?> AcknowledgeSessionAsync(string session, double coveredIdle, Func<Action, bool> fence, CancellationToken token,
+        Action? onReceiptStarted = null)
     {
-        if (!double.IsFinite(coveredIdle)) return null;
+        if (!double.IsFinite(coveredIdle) || coveredIdle < 0) return null;
         await _ack.WaitAsync(token).ConfigureAwait(false);
         try
         {
@@ -238,15 +239,22 @@ public sealed partial class OpenCodeNotificationMonitor
             var at = DateTimeOffset.UtcNow;
             var info = await ReadSessionAsync(session, token).ConfigureAwait(false);
             if (!Active(session, state) || !Fresh(at) || info?.Id != session || info.Time?.Idle is not { } idle
-                || !double.IsFinite(idle) || coveredIdle > idle) return null;
+                || !double.IsFinite(idle) || coveredIdle != idle
+                || info.Outcome is not ("succeeded" or "failed" or "interrupted")) return null;
             // Reconcile an uncertain successful POST before repeating the same monotone receipt.
             if (info.Time.Viewed is { } viewed && double.IsFinite(viewed) && viewed >= coveredIdle)
                 return fence(() => { }) ? coveredIdle : null;
             Task? post = null;
             lock (_sync)
             {
-                if (!Active(session, state)) return null;
-                if (!fence(() => post = _source.Client.MarkSessionViewedAsync(session, coveredIdle, token))) return null;
+                // Session.Info clears outcome while busy. A newer observed start also vetoes
+                // a terminal GET that raced execution; never acknowledge an old idle mid-turn.
+                if (!Active(session, state) || state.EventWorking == true) return null;
+                if (!fence(() =>
+                {
+                    onReceiptStarted?.Invoke(); // Primitive/thread-safe callback only; no XAML.
+                    post = _source.Client.MarkSessionViewedAsync(session, coveredIdle, token);
+                })) return null;
             }
             await post!.ConfigureAwait(false);
             if (!Active(session, state) || !fence(() => { })) return null;

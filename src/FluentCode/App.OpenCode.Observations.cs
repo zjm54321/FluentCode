@@ -111,11 +111,13 @@ public partial class App
 
     /// <summary>UI-thread entry for the page AFTER the exact session is opened and visible. The optional
     /// callback must read a thread-safe selection snapshot, not XAML; false cancels a changed selection.
-    /// Pass the idle watermark actually rendered by the page, never a subsequently refreshed watermark.
+    /// Pass the terminal idle watermark in the page's current accepted history/layout.
     /// Returns that exact acknowledged watermark, or null if no safe receipt was obtained.
-    /// No permission/form acknowledgement; the page may retry this exact receipt with fresh visibility proof.</summary>
+    /// No permission/form acknowledgement. onReceiptStarted runs at POST initiation (no XAML);
+    /// only an uncertain started receipt authorizes an automatic exact-watermark retry.</summary>
     public async Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision,
-        string sessionId, double coveredIdle, Func<bool>? isStillVisible = null, CancellationToken cancellationToken = default)
+        string sessionId, double coveredIdle, Func<bool>? isStillVisible = null, CancellationToken cancellationToken = default,
+        Action? onReceiptStarted = null)
     {
         RequireAppThread();
         if (_closing || !double.IsFinite(coveredIdle) || revision != source.Revision || !ReferenceEquals(source, CurrentOpenCodePageSource)) return null;
@@ -135,7 +137,7 @@ public partial class App
         }
         try
         {
-            var idle = await monitor.AcknowledgeSessionAsync(sessionId, coveredIdle, Fence, linked.Token).ConfigureAwait(false);
+            var idle = await monitor.AcknowledgeSessionAsync(sessionId, coveredIdle, Fence, linked.Token, onReceiptStarted).ConfigureAwait(false);
             if (idle is { } covered)
                 PostToApp(() =>
                 {

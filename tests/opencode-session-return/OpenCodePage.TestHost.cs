@@ -85,9 +85,10 @@ namespace FluentCode
         internal sealed record Ack(string Endpoint, string Session, double Watermark, Func<bool> Fence);
         internal List<Ack> Acks { get; } = new();
         public Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision,
-            string sessionId, double watermark, Func<bool> fence, CancellationToken token)
+            string sessionId, double watermark, Func<bool> fence, CancellationToken token, Action? onReceiptStarted = null)
         {
             Acks.Add(new(source.Identity, sessionId, watermark, fence));
+            onReceiptStarted?.Invoke();
             return Task.FromResult<double?>(null); // Match the production exact-watermark receipt; unknown here.
         }
     }
@@ -147,7 +148,7 @@ namespace FluentCode.Pages
         private readonly OpenCodeConversationView _conversationView = new();
         private readonly ReturnHostScroll MessageScroll = new();
         private readonly Border _ackRoot = new();
-        private readonly ScrollContentPresenter _ackPresenter = new();
+        private readonly Microsoft.UI.Xaml.Controls.Primitives.ScrollPresenter _ackPresenter = new();
         private bool _ackTreeBound;
         private const int MaxScrollSettlePasses = 3;
         private bool _isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow, _refreshQueuedExplicit;
@@ -283,7 +284,7 @@ namespace FluentCode.Pages
         private void RestartSessionEventSync(string id) { }
         private void QueueChildInteractionDiscovery() { } // Permission routing runs source-linked in opencode-event-sync.
         private void StopEventSync() { }
-        // Inert native layout input only: uses the real ConversationView CaptureIdleViewport query.
+        // Layout input only; the real completion capture never walks viewport geometry.
         internal void ProveViewport()
         {
             if (!_ackTreeBound)

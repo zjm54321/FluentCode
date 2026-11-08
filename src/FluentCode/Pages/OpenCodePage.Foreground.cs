@@ -25,6 +25,8 @@ public sealed partial class OpenCodePage
             // Self-owned subscriptions also cover silent tab changes and collapsed cached pages.
             SessionTabs.SelectionChanged += (_, _) =>
             {
+                foreach (var attempt in _viewAcknowledgementAttempted.Values)
+                    if (attempt.Deferred) { attempt.Deferred = false; attempt.Count = 0; }
                 InvalidateViewAcknowledgement(); // Revoke worker fences before background-tab work.
                 UpdateForegroundNotificationSession();
                 RequestViewAcknowledgementReview();

@@ -160,7 +160,8 @@ static partial class Checks
         internal readonly ConcurrentDictionary<string, string> Parents = new();
         internal readonly ConcurrentDictionary<string, OpenCodeSessionObservation> Latest = new();
         internal readonly ConcurrentQueue<OpenCodeSessionObservation> Published = new();
-        internal int EventRequests, ActiveRequests, OpenStreams, MaxOpenStreams;
+        internal int EventRequests, ActiveRequests, OpenStreams, MaxOpenStreams, ViewPosts;
+        internal bool LoseViewResponse;
         internal bool RejectEvents;
         internal bool Running = true;
         internal TaskCompletionSource? ActiveStarted, ActiveFinish;
@@ -189,6 +190,7 @@ static partial class Checks
             var fields = path.Split('/');
             if (fields.Length < 4) throw new Exception("Unexpected fake route " + path);
             var session = fields[3];
+            if (path.EndsWith("/view")) return ViewAsync(request, session);
             var pending = Pending.GetValueOrDefault(session);
             if (path.EndsWith("/message"))
             {
@@ -214,6 +216,17 @@ static partial class Checks
             return Task.FromResult(Json(new { data = Array.Empty<object>() }));
         }
         internal int ReadCount(string session) => Reads.GetValueOrDefault(session);
+        private async Task<HttpResponseMessage> ViewAsync(HttpRequestMessage request, string session)
+        {
+            using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
+            var idle = body.RootElement.GetProperty("idle").GetDouble();
+            var info = Info[session];
+            Check(info.Time?.Idle == idle && info.Outcome is not null, "view POST covers exact idle terminal snapshot");
+            ViewPosts++;
+            Info[session] = info with { Time = info.Time! with { Viewed = idle } };
+            if (LoseViewResponse) throw new HttpRequestException("synthetic lost view response after commit");
+            return new(HttpStatusCode.NoContent);
+        }
         internal int Observed(string session) => Observations.GetValueOrDefault(session);
         private async Task<HttpResponseMessage> Delayed(HttpResponseMessage response, TaskCompletionSource finish)
         { ActiveStarted?.TrySetResult(); await finish.Task; return response; }

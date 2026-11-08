@@ -8,6 +8,58 @@ using FluentCode.Services.OpenCode;
 
 static partial class Checks
 {
+    private static async Task ViewReceiptLifecycle()
+    {
+        const string session = "ses_root";
+        using var backend = new PushBackend { Running = false };
+        backend.Info[session] = new() { Id = session, Outcome = "succeeded", Time = new() { Idle = 100 } };
+        using var http = new HttpClient(backend); using var client = Client(http);
+        var source = new OpenCodePageSource("ep-receipt", 1, () => client);
+        using (var monitor = new OpenCodeNotificationMonitor((CompletionNotificationService?)null, new(source.Identity, client)))
+        {
+            var app = new FluentCode.App(); app.SetSource(source, monitor);
+            monitor.TrackSession(session);
+            Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, session, 99) is null && backend.ViewPosts == 0,
+                "old viewport cannot POST a watermark other than exact time_idle");
+            backend.Info[session] = backend.Info[session] with { Outcome = null };
+            Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, session, 100) is null && backend.ViewPosts == 0,
+                "busy session retaining a previous idle watermark never POSTs");
+            backend.Info[session] = backend.Info[session] with { Outcome = "succeeded" };
+            Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, session, 100, () => false) is null && backend.ViewPosts == 0,
+                "hidden or changed selection cannot POST");
+            Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, session, 100) == 100 && backend.ViewPosts == 1,
+                "opening idle session lands exact receipt");
+            Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, session, 100) == 100 && backend.ViewPosts == 1,
+                "confirmed watermark is reconciled without duplicate POST");
+            // Stop creates a NEW idle watermark, even with no new assistant content.
+            backend.Info[session] = backend.Info[session] with { Outcome = "interrupted", Time = new() { Idle = 200, Viewed = 100 } };
+            app.UpdateOpenCodeForegroundSession(new object(), source, session, true);
+            var now = DateTimeOffset.UtcNow;
+            app.Observe(monitor, new(source.Identity, session, new(OpenCodeExecutionState.Idle, false, true, false, false, []),
+                "interrupted", 200, 100, now) { InfoObservedAt = now, CompletionObservedAt = now });
+            app.Drain();
+            Check(!app.GetOpenCodeSessionUiSnapshot(source, 1)!.Sessions.Single(state => state.SessionId == session).IsUnread,
+                "interrupted completion stays read under existing local viewed lease");
+            backend.LoseViewResponse = true;
+            Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, session, 200) is null && backend.ViewPosts == 2,
+                "lost stop receipt remains uncertain after the server commits it");
+            backend.LoseViewResponse = false;
+            Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, session, 200) == 200 && backend.ViewPosts == 2,
+                "uncertain receipt retry reconciles durable watermark without another POST");
+        }
+        await using var restarted = new OpenCodeNotificationMonitor((CompletionNotificationService?)null, new(source.Identity, client));
+        backend.Attach(restarted); restarted.TrackSession(session); restarted.Start();
+        var stream = await backend.Connections.Reader.ReadAsync();
+        await stream.SendAsync(ObservationSse.Wire("server.connected", new { }));
+        await Eventually(() => backend.Observed(session) >= 1, "view receipt restart baseline");
+        var store = new OpenCodeSessionUiStateStore(source.Identity, 2);
+        store.Apply(new(source.Identity, 2, session, Completion: new("interrupted", 200),
+            ViewedWatermark: backend.Latest[session].ViewedWatermark), DateTimeOffset.UtcNow);
+        Check(backend.Latest[session].ViewedWatermark == 200 && !store.GetSnapshot().Sessions.Single().IsUnread,
+            "real SSE bootstrap seeds persisted stop watermark after restart; no unread returns");
+        await restarted.StopAsync();
+    }
+
     private static Task ViewedSessionAttention()
     {
         const string endpoint = "ep-view-attention";

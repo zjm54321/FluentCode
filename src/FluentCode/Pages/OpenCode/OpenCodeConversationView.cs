@@ -15,10 +15,8 @@ using Windows.Foundation;
 
 namespace FluentCode.Pages.OpenCode;
 
-// UI-thread snapshots only. The Page must bind these to its captured source/session/view owner;
-// message DTOs do not contain a session ID. Rectangles are in the supplied ScrollView's coordinates.
-internal sealed record OpenCodeVisibleIdle(string MessageId, double Watermark, Rect LabelBounds, Rect EffectiveViewport, Rect ScrollBounds);
-internal sealed record OpenCodeIdleViewportSnapshot(long RenderVersion, OpenCodeVisibleIdle? Candidate);
+// UI-thread content snapshot. The Page binds it to the current source/session/history owner.
+internal sealed record OpenCodeIdleCompletion(string MessageId, double Watermark, string Outcome, long RenderVersion);
 
 /// <summary>
 /// OpenCode 会话消息时间线的纯 C# 展示控件（<see cref="StackPanel"/> 子类）。
@@ -601,132 +599,17 @@ public sealed class OpenCodeConversationView : StackPanel
         }
     }
 
-    /// <summary>Actual visible layout proof, not message-list membership: a visible idle label OR
-    /// the bottom edge of the completed turn's latest content. The separator may be below the viewport.
-    /// Call on the UI thread at the Page's one-shot rendered-frame review, after layout.
-    /// No candidate is returned during mutation or before this version's LayoutUpdated.</summary>
+    /// <summary>The accepted history has completed layout for its current render version.</summary>
     internal bool IsIdleLayoutCurrent => !_idleContentChanging && _idleSnapshotComplete && _idleLayoutVersion == RenderVersion;
 
-    internal OpenCodeIdleViewportSnapshot CaptureIdleViewport(ScrollView viewport)
+    internal OpenCodeIdleCompletion? CaptureIdleCompletion()
     {
-        OpenCodeVisibleIdle? best = null;
-        // Shared ancestors need only one native TransformToVisual per proof pass. Never retain
-        // transforms across layout/scroll frames: that would turn stale geometry into ACK evidence.
-        var transforms = new Dictionary<FrameworkElement, GeneralTransform>();
-        if (!_idleContentChanging && _idleSnapshotComplete && _idleLayoutVersion == RenderVersion)
-            for (var index = 0; index < _entries.Count; index++)
-            {
-                var entry = _entries[index];
-                if (entry.MessageType != OpenCodeMessageTypes.Idle
-                    || string.IsNullOrWhiteSpace(entry.IdleMessageId) || _messageIdCounts.GetValueOrDefault(entry.IdleMessageId) != 1
-                    || entry.IdleWatermark is not { } water || !double.IsFinite(water) || water < 0) continue;
-                Rect bounds = default, clip = default;
-                var visible = entry.IdleLabel is { } label && !string.IsNullOrWhiteSpace(label.Text)
-                    && ReferenceEquals(entry.Element.Parent, this) && ReferenceEquals(VisualTreeHelper.GetParent(label), entry.Element)
-                    && TryIdleBounds(label, viewport, transforms, out bounds, out clip);
-                if (!visible)
-                    for (var prior = index - 1; prior >= 0; prior--)
-                    {
-                        var content = _entries[prior];
-                        if (content.MessageType == OpenCodeMessageTypes.Idle) break;
-                        if (content.Snapshot?.IsInternalInitiator == true || content.MessageType is "agent-switched" or "model-switched" or "location-switched") continue;
-                        // Never substitute an older row for an unrealized latest message.
-                        visible = content.Realized && ReferenceEquals(content.Element.Parent, this)
-                            && TryIdleBounds(content.Element, viewport, transforms, out bounds, out clip, bottomOnly: true);
-                        break;
-                    }
-                if (!visible) continue;
-                if (best is null || water > best.Watermark || (water == best.Watermark && string.CompareOrdinal(entry.IdleMessageId, best.MessageId) < 0))
-                    best = new(entry.IdleMessageId, water, bounds, clip, new Rect(0, 0, viewport.ActualWidth, viewport.ActualHeight));
-            }
-        return new(RenderVersion, best);
-    }
-
-    private bool TryIdleBounds(FrameworkElement label, ScrollView viewport, Dictionary<FrameworkElement, GeneralTransform> transforms, out Rect bounds, out Rect clip, bool bottomOnly = false)
-    {
-        bounds = clip = default;
-        try
-        {
-            if (viewport.XamlRoot is not { } root || !Positive(viewport.ActualWidth) || !Positive(viewport.ActualHeight)
-                || !TryBounds(label, viewport, bottomOnly
-                    ? new Rect(0, Math.Max(0, label.ActualHeight - 1), label.ActualWidth, Math.Min(1, label.ActualHeight))
-                    : new Rect(0, 0, label.ActualWidth, label.ActualHeight), transforms, out bounds)) return false;
-            clip = new Rect(0, 0, viewport.ActualWidth, viewport.ActualHeight);
-            var hasView = false;
-            var hasScroll = false;
-            var hasPresenter = false;
-            DependencyObject? current = label;
-            var depth = 0;
-            for (; current is not null && depth++ < 512; current = VisualTreeHelper.GetParent(current))
-            {
-                if (current is UIElement ui && (ui.Visibility != Visibility.Visible || !Positive(ui.Opacity))) return false;
-                if (current is not FrameworkElement node) return false;
-                if (!node.IsLoaded || !ReferenceEquals(node.XamlRoot, root)) return false;
-                // Also stay inside ancestor layout bounds. This is deliberately conservative about
-                // implicit layout clips (which WinUI does not expose as an IsArrangeValid contract).
-                if (!ReferenceEquals(node, label))
-                {
-                    if (!TryBounds(node, viewport, new Rect(0, 0, node.ActualWidth, node.ActualHeight), transforms, out var layoutBounds)) return false;
-                    clip = Intersect(clip, layoutBounds);
-                }
-                hasView |= ReferenceEquals(node, this);
-                hasScroll |= ReferenceEquals(node, viewport);
-                // Native ScrollContentPresenter is the template's actual clipping viewport, excluding chrome.
-                if (node is ScrollContentPresenter)
-                {
-                    if (!hasScroll) hasPresenter = true;
-                }
-                if (node is Border border)
-                {
-                    var corners = border.CornerRadius;
-                    var inset = Math.Max(Math.Max(corners.TopLeft, corners.TopRight), Math.Max(corners.BottomLeft, corners.BottomRight));
-                    if (inset > 0)
-                    {
-                        // A rounded ancestor can implicitly clip even when UIElement.Clip is null.
-                        // Its central inset rectangle is conservative, not the rounded bounding box.
-                        if (!TryBounds(node, viewport, new Rect(inset, inset, node.ActualWidth - 2 * inset, node.ActualHeight - 2 * inset), transforms, out var roundSafe)) return false;
-                        clip = Intersect(clip, roundSafe);
-                    }
-                }
-                if (node.Clip is { } rectangle)
-                {
-                    // WinUI Clip is RectangleGeometry (not WPF's arbitrary Geometry).
-                    // An additional clip transform is not proven by this axis-aligned query.
-                    if (rectangle.Transform is not null
-                        || !TryBounds(node, viewport, rectangle.Rect, transforms, out var explicitClip)) return false;
-                    clip = Intersect(clip, explicitClip);
-                }
-            }
-            if (current is not null || !hasView || !hasScroll || !hasPresenter) return false;
-            return Positive(clip.Width) && Positive(clip.Height) && bounds.X >= clip.X && bounds.Y >= clip.Y
-                && bounds.Right <= clip.Right && bounds.Bottom <= clip.Bottom;
-        }
-        catch (Exception) { return false; } // Detached tree/invalid transforms are absence of proof.
-    }
-
-    private static bool Positive(double value) => double.IsFinite(value) && value > 0;
-    private static Rect Intersect(Rect a, Rect b)
-    {
-        var x = Math.Max(a.X, b.X); var y = Math.Max(a.Y, b.Y);
-        return new Rect(x, y, Math.Max(0, Math.Min(a.Right, b.Right) - x), Math.Max(0, Math.Min(a.Bottom, b.Bottom) - y));
-    }
-    private static bool TryBounds(FrameworkElement node, UIElement target, Rect local, Dictionary<FrameworkElement, GeneralTransform> transforms, out Rect bounds)
-    {
-        bounds = default;
-        if (!double.IsFinite(local.X) || !double.IsFinite(local.Y) || !Positive(local.Width) || !Positive(local.Height)) return false;
-        if (!transforms.TryGetValue(node, out var transform))
-            transforms[node] = transform = node.TransformToVisual(target);
-        var a = transform.TransformPoint(new Point(local.X, local.Y));
-        var b = transform.TransformPoint(new Point(local.Right, local.Y));
-        var c = transform.TransformPoint(new Point(local.X, local.Bottom));
-        var d = transform.TransformPoint(new Point(local.Right, local.Bottom));
-        // Reject rotation/skew/reflection: bounding boxes alone overstate visible area in those cases.
-        if (!double.IsFinite(a.X) || !double.IsFinite(a.Y) || !double.IsFinite(b.X) || !double.IsFinite(b.Y)
-            || !double.IsFinite(c.X) || !double.IsFinite(c.Y) || !double.IsFinite(d.X) || !double.IsFinite(d.Y)
-            || Math.Abs(a.Y - b.Y) > 0.000001 || Math.Abs(a.X - c.X) > 0.000001
-            || Math.Abs(b.X - d.X) > 0.000001 || Math.Abs(c.Y - d.Y) > 0.000001 || b.X <= a.X || c.Y <= a.Y) return false;
-        bounds = new Rect(a.X, a.Y, b.X - a.X, c.Y - a.Y);
-        return Positive(bounds.Width) && Positive(bounds.Height);
+        if (!IsIdleLayoutCurrent) return null;
+        var entry = _entries.LastOrDefault(static entry => entry.MessageType == OpenCodeMessageTypes.Idle);
+        if (entry?.IdleMessageId is not { Length: > 0 } id || _messageIdCounts.GetValueOrDefault(id) != 1
+            || entry.IdleWatermark is not { } watermark || !double.IsFinite(watermark) || watermark < 0
+            || entry.Snapshot?.Outcome is not ("succeeded" or "failed" or "interrupted")) return null;
+        return new(id, watermark, entry.Snapshot.Outcome, RenderVersion);
     }
     private sealed class SteerRow
     {
@@ -919,7 +802,6 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private sealed class Entry
     {
-        internal TextBlock? IdleLabel { get; init; }
         internal string? IdleMessageId { get; set; }
         internal double? IdleWatermark { get; set; }
         public required string Key { get; init; }
@@ -3638,7 +3520,7 @@ public sealed class OpenCodeConversationView : StackPanel
         }
 
         Apply(message);
-        return new Entry { Key = key, Element = row, Update = Apply, IdleLabel = text };
+        return new Entry { Key = key, Element = row, Update = Apply };
     }
 
     private static string DescribeIdleSeparator(OpenCodeMessage message)

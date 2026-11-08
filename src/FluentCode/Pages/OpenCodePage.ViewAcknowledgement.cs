@@ -10,8 +10,8 @@ using Microsoft.UI.Xaml.Media;
 
 namespace FluentCode.Pages;
 
-/// <summary>Applied content only requests a viewport review. Only a current, layout/frame-verified
-/// content proof can initiate the exact-watermark ACK. Background fences never read XAML.</summary>
+/// <summary>A selected foreground session with current idle history/layout acknowledges that exact
+/// completion watermark. Viewport geometry never decides whether the session was viewed.</summary>
 public sealed partial class OpenCodePage
 {
     // Successful receipts deduplicate across reflow. Unconfirmed receipts are safe to repeat for
@@ -21,14 +21,15 @@ public sealed partial class OpenCodePage
     private sealed class ViewAcknowledgementAttempt
     {
         internal int Count;
-        internal bool InFlight, Confirmed;
+        internal bool InFlight, Confirmed, Deferred;
+        internal ViewportOwner? DeferredOwner;
         internal DateTimeOffset RetryAfter;
     }
     private readonly Dictionary<ViewAcknowledgementKey, ViewAcknowledgementAttempt> _viewAcknowledgementAttempted = new();
     private CancellationTokenSource? _viewAcknowledgementRetry;
 
     private sealed record ViewportOwner(string Identity, MessageHistoryRead Read, OpenCodeConversationView Conversation);
-    private sealed record ViewAcknowledgementLive(ViewportOwner Owner, OpenCodeIdleViewportSnapshot Snapshot, long ProofVersion);
+    private sealed record ViewAcknowledgementLive(ViewportOwner Owner, OpenCodeIdleCompletion Completion, long ProofVersion);
     private volatile ViewAcknowledgementLive? _viewAcknowledgementLive;
     private ViewAcknowledgementLive? _viewAcknowledgementAwaitingReview;
     private bool _viewAcknowledgementWindowVisible;
@@ -91,7 +92,7 @@ public sealed partial class OpenCodePage
         if (!DispatcherQueue.HasThreadAccess) return;
         if (windowVisible && !_viewAcknowledgementWindowVisible)
             foreach (var attempt in _viewAcknowledgementAttempted.Values)
-                if (!attempt.Confirmed && !attempt.InFlight) { attempt.Count = 0; attempt.RetryAfter = default; }
+                if (!attempt.Confirmed && !attempt.InFlight) { attempt.Count = 0; attempt.Deferred = false; attempt.RetryAfter = default; }
         _viewAcknowledgementWindowVisible = windowVisible;
         if (!windowVisible) InvalidateViewAcknowledgement();
         else
@@ -143,7 +144,7 @@ public sealed partial class OpenCodePage
             return;
         }
         _viewAcknowledgementAwaitingReview ??= _viewAcknowledgementLive;
-        _viewAcknowledgementLive = null; // Reflow/scroll revokes background fences synchronously, without reading geometry.
+        _viewAcknowledgementLive = null; // Synchronously revoke worker fences until current layout is reviewed.
         if (!_conversationView.IsIdleLayoutCurrent) return;
         if (_viewportFrame is not null) return;
         var owner = new ViewportOwner(source.Identity, CaptureMessageHistoryRead(client, session), _conversationView);
@@ -155,16 +156,16 @@ public sealed partial class OpenCodePage
             if (!ReferenceEquals(_viewportFrame, frame)) return;
             CancelViewAcknowledgementFrame();
             if (!IsViewportOwnerCurrent(owner)) { InvalidateViewAcknowledgement(); return; }
-            // Exactly one geometry walk per rendered frame, after WinUI layout. The view's
-            // layout/render-version gate rejects in-flight mutations; reflow revokes fences above.
-            var snapshot = owner.Conversation.CaptureIdleViewport(MessageScroll);
+            // Accepted terminal history and its current layout, independent of label position,
+            // virtualization, clipping, or the native ScrollView template.
+            var completion = owner.Conversation.CaptureIdleCompletion();
             var pending = _viewAcknowledgementAwaitingReview;
             _viewAcknowledgementAwaitingReview = null;
-            if (snapshot.Candidate is null) return;
+            if (completion is null) return;
             // Unrelated layout can leave the exact same immutable proof valid. Reuse its identity
             // after rechecking so an in-flight ACK isn't permanently fenced by an unchanged layout.
-            var proof = pending is not null && pending.Owner == owner && pending.Snapshot == snapshot
-                ? pending : new ViewAcknowledgementLive(owner, snapshot, ++_viewportProofVersion);
+            var proof = pending is not null && pending.Owner == owner && pending.Completion == completion
+                ? pending : new ViewAcknowledgementLive(owner, completion, ++_viewportProofVersion);
             _viewAcknowledgementLive = proof;
             TryAcknowledgeViewport(proof);
         };
@@ -175,14 +176,19 @@ public sealed partial class OpenCodePage
     private void TryAcknowledgeViewport(ViewAcknowledgementLive proof)
     {
         if (!ReferenceEquals(_viewAcknowledgementLive, proof) || !IsViewportOwnerCurrent(proof.Owner)
-            || proof.Snapshot.Candidate is not { } candidate || !double.IsFinite(candidate.Watermark) || candidate.Watermark < 0) return;
-        var key = new ViewAcknowledgementKey(proof.Owner.Identity, proof.Owner.Read.SessionId, candidate.Watermark);
+            || !double.IsFinite(proof.Completion.Watermark) || proof.Completion.Watermark < 0) return;
+        var key = new ViewAcknowledgementKey(proof.Owner.Identity, proof.Owner.Read.SessionId, proof.Completion.Watermark);
         if (!_viewAcknowledgementAttempted.TryGetValue(key, out var attempt))
         {
             if (_viewAcknowledgementAttempted.Count >= ViewAcknowledgementAttemptCap) return;
             _viewAcknowledgementAttempted.Add(key, attempt = new());
         }
-        if (attempt.Confirmed || attempt.InFlight || attempt.Count >= 4) return;
+        if (attempt.Deferred && attempt.DeferredOwner != proof.Owner)
+        {
+            attempt.Deferred = false;
+            attempt.Count = 0;
+        }
+        if (attempt.Confirmed || attempt.InFlight || attempt.Deferred || attempt.Count >= 4) return;
         if (DateTimeOffset.UtcNow < attempt.RetryAfter) { ScheduleViewAcknowledgementRetry(proof, attempt); return; }
         attempt.InFlight = true;
         attempt.Count++;
@@ -192,6 +198,7 @@ public sealed partial class OpenCodePage
     private async Task AcknowledgeRenderedAsync(ViewAcknowledgementLive proof, ViewAcknowledgementAttempt attempt)
     {
         double? receipt = null;
+        var receiptStarted = false;
         try
         {
             if (Application.Current is not App app || proof.Owner.Read.Source is not { } source) return;
@@ -199,7 +206,7 @@ public sealed partial class OpenCodePage
             // Thread-safe source state + immutable volatile reference only; never XAML/Transform/layout.
             bool IsStillVisible() => !source.IsRevoked && ReferenceEquals(_viewAcknowledgementLive, proof);
             receipt = await app.AcknowledgeOpenCodeSessionAsync(source, proof.Owner.Read.Revision, proof.Owner.Read.SessionId,
-                proof.Snapshot.Candidate!.Watermark, IsStillVisible, operationCts.Token);
+                proof.Completion.Watermark, IsStillVisible, operationCts.Token, () => receiptStarted = true);
         }
         catch (Exception) { /* An uncertain receipt can be retried, but only with fresh visibility proof. */ }
         finally
@@ -207,8 +214,10 @@ public sealed partial class OpenCodePage
             DispatcherQueue.TryEnqueue(() =>
             {
                 attempt.InFlight = false;
-                attempt.Confirmed = receipt == proof.Snapshot.Candidate!.Watermark;
-                if (!attempt.Confirmed && attempt.Count < 4)
+                attempt.Confirmed = receipt == proof.Completion.Watermark;
+                attempt.Deferred = !attempt.Confirmed && !receiptStarted;
+                attempt.DeferredOwner = attempt.Deferred ? proof.Owner : null;
+                if (!attempt.Confirmed && receiptStarted && attempt.Count < 4)
                 {
                     attempt.RetryAfter = DateTimeOffset.UtcNow.AddMilliseconds(attempt.Count switch { 1 => 250, 2 => 1000, _ => 4000 });
                     if (IsViewportOwnerCurrent(proof.Owner)) ScheduleViewAcknowledgementRetry(proof, attempt);

@@ -76,29 +76,32 @@ namespace Microsoft.UI.Xaml.Media
 }
 namespace FluentCode.Pages.OpenCode
 {
-    internal sealed record OpenCodeVisibleIdle(string MessageId, double Watermark, Windows.Foundation.Rect LabelBounds,
-        Windows.Foundation.Rect EffectiveViewport, Windows.Foundation.Rect ScrollBounds);
-    internal sealed record OpenCodeIdleViewportSnapshot(long RenderVersion, OpenCodeVisibleIdle? Candidate);
+    internal sealed record OpenCodeIdleCompletion(string MessageId, double Watermark, string Outcome, long RenderVersion);
     internal sealed class OpenCodeConversationView : Microsoft.UI.Xaml.Element
     {
         internal void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollView viewport, Func<bool> ownerCurrent) { }
         internal long RenderVersion { get; private set; }
-        private OpenCodeVisibleIdle? _candidate;
-        internal bool IsIdleLayoutCurrent => _candidate is not null;
+        private IReadOnlyList<OpenCodeMessage> _messages = Array.Empty<OpenCodeMessage>();
+        internal bool IsIdleLayoutCurrent { get; private set; }
         internal int Captures;
         internal event EventHandler? IdleViewportInvalidated;
         internal int InvalidatedListeners => IdleViewportInvalidated?.GetInvocationList().Length ?? 0;
         internal void ApplyMessages(IReadOnlyList<OpenCodeMessage> rows)
-        { RenderVersion++; _candidate = null; IdleViewportInvalidated?.Invoke(this, EventArgs.Empty); }
+        { RenderVersion++; _messages = rows; IsIdleLayoutCurrent = false; IdleViewportInvalidated?.Invoke(this, EventArgs.Empty); }
         internal bool TryApplyRefreshedMessages(IReadOnlyList<OpenCodeMessage> rows) => false; // Geometry still requires explicit full apply/supply.
         internal long EstimateMessageBytes(OpenCodeMessage message)
             => 256 + 2L * System.Text.Json.JsonSerializer.Serialize(message, OpenCodeJson.Options).Length + 2L * (message.InstructionBody?.Length ?? 0);
         internal void ClearMessages() => ApplyMessages(Array.Empty<OpenCodeMessage>());
-        internal OpenCodeIdleViewportSnapshot CaptureIdleViewport(Microsoft.UI.Xaml.Controls.ScrollView viewport) { Captures++; return new(RenderVersion, _candidate); }
+        internal OpenCodeIdleCompletion? CaptureIdleCompletion()
+        {
+            Captures++;
+            var idle = System.Linq.Enumerable.LastOrDefault(_messages, message => message.Type == "idle");
+            return IsIdleLayoutCurrent && idle?.Id is { } id && idle.Time?.Created is { } watermark
+                && idle.Outcome is "succeeded" or "failed" or "interrupted" ? new(id, watermark, idle.Outcome, RenderVersion) : null;
+        }
         internal void SupplyGeometry(double? watermark, double x = 0)
         {
-            _candidate = watermark is { } value ? new("msg_visible_" + value, value,
-                new(x, 10, 100, 20), new(0, 0, 800, 600), new(0, 0, 800, 600)) : null;
+            IsIdleLayoutCurrent = true; // Layout is supplied independently of viewport geometry.
             Layout();
         }
     }
@@ -109,6 +112,7 @@ namespace FluentCode
     {
         public bool ResultUnknown { get; set; }
         public bool ThrowReceipt { get; set; }
+        public bool FailBeforeReceipt { get; set; }
         public int Calls, Posts, FenceBlocked;
         public double? LastSent;
         public Func<bool>? LastFence;
@@ -120,11 +124,13 @@ namespace FluentCode
             else if (ReferenceEquals(owner, _foregroundOwner)) { _foregroundOwner = null; ForegroundSession = null; }
         }
         public Task<double?> AcknowledgeOpenCodeSessionAsync(OpenCodePageSource source, long revision, string sessionId,
-            double coveredIdle, Func<bool>? isStillVisible = null, CancellationToken cancellationToken = default)
+            double coveredIdle, Func<bool>? isStillVisible = null, CancellationToken cancellationToken = default, Action? onReceiptStarted = null)
         {
             Calls++; LastSent = coveredIdle; LastFence = isStillVisible;
-            if (ThrowReceipt) throw new InvalidOperationException("synthetic receipt failure");
+            if (FailBeforeReceipt) return Task.FromResult<double?>(null);
             if (isStillVisible?.Invoke() == false) { FenceBlocked++; return Task.FromResult<double?>(null); }
+            onReceiptStarted?.Invoke();
+            if (ThrowReceipt) throw new InvalidOperationException("synthetic receipt failure");
             var receipt = ResultUnknown ? null : (double?)coveredIdle;
             if (receipt is null || isStillVisible?.Invoke() == false) return Task.FromResult<double?>(null);
             Posts++; return Task.FromResult(receipt);

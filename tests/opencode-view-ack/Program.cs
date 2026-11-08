@@ -26,20 +26,23 @@ internal static class Program
         try
         {
             foreach (var (name, run) in new (string, Func<Task>)[] {
-                ("Apply/layout/frame/old visible idle and coalesced geometry", Viewport),
+                ("selected idle history/layout acknowledges latest watermark without geometry", Viewport),
                 ("Home/blank/hidden/unknown history and non-UI block ACK", Visibility),
                 ("owner/frame/reflow fences and listener lifecycle", Fences),
                 ("uncertain/failed receipts use bounded backoff and fresh visibility/focus", Unknown),
                 ("512 attempt cap never evicts", Cap),
                 ("foreground notification publisher follows selected tab and host/page visibility", ForegroundPublisher),
                 ("background and settings tabs revoke ACK proof", BackgroundTabs),
+                ("stop interrupted watermark gets its own receipt exactly once", Interrupted),
+                ("known pre-POST failure is not an uncertain receipt retry", BeforePost),
+                ("busy history has no terminal watermark to acknowledge", Busy),
             })
             {
                 var before = _n; await run().WaitAsync(TimeSpan.FromSeconds(30));
                 Check(CompositionTarget.Count == 0, "no lingering frame subscription after scenario");
                 Console.WriteLine($"PASS {name}: {_n - before} assertions");
             }
-            Console.WriteLine($"PASS total {_n}; real ACK/visibility/binding/pagination guards; controlled frame/geometry/App boundary, not native layout or real POST.");
+            Console.WriteLine($"PASS total {_n}; real ACK/visibility/binding/pagination guards; controlled layout/App boundary, no viewport geometry or live POST.");
             return 0;
         }
         catch (Exception ex) { Console.WriteLine("FAIL: " + ex); return 1; }
@@ -82,35 +85,49 @@ internal static class Program
         page.Unload(); return Task.CompletedTask;
     }
 
+    private static Task Interrupted()
+    {
+        var (app, page) = Fixture("ep-interrupted");
+        Render(page, 100);
+        page.Apply(Window(new OpenCodeMessage { Id = "msg_stop", Type = "idle", Outcome = "interrupted", Time = new() { Created = 200 } }));
+        page.Layout(200); CompositionTarget.Frame();
+        Check(app.Calls == 2 && app.LastSent == 200, "stop acknowledges its new exact watermark without a new assistant message");
+        page.RepeatLayout(); CompositionTarget.Frame();
+        page.NotifyHostWindowVisibility(false); page.NotifyHostWindowVisibility(true); CompositionTarget.Frame();
+        Check(app.Calls == 2, "confirmed interrupted receipt never repeats on layout or focus");
+        page.Unload(); return Task.CompletedTask;
+    }
+
     private static Task Viewport()
     {
         var (app, page) = Fixture("ep-viewport");
         page.Apply(Window(Idle("msg_old", 100), Idle("msg_new", 220)));
-        Check(app.Calls == 0 && CompositionTarget.Count == 0, "Apply without actual layout candidate never ACKs or spins frames");
-        page.Layout(100);
+        Check(app.Calls == 0 && CompositionTarget.Count == 0, "Apply without current idle layout never ACKs or spins frames");
+        page.Layout(null); // No visible row or usable viewport geometry at all.
         Check(app.Calls == 0 && CompositionTarget.Count == 1, "layout requests exactly one fresh native-frame review");
         page.RepeatLayout(); page.Scroll();
         Check(CompositionTarget.Count == 1, "same geometry cannot add a frame per layout or scroll event");
         for (var i = 0; i < 100; i++) { page.RepeatLayout(); page.Scroll(); }
-        Check(page.ViewportCaptures == 0, "layout/scroll burst does not walk geometry before the rendered frame");
+        Check(page.ViewportCaptures == 0, "layout/scroll burst does not capture before the rendered frame");
         CompositionTarget.Frame();
-        Check(page.ViewportCaptures == 1, "one frame coalesces all geometry reviews to exactly one walk");
-        Check(app.Calls == 1 && app.LastSent == 100, "only actually visible old idle ACKed, not newer DTO 220");
+        Check(page.ViewportCaptures == 1, "one frame coalesces reviews to one content snapshot");
+        Check(app.Calls == 1 && app.LastSent == 220, "selected idle session ACKs current terminal220 without viewport geometry");
         var oldFence = app.LastFence!;
         page.RepeatLayout(); page.Scroll();
         Check(CompositionTarget.Count == 1 && !oldFence(), "reflow immediately revokes proof and coalesces its next frame review");
         CompositionTarget.Frame();
         Check(app.Calls == 1, "same watermark reproof does not duplicate ACK publication");
         Check(oldFence(), "unchanged post-frame geometry restores the same in-flight proof identity");
-        page.Layout(220);
-        Check(!oldFence() && app.Calls == 1 && CompositionTarget.Count == 1, "new visible candidate revokes old proof before next frame");
+        page.Apply(Window(Idle("msg_current", 300))); page.Layout(null);
+        Check(!oldFence() && app.Calls == 1 && CompositionTarget.Count == 1, "new terminal history revokes old proof before next frame");
         CompositionTarget.Frame();
-        Check(app.Calls == 2 && app.LastSent == 220, "new visible watermark can independently ACK once");
+        Check(app.Calls == 2 && app.LastSent == 300, "new current watermark ACKs independently once");
         page.NotifyViewAcknowledgementRendered(Window(Idle("msg_fake_raw", 900)), true);
         CompositionTarget.Frame();
-        Check(app.Calls == 2, "legacy DTO argument cannot enlarge current visible watermark");
+        Check(app.Calls == 2, "legacy DTO argument cannot enlarge accepted terminal history");
         page.Layout(null); page.NotifyHostWindowVisibility(true);
-        Check(app.Calls == 2 && CompositionTarget.Count == 0, "reactivate cannot ACK invisible raw latest history");
+        CompositionTarget.Frame();
+        Check(app.Calls == 2, "missing geometry or reactivation never repeats a confirmed watermark");
         page.Unload(); return Task.CompletedTask;
     }
     private static Task Visibility()
@@ -154,7 +171,7 @@ internal static class Program
         var (a, p) = Fixture("ep-reflow"); Render(p, 100); var original = a.LastFence!;
         p.Layout(100, 20); var detached = CompositionTarget.Capture();
         Check(!original() && CompositionTarget.Count == 1, "markdown/geometry reflow synchronously revokes live proof");
-        p.InvalidateViewAcknowledgement(); p.Layout(200, 30); detached?.Invoke(null, new());
+        p.InvalidateViewAcknowledgement(); p.Apply(Window(Idle("msg_next", 200))); p.Layout(null); detached?.Invoke(null, new());
         Check(CompositionTarget.Count == 1 && a.Calls == 1, "detached old handler cannot consume replacement frame");
         CompositionTarget.Frame(); Check(a.Calls == 2 && a.LastSent == 200, "replacement geometry proof only");
         var fence = a.LastFence!;
@@ -193,6 +210,28 @@ internal static class Program
         page.NotifyHostWindowVisibility(false); page.NotifyHostWindowVisibility(true); CompositionTarget.Frame();
         Check(app.Calls == 5, "confirmed receipt never retries on focus");
         page.Unload();
+    }
+    private static async Task BeforePost()
+    {
+        var (app, page) = Fixture("ep-before-post"); app.FailBeforeReceipt = true;
+        Render(page, 100);
+        Check(app.Calls == 1 && app.Posts == 0, "definite preflight failure sends no receipt");
+        await Task.Delay(300); page.RepeatLayout(); CompositionTarget.Frame();
+        Check(app.Calls == 1, "no automatic retry for a receipt that never started");
+        app.FailBeforeReceipt = false;
+        page.NotifyHostWindowVisibility(false); page.NotifyHostWindowVisibility(true); CompositionTarget.Frame();
+        Check(app.Calls == 2 && app.Posts == 1, "fresh explicit focus can try the deferred watermark");
+        page.Unload();
+    }
+    private static Task Busy()
+    {
+        var (app, page) = Fixture("ep-busy");
+        page.Apply(Window(new OpenCodeMessage { Id = "msg_busy", Type = "assistant", Time = new() { Created = 100 } }));
+        page.Layout(null); CompositionTarget.Frame();
+        Check(app.Calls == 0 && app.Posts == 0, "busy/nonterminal history never POSTs despite visible selected current layout");
+        Render(page, 200);
+        Check(app.Calls == 1 && app.LastSent == 200, "settling idle releases the exact new terminal watermark");
+        page.Unload(); return Task.CompletedTask;
     }
     private static Task Cap()
     {

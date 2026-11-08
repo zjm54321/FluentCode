@@ -92,10 +92,12 @@ static partial class Checks
         void Observe(OpenCodeSessionObservation value) { app.Observe(monitor, value); app.Drain(); }
         Observe(Terminal());
         Check(app.Snapshot.Status == TaskbarStatus.Completed, "actual App maps corroborated terminal to unified aggregate");
-        Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, "ses_test", 100) == 100 && sent == 100 && posts == 1,
-            "actual App ACK preserves rendered100 even after fresh server idle advances to200");
+        Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, "ses_test", 100) is null && posts == 0,
+            "actual App rejects old rendered100 after fresh server idle advances to200");
         app.Drain();
         Check(app.Snapshot.Status == TaskbarStatus.Completed, "ACK100 cannot clear unseen terminal200");
+        Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, "ses_test", 200) == 200 && sent == 200 && posts == 1,
+            "actual App POST uses the exact current server idle200");
         Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, "ses_test", 300) is null && posts == 1,
             "rendered watermark beyond fresh server idle rejected");
         Check(await app.AcknowledgeOpenCodeSessionAsync(source, 1, "ses_test", 100, () => false) is null && posts == 1,

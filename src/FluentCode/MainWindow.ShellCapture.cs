@@ -129,6 +129,8 @@ public sealed partial class MainWindow
             AppWindow.Resize(new SizeInt32(1600, 900));
             Log("open session: " + await page.TestOpenRecentSessionAsync());
             await Task.Delay(5000);
+            if (Environment.GetEnvironmentVariable("FC_SHELL_CAPTURE_SESSION") is { Length: > 0 })
+                Log($"view receipt: windowActivated={_openCodeWindowActivated}; appWindowVisible={AppWindow.IsVisible}; {page.TestViewReceiptState()}");
             await Shot("30-session-wide");
 
             AppWindow.Resize(new SizeInt32(1100, 760));
