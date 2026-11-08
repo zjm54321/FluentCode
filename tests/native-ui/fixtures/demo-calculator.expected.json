@@ -1,6 +1,6 @@
 {
   "parserVersion": "1.1.0",
-  "sha256": "c6d1a86af5bc0987985f09b930bf45e3ed14088f1be7bae9749e3e863e8f5518",
+  "sha256": "8de162e011c5a7f533f3892e2216e610245597bb718b4696d8b6e7626cf86256",
   "parse": {
     "root": {
       "type": "element",
@@ -1681,6 +1681,39 @@
                         "type": "element",
                         "typeName": "Button",
                         "props": {
+                          "label": "±",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$entry"
+                              },
+                              {
+                                "k": "UnaryOp",
+                                "op": "-",
+                                "operand": {
+                                  "k": "StateRef",
+                                  "n": "$entry"
+                                }
+                              }
+                            ]
+                          },
+                          "variant": "outline",
+                          "color": null,
+                          "size": null,
+                          "icon": null,
+                          "disabled": null,
+                          "block": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
                           "label": "0",
                           "action": {
                             "k": "Comp",
@@ -2152,7 +2185,7 @@
                   "type": "element",
                   "typeName": "Caption",
                   "props": {
-                    "text": "M+ 累加当前数字；MR 读出；MC 清空存储。C 只清算式。"
+                    "text": "M+ 累加当前数字；MR 读出；MC 清空存储。C 只清算式；± 切换正负。"
                   },
                   "partial": false,
                   "hasDynamicProps": false
@@ -3508,6 +3541,37 @@
                       "type": "element",
                       "typeName": "Button",
                       "props": {
+                        "label": "±",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$entry",
+                              "valueAST": {
+                                "k": "UnaryOp",
+                                "op": "-",
+                                "operand": {
+                                  "k": "StateRef",
+                                  "n": "$entry"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "outline",
+                        "color": null,
+                        "size": null,
+                        "icon": null,
+                        "disabled": null,
+                        "block": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
                         "label": "0",
                         "action": {
                           "steps": [
@@ -3898,7 +3962,7 @@
                 "type": "element",
                 "typeName": "Caption",
                 "props": {
-                  "text": "M+ 累加当前数字；MR 读出；MC 清空存储。C 只清算式。"
+                  "text": "M+ 累加当前数字；MR 读出；MC 清空存储。C 只清算式；± 切换正负。"
                 },
                 "partial": false,
                 "hasDynamicProps": false
@@ -3951,7 +4015,7 @@
       }
     },
     {
-      "length": 779,
+      "length": 807,
       "result": {
         "root": {
           "type": "element",
@@ -4293,6 +4357,43 @@
                       "props": {},
                       "partial": true,
                       "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "k": "Comp",
+                            "name": "Each",
+                            "args": [
+                              {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Num",
+                                    "v": 7
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 8
+                                  },
+                                  {
+                                    "k": "Num",
+                                    "v": 9
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Ph",
+                                "n": "digit"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
                     }
                   ]
                 },
@@ -4307,7 +4408,9 @@
         },
         "meta": {
           "incomplete": true,
-          "unresolved": [],
+          "unresolved": [
+            "digit"
+          ],
           "orphaned": [
             "result"
           ],
@@ -4327,7 +4430,7 @@
       }
     },
     {
-      "length": 1558,
+      "length": 1614,
       "result": {
         "root": {
           "type": "element",
@@ -5402,6 +5505,39 @@
                             "type": "element",
                             "typeName": "Button",
                             "props": {
+                              "label": "±",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$entry"
+                                  },
+                                  {
+                                    "k": "UnaryOp",
+                                    "op": "-",
+                                    "operand": {
+                                      "k": "StateRef",
+                                      "n": "$entry"
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "outline",
+                              "color": null,
+                              "size": null,
+                              "icon": null,
+                              "disabled": null,
+                              "block": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
                               "label": "0",
                               "action": {
                                 "k": "Comp",
@@ -5470,16 +5606,6 @@
                             },
                             "partial": true,
                             "hasDynamicProps": true
-                          },
-                          {
-                            "type": "element",
-                            "typeName": "Button",
-                            "props": {
-                              "label": "+"
-                            },
-                            "partial": true,
-                            "hasDynamicProps": false,
-                            "statementId": "plus"
                           }
                         ]
                       },
@@ -5490,15 +5616,13 @@
                       "type": "element",
                       "typeName": "Caption",
                       "props": {
-                        "text": "M+ 累加当前数字；MR 读出；MC 清空存储。C 只清算式。"
+                        "text": "M+ 累加当前数字；MR 读出；MC 清空存储。C 只清算式；± 切换正负。"
                       },
                       "partial": true,
                       "hasDynamicProps": false
                     }
                   ],
-                  "variant": "outline",
-                  "padding": 4,
-                  "gap": 3
+                  "variant": "outline"
                 },
                 "partial": true,
                 "hasDynamicProps": true
@@ -5515,12 +5639,13 @@
             "divide",
             "multiply",
             "minus",
-            "equals"
+            "equals",
+            "plus"
           ],
           "orphaned": [
             "result"
           ],
-          "statementCount": 9,
+          "statementCount": 8,
           "errors": []
         },
         "stateDeclarations": {
@@ -5536,7 +5661,7 @@
       }
     },
     {
-      "length": 2338,
+      "length": 2422,
       "result": {
         "root": {
           "type": "element",
@@ -7217,6 +7342,39 @@
                             "type": "element",
                             "typeName": "Button",
                             "props": {
+                              "label": "±",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$entry"
+                                  },
+                                  {
+                                    "k": "UnaryOp",
+                                    "op": "-",
+                                    "operand": {
+                                      "k": "StateRef",
+                                      "n": "$entry"
+                                    }
+                                  }
+                                ]
+                              },
+                              "variant": "outline",
+                              "color": null,
+                              "size": null,
+                              "icon": null,
+                              "disabled": null,
+                              "block": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
                               "label": "0",
                               "action": {
                                 "k": "Comp",
@@ -7688,7 +7846,7 @@
                       "type": "element",
                       "typeName": "Caption",
                       "props": {
-                        "text": "M+ 累加当前数字；MR 读出；MC 清空存储。C 只清算式。"
+                        "text": "M+ 累加当前数字；MR 读出；MC 清空存储。C 只清算式；± 切换正负。"
                       },
                       "partial": false,
                       "hasDynamicProps": false

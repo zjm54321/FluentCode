@@ -105,6 +105,8 @@ public partial class App
                     if (NativeUiValues.Number(view.Runtime.Get("$entry")) != 25 || NativeUiValues.Number(view.Runtime.Get("$memory")) != 42) throw new InvalidOperationException("Native calculator state/actions failed.");
                     var keycap = Descendants(timeline).OfType<Button>().First(button => Equals(button.Content, "7"));
                     if (Math.Abs(keycap.MinHeight - Math.Clamp(keycap.ActualWidth * .8, 40, 56)) > 1) throw new InvalidOperationException("Adaptive keypad height does not follow column width.");
+                    foreach (var row in Descendants(timeline).OfType<Grid>().Where(row => row.Children.Count > 0 && row.Children.All(child => child is Button)))
+                        if (row.ColumnDefinitions.Count != 4 || row.Children.OfType<Button>().Any(button => Math.Abs(button.ActualWidth - keycap.ActualWidth) > 1)) throw new InvalidOperationException("Calculator bottom row is not aligned to the four-column keypad.");
                 }
                 else if (name == "sizing")
                 {
@@ -115,6 +117,8 @@ public partial class App
                     }
                     await Press("中号加一");
                     if (NativeUiValues.Number(view.Runtime.Get("$count")) != 1) throw new InvalidOperationException("Sized IconButton action did not update state.");
+                    var keypad = Descendants(timeline).OfType<Grid>().Single(grid => grid.Children.Count == 8 && grid.Children.All(child => child is Button));
+                    if (keypad.ColumnDefinitions.Count != 4 || keypad.Children.OfType<Button>().Select(button => Math.Round(button.ActualWidth)).Distinct().Count() != 1) throw new InvalidOperationException("Sizing keypad does not retain its four-column alignment.");
                 }
                 else if (name == "showcase-onboarding")
                 {
