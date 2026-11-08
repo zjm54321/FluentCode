@@ -51,6 +51,12 @@ internal static partial class Program
         Check(page.TestTabState(Session)?.BackgroundWorking == true, "a known child's new execution can resume the parent grey ring");
         page.TestDisconnected(stream); page.TestExpireBackground();
         Check(page.TestTabState(Session) is { BackgroundWorking: null, BackgroundChildCount: 0 }, "disconnect invalidates the exact event lease and clears stale child count");
+        version = page.TestBackgroundVersion;
+        page.TestRedrawBackgroundTree();
+        Check(page.TestBackgroundVersion == version && page.TestTabState(Session) is { BackgroundWorking: null, BackgroundChildCount: 0 },
+            "presentation-only tree redraw cannot renew expired background evidence or grant a fresh lease");
+        page.TestBackgroundProjection(Session, children, true);
+        Check(page.TestTabState(Session)?.BackgroundWorking == true, "a genuinely accepted fresh history projection can renew disconnected evidence");
         page.TestReady(stream, reconnect: true);
         var replacement = page.TestBeginEvents(); version = page.TestBackgroundVersion;
         page.TestReceive(stream, Wire("session.execution.started", "{\"sessionID\":\"" + children[1] + "\"}"));

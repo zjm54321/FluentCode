@@ -43,6 +43,7 @@ public sealed partial class OpenCodePage
     internal int TestBackgroundCount { get; private set; }
     private void RenderSubagentCount(int running) => TestBackgroundCount = running;
     internal IReadOnlyList<OpenCodeTreeAgent> TestBackgroundTree => _agentTree.Agents;
+    internal void TestRedrawBackgroundTree() => RenderAgentTree();
     internal void TestBindBackgroundChild(string childId)
     {
         _treeBinding = new(_selectedSessionId!);

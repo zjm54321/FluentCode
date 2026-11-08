@@ -69,7 +69,7 @@ public sealed partial class OpenCodePage
             foreach (var child in entry.HistoryChildren.Where(child => !children.Contains(child))) entry.Children[child] = false;
         entry.HistoryChildren = children;
         entry.AbsenceKnown |= complete;
-        PublishBackgroundState(sessionId, entry);
+        PublishBackgroundState(sessionId, entry, freshEvidence: true);
     }
 
     partial void OnSessionBackgroundTree(string sessionId, IEnumerable<(string SessionId, OpenCodeTreeStatus Status)> children, bool complete)
@@ -97,19 +97,23 @@ public sealed partial class OpenCodePage
             if (entry.Coverage is { } old && !HasContinuousEventCoverage(old))
                 foreach (var child in entry.Children.Keys.ToArray()) entry.Children[child] = null;
             entry.Children[sessionId] = working;
-            PublishBackgroundState(parent, entry);
+            PublishBackgroundState(parent, entry, freshEvidence: true);
         }
     }
 
-    private void PublishBackgroundState(string sessionId, BackgroundSessionEntry entry)
+    private void PublishBackgroundState(string sessionId, BackgroundSessionEntry entry, bool freshEvidence = false)
     {
         if (!EnsureBackgroundSource() || Application.Current is not App app) return;
         if (!entry.AbsenceKnown && entry.Children.Count == 0) return;
         var count = entry.Children.Count(child => child.Value == true);
         bool? working = count > 0 ? true : entry.Children.Values.Any(value => value is null) ? null : false;
         var coverage = CaptureHealthyEventStream();
-        if (entry.Published?.Value == working && entry.PublishedCount == count && ReferenceEquals(entry.Coverage, coverage)
-            && entry.Published?.CurrentEventStream?.Invoke() == true) return; // No per-token snapshot or Narrator churn.
+        if (entry.Published is { } previous)
+        {
+            if (!freshEvidence && previous.CurrentEventStream?.Invoke() == false) return; // A redraw cannot repair an expired event epoch.
+            if (previous.Value == working && entry.PublishedCount == count
+                && (!freshEvidence || ReferenceEquals(entry.Coverage, coverage) && previous.CurrentEventStream?.Invoke() == true)) return;
+        }
         var source = _backgroundSource!;
         var revision = _backgroundRevision;
         var sourceGeneration = _backgroundSourceGeneration;
