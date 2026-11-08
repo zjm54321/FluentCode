@@ -123,7 +123,9 @@ public partial class App
                 }
                 else if (name == "showcase-explorer")
                 {
-                    var tile = Descendants(timeline).OfType<ContentControl>().Single(control => control.GetType() == typeof(ContentControl) && control.IsTabStop);
+                    var tile = Descendants(timeline).OfType<ContentControl>().Single(control => control.GetType() == typeof(ContentControl) && control.IsTabStop
+                        && control.Content is StackPanel { Children.Count: 1 } panel && panel.Children[0] is Grid
+                        && Descendants(panel).OfType<TextBlock>().Any(text => text.Text == "如何安排跨城交通？"));
                     var slot = tile.Content;
                     view.Runtime.Set("$faq", true);
                     if (!ReferenceEquals(tile.Content, slot)) throw new InvalidOperationException("Pressable replaced its realized slot during refresh.");
