@@ -170,8 +170,10 @@ public partial class App
                     }
                     await Press("中号加一");
                     if (NativeUiValues.Number(view.Runtime.Get("$count")) != 1) throw new InvalidOperationException("Sized IconButton action did not update state.");
+                    surface.UpdateLayout();
                     var keypad = Descendants(timeline).OfType<Grid>().Single(grid => grid.Children.Count == 8 && grid.Children.All(child => child is Button));
-                    if (keypad.ColumnDefinitions.Count != 4 || keypad.Children.OfType<Button>().Select(button => Math.Round(button.ActualWidth)).Distinct().Count() != 1) throw new InvalidOperationException("Sizing keypad does not retain its four-column alignment.");
+                    var widths = keypad.Children.OfType<Button>().Select(button => button.ActualWidth).ToArray();
+                    if (keypad.ColumnDefinitions.Count != 4 || widths.Max() - widths.Min() > 1) throw new InvalidOperationException($"Sizing keypad does not retain its four-column alignment: columns={keypad.ColumnDefinitions.Count}; widths={string.Join(",", widths)}.");
                 }
                 else if (name == "showcase-onboarding")
                 {
