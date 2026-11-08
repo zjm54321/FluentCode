@@ -58,6 +58,11 @@ try {
     }
     Write-Output "PASS $(@(Get-ChildItem $root -Filter '*.png').Count) native UI merged demo/state/before PNGs: $root"
 }
+catch {
+    # Leave the reason beside the evidence so a per-fixture caller can record it and carry on with the rest.
+    if (Test-Path $root) { [IO.File]::WriteAllText((Join-Path $root 'capture-failure.txt'), ($_.Exception.Message.Replace("`r`n", "`n").TrimEnd() + "`n"), [Text.UTF8Encoding]::new($false)) }
+    throw
+}
 finally {
     if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id }
     foreach ($key in $saved.Keys) { [Environment]::SetEnvironmentVariable($key, $saved[$key]) }

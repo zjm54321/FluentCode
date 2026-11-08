@@ -48,18 +48,18 @@ The eight new fixtures are **FluentCode showcase demos modelled on the OIU compo
 Checked on 2026-11-08 against the OpenIntelligentUI `/gallery` page (MIT, package 0.1.1, commit `9df2e64`, 45 programs: 19 components, 4 compositions, 18 working tools, 4 prompt examples). The reference renders come from the upstream `Renderer` in headless Chrome at the gallery's 752 px preview width, in light and dark, using the pinned upstream packages (react-lang 1.0.0, lang-core 1.0.0, lucide-react 0.562.0). The openui repo's `benchmarks/samples` target the separate react-ui library, not this catalog, so they are not ported. Provenance and port status: `tests/native-ui/fixtures/showcase-provenance.md`.
 
 - **Coverage.** 43 of the 45 examples are in the oracle corpus. 21 are verbatim ports in `fixtures/upstream/` (the `text` port omits its `javascript:` link). 22 are initial-state snapshots of programs that need OIU-only `@functions` or `Query`. `html` and `game` need HtmlView, which is excluded.
-- **P0, open: runtime node limit.** `NativeUiSafety.Check` counts every string character as a node, so text-heavy cards (about 3,000 or more characters) hit the 4,096 limit and show an error card, even though the validator accepts them. This blocks 10 snapshot ports, kept in `fixtures/upstream-blocked/`. The fix is in `src/FluentCode/Services/NativeUi/NativeUiRuntime.cs`, outside the renderer.
+- **P0, fixed: runtime node limit.** `NativeUiSafety.Check` counted every character of a string as a node. Text-heavy cards (about 3,000 or more characters) therefore hit the 4,096 limit and showed an error card, even though the validator accepted them. It now counts nodes the way the official validator does: values are nodes, and keys and characters are not. Strings stay bounded by the character limit and URL safety. Values over 4,096 real nodes or depth 64 are still refused. Ten snapshot ports were affected; they are now in the evaluated corpus.
 - **P1, fixed in the renderer:**
   - `chart1`–`chart6`, `ink`, `canvas` and `border` backgrounds are solid fills. Before, they were all the same faint grey, which hid split bars, funnels and progress tracks.
   - Raw hex text colours apply.
   - Text on a raw-colour tile stays legible in dark mode.
   - Box `%` lengths, `flex` (basis 0), flex Boxes inside `Row`, and sized Boxes now lay out as described above.
   - 20 more Lucide icon names map to Fluent glyphs. `bike` has no Fluent counterpart and renders nothing, as unknown names do upstream.
-- **P1, open (product decisions):**
-  - OIU-only `@functions` (`@Format`, `@Range`, `@MixColor`, `@Includes`, `@Clamp`, …) and `Query`/`Mutation` are not in the catalog. The 22 examples that use them run only as non-interactive snapshots.
-  - `route` exceeds the validator's 4,096 expanded nodes even as upstream source.
+- **P1, open by decision:**
+  - OIU-only `@functions` (`@Format`, `@Range`, `@MixColor`, `@Includes`, `@Clamp`, …) and `Query`/`Mutation` are not in the catalog. Adding them is a catalog feature that needs opencode-qol lang-core, skill and validator changes. Until then, the 22 examples that use them stay non-interactive snapshots.
+  - The verbatim `route` program is left out. It exceeds the validator's 4,096 expanded-node guard, which stays as a safety limit. Its snapshot is in the corpus.
 - **P2.** Fluent controls, typography, radii, spacing, chart styling and icon artwork intentionally differ from OIU's web CSS. Those differences are recorded as intentional, together with the known differences listed below.
-- **Pending.** The native light/dark renders and the side-by-side sheet are waiting for an Active Windows session for the offline capture. Run `capture-demos.ps1 -FixturesRoot tests/native-ui/fixtures/upstream -TimeoutSeconds 900`.
+- **Pending.** The native light/dark renders and the side-by-side sheet are waiting for an Active Windows session for the offline capture. Run `capture-demos.ps1 -FixturesRoot tests/native-ui/fixtures/upstream -TimeoutSeconds 900`. When a run fails, `capture-demos.ps1` writes the reason to `capture-failure.txt` in the evidence folder. A caller can then record that fixture and capture the remaining ones one per launch.
 
 ## Remaining OIU differences
 ## Remaining OIU differences
