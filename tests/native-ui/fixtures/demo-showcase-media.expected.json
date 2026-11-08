@@ -1,0 +1,1753 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "a5a65ab9bdaf89a7cd0b51643d2784df9e737d2d5a7f29a7c6b4f42fab31493f",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "灵感资料库",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "图片、搜索和视频的原生预览，保留标题、描述与安全的外部入口"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "IconButton",
+                        "props": {
+                          "icon": "heart",
+                          "action": {
+                            "k": "Comp",
+                            "name": "Set",
+                            "args": [
+                              {
+                                "k": "StateRef",
+                                "n": "$saved"
+                              },
+                              {
+                                "k": "UnaryOp",
+                                "op": "!",
+                                "operand": {
+                                  "k": "StateRef",
+                                  "n": "$saved"
+                                }
+                              }
+                            ]
+                          },
+                          "label": "收藏资料",
+                          "variant": "outline",
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "gap": 3,
+                    "align": "center",
+                    "justify": "between"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Image",
+                              "props": {
+                                "src": "https://images.unsplash.com/photo-1499750310107-5fef28a66643",
+                                "alt": "明亮工作台与笔记本",
+                                "aspectRatio": 1.5,
+                                "radius": "md",
+                                "fit": "cover"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "专注的工作空间",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "摄影参考",
+                                "color": "purple",
+                                "icon": "camera"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "留白、自然光和可触及的工具，让想法更容易落地。",
+                                "size": "sm",
+                                "color": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "图片不会自动加载；点击加载后才请求 HTTPS 资源。"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "outline",
+                          "padding": 3,
+                          "gap": 3
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "SearchImage",
+                              "props": {
+                                "query": "Japanese minimalist workspace",
+                                "aspectRatio": 1.5,
+                                "radius": "md",
+                                "fit": "cover"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "寻找更多视觉线索",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "图片搜索",
+                                "color": "info",
+                                "icon": "search"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "把查询词保留在卡片中，确认链接后在浏览器继续探索。",
+                                "size": "sm",
+                                "color": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "没有后台搜索、跟踪或自动资源请求。"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "outline",
+                          "padding": 3,
+                          "gap": 3
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "YouTube",
+                              "props": {
+                                "video": "jNQXAC9IVRw",
+                                "title": "Me at the zoo · YouTube 首个视频"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "视频参考",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "外部媒体",
+                                "color": "pink",
+                                "icon": "play"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "已知视频链接的原生预览；播放器在确认后由浏览器打开。",
+                                "size": "sm",
+                                "color": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "不嵌入网页播放器，不自动下载封面。"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "outline",
+                          "padding": 3,
+                          "gap": 3
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "columns": 3,
+                    "minChildWidth": 220,
+                    "gap": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Quote",
+                  "props": {
+                    "text": "收集不是目的，能帮助下一次创作的线索才值得留下。",
+                    "cite": "工作室资料笔记"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": {
+                            "k": "Ternary",
+                            "cond": {
+                              "k": "StateRef",
+                              "n": "$saved"
+                            },
+                            "then": {
+                              "k": "Str",
+                              "v": "已收藏到当前卡片"
+                            },
+                            "else": {
+                              "k": "Str",
+                              "v": "尚未收藏"
+                            }
+                          },
+                          "color": {
+                            "k": "Ternary",
+                            "cond": {
+                              "k": "StateRef",
+                              "n": "$saved"
+                            },
+                            "then": {
+                              "k": "Str",
+                              "v": "success"
+                            },
+                            "else": {
+                              "k": "Str",
+                              "v": "neutral"
+                            }
+                          },
+                          "icon": "heart"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "整理创作方向",
+                          "action": {
+                            "k": "Comp",
+                            "name": "ToAssistant",
+                            "args": [
+                              {
+                                "k": "Str",
+                                "v": "请根据这组工作空间、图片搜索和视频参考整理三个创作方向。"
+                              }
+                            ],
+                            "mappedProps": {
+                              "message": {
+                                "k": "Str",
+                                "v": "请根据这组工作空间、图片搜索和视频参考整理三个创作方向。"
+                              }
+                            }
+                          },
+                          "variant": "solid",
+                          "color": null,
+                          "size": "md",
+                          "icon": "sparkles"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "gap": 3,
+                    "align": "center",
+                    "justify": "between"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "媒体服务的原生安全替代会明确显示；不会把离线占位图伪装成已加载媒体。"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": "outline",
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$saved": false
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "灵感资料库",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "图片、搜索和视频的原生预览，保留标题、描述与安全的外部入口"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "heart",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "set",
+                              "target": "$saved",
+                              "valueAST": {
+                                "k": "UnaryOp",
+                                "op": "!",
+                                "operand": {
+                                  "k": "StateRef",
+                                  "n": "$saved"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "label": "收藏资料",
+                        "variant": "outline",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Image",
+                            "props": {
+                              "src": "https://images.unsplash.com/photo-1499750310107-5fef28a66643",
+                              "alt": "明亮工作台与笔记本",
+                              "aspectRatio": 1.5,
+                              "radius": "md",
+                              "fit": "cover"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "专注的工作空间",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "摄影参考",
+                              "color": "purple",
+                              "icon": "camera"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "留白、自然光和可触及的工具，让想法更容易落地。",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "图片不会自动加载；点击加载后才请求 HTTPS 资源。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "outline",
+                        "padding": 3,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Japanese minimalist workspace",
+                              "aspectRatio": 1.5,
+                              "radius": "md",
+                              "fit": "cover"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "寻找更多视觉线索",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "图片搜索",
+                              "color": "info",
+                              "icon": "search"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "把查询词保留在卡片中，确认链接后在浏览器继续探索。",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "没有后台搜索、跟踪或自动资源请求。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "outline",
+                        "padding": 3,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "YouTube",
+                            "props": {
+                              "video": "jNQXAC9IVRw",
+                              "title": "Me at the zoo · YouTube 首个视频"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "视频参考",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "外部媒体",
+                              "color": "pink",
+                              "icon": "play"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "已知视频链接的原生预览；播放器在确认后由浏览器打开。",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "不嵌入网页播放器，不自动下载封面。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "outline",
+                        "padding": 3,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 220,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Quote",
+                "props": {
+                  "text": "收集不是目的，能帮助下一次创作的线索才值得留下。",
+                  "cite": "工作室资料笔记"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "尚未收藏",
+                        "color": "neutral",
+                        "icon": "heart"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "整理创作方向",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "continue_conversation",
+                              "message": "请根据这组工作空间、图片搜索和视频参考整理三个创作方向。"
+                            }
+                          ]
+                        },
+                        "variant": "solid",
+                        "color": null,
+                        "size": "md",
+                        "icon": "sparkles"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "媒体服务的原生安全替代会明确显示；不会把离线占位图伪装成已加载媒体。"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": "outline",
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 397,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "灵感资料库",
+                                    "size": "lg"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "图片、搜索和视频的原生预览，保留标题、描述与安全的外部入口"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "heart",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$saved"
+                                  },
+                                  {
+                                    "k": "UnaryOp",
+                                    "op": "!",
+                                    "operand": {
+                                      "k": "StateRef",
+                                      "n": "$saved"
+                                    }
+                                  }
+                                ]
+                              },
+                              "label": "收藏资料",
+                              "variant": "outline",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Image",
+                                  "props": {
+                                    "src": "https://images.unsplash.com/photo-1499750310107-5fef28a66643",
+                                    "alt": "明亮工作台与笔记本",
+                                    "aspectRatio": 1.5,
+                                    "radius": "md",
+                                    "fit": "cover"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "专注的工作空间",
+                                    "size": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "摄影参考",
+                                    "color": "purple",
+                                    "icon": "camera"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "留白、自然光和可触及的工具，让想法更容易落地。",
+                                    "size": "sm",
+                                    "color": "m"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$saved": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 795,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "灵感资料库",
+                                    "size": "lg"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "图片、搜索和视频的原生预览，保留标题、描述与安全的外部入口"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "heart",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$saved"
+                                  },
+                                  {
+                                    "k": "UnaryOp",
+                                    "op": "!",
+                                    "operand": {
+                                      "k": "StateRef",
+                                      "n": "$saved"
+                                    }
+                                  }
+                                ]
+                              },
+                              "label": "收藏资料",
+                              "variant": "outline",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Image",
+                                  "props": {
+                                    "src": "https://images.unsplash.com/photo-1499750310107-5fef28a66643",
+                                    "alt": "明亮工作台与笔记本",
+                                    "aspectRatio": 1.5,
+                                    "radius": "md",
+                                    "fit": "cover"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "专注的工作空间",
+                                    "size": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "摄影参考",
+                                    "color": "purple",
+                                    "icon": "camera"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "留白、自然光和可触及的工具，让想法更容易落地。",
+                                    "size": "sm",
+                                    "color": "muted"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "图片不会自动加载；点击加载后才请求 HTTPS 资源。"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "outline",
+                              "padding": 3,
+                              "gap": 3
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "SearchImage",
+                                  "props": {
+                                    "query": "Japanese minimalist workspace",
+                                    "aspectRatio": 1.5,
+                                    "radius": "md",
+                                    "fit": "cover"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "寻找更多视觉线索",
+                                    "size": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "图片搜索",
+                                    "color": "info",
+                                    "icon": "search"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "把查询词保留在卡片中，确认链接后在浏览器继续探索。",
+                                    "size": "sm",
+                                    "color": "muted"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "没有后台搜索、跟踪或自动资源请求。"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "outline",
+                              "padding": 3,
+                              "gap": 3
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "YouTube",
+                                  "props": {
+                                    "video": "jNQXAC9IVRw",
+                                    "title": "Me at the zoo · YouTube 首个视频"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "视频参考",
+                                    "size": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "外部媒体",
+                                    "color": "pink",
+                                    "icon": "play"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "已知视频链接的原生预"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$saved": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1193,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "灵感资料库",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "图片、搜索和视频的原生预览，保留标题、描述与安全的外部入口"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "heart",
+                              "action": {
+                                "k": "Comp",
+                                "name": "Set",
+                                "args": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$saved"
+                                  },
+                                  {
+                                    "k": "UnaryOp",
+                                    "op": "!",
+                                    "operand": {
+                                      "k": "StateRef",
+                                      "n": "$saved"
+                                    }
+                                  }
+                                ]
+                              },
+                              "label": "收藏资料",
+                              "variant": "outline",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Image",
+                                  "props": {
+                                    "src": "https://images.unsplash.com/photo-1499750310107-5fef28a66643",
+                                    "alt": "明亮工作台与笔记本",
+                                    "aspectRatio": 1.5,
+                                    "radius": "md",
+                                    "fit": "cover"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "专注的工作空间",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "摄影参考",
+                                    "color": "purple",
+                                    "icon": "camera"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "留白、自然光和可触及的工具，让想法更容易落地。",
+                                    "size": "sm",
+                                    "color": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "图片不会自动加载；点击加载后才请求 HTTPS 资源。"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "outline",
+                              "padding": 3,
+                              "gap": 3
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "SearchImage",
+                                  "props": {
+                                    "query": "Japanese minimalist workspace",
+                                    "aspectRatio": 1.5,
+                                    "radius": "md",
+                                    "fit": "cover"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "寻找更多视觉线索",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "图片搜索",
+                                    "color": "info",
+                                    "icon": "search"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "把查询词保留在卡片中，确认链接后在浏览器继续探索。",
+                                    "size": "sm",
+                                    "color": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "没有后台搜索、跟踪或自动资源请求。"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "outline",
+                              "padding": 3,
+                              "gap": 3
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "YouTube",
+                                  "props": {
+                                    "video": "jNQXAC9IVRw",
+                                    "title": "Me at the zoo · YouTube 首个视频"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "视频参考",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "外部媒体",
+                                    "color": "pink",
+                                    "icon": "play"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "已知视频链接的原生预览；播放器在确认后由浏览器打开。",
+                                    "size": "sm",
+                                    "color": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "不嵌入网页播放器，不自动下载封面。"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "outline",
+                              "padding": 3,
+                              "gap": 3
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "columns": 3,
+                        "minChildWidth": 220,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Quote",
+                      "props": {
+                        "text": "收集不是目的，能帮助下一次创作的线索才值得留下。",
+                        "cite": "工作室资料笔记"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "StateRef",
+                                  "n": "$saved"
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "已收藏到当前卡片"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "尚未收藏"
+                                }
+                              },
+                              "color": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "StateRef",
+                                  "n": "$saved"
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "success"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "neutral"
+                                }
+                              },
+                              "icon": "heart"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "整理创作方向",
+                              "action": {
+                                "k": "Comp",
+                                "name": "ToAssistant",
+                                "args": [
+                                  {
+                                    "k": "Str",
+                                    "v": "请根据这组工作空间、图片搜索和视频参考整理三个创作方向。"
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "message": {
+                                    "k": "Str",
+                                    "v": "请根据这组工作空间、图片搜索和视频参考整理三个创作方向。"
+                                  }
+                                }
+                              },
+                              "variant": "solid",
+                              "color": null,
+                              "size": "md",
+                              "icon": "sparkles"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "媒体服务的原生安全替代会明确显示；不会把离线占位图伪装成已加载媒体。"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "outline",
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$saved": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

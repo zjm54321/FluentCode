@@ -1,0 +1,7 @@
+$tab = "概览"
+$faq = false
+$choice = "京都"
+destinations = [{name:"京都",tag:"文化漫游",description:"清晨寺院、手作小店与安静的河畔。",tone:"purple"},{name:"金泽",tag:"艺术与工艺",description:"美术馆、庭园和传统工艺街区。",tone:"info"},{name:"高山",tag:"山间慢游",description:"古街、山景与当地料理。",tone:"success"}]
+gallery = Carousel([@Each(destinations,d,Card([Icon("map-pin","lg",d.tone),Title(d.name,"lg"),Badge(d.tag,d.tone),Text(d.description,"sm","muted"),Button("选择目的地",@Set($choice,d.name),"outline",null,"sm","plus")],"soft",3,3))],220,3)
+overview = $tab == "概览" ? Col([Title("为你精选的慢旅行","md"),Text("不用把每一分钟排满。先选一个目的地，再按自己的节奏安排。"),gallery],3) : Card([Title($choice + " · 行程草案","md"),List([ListItem("上午","城市步行与在地早餐","09:00"),ListItem("午后","美术馆或工艺体验","13:30"),ListItem("傍晚","河畔散步与当地料理","17:00")],"none",true),Button("细化我的行程",@ToAssistant("请把 " + $choice + " 的慢旅行计划细化成可执行行程。"),"solid",null,"md","sparkles")],"soft",3,3)
+root = Col([Card([Row([Col([Title("旅行灵感","lg"),Caption("标签页、可展开问答和横向轮播的组合示例")],1),Badge("已选：" + $choice,"pink","heart")],3,"center","between"),SegmentedControl($tab,["概览","我的计划"],true),overview,Divider(),Pressable([Row([Icon("help-circle","md","info"),Text("如何安排跨城交通？","md",null,"semibold"),Spacer(),Icon($faq ? "chevron-up" : "chevron-down")],2)],@Set($faq,!$faq),$faq,3,"surface","md"),$faq ? Card([Text("先确认住宿城市，再把相邻城市安排成一日往返；不要在同一天安排太多跨城移动。"),Caption("建议 · 每次移动预留 30–45 分钟缓冲"),Link("查看日本国家旅游局交通指南","https://www.japan.travel/en/plan/getting-around/")],"soft",3,2) : null,Caption("标签页使用响应式 SegmentedControl；问答使用 Pressable + 条件内容。无浏览器嵌入。")],"outline",4,3)])

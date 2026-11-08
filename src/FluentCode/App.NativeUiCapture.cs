@@ -35,7 +35,7 @@ public partial class App
             VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Child = timeline,
             Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SolidBackgroundFillColorTertiaryBrush")) };
         window.Content = new Grid { Children = { surface } };
-        window.AppWindow.Resize(new Windows.Graphics.SizeInt32(760, 900));
+        window.AppWindow.Resize(new Windows.Graphics.SizeInt32(960, 1100));
         window.Closed += (_, _) => Exit();
         window.Activate();
         var timer = window.DispatcherQueue.CreateTimer(); timer.Interval = TimeSpan.FromSeconds(1); timer.IsRepeating = false;
@@ -60,14 +60,20 @@ public partial class App
             sent.Add(new { args.Request.Message, args.Request.Context, args.Request.FormState, intent.Delivery, intent.Allowed });
             args.Accepted = intent.Allowed; args.Notice = "离线演示：已准备排队草稿（未连接后台）";
         };
+        var demos = Directory.GetFiles(fixtures, "demo-*.oui").Select(file => Path.GetFileNameWithoutExtension(file)[5..]).OrderBy(name => name, StringComparer.Ordinal).ToArray();
         foreach (var theme in new[] { ElementTheme.Light, ElementTheme.Dark })
         {
             surface.RequestedTheme = theme;
-            foreach (var name in new[] { "dashboard", "form", "mixed" })
+            foreach (var name in demos.Concat(new[] { "error", "streaming" }))
             {
                 timeline.ClearMessages();
-                var source = File.ReadAllText(Path.Combine(fixtures, "demo-" + name + ".oui"));
-                var input = JsonSerializer.SerializeToElement(new { status = "completed", input = new { source } });
+                // The renderer decides compact/wide from component names; leave all catalog demos room for 808px.
+                var wide = name is not ("calculator" or "budget" or "assistant" or "form" or "error" or "streaming");
+                surface.Width = (wide ? NativeUiTheme.WideWidth : NativeUiTheme.MaximumWidth) + 48;
+                var source = name is "error" or "streaming" ? "" : File.ReadAllText(Path.Combine(fixtures, "demo-" + name + ".oui"));
+                var input = name == "error"
+                    ? JsonSerializer.SerializeToElement(new { status = "error", error = new { message = "示例诊断：卡片输入不完整。请检查 source 后重试。" } })
+                    : JsonSerializer.SerializeToElement(new { status = name == "streaming" ? "streaming" : "completed", input = new { source, title = "原生卡片演示" } });
                 timeline.ApplyMessages(new[] { new OpenCodeMessage
                 {
                     Id = "msg_native_ui_demo_" + name, Type = "assistant", Agent = "primary",
@@ -77,6 +83,15 @@ public partial class App
                 await Task.Delay(250); surface.UpdateLayout();
                 var view = Descendants(timeline).OfType<FrameworkElement>().Select(element => element.Tag).OfType<OpenCodeNativeUiPartView>().FirstOrDefault()
                     ?? throw new InvalidOperationException("Native transcript card was not realized: " + name);
+                if (name is "error" or "streaming")
+                {
+                    var text = Descendants(timeline).OfType<TextBlock>().Select(block => block.Text).ToArray();
+                    if (!text.Any(value => value.Contains(name == "error" ? "交互卡片无法渲染" : "正在生成「原生卡片演示」", StringComparison.Ordinal))) throw new InvalidOperationException("Native transient state was not realized: " + name);
+                    var stateFile = name + "-" + theme.ToString().ToLowerInvariant() + ".png";
+                    await CaptureNativeUiPngAsync(surface, Path.Combine(root, stateFile));
+                    records.Add(new { program = name, theme = theme.ToString(), png = stateFile, surfaceWidth = surface.ActualWidth });
+                    continue;
+                }
                 if (view.Runtime is null) throw new InvalidOperationException("Native card parse failed: " + name);
                 async Task Press(string label)
                 {
@@ -84,7 +99,39 @@ public partial class App
                     if (new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke) is not IInvokeProvider invoke) throw new InvalidOperationException("No native Invoke provider: " + label);
                     invoke.Invoke(); await Task.Delay(25);
                 }
-                if (name == "form")
+                if (name == "calculator")
+                {
+                    foreach (var key in new[] { "1", "2", "+", "5", "=", "M+", "C", "8", "+", "MR", "=", "M+" }) await Press(key);
+                    if (NativeUiValues.Number(view.Runtime.Get("$entry")) != 25 || NativeUiValues.Number(view.Runtime.Get("$memory")) != 42) throw new InvalidOperationException("Native calculator state/actions failed.");
+                    var keycap = Descendants(timeline).OfType<Button>().First(button => Equals(button.Content, "7"));
+                    if (Math.Abs(keycap.MinHeight - Math.Clamp(keycap.ActualWidth * .8, 40, 56)) > 1) throw new InvalidOperationException("Adaptive keypad height does not follow column width.");
+                }
+                else if (name == "sizing")
+                {
+                    foreach (var (label, height) in new[] { ("小号", 32d), ("中号", 40d), ("大号", 48d), ("小号减一", 32d), ("中号加一", 40d), ("大号重置", 48d) })
+                    {
+                        var button = Descendants(timeline).OfType<Button>().Single(control => Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(control) == label);
+                        if (Math.Abs(button.ActualHeight - height) > 1) throw new InvalidOperationException("Explicit button size mismatch: " + label + " " + button.ActualHeight);
+                    }
+                    await Press("中号加一");
+                    if (NativeUiValues.Number(view.Runtime.Get("$count")) != 1) throw new InvalidOperationException("Sized IconButton action did not update state.");
+                }
+                else if (name == "showcase-onboarding")
+                {
+                    await Press("下一步");
+                    if (NativeUiValues.Number(view.Runtime.Get("$step")) != 2 || !Descendants(timeline).OfType<RadioButton>().Any()) throw new InvalidOperationException("Showcase form did not reveal its preference step.");
+                }
+                else if (name == "showcase-explorer")
+                {
+                    view.Runtime.Set("$faq", true);
+                    if (!Descendants(timeline).OfType<HyperlinkButton>().Any()) throw new InvalidOperationException("Showcase accordion did not expand.");
+                }
+                else if (name == "showcase-planner")
+                {
+                    var days = Descendants(timeline).OfType<Slider>().Single(); days.Value = 6;
+                    if (NativeUiValues.Number(view.Runtime.Get("$days")) != 6) throw new InvalidOperationException("Showcase planner slider did not update its budget state.");
+                }
+                else if (name == "form")
                 {
                     Descendants(timeline).OfType<TextBox>().First(control => control.AcceptsReturn).Text = "回顾交付，讨论风险，明确负责人。";
                     await Task.Delay(75);
@@ -105,17 +152,19 @@ public partial class App
                 await CaptureNativeUiPngAsync(surface, Path.Combine(root, file));
                 if (name == "dashboard")
                 {
+                    var renderer = ((StackPanel)view.Element).Children[0] as FrameworkElement;
+                    if (renderer is null || Math.Abs(renderer.ActualWidth - NativeUiTheme.WideWidth) > 1) throw new InvalidOperationException("Wide native card must render at 808px, actual: " + renderer?.ActualWidth);
                     var table = Descendants(timeline).OfType<WinUI.TableView.TableView>().Single();
                     if (!Descendants(table).OfType<TextBlock>().Any(text => text.Text == "团队版") || !Descendants(table).OfType<TextBlock>().Any(text => text.Text == "增长")) throw new InvalidOperationException("Native table scalar/component cells are empty.");
                     var chart = Descendants(timeline).OfType<LiveChartsCore.SkiaSharpView.WinUI.CartesianChart>().Single();
                     if (!chart.Series.OfType<LiveChartsCore.SkiaSharpView.StackedColumnSeries<double>>().Any(series => series.Values?.Any(value => value > 0) is true)) throw new InvalidOperationException("Native chart numeric series are empty.");
                 }
                 else if (name == "mixed" && Descendants(timeline).OfType<Microsoft.UI.Xaml.Shapes.Path>().Single().Data is null) throw new InvalidOperationException("Native numeric SVG path did not materialize.");
-                records.Add(new { program = name, theme = theme.ToString(), png = file, state = view.Runtime!.State });
+                records.Add(new { program = name, theme = theme.ToString(), png = file, surfaceWidth = surface.ActualWidth, cardWidth = ((StackPanel)view.Element).Children[0].ActualSize.X, state = view.Runtime!.State });
             }
         }
         File.WriteAllText(Path.Combine(root, "demos.json"), JsonSerializer.Serialize(new { parser = "lang-core 1.1.0 C# port", offline = true, captures = records, assistantIntents = sent }, new JsonSerializerOptions { WriteIndented = true }));
-        File.WriteAllText(Path.Combine(root, "ready.txt"), "Six native v1 light/dark PNGs captured; charts/table, form controls and same-part state replay exercised; offline only.");
+        File.WriteAllText(Path.Combine(root, "ready.txt"), records.Count + " native light/dark PNGs captured; " + demos.Length + " demos, 808px wide cards, error and streaming states; sizing/keypad, calculator, charts/table, form controls and same-part state replay exercised; offline only.");
     }
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
     {

@@ -19,6 +19,11 @@ try {
         if ($attempt -ge 20) { throw 'Native composer test still running after 20 minutes; no window launched.' }
         Start-Sleep -Seconds 60
     }
+    # CopyFromScreen/native chart evidence requires an active Windows desktop; never send desktop input.
+    [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+    $session = (& quser 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0 -or $session -notmatch '(?im)^\s*>.*\s(?:Active|\u6D3B\u52A8)\s') { throw "Windows session is not Active; no window launched.`n$session" }
+    Write-Output $session
     $env:FC_NATIVE_UI_CAPTURE_ROOT = $root
     $env:FC_NATIVE_UI_FIXTURES = (Resolve-Path $FixturesRoot).Path
     $env:FC_STARTUP_SMOKE_ROOT = Join-Path $root 'profile'
@@ -30,13 +35,14 @@ try {
     # Keep generated evidence metadata LF-only; artifacts are never committed.
     $manifest = Join-Path $root 'demos.json'
     [IO.File]::WriteAllText($manifest, [IO.File]::ReadAllText($manifest).Replace("`r`n", "`n").TrimEnd("`n") + "`n", [Text.UTF8Encoding]::new($false))
-    foreach ($name in @('dashboard', 'form', 'mixed')) {
+    $demos = @(Get-ChildItem $FixturesRoot -Filter 'demo-*.oui' | ForEach-Object { $_.BaseName.Substring(5) } | Sort-Object)
+    foreach ($name in @($demos) + @('error', 'streaming')) {
         foreach ($theme in @('light', 'dark')) {
             $file = Join-Path $root "$name-$theme.png"
             if (!(Test-Path $file) -or (Get-Item $file).Length -eq 0) { throw "Missing PNG: $file" }
         }
     }
-    Write-Output "PASS six native UI v1 demo PNGs: $root"
+    Write-Output "PASS $(($demos.Count + 2) * 2) native UI merged demo/state PNGs: $root"
 }
 finally {
     if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id }

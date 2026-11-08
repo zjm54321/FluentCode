@@ -18,7 +18,13 @@ internal sealed record NativeUiToolInput(bool Streaming, string? Source = null, 
             return new(false, Error: Compact(message ?? "native_ui 校验失败"));
         }
         // A syntactically complete JSON prefix is still input streaming. Only the ended marker releases it.
-        if (status == "streaming" && !(raw.TryGetProperty("_inputComplete", out var complete) && complete.ValueKind == JsonValueKind.True)) return new(true);
+        if (status == "streaming" && !(raw.TryGetProperty("_inputComplete", out var complete) && complete.ValueKind == JsonValueKind.True))
+        {
+            // A completed title field may name the skeleton, but never release partial source to the renderer.
+            var streamingTitle = raw.TryGetProperty("input", out var partial) && partial.ValueKind == JsonValueKind.Object
+                && partial.TryGetProperty("title", out var titleField) && titleField.ValueKind == JsonValueKind.String ? titleField.GetString() : null;
+            return new(true, Title: streamingTitle?.Length <= 120 ? streamingTitle : null);
+        }
         if (!raw.TryGetProperty("input", out var input)) return new(status == "streaming", Error: status == "streaming" ? null : "工具没有 source 输入");
         JsonDocument? json = null;
         try

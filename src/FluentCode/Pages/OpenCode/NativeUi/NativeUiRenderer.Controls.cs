@@ -25,7 +25,7 @@ internal sealed partial class NativeUiRenderer
             case "TextArea":
                 var area = new TextBox { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MaxLength = NativeUiCatalog.Default.Limits.StringLength }; var areaVisual = new Visual(area);
                 area.TextChanged += (_, _) => SetField(areaVisual, key, "value", S(areaVisual.Model, "label"), area.Text);
-                areaVisual.Apply = node => { area.Header = S(node, "label"); area.PlaceholderText = S(node, "placeholder"); area.MinHeight = 32 + 20 * Math.Clamp(N(node, "rows", 3), 2, 20); var text = NativeUiValues.Text(Field(areaVisual, key, "value", S(node, "label"))); if (text != area.Text) area.Text = text; AutomationProperties.SetName(area, S(node, "label")); }; return areaVisual;
+                areaVisual.Apply = node => { area.Header = S(node, "label"); area.PlaceholderText = S(node, "placeholder"); NativeUiTheme.Input(area, node); area.MinHeight = 32 + 20 * Math.Clamp(N(node, "rows", 3), 2, 20); var text = NativeUiValues.Text(Field(areaVisual, key, "value", S(node, "label"))); if (text != area.Text) area.Text = text; AutomationProperties.SetName(area, S(node, "label")); }; return areaVisual;
             case "SegmentedControl":
                 var segments = new Segmented { SelectionMode = ListViewSelectionMode.Single }; var segmented = new Visual(segments); string segmentSignature = "";
                 segments.SelectionChanged += (_, _) => { if (segments.SelectedItem is SegmentedItem item) SetField(segmented, key, "value", "", item.Tag); };
@@ -34,6 +34,7 @@ internal sealed partial class NativeUiRenderer
                     var choices = Choices(node); var signature = NativeUiValues.ToJson(P(node, "options"))?.ToJsonString() ?? "";
                     if (signature != segmentSignature) { segments.Items.Clear(); foreach (var item in choices) segments.Items.Add(new SegmentedItem { Content = item.Label, Tag = item.Value }); segmentSignature = signature; }
                     segments.SelectedIndex = Array.FindIndex(choices, item => item.Value == NativeUiValues.Text(Field(segmented, key, "value", "")));
+                    NativeUiTheme.Segmented(segments);
                     segments.HorizontalAlignment = B(node, "block") ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
                     AutomationProperties.SetName(segments, node.StatementId ?? "选项");
                 }; return segmented;
@@ -58,14 +59,13 @@ internal sealed partial class NativeUiRenderer
                             var label = new StackPanel { Spacing = NativeUiTheme.Gap(1) }; label.Children.Add(NativeUiComponentTheme.Text(choice.Label));
                             if (choice.Description.Length > 0) label.Children.Add(NativeUiComponentTheme.Text(choice.Description, true));
                             var radio = new RadioButton { Content = label, Tag = choice.Value, GroupName = key, HorizontalAlignment = HorizontalAlignment.Stretch };
-                            if (variant == "cards") { radio.Padding = new(NativeUiTheme.Gap(3)); radio.BorderThickness = new(1); radio.BorderBrush = ComponentBrush("faint"); radio.CornerRadius = NativeUiComponentTheme.Radius("md"); }
                             radio.Checked += (_, _) => SetField(radioVisual, key, "value", S(radioVisual.Model, "label"), radio.Tag); radioPanel.Children.Add(radio);
                         }
                         radioSignature = signature;
                     }
                     var selected = NativeUiValues.Text(Field(radioVisual, key, "value", S(node, "label")));
-                    foreach (var radio in radioPanel.Children.OfType<RadioButton>()) radio.IsChecked = Equals(radio.Tag, selected);
-                    foreach (var pills in radioPanel.Children.OfType<Segmented>()) pills.SelectedIndex = Array.FindIndex(choices, choice => choice.Value == selected);
+                    foreach (var radio in radioPanel.Children.OfType<RadioButton>()) { radio.IsChecked = Equals(radio.Tag, selected); if (variant == "cards") NativeUiTheme.RadioCard(radio); }
+                    foreach (var pills in radioPanel.Children.OfType<Segmented>()) { pills.SelectedIndex = Array.FindIndex(choices, choice => choice.Value == selected); NativeUiTheme.Segmented(pills); }
                 }; return radioVisual;
             case "DatePicker":
                 var date = new CalendarDatePicker { DateFormat = "{year.full}-{month.integer(2)}-{day.integer(2)}", HorizontalAlignment = HorizontalAlignment.Stretch }; var dateVisual = new Visual(date);
@@ -83,7 +83,7 @@ internal sealed partial class NativeUiRenderer
             case "IconButton":
                 var iconButton = new Button(); var iconVisual = new Visual(iconButton);
                 iconButton.Click += async (_, _) => { if (!iconVisual.Disposed && P(iconVisual.Model, "action") is NativeUiActionPlan plan) await _runtime.ExecuteAsync(plan); };
-                iconVisual.Apply = node => { iconButton.Content = NativeUiComponentTheme.Icon(S(node, "icon")); AutomationProperties.SetName(iconButton, S(node, "label") is { Length: > 0 } label ? label : S(node, "icon")); ToolTipService.SetToolTip(iconButton, S(node, "label")); NativeUiTheme.Button(iconButton, node); iconButton.IsEnabled = !_runtime.IsExecuting; }; return iconVisual;
+                iconVisual.Apply = node => { iconButton.Content = NativeUiTheme.Icon(S(node, "icon")); AutomationProperties.SetName(iconButton, S(node, "label") is { Length: > 0 } label ? label : S(node, "icon")); ToolTipService.SetToolTip(iconButton, S(node, "label")); NativeUiTheme.Button(iconButton, node); iconButton.IsEnabled = !_runtime.IsExecuting; }; return iconVisual;
             case "Pressable":
                 var tile = new ContentControl { IsTabStop = true }; var pressable = new Visual(tile);
                 async void Press() { if (!pressable.Disposed && P(pressable.Model, "action") is NativeUiActionPlan plan) await _runtime.ExecuteAsync(plan); }

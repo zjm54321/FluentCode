@@ -1,0 +1,2323 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "1312f213fefded83da01bed2803a803288c59b5541622aeb10f152845b63d5df",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "原生 UI 学习卡",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "可翻转闪卡、计时器、矢量说明和可复制代码"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "交互式复习",
+                          "color": "purple",
+                          "icon": "sparkles"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 3,
+                    "align": "center",
+                    "justify": "between"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Carousel",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Flashcard",
+                        "props": {
+                          "front": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "code",
+                                "size": "xl",
+                                "color": "info"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "响应式状态",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "输入改变后，相关内容会怎样更新？",
+                                "size": "sm",
+                                "color": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "back": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "只更新依赖它的内容",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "$state 保存值；组件表达式在变化后重新计算。"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "hint": "点击查看解释"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Flashcard",
+                        "props": {
+                          "front": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "lock",
+                                "size": "xl",
+                                "color": "purple"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "显式的外部动作",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "卡片能否在后台打开网页？",
+                                "size": "sm",
+                                "color": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "back": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "需要确认完整 URL",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Link / @OpenUrl 先展示目的地址，再交给系统浏览器。"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "hint": "点击翻面"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Flashcard",
+                        "props": {
+                          "front": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "bar-chart",
+                                "size": "xl",
+                                "color": "pink"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "统一的数据语言",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "六色图表调色板有什么作用？",
+                                "size": "sm",
+                                "color": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "back": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "跨卡片保持辨识度",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "系列颜色随深浅主题调整，数值与对比仍然清晰。"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "hint": "点击翻面"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Flashcard",
+                        "props": {
+                          "front": "原生键盘导航",
+                          "back": "使用 Tab、方向键和 Enter 操作真正的 WinUI 控件。",
+                          "hint": "再来一张"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "itemWidth": 240,
+                    "gap": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "cards"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "一次状态变化的旅程",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Svg",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Rect",
+                                    "props": {
+                                      "x": 0,
+                                      "y": 0,
+                                      "width": 360,
+                                      "height": 120,
+                                      "fill": "surface",
+                                      "stroke": "faint",
+                                      "strokeWidth": 1,
+                                      "opacity": 1,
+                                      "rx": 8
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "G",
+                                    "props": {
+                                      "children": [
+                                        {
+                                          "type": "element",
+                                          "typeName": "Circle",
+                                          "props": {
+                                            "cx": 55,
+                                            "cy": 58,
+                                            "r": 24,
+                                            "fill": "info"
+                                          },
+                                          "partial": false,
+                                          "hasDynamicProps": false
+                                        },
+                                        {
+                                          "type": "element",
+                                          "typeName": "SvgText",
+                                          "props": {
+                                            "text": "输入",
+                                            "x": 55,
+                                            "y": 63,
+                                            "size": 14,
+                                            "fill": "text",
+                                            "anchor": "middle",
+                                            "weight": "semibold"
+                                          },
+                                          "partial": false,
+                                          "hasDynamicProps": false
+                                        },
+                                        {
+                                          "type": "element",
+                                          "typeName": "Line",
+                                          "props": {
+                                            "x1": 86,
+                                            "y1": 58,
+                                            "x2": 145,
+                                            "y2": 58,
+                                            "stroke": "chart2",
+                                            "strokeWidth": 3
+                                          },
+                                          "partial": false,
+                                          "hasDynamicProps": false
+                                        },
+                                        {
+                                          "type": "element",
+                                          "typeName": "Polygon",
+                                          "props": {
+                                            "points": "142,52 154,58 142,64",
+                                            "fill": "chart2"
+                                          },
+                                          "partial": false,
+                                          "hasDynamicProps": false
+                                        },
+                                        {
+                                          "type": "element",
+                                          "typeName": "Rect",
+                                          "props": {
+                                            "x": 158,
+                                            "y": 34,
+                                            "width": 76,
+                                            "height": 48,
+                                            "fill": "purple",
+                                            "stroke": "purple",
+                                            "strokeWidth": 1,
+                                            "opacity": 0.25,
+                                            "rx": 6
+                                          },
+                                          "partial": false,
+                                          "hasDynamicProps": false
+                                        },
+                                        {
+                                          "type": "element",
+                                          "typeName": "SvgText",
+                                          "props": {
+                                            "text": "状态",
+                                            "x": 196,
+                                            "y": 63,
+                                            "size": 14,
+                                            "fill": "text",
+                                            "anchor": "middle",
+                                            "weight": "semibold"
+                                          },
+                                          "partial": false,
+                                          "hasDynamicProps": false
+                                        },
+                                        {
+                                          "type": "element",
+                                          "typeName": "Path",
+                                          "props": {
+                                            "d": "M 238 58 C 258 58 264 58 278 58",
+                                            "fill": "none",
+                                            "stroke": "chart3",
+                                            "strokeWidth": 3
+                                          },
+                                          "partial": false,
+                                          "hasDynamicProps": false
+                                        },
+                                        {
+                                          "type": "element",
+                                          "typeName": "Ellipse",
+                                          "props": {
+                                            "cx": 311,
+                                            "cy": 58,
+                                            "rx": 28,
+                                            "ry": 24,
+                                            "fill": "pink",
+                                            "stroke": null,
+                                            "strokeWidth": null,
+                                            "opacity": 0.25
+                                          },
+                                          "partial": false,
+                                          "hasDynamicProps": false
+                                        },
+                                        {
+                                          "type": "element",
+                                          "typeName": "SvgText",
+                                          "props": {
+                                            "text": "界面",
+                                            "x": 311,
+                                            "y": 63,
+                                            "size": 14,
+                                            "fill": "text",
+                                            "anchor": "middle",
+                                            "weight": "semibold"
+                                          },
+                                          "partial": false,
+                                          "hasDynamicProps": false
+                                        },
+                                        {
+                                          "type": "element",
+                                          "typeName": "Polyline",
+                                          "props": {
+                                            "points": "22,100 90,90 150,96 224,86 337,92",
+                                            "stroke": "chart2",
+                                            "strokeWidth": 2,
+                                            "fill": "none",
+                                            "opacity": 0.6
+                                          },
+                                          "partial": false,
+                                          "hasDynamicProps": false
+                                        }
+                                      ],
+                                      "transform": null,
+                                      "opacity": 1
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "viewBox": "0 0 360 120",
+                                "width": "100%",
+                                "height": 120
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false,
+                              "statementId": "diagram"
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Markdown",
+                              "props": {
+                                "text": "**原生 XAML 绘图**：没有 SVG 文档、脚本或外部资源。"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Math",
+                              "props": {
+                                "tex": "UI = f(state)"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 3
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Label",
+                              "props": {
+                                "text": "专注练习"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Timer",
+                              "props": {
+                                "seconds": {
+                                  "k": "StateRef",
+                                  "n": "$seconds"
+                                },
+                                "label": "专注复习"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Code",
+                              "props": {
+                                "code": "$count = 0\nroot = Button(\"Add\", @Set($count, $count + 1))",
+                                "language": "openui"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "代码块只展示与复制，不会执行。"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "outline",
+                          "padding": 3,
+                          "gap": 3
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "columns": 2,
+                    "minChildWidth": 280,
+                    "gap": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Checkbox",
+                  "props": {
+                    "checked": {
+                      "k": "StateRef",
+                      "n": "$answer"
+                    },
+                    "label": "我能解释输入、状态和界面之间的关系"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Celebration",
+                  "props": {
+                    "when": {
+                      "k": "StateRef",
+                      "n": "$answer"
+                    }
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": {
+                            "k": "Ternary",
+                            "cond": {
+                              "k": "StateRef",
+                              "n": "$answer"
+                            },
+                            "then": {
+                              "k": "Str",
+                              "v": "复习完成"
+                            },
+                            "else": {
+                              "k": "Str",
+                              "v": "继续探索"
+                            }
+                          },
+                          "color": {
+                            "k": "Ternary",
+                            "cond": {
+                              "k": "StateRef",
+                              "n": "$answer"
+                            },
+                            "then": {
+                              "k": "Str",
+                              "v": "success"
+                            },
+                            "else": {
+                              "k": "Str",
+                              "v": "neutral"
+                            }
+                          },
+                          "icon": "check-circle"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "给我一道练习题",
+                          "action": {
+                            "k": "Comp",
+                            "name": "ToAssistant",
+                            "args": [
+                              {
+                                "k": "Str",
+                                "v": "请给我一道关于 OpenUI 状态和原生交互的练习题。"
+                              },
+                              {
+                                "k": "Obj",
+                                "entries": [
+                                  [
+                                    "reviewed",
+                                    {
+                                      "k": "StateRef",
+                                      "n": "$answer"
+                                    }
+                                  ]
+                                ]
+                              }
+                            ],
+                            "mappedProps": {
+                              "message": {
+                                "k": "Str",
+                                "v": "请给我一道关于 OpenUI 状态和原生交互的练习题。"
+                              },
+                              "context": {
+                                "k": "Obj",
+                                "entries": [
+                                  [
+                                    "reviewed",
+                                    {
+                                      "k": "StateRef",
+                                      "n": "$answer"
+                                    }
+                                  ]
+                                ]
+                              }
+                            }
+                          },
+                          "variant": "solid",
+                          "color": null,
+                          "size": "md",
+                          "icon": "send"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "gap": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "公式保留源文本；闪卡翻面状态与计时状态跟随卡片，不依赖网页运行时。"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": "outline",
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 5,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$answer": false,
+      "$seconds": 300
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "原生 UI 学习卡",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "可翻转闪卡、计时器、矢量说明和可复制代码"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "交互式复习",
+                        "color": "purple",
+                        "icon": "sparkles"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Carousel",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Flashcard",
+                      "props": {
+                        "front": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "code",
+                              "size": "xl",
+                              "color": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "响应式状态",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "输入改变后，相关内容会怎样更新？",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "back": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "只更新依赖它的内容",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$state 保存值；组件表达式在变化后重新计算。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "hint": "点击查看解释"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Flashcard",
+                      "props": {
+                        "front": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "lock",
+                              "size": "xl",
+                              "color": "purple"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "显式的外部动作",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "卡片能否在后台打开网页？",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "back": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "需要确认完整 URL",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Link / @OpenUrl 先展示目的地址，再交给系统浏览器。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "hint": "点击翻面"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Flashcard",
+                      "props": {
+                        "front": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "bar-chart",
+                              "size": "xl",
+                              "color": "pink"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "统一的数据语言",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "六色图表调色板有什么作用？",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "back": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "跨卡片保持辨识度",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "系列颜色随深浅主题调整，数值与对比仍然清晰。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "hint": "点击翻面"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Flashcard",
+                      "props": {
+                        "front": "原生键盘导航",
+                        "back": "使用 Tab、方向键和 Enter 操作真正的 WinUI 控件。",
+                        "hint": "再来一张"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "itemWidth": 240,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "cards"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "一次状态变化的旅程",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 0,
+                                    "y": 0,
+                                    "width": 360,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "faint",
+                                    "strokeWidth": 1,
+                                    "opacity": 1,
+                                    "rx": 8
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "G",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Circle",
+                                        "props": {
+                                          "cx": 55,
+                                          "cy": 58,
+                                          "r": 24,
+                                          "fill": "info"
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "SvgText",
+                                        "props": {
+                                          "text": "输入",
+                                          "x": 55,
+                                          "y": 63,
+                                          "size": 14,
+                                          "fill": "text",
+                                          "anchor": "middle",
+                                          "weight": "semibold"
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Line",
+                                        "props": {
+                                          "x1": 86,
+                                          "y1": 58,
+                                          "x2": 145,
+                                          "y2": 58,
+                                          "stroke": "chart2",
+                                          "strokeWidth": 3
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Polygon",
+                                        "props": {
+                                          "points": "142,52 154,58 142,64",
+                                          "fill": "chart2"
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Rect",
+                                        "props": {
+                                          "x": 158,
+                                          "y": 34,
+                                          "width": 76,
+                                          "height": 48,
+                                          "fill": "purple",
+                                          "stroke": "purple",
+                                          "strokeWidth": 1,
+                                          "opacity": 0.25,
+                                          "rx": 6
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "SvgText",
+                                        "props": {
+                                          "text": "状态",
+                                          "x": 196,
+                                          "y": 63,
+                                          "size": 14,
+                                          "fill": "text",
+                                          "anchor": "middle",
+                                          "weight": "semibold"
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Path",
+                                        "props": {
+                                          "d": "M 238 58 C 258 58 264 58 278 58",
+                                          "fill": "none",
+                                          "stroke": "chart3",
+                                          "strokeWidth": 3
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Ellipse",
+                                        "props": {
+                                          "cx": 311,
+                                          "cy": 58,
+                                          "rx": 28,
+                                          "ry": 24,
+                                          "fill": "pink",
+                                          "stroke": null,
+                                          "strokeWidth": null,
+                                          "opacity": 0.25
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "SvgText",
+                                        "props": {
+                                          "text": "界面",
+                                          "x": 311,
+                                          "y": 63,
+                                          "size": 14,
+                                          "fill": "text",
+                                          "anchor": "middle",
+                                          "weight": "semibold"
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Polyline",
+                                        "props": {
+                                          "points": "22,100 90,90 150,96 224,86 337,92",
+                                          "stroke": "chart2",
+                                          "strokeWidth": 2,
+                                          "fill": "none",
+                                          "opacity": 0.6
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "transform": null,
+                                    "opacity": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 360 120",
+                              "width": "100%",
+                              "height": 120
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false,
+                            "statementId": "diagram"
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Markdown",
+                            "props": {
+                              "text": "**原生 XAML 绘图**：没有 SVG 文档、脚本或外部资源。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Math",
+                            "props": {
+                              "tex": "UI = f(state)"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Label",
+                            "props": {
+                              "text": "专注练习"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Timer",
+                            "props": {
+                              "seconds": {
+                                "__reactive": "assign",
+                                "target": "$seconds",
+                                "expr": {
+                                  "k": "StateRef",
+                                  "n": "$value"
+                                }
+                              },
+                              "label": "专注复习"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Code",
+                            "props": {
+                              "code": "$count = 0\nroot = Button(\"Add\", @Set($count, $count + 1))",
+                              "language": "openui"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "代码块只展示与复制，不会执行。"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "outline",
+                        "padding": 3,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 280,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "__reactive": "assign",
+                    "target": "$answer",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "我能解释输入、状态和界面之间的关系"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Celebration",
+                "props": {
+                  "when": false
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "继续探索",
+                        "color": "neutral",
+                        "icon": "check-circle"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "给我一道练习题",
+                        "action": {
+                          "steps": [
+                            {
+                              "type": "continue_conversation",
+                              "message": "请给我一道关于 OpenUI 状态和原生交互的练习题。",
+                              "context": {
+                                "reviewed": false
+                              }
+                            }
+                          ]
+                        },
+                        "variant": "solid",
+                        "color": null,
+                        "size": "md",
+                        "icon": "send"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "公式保留源文本；闪卡翻面状态与计时状态跟随卡片，不依赖网页运行时。"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": "outline",
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 652,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": [
+            {
+              "code": "no-root",
+              "component": "Col",
+              "path": "",
+              "message": "No root statement, and no statement calls the root component Col"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$answer": false,
+          "$seconds": 300
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1304,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "原生 UI 学习卡",
+                                    "size": "lg"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "可翻转闪卡、计时器、矢量说明和可复制代码"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "交互式复习",
+                              "color": "purple",
+                              "icon": "sparkles"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [
+            "cards",
+            "diagram"
+          ],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$answer": false,
+          "$seconds": 300
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1956,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "原生 UI 学习卡",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "可翻转闪卡、计时器、矢量说明和可复制代码"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "交互式复习",
+                              "color": "purple",
+                              "icon": "sparkles"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "center",
+                        "justify": "between"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Carousel",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Flashcard",
+                            "props": {
+                              "front": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "code",
+                                    "size": "xl",
+                                    "color": "info"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "响应式状态",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "输入改变后，相关内容会怎样更新？",
+                                    "size": "sm",
+                                    "color": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "back": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "只更新依赖它的内容",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$state 保存值；组件表达式在变化后重新计算。"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "hint": "点击查看解释"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Flashcard",
+                            "props": {
+                              "front": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "lock",
+                                    "size": "xl",
+                                    "color": "purple"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "显式的外部动作",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "卡片能否在后台打开网页？",
+                                    "size": "sm",
+                                    "color": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "back": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "需要确认完整 URL",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Link / @OpenUrl 先展示目的地址，再交给系统浏览器。"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "hint": "点击翻面"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Flashcard",
+                            "props": {
+                              "front": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "bar-chart",
+                                    "size": "xl",
+                                    "color": "pink"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "统一的数据语言",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "六色图表调色板有什么作用？",
+                                    "size": "sm",
+                                    "color": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "back": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "跨卡片保持辨识度",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "系列颜色随深浅主题调整，数值与对比仍然清晰。"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "hint": "点击翻面"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Flashcard",
+                            "props": {
+                              "front": "原生键盘导航",
+                              "back": "使用 Tab、方向键和 Enter 操作真正的 WinUI 控件。",
+                              "hint": "再来一张"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "itemWidth": 240,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "cards"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "一次状态变化的旅程",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Svg",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Rect",
+                                        "props": {
+                                          "x": 0,
+                                          "y": 0,
+                                          "width": 360,
+                                          "height": 120,
+                                          "fill": "surface",
+                                          "stroke": "faint",
+                                          "strokeWidth": 1,
+                                          "opacity": 1,
+                                          "rx": 8
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "G",
+                                        "props": {
+                                          "children": [
+                                            {
+                                              "type": "element",
+                                              "typeName": "Circle",
+                                              "props": {
+                                                "cx": 55,
+                                                "cy": 58,
+                                                "r": 24,
+                                                "fill": "info"
+                                              },
+                                              "partial": false,
+                                              "hasDynamicProps": false
+                                            },
+                                            {
+                                              "type": "element",
+                                              "typeName": "SvgText",
+                                              "props": {
+                                                "text": "输入",
+                                                "x": 55,
+                                                "y": 63,
+                                                "size": 14,
+                                                "fill": "text",
+                                                "anchor": "middle",
+                                                "weight": "semibold"
+                                              },
+                                              "partial": false,
+                                              "hasDynamicProps": false
+                                            },
+                                            {
+                                              "type": "element",
+                                              "typeName": "Line",
+                                              "props": {
+                                                "x1": 86,
+                                                "y1": 58,
+                                                "x2": 145,
+                                                "y2": 58,
+                                                "stroke": "chart2",
+                                                "strokeWidth": 3
+                                              },
+                                              "partial": false,
+                                              "hasDynamicProps": false
+                                            },
+                                            {
+                                              "type": "element",
+                                              "typeName": "Polygon",
+                                              "props": {
+                                                "points": "142,52 154,58 142,64",
+                                                "fill": "chart2"
+                                              },
+                                              "partial": false,
+                                              "hasDynamicProps": false
+                                            },
+                                            {
+                                              "type": "element",
+                                              "typeName": "Rect",
+                                              "props": {
+                                                "x": 158,
+                                                "y": 34,
+                                                "width": 76,
+                                                "height": 48,
+                                                "fill": "purple",
+                                                "stroke": "purple",
+                                                "strokeWidth": 1,
+                                                "opacity": 0.25,
+                                                "rx": 6
+                                              },
+                                              "partial": false,
+                                              "hasDynamicProps": false
+                                            },
+                                            {
+                                              "type": "element",
+                                              "typeName": "SvgText",
+                                              "props": {
+                                                "text": "状态",
+                                                "x": 196,
+                                                "y": 63,
+                                                "size": 14,
+                                                "fill": "text",
+                                                "anchor": "middle",
+                                                "weight": "semibold"
+                                              },
+                                              "partial": false,
+                                              "hasDynamicProps": false
+                                            },
+                                            {
+                                              "type": "element",
+                                              "typeName": "Path",
+                                              "props": {
+                                                "d": "M 238 58 C 258 58 264 58 278 58",
+                                                "fill": "none",
+                                                "stroke": "chart3",
+                                                "strokeWidth": 3
+                                              },
+                                              "partial": false,
+                                              "hasDynamicProps": false
+                                            },
+                                            {
+                                              "type": "element",
+                                              "typeName": "Ellipse",
+                                              "props": {
+                                                "cx": 311,
+                                                "cy": 58,
+                                                "rx": 28,
+                                                "ry": 24,
+                                                "fill": "pink",
+                                                "stroke": null,
+                                                "strokeWidth": null,
+                                                "opacity": 0.25
+                                              },
+                                              "partial": false,
+                                              "hasDynamicProps": false
+                                            },
+                                            {
+                                              "type": "element",
+                                              "typeName": "SvgText",
+                                              "props": {
+                                                "text": "界面",
+                                                "x": 311,
+                                                "y": 63,
+                                                "size": 14,
+                                                "fill": "text",
+                                                "anchor": "middle",
+                                                "weight": "semibold"
+                                              },
+                                              "partial": false,
+                                              "hasDynamicProps": false
+                                            },
+                                            {
+                                              "type": "element",
+                                              "typeName": "Polyline",
+                                              "props": {
+                                                "points": "22,100 90,90 150,96 224,86 337,92",
+                                                "stroke": "chart2",
+                                                "strokeWidth": 2,
+                                                "fill": "none",
+                                                "opacity": 0.6
+                                              },
+                                              "partial": false,
+                                              "hasDynamicProps": false
+                                            }
+                                          ],
+                                          "transform": null,
+                                          "opacity": 1
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "viewBox": "0 0 360 120",
+                                    "width": "100%",
+                                    "height": 120
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false,
+                                  "statementId": "diagram"
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Markdown",
+                                  "props": {
+                                    "text": "**原生 XAML 绘图**：没有 SVG 文档、脚本或外部资源。"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Math",
+                                  "props": {
+                                    "tex": "UI = f(state)"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 3
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Label",
+                                  "props": {
+                                    "text": "专注练习"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Timer",
+                                  "props": {
+                                    "seconds": {
+                                      "k": "StateRef",
+                                      "n": "$seconds"
+                                    },
+                                    "label": "专注复习"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": true
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Code",
+                                  "props": {
+                                    "code": "$count = 0\nroot = Button(\"Add\", @Set($count, $count + 1))",
+                                    "language": "openui"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "代码块只展示与复制，不会执行。"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "outline",
+                              "padding": 3,
+                              "gap": 3
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "columns": 2,
+                        "minChildWidth": 280,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Checkbox",
+                      "props": {
+                        "checked": {
+                          "k": "StateRef",
+                          "n": "$answer"
+                        },
+                        "label": "我能解释输入、状态和界面之间的关系"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Celebration",
+                      "props": {
+                        "when": {
+                          "k": "StateRef",
+                          "n": "$answer"
+                        }
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "StateRef",
+                                  "n": "$answer"
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "复习完成"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "继续探索"
+                                }
+                              },
+                              "color": {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "StateRef",
+                                  "n": "$answer"
+                                },
+                                "then": {
+                                  "k": "Str",
+                                  "v": "success"
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": "neutral"
+                                }
+                              },
+                              "icon": "check-circle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "给我一道练习题",
+                              "action": {
+                                "k": "Comp",
+                                "name": "ToAssistant",
+                                "args": [
+                                  {
+                                    "k": "Str",
+                                    "v": "请给我一道关于 OpenUI 状态和原生交互的练习题。"
+                                  },
+                                  {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "reviewed",
+                                        {
+                                          "k": "StateRef",
+                                          "n": "$answer"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "message": {
+                                    "k": "Str",
+                                    "v": "请给我一道关于 OpenUI 状态和原生交互的练习题。"
+                                  },
+                                  "context": {
+                                    "k": "Obj",
+                                    "entries": [
+                                      [
+                                        "reviewed",
+                                        {
+                                          "k": "StateRef",
+                                          "n": "$answer"
+                                        }
+                                      ]
+                                    ]
+                                  }
+                                }
+                              },
+                              "variant": "solid",
+                              "color": null,
+                              "size": "md",
+                              "icon": "send"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "公式保留源文本；闪卡翻面状态与计时状态跟随卡片，不依赖网页运行时。"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "outline",
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$answer": false,
+          "$seconds": 300
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

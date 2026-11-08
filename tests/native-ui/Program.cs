@@ -100,6 +100,17 @@ internal static class Program
                 && Equals(urlInput.Get("$url"), "https://example.org") && urlInput.Status.Contains("http(s)"), "Rejected native input preserves state and reports locally");
             Require(catalog.Components.Count == 54 && !catalog.Components.ContainsKey("HtmlView"), "Complete native catalog without HTML");
             using var form = Demo("form"); form.Set("$period", "每月"); form.Set("$date", "2026-11-12");
+            using var onboarding = Demo("showcase-onboarding"); await Press(onboarding, "下一步");
+            Require(NativeUiValues.Number(onboarding.Get("$step")) == 2 && Elements(onboarding.EvaluateRoot()).Any(element => element.TypeName == "RadioGroup"), "Showcase multi-step form reveals described preference controls");
+            onboarding.Set("$notes", "Keep this note"); await Press(onboarding, "下一步"); await Press(onboarding, "上一步");
+            Require(NativeUiValues.Number(onboarding.Get("$step")) == 2 && Equals(onboarding.Get("$notes"), "Keep this note"), "Showcase form preserves state across steps");
+            using var explorer = Demo("showcase-explorer"); explorer.Set("$choice", "高山"); await Press(explorer, "选择目的地"); explorer.Set("$tab", "我的计划"); explorer.Set("$faq", true);
+            Require(Equals(explorer.Get("$choice"), "京都") && Elements(explorer.EvaluateRoot()).Any(element => element.TypeName == "List") && Elements(explorer.EvaluateRoot()).Any(element => element.TypeName == "Link"), "Showcase carousel selection, tabs and accordion share reactive state");
+            using var planner = Demo("showcase-planner"); planner.Set("$days", 6d); planner.Set("$stay", "simple");
+            Require(Elements(planner.EvaluateRoot()).Any(element => element.TypeName == "Title" && Equals(element.Props.GetValueOrDefault("text"), "¥3480")), "Showcase planner recomputes its complete budget");
+            await Press(planner, "恢复默认"); Require(NativeUiValues.Number(planner.Get("$days")) == 4 && Equals(planner.Get("$stay"), "comfort"), "Showcase planner resets all inputs");
+            using var sizing = Demo("sizing");
+            Require(Elements(sizing.EvaluateRoot()).Where(element => element.TypeName == "IconButton").Select(element => element.Props.GetValueOrDefault("size")).SequenceEqual(new object?[] { "sm", "md", "lg" }), "IconButton size contract reaches native models");
             form.TrySetField("$ui:flash", null, true); NativeUiStateStore.Save("part-1", form.Program.Source, form.Snapshot());
             using var reopened = Demo("form"); reopened.Restore(NativeUiStateStore.Read("part-1", form.Program.Source)!);
             Require(Equals(reopened.Get("$period"), "每月") && Equals(reopened.Get("$date"), "2026-11-12") && Equals(reopened.Field("$ui:flash", false), true), "Part ID snapshot survives runtime disposal/recreation including local UI state");
@@ -117,6 +128,9 @@ internal static class Program
             var inputJson = JsonSerializer.Serialize(new { source = "root = Text(\"History\")", title = "Example" });
             var streamingState = JsonSerializer.SerializeToElement(new { status = "streaming", input = inputJson });
             Require(NativeUiToolInput.Read(streamingState, catalog.Limits).Streaming, "Complete-looking prefix remains a placeholder");
+            var titledStreaming = NativeUiToolInput.Read(JsonSerializer.SerializeToElement(new { status = "streaming", input = new { title = "Meeting", source = "root = Text(\"Wait\")" } }), catalog.Limits);
+            Require(titledStreaming.Streaming && titledStreaming.Title == "Meeting" && titledStreaming.Source is null, "Streaming title names the skeleton without releasing source");
+            Require(NativeUiToolInput.Read(JsonSerializer.SerializeToElement(new { status = "streaming", input = new { title = new string('x', 121) } }), catalog.Limits).Title is null, "Streaming title respects the 120-character bound");
             var endedState = JsonSerializer.SerializeToElement(new { status = "streaming", input = inputJson, _inputComplete = true });
             Require(NativeUiToolInput.Read(endedState, catalog.Limits).Source == "root = Text(\"History\")", "Input ended releases JSON string source");
             var replayState = JsonSerializer.SerializeToElement(new { status = "completed", input = new { source = "root = Text(\"History\")" } });

@@ -15,7 +15,7 @@ namespace FluentCode.Pages.OpenCode;
 internal sealed partial class NativeUiRenderer
 {
     private Flyout? _confirmation;
-    private Brush ComponentBrush(string token, bool background = false) => NativeUiComponentTheme.Brush(token, background, _root.ActualTheme);
+    private Brush ComponentBrush(string token, bool background = false) => NativeUiTheme.Brush(token, background, _root.ActualTheme);
     private static void ApplySpacers(Grid row)
     {
         foreach (var spacer in row.Children.OfType<FrameworkElement>().Where(child => Equals(child.Tag, "native-ui-spacer")))
@@ -61,7 +61,7 @@ internal sealed partial class NativeUiRenderer
                     grid.ColumnSpacing = grid.RowSpacing = gap; grid.ColumnDefinitions.Clear(); grid.RowDefinitions.Clear();
                     for (var i = 0; i < columns; i++) grid.ColumnDefinitions.Add(new() { Width = new(1, GridUnitType.Star) });
                     for (var i = 0; i < (grid.Children.Count + columns - 1) / columns; i++) grid.RowDefinitions.Add(new() { Height = GridLength.Auto });
-                    for (var i = 0; i < grid.Children.Count; i++) { Grid.SetRow((FrameworkElement)grid.Children[i], i / columns); Grid.SetColumn((FrameworkElement)grid.Children[i], i % columns); }
+                    for (var i = 0; i < grid.Children.Count; i++) { Grid.SetRow((FrameworkElement)grid.Children[i], i / columns); Grid.SetColumn((FrameworkElement)grid.Children[i], i % columns); if (grid.Children[i] is Button button) button.HorizontalAlignment = HorizontalAlignment.Stretch; }
                 }
                 grid.SizeChanged += (_, _) => { if (!gridVisual.Disposed) Layout(); };
                 gridVisual.Apply = node => { Sync(grid, Children(P(node, "children"), key + "/children", depth + 1).Cast<UIElement>().ToArray()); Layout(); }; return gridVisual;
@@ -70,8 +70,16 @@ internal sealed partial class NativeUiRenderer
                 formVisual.Apply = node => Sync(form, Children(P(node, "children"), key + "/children", depth + 1).Cast<UIElement>().ToArray()); return formVisual;
             case "Spacer": return new(new Border { MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Tag = "native-ui-spacer" });
             case "Carousel":
-                var track = new StackPanel { Orientation = Orientation.Horizontal }; var scroll = new ScrollViewer { Content = track, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Disabled }; var carousel = new Visual(scroll);
-                carousel.Apply = node => { var items = Children(P(node, "children"), key + "/children", depth + 1).ToArray(); foreach (var item in items) item.Width = Math.Clamp(N(node, "itemWidth", 240), 80, 640); track.Spacing = NativeUiTheme.Gap(P(node, "gap")); Sync(track, items.Cast<UIElement>().ToArray()); }; return carousel;
+                var track = new StackPanel { Orientation = Orientation.Horizontal }; var scroll = new ScrollViewer { Content = track, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Disabled };
+                var previous = new Button { Content = NativeUiTheme.Icon("chevron-left"), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Width = 32, Height = 32, Padding = new Thickness(0), Margin = new Thickness(4) };
+                var next = new Button { Content = NativeUiTheme.Icon("chevron-right"), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Width = 32, Height = 32, Padding = new Thickness(0), Margin = new Thickness(4) };
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(previous, "上一组"); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(next, "下一组");
+                var carousel = new Visual(new Grid { Children = { scroll, previous, next } });
+                void Edges() { previous.Visibility = scroll.HorizontalOffset > 1 ? Visibility.Visible : Visibility.Collapsed; next.Visibility = scroll.ScrollableWidth - scroll.HorizontalOffset > 1 ? Visibility.Visible : Visibility.Collapsed; }
+                previous.Click += (_, _) => scroll.ChangeView(Math.Max(0, scroll.HorizontalOffset - scroll.ViewportWidth * .85), null, null);
+                next.Click += (_, _) => scroll.ChangeView(Math.Min(scroll.ScrollableWidth, scroll.HorizontalOffset + scroll.ViewportWidth * .85), null, null);
+                scroll.ViewChanged += (_, _) => Edges(); scroll.SizeChanged += (_, _) => Edges();
+                carousel.Apply = node => { var items = Children(P(node, "children"), key + "/children", depth + 1).ToArray(); foreach (var item in items) item.Width = Math.Clamp(N(node, "itemWidth", 240), 80, 640); track.Spacing = NativeUiTheme.Gap(P(node, "gap")); Sync(track, items.Cast<UIElement>().ToArray()); Edges(); }; return carousel;
             case "Popover":
                 var triggerContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var popoverContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) };
                 var trigger = new Button { Content = triggerContent }; var flyout = new Flyout { Content = popoverContent }; var popover = new Visual(trigger); trigger.Flyout = flyout;

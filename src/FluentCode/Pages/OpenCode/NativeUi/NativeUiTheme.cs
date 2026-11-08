@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using CommunityToolkit.WinUI.Controls;
 using FluentCode.Motion;
 using FluentCode.Services.NativeUi;
 using Microsoft.UI.Xaml;
@@ -15,7 +16,9 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using WinUI.TableView;
 using FontWeights = Microsoft.UI.Text.FontWeights;
 using FontStyle = Windows.UI.Text.FontStyle;
 using TextDecorations = Windows.UI.Text.TextDecorations;
@@ -42,6 +45,7 @@ internal static class NativeUiTheme
     private static readonly ConditionalWeakTable<FrameworkElement, string> AppliedAliases = new();
     private static readonly ConditionalWeakTable<FrameworkElement, FitState> Fits = new();
     private static readonly ConditionalWeakTable<Slider, SliderParts> Sliders = new();
+    private static readonly ConditionalWeakTable<Button, KeycapState> Keycaps = new();
     private static readonly object Marker = new();
     private static bool? _palette;
     private static bool Palette => _palette ??= RegisterPalette();
@@ -143,6 +147,24 @@ internal static class NativeUiTheme
         _ => "TextFillColorPrimaryBrush",
     };
     private static string BadgeTone(string color) => color is "info" or "success" or "warning" or "danger" or "purple" or "pink" ? color : "muted";
+    private static string Background(string color) => color switch
+    {
+        "surface" => "SolidBackgroundFillColorQuarternaryBrush",
+        "success" => "SystemFillColorSuccessBackgroundBrush", "warning" => "SystemFillColorCautionBackgroundBrush", "danger" => "SystemFillColorCriticalBackgroundBrush",
+        "info" => Palette ? "NativeUiAccentTintBrush" : "SystemFillColorAttentionBackgroundBrush",
+        "purple" => Palette ? "NativeUiPurpleTintBrush" : "ControlAltFillColorTertiaryBrush", "pink" => Palette ? "NativeUiPinkTintBrush" : "ControlAltFillColorTertiaryBrush",
+        _ => "ControlAltFillColorTertiaryBrush",
+    };
+    internal static Brush Brush(string token, bool background = false, ElementTheme theme = ElementTheme.Default)
+    {
+        if (token == "none") return new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        // Preserve the catalog's bounded SVG/Box hex colour props; no model XAML or CSS is loaded.
+        if (token.StartsWith('#') && (token.Length == 7 || token.Length == 9) && uint.TryParse(token.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hex))
+            return new SolidColorBrush(Windows.UI.Color.FromArgb(token.Length == 9 ? (byte)(hex >> 24) : (byte)255, (byte)(hex >> 16), (byte)(hex >> 8), (byte)hex));
+        var resource = token == "divider" ? "DividerStrokeColorDefaultBrush" : background ? Background(token) : Foreground(token);
+        return OpenCodeThemedXaml.Load<Border>("Border", "RequestedTheme=\"" + theme + "\" Background=\"{ThemeResource " + resource + "}\"")?.Background
+            ?? new SolidColorBrush(Microsoft.UI.Colors.Gray);
+    }
     private static Style? TextStyle(string target, string basedOn, string foreground, double size = 0, double line = 0, string? weight = null)
     {
         var key = target + ":" + basedOn + ":" + foreground + ":" + size.ToString(CultureInfo.InvariantCulture) + ":" + line.ToString(CultureInfo.InvariantCulture) + ":" + weight;
@@ -220,6 +242,8 @@ internal static class NativeUiTheme
     {
         panel.ColumnSpacing = panel.RowSpacing = Gap(Prop(node, "gap"), 2);
         var count = panel.Children.Count;
+        if (count > 0 && panel.Children.All(child => child is Button))
+            foreach (var button in panel.Children.OfType<Button>()) button.HorizontalAlignment = HorizontalAlignment.Stretch;
         var columns = Flag(node, "wrap") && panel.ActualWidth > 0 ? Math.Max(1, Math.Min(count, (int)(panel.ActualWidth / WrapCellWidth))) : Math.Max(1, count);
         panel.ColumnDefinitions.Clear(); panel.RowDefinitions.Clear();
         var block = panel.Children.OfType<Button>().Any(button => button.HorizontalAlignment == HorizontalAlignment.Stretch);
@@ -242,13 +266,7 @@ internal static class NativeUiTheme
     internal static void Badge(Border border, NativeUiElement node)
     {
         var color = String(node, "color");
-        var background = color switch
-        {
-            "success" => "SystemFillColorSuccessBackgroundBrush", "warning" => "SystemFillColorCautionBackgroundBrush", "danger" => "SystemFillColorCriticalBackgroundBrush",
-            "info" => Palette ? "NativeUiAccentTintBrush" : "SystemFillColorAttentionBackgroundBrush",
-            "purple" => Palette ? "NativeUiPurpleTintBrush" : "ControlAltFillColorTertiaryBrush", "pink" => Palette ? "NativeUiPinkTintBrush" : "ControlAltFillColorTertiaryBrush",
-            _ => "ControlAltFillColorTertiaryBrush",
-        };
+        var background = Background(BadgeTone(color));
         border.Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", background));
         border.Padding = new Thickness(8, 2, 8, 2); border.MinHeight = 20; border.CornerRadius = new CornerRadius(10);
         border.HorizontalAlignment = HorizontalAlignment.Left; border.VerticalAlignment = VerticalAlignment.Center;
@@ -271,20 +289,37 @@ internal static class NativeUiTheme
         var block = Flag(node, "block");
         button.HorizontalAlignment = block ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
         button.VerticalAlignment = VerticalAlignment.Center;
-        // Calculator-style keypads: block buttons with one or two glyphs read as keycaps.
-        var keycap = block && size != "sm" && button.Content is string label && label.Length is > 0 and <= 2;
+        // Explicit OIU sizes win. Unspecified short-label keypad keys follow their column width.
+        var keycap = size.Length == 0 && node.TypeName == "Button" && button.Content is string label && label.Length is > 0 and <= 2;
         (button.MinHeight, button.Padding, button.FontSize) = keycap ? (40d, new Thickness(0), 16d) : size switch
         {
-            "sm" => (24d, new Thickness(8, 2, 8, 3), 12d),
-            "lg" => (40d, new Thickness(16, 8, 16, 9), 14d),
-            _ => (32d, new Thickness(11, 5, 11, 6), 14d),
+            "sm" => (32d, new Thickness(8, 4, 8, 4), 12d),
+            "lg" => (48d, new Thickness(16, 12, 16, 12), 14d),
+            _ => (40d, new Thickness(11, 8, 11, 8), 14d),
         };
+        if (!Keycaps.TryGetValue(button, out var sizing))
+        {
+            sizing = new(); Keycaps.Add(button, sizing);
+            var owned = sizing; button.SizeChanged += (_, _) => SizeKeycap(button, owned);
+        }
+        sizing.Adaptive = keycap; SizeKeycap(button, sizing);
+        if (node.TypeName == "IconButton")
+        {
+            button.MinWidth = button.MinHeight; button.Padding = new Thickness(0);
+            button.HorizontalContentAlignment = HorizontalAlignment.Center;
+        }
         Typography.SetNumeralAlignment(button, FontNumeralAlignment.Tabular);
         if (button.Content is StackPanel panel)
         {
             panel.Spacing = size == "sm" ? 6 : 8; panel.VerticalAlignment = VerticalAlignment.Center;
             foreach (var icon in panel.Children.OfType<FontIcon>()) { icon.FontSize = size == "sm" ? 12 : 16; icon.VerticalAlignment = VerticalAlignment.Center; }
         }
+    }
+    private sealed class KeycapState { internal bool Adaptive; }
+    private static void SizeKeycap(Button button, KeycapState state)
+    {
+        if (state.Adaptive && button.Parent is Grid && button.ActualWidth > 0)
+            button.MinHeight = Math.Clamp(button.ActualWidth * 0.8, 40, 56);
     }
     private static (string Key, string Color, double Opacity)[] States(string prefix, string part, string rest, double restOpacity, string over, double overOpacity, string pressed, double pressedOpacity, string disabled)
         => new[] { (prefix + part, rest, restOpacity), (prefix + part + "PointerOver", over, overOpacity), (prefix + part + "Pressed", pressed, pressedOpacity), (prefix + part + "Disabled", disabled, 1d) };
@@ -310,7 +345,8 @@ internal static class NativeUiTheme
                     "primary" => ("@accent", "@accent", "@accent", 0.12, 0.18, 0.08),
                     "danger" => ("SystemFillColorCriticalBackground", "SystemFillColorCritical", "SystemFillColorCritical", 1d, 0.14, 0.08),
                     "success" => ("SystemFillColorSuccessBackground", "SystemFillColorSuccess", "SystemFillColorSuccess", 1d, 0.14, 0.08),
-                    _ => ("ControlAltFillColorSecondary", "ControlAltFillColorTertiary", "ControlAltFillColorQuarternary", 1d, 1d, 1d),
+                    // A translucent foreground overlays the card: lighter in dark, darker in light.
+                    _ => ("TextFillColorPrimary", "TextFillColorPrimary", "TextFillColorPrimary", 0.07, 0.10, 0.05),
                 };
                 return States("Button", "Background", fill.Idle, fill.IdleOpacity, fill.Over, fill.OverOpacity, fill.Pressed, fill.PressedOpacity, "ControlAltFillColorDisabled")
                     .Concat(States("Button", "Foreground", ink, 1d, ink, 1d, pressedInk, pressedInkOpacity, "TextFillColorDisabled"))
@@ -356,6 +392,35 @@ internal static class NativeUiTheme
 
     // ---------------------------------------------------------------- data palette
 
+    internal static void Table(TableView table, ElementTheme theme)
+    {
+        table.HeaderRowHeight = table.HeaderRowMinHeight = 32;
+        table.RowHeight = table.RowMinHeight = 36;
+        table.Margin = new Thickness(-16, 0, -16, 0);
+        table.Background = table.AlternateRowBackground = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        table.HeadersVisibility = TableViewHeadersVisibility.Columns;
+        table.GridLinesVisibility = table.HeaderGridLinesVisibility = TableViewGridLinesVisibility.Horizontal;
+        table.HorizontalGridLinesStroke = Brush("divider", theme: theme); table.HorizontalGridLinesStrokeThickness = 1;
+        table.CellStyle = new Style(typeof(TableViewCell)) { Setters =
+        {
+            new Setter(Control.PaddingProperty, new Thickness(0)),
+            new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch),
+            new Setter(Control.VerticalContentAlignmentProperty, VerticalAlignment.Center),
+        } };
+        table.ItemContainerStyle = new Style(typeof(TableViewRow)) { Setters =
+        {
+            new Setter(Control.BackgroundProperty, new SolidColorBrush(Microsoft.UI.Colors.Transparent)),
+        } };
+    }
+    internal static Style TableHeader(bool first, bool last, bool numeric, ElementTheme theme) => new(typeof(TableViewColumnHeader)) { Setters =
+    {
+        new Setter(Control.FontSizeProperty, 12d), new Setter(Control.FontWeightProperty, FontWeights.SemiBold),
+        new Setter(Control.ForegroundProperty, Brush("muted", theme: theme)),
+        new Setter(Control.BackgroundProperty, new SolidColorBrush(Microsoft.UI.Colors.Transparent)),
+        new Setter(Control.PaddingProperty, new Thickness(first ? 16 : 12, 0, last ? 16 : 12, 0)),
+        new Setter(Control.HorizontalContentAlignmentProperty, numeric ? HorizontalAlignment.Right : HorizontalAlignment.Left),
+    } };
+
     /// <summary>Series colour c1…c6 (0-based index, wraps). c1 follows the system accent.</summary>
     internal static Windows.UI.Color ChartColor(int index, ElementTheme theme)
     {
@@ -376,12 +441,13 @@ internal static class NativeUiTheme
             {
                 var palette = light ? LightPalette : DarkPalette; var accent = Color("@accent", light);
                 var body = "<SolidColorBrush x:Key=\"NativeUiAccentTintBrush\" Color=\"{ThemeResource " + accent + "}\" Opacity=\"0.12\" />"
+                    + "<SolidColorBrush x:Key=\"NativeUiSelectionTintBrush\" Color=\"{ThemeResource " + accent + "}\" Opacity=\"0.07\" />"
                     + "<SolidColorBrush x:Key=\"NativeUiChart1Brush\" Color=\"{ThemeResource " + accent + "}\" />";
                 for (var i = 1; i < 6; i++) body += "<SolidColorBrush x:Key=\"NativeUiChart" + (i + 1) + "Brush\" Color=\"" + palette[i] + "\" />";
                 return body + "<SolidColorBrush x:Key=\"NativeUiPurpleBrush\" Color=\"" + palette[3] + "\" /><SolidColorBrush x:Key=\"NativeUiPurpleTintBrush\" Color=\"" + palette[3] + "\" Opacity=\"0.14\" />"
                     + "<SolidColorBrush x:Key=\"NativeUiPinkBrush\" Color=\"" + palette[4] + "\" /><SolidColorBrush x:Key=\"NativeUiPinkTintBrush\" Color=\"" + palette[4] + "\" Opacity=\"0.14\" />";
             }
-            var contrast = "<SolidColorBrush x:Key=\"NativeUiAccentTintBrush\" Color=\"{ThemeResource SystemColorWindowColor}\" />";
+            var contrast = "<SolidColorBrush x:Key=\"NativeUiAccentTintBrush\" Color=\"{ThemeResource SystemColorWindowColor}\" /><SolidColorBrush x:Key=\"NativeUiSelectionTintBrush\" Color=\"{ThemeResource SystemColorWindowColor}\" />";
             for (var i = 1; i <= 6; i++) contrast += "<SolidColorBrush x:Key=\"NativeUiChart" + i + "Brush\" Color=\"{ThemeResource " + (i == 1 ? "SystemColorHighlightColor" : "SystemColorWindowTextColor") + "}\" />";
             contrast += "<SolidColorBrush x:Key=\"NativeUiPurpleBrush\" Color=\"{ThemeResource SystemColorWindowTextColor}\" /><SolidColorBrush x:Key=\"NativeUiPurpleTintBrush\" Color=\"{ThemeResource SystemColorWindowColor}\" />"
                 + "<SolidColorBrush x:Key=\"NativeUiPinkBrush\" Color=\"{ThemeResource SystemColorWindowTextColor}\" /><SolidColorBrush x:Key=\"NativeUiPinkTintBrush\" Color=\"{ThemeResource SystemColorWindowColor}\" />";
@@ -401,6 +467,26 @@ internal static class NativeUiTheme
         if ((input.InputScope?.Names.FirstOrDefault()?.NameValue == InputScopeNameValue.Number) != number)
             input.InputScope = number ? new InputScope { Names = { new InputScopeName(InputScopeNameValue.Number) } } : null;
         Typography.SetNumeralAlignment(input, number ? FontNumeralAlignment.Tabular : FontNumeralAlignment.Normal);
+    }
+    internal static void Segmented(Segmented control)
+    {
+        control.MinHeight = 32; control.Padding = new Thickness(2); control.CornerRadius = new CornerRadius(SmallRadius);
+        Aliases(control, "segmented", new[]
+        {
+            ("SegmentedBackground", "ControlAltFillColorSecondary", 1d),
+            ("SegmentedBorderBrush", "SubtleFillColorTransparent", 1d),
+            ("SegmentedItemBackgroundSelected", "ControlFillColorDefault", 1d),
+            ("SegmentedPillBackground", "@accent", 1d),
+        });
+        foreach (var item in control.Items.OfType<SegmentedItem>())
+        { item.MinHeight = 28; item.Padding = new Thickness(8, 0, 8, 0); item.FontSize = 14; item.CornerRadius = new CornerRadius(SmallRadius); }
+    }
+    internal static void RadioCard(RadioButton radio)
+    {
+        var selected = radio.IsChecked == true;
+        radio.Padding = new Thickness(12); radio.CornerRadius = new CornerRadius(SmallRadius); radio.BorderThickness = new Thickness(1);
+        radio.Style = OpenCodeThemedXaml.BrushStyle("RadioButton", ("BorderBrush", selected ? "AccentFillColorDefaultBrush" : "CardStrokeColorDefaultBrush"),
+            ("Background", selected && Palette ? "NativeUiSelectionTintBrush" : "SubtleFillColorTransparentBrush"));
     }
     internal static void Checkbox(TextBlock text, bool checkedValue, NativeUiElement node)
         => text.TextDecorations = checkedValue && Flag(node, "lineThrough") ? TextDecorations.Strikethrough : TextDecorations.None;
@@ -486,7 +572,7 @@ internal static class NativeUiTheme
         var glyph = new FontIcon { Glyph = "\uEB90", FontSize = 16, VerticalAlignment = VerticalAlignment.Center, Style = OpenCodeThemedXaml.BrushStyle("FontIcon", ("Foreground", "SystemFillColorCriticalBrush")) };
         AutomationProperties.SetAccessibilityView(glyph, AccessibilityView.Raw);
         var details = new TextBlock { Text = message }; Text(details, new("Caption", new Dictionary<string, object?>()));
-        details.Margin = new Thickness(24, 0, 0, 0); details.MaxLines = 4; details.TextTrimming = TextTrimming.CharacterEllipsis;
+        details.Margin = new Thickness(24, 0, 0, 0); details.MaxLines = 3; details.TextTrimming = TextTrimming.CharacterEllipsis;
         var border = new Border
         {
             Child = new StackPanel { Spacing = 2, Children = { new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { glyph, heading } }, details } },

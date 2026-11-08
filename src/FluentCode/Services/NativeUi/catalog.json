@@ -291,7 +291,7 @@
         "label"
       ],
       "additionalProperties": false,
-      "description": "Click action. With no action, sends its label to the assistant."
+      "description": "Click action. With no action, sends its label to the assistant. size sm/md/lg selects 32/40/48px. Buttons fill Grid cells and button-only Rows. Omit size on short-label keypad keys for adaptive height: 0.8 times column width, clamped to 40–56px; explicit size overrides it."
     },
     "ActionExpression": {
       "anyOf": [
@@ -756,13 +756,21 @@
             "ghost",
             "solid"
           ]
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "sm",
+            "md",
+            "lg"
+          ]
         }
       },
       "required": [
         "icon"
       ],
       "additionalProperties": false,
-      "description": "Icon-only button. Supply a label for accessibility; no implicit assistant action."
+      "description": "Icon-only button. Supply a label for accessibility; no implicit assistant action. size sm/md/lg selects 32/40/48px."
     },
     "Pressable": {
       "type": "object",
@@ -2648,6 +2656,19 @@
               "outline",
               "ghost",
               "solid"
+            ]
+          }
+        },
+        {
+          "name": "size",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg"
             ]
           }
         }

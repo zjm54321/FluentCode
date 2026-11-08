@@ -35,7 +35,7 @@ internal sealed class OpenCodeNativeUiPartView : IDisposable
     {
         if (_disposed) return;
         var input = NativeUiToolInput.Read(state, _catalog.Limits);
-        if (input.Streaming) { ClearRuntime(); _source = null; if (_root.Children.Count != 1 || _root.Children[0] is not FrameworkElement { Tag: NativeUiTheme.PlaceholderTag }) { _root.Children.Clear(); _root.Children.Add(NativeUiTheme.Placeholder(input.Title)); } return; }
+        if (input.Streaming) { ClearRuntime(); _source = null; if (_title != input.Title || _root.Children.Count != 1 || _root.Children[0] is not FrameworkElement { Tag: NativeUiTheme.PlaceholderTag }) { _root.Children.Clear(); _root.Children.Add(NativeUiTheme.Placeholder(input.Title)); } _title = input.Title; return; }
         if (input.Error is { } inputError) { Error(inputError); return; }
         if (_runtime is not null && input.Source == _source && input.Title == _title) return; // Tool progress/success must not reset local state.
         ClearRuntime(); _source = input.Source; _title = input.Title;

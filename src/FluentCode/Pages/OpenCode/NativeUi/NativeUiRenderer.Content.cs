@@ -74,16 +74,16 @@ internal sealed partial class NativeUiRenderer
                 storyboard.Completed += (_, _) => { celebration.Height = 0; celebration.Children.Clear(); }; celebrationVisual.Cleanup = storyboard.Stop; return celebrationVisual;
             case "Icon":
                 var iconHost = new ContentControl(); var iconVisual = new Visual(iconHost);
-                iconVisual.Apply = node => { var icon = NativeUiComponentTheme.Icon(S(node, "name")); icon.FontSize = S(node, "size") switch { "sm" => 14, "lg" => 24, "xl" => 32, _ => 18 }; icon.Foreground = ComponentBrush(S(node, "color")); iconHost.Content = icon; AutomationProperties.SetName(iconHost, S(node, "name")); }; return iconVisual;
+                iconVisual.Apply = node => { var icon = NativeUiTheme.Icon(S(node, "name")); if (icon is not null) { icon.FontSize = S(node, "size") switch { "sm" => 14, "lg" => 24, "xl" => 32, _ => 16 }; icon.Foreground = ComponentBrush(S(node, "color")); } iconHost.Content = icon; AutomationProperties.SetName(iconHost, S(node, "name")); }; return iconVisual;
             case "Image": return CreateImage(key);
             case "SearchImage":
-                var searchPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var searchText = NativeUiComponentTheme.Text(""); var searchButton = new Button { Content = "在浏览器中搜索图片" }; searchPanel.Children.Add(searchText); searchPanel.Children.Add(searchButton); var searchVisual = new Visual(searchPanel);
+                var searchPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var searchText = NativeUiComponentTheme.Text(""); var searchButton = new Button { Content = "在浏览器中搜索图片" }; var searchPreview = MediaPreview("image", searchText, searchButton); searchPanel.Children.Add(searchPreview); searchPanel.Children.Add(NativeUiComponentTheme.Text("图片搜索 · 确认后在浏览器中查看，不自动联网", true)); var searchVisual = new Visual(searchPanel);
                 searchButton.Click += async (_, _) => { if (!searchVisual.Disposed) await OpenAsync("https://www.google.com/search?tbm=isch&q=" + Uri.EscapeDataString(S(searchVisual.Model, "query"))); };
-                searchVisual.Apply = node => searchText.Text = "图片搜索 · " + S(node, "query") + "（不自动联网）"; return searchVisual;
+                searchVisual.Apply = node => { searchText.Text = S(node, "query"); searchPreview.Height = Math.Clamp(320 / Math.Clamp(N(node, "aspectRatio", 1.5), .2, 5), 80, 320); searchPreview.CornerRadius = NativeUiComponentTheme.Radius(P(node, "radius")); }; return searchVisual;
             case "YouTube":
-                var videoPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var videoTitle = NativeUiComponentTheme.Text(""); var videoButton = new Button { Content = "在 YouTube 中观看" }; videoPanel.Children.Add(videoTitle); videoPanel.Children.Add(videoButton); var videoVisual = new Visual(videoPanel); string videoId = "";
+                var videoPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var videoTitle = NativeUiComponentTheme.Text(""); var videoButton = new Button { Content = "在 YouTube 中观看" }; videoPanel.Children.Add(MediaPreview("play", videoTitle, videoButton)); videoPanel.Children.Add(NativeUiComponentTheme.Text("外部视频 · 确认链接后打开，无自动缩略图或嵌入播放器", true)); var videoVisual = new Visual(videoPanel); string videoId = "";
                 videoButton.Click += async (_, _) => { if (!videoVisual.Disposed && videoId.Length > 0) await OpenAsync("https://www.youtube.com/watch?v=" + videoId); };
-                videoVisual.Apply = node => { var match = Regex.Match(S(node, "video").Trim(), @"(?:youtu\.be/|[?&]v=|/embed/|/shorts/)([\w-]{11})|^([\w-]{11})$"); videoId = match.Success ? match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value : ""; videoTitle.Text = "▶ " + (S(node, "title") is { Length: > 0 } title ? title : "YouTube 视频") + (videoId.Length == 0 ? " · 无效的视频编号" : " · " + videoId); videoButton.IsEnabled = videoId.Length > 0; }; return videoVisual;
+                videoVisual.Apply = node => { var match = Regex.Match(S(node, "video").Trim(), @"(?:youtu\.be/|[?&]v=|/embed/|/shorts/)([\w-]{11})|^([\w-]{11})$"); videoId = match.Success ? match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value : ""; videoTitle.Text = (S(node, "title") is { Length: > 0 } title ? title : "YouTube 视频") + (videoId.Length == 0 ? " · 无效的视频编号" : ""); videoButton.IsEnabled = videoId.Length > 0; }; return videoVisual;
             case "Map": case "MapMarker":
                 var places = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var mapVisual = new Visual(places);
                 mapVisual.Apply = node =>
@@ -94,7 +94,10 @@ internal sealed partial class NativeUiRenderer
                     {
                         var marker = markers[i]; var label = S(marker, "label"); var lat = N(marker, "lat"); var lng = N(marker, "lng"); var valid = lat is >= -90 and <= 90 && lng is >= -180 and <= 180;
                         var location = new StackPanel { Spacing = NativeUiTheme.Gap(1) };
-                        var choose = new Button { Content = (S(marker, "icon") is { Length: > 0 } glyph ? glyph : "📍") + " " + (B(node, "route") ? (i + 1) + ". " : "") + label, HorizontalAlignment = HorizontalAlignment.Stretch };
+                        var markerContent = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+                        if (NativeUiTheme.Icon(S(marker, "icon") is { Length: > 0 } glyph ? glyph : "map-pin") is { } pin) markerContent.Children.Add(pin);
+                        markerContent.Children.Add(NativeUiComponentTheme.Text((B(node, "route") ? (i + 1) + ". " : "") + label));
+                        var choose = new Button { Content = markerContent, HorizontalAlignment = HorizontalAlignment.Stretch };
                         choose.Click += (_, _) => SetField(mapVisual, key, "selected", "", label); location.Children.Add(choose);
                         location.Children.Add(NativeUiComponentTheme.Text(S(marker, "category") + " · " + lat.ToString("0.#####", CultureInfo.InvariantCulture) + ", " + lng.ToString("0.#####", CultureInfo.InvariantCulture), true));
                         var external = new HyperlinkButton { Content = "在地图中打开", IsEnabled = valid };
@@ -107,10 +110,20 @@ internal sealed partial class NativeUiRenderer
             default: return null;
         }
     }
+    private static Border MediaPreview(string glyph, TextBlock title, Button action)
+    {
+        var content = new StackPanel { Spacing = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16) };
+        if (NativeUiTheme.Icon(glyph) is { } icon) { icon.FontSize = 32; icon.HorizontalAlignment = HorizontalAlignment.Center; content.Children.Add(icon); }
+        title.TextAlignment = TextAlignment.Center; action.HorizontalAlignment = HorizontalAlignment.Center;
+        content.Children.Add(title); content.Children.Add(action);
+        return new Border { Child = content, Height = 180, CornerRadius = new CornerRadius(4), Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SubtleFillColorSecondaryBrush")) };
+    }
     private Visual CreateImage(string key)
     {
-        var panel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var description = NativeUiComponentTheme.Text(""); var urlText = NativeUiComponentTheme.Text("", true); var load = new Button { Content = "点击加载" }; var image = new Image { Visibility = Visibility.Collapsed, MaxHeight = 480 }; var frame = new Border { Child = image };
-        panel.Children.Add(description); panel.Children.Add(urlText); panel.Children.Add(load); panel.Children.Add(frame); var visual = new Visual(panel); string current = ""; var generation = 0;
+        var panel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var description = NativeUiComponentTheme.Text(""); var urlText = NativeUiComponentTheme.Text("", true); var load = new Button { Content = "点击加载" }; var image = new Image { Visibility = Visibility.Collapsed, MaxHeight = 480 }; var placeholder = MediaPreview("image", description, load); var frame = new Border { Child = new Grid { Children = { image, placeholder } } };
+        panel.Children.Add(frame); panel.Children.Add(urlText); var visual = new Visual(panel); string current = ""; var generation = 0; var aspect = 1.5;
+        void ImageSize() { image.Height = placeholder.Height = Math.Clamp((frame.ActualWidth > 0 ? frame.ActualWidth : 320) / aspect, 80, 480); }
+        frame.SizeChanged += (_, _) => ImageSize();
         load.Click += async (_, _) =>
         {
             if (visual.Disposed || !NativeUiImages.Https(current)) return;
@@ -123,17 +136,17 @@ internal sealed partial class NativeUiRenderer
                 using (var writer = new Windows.Storage.Streams.DataWriter(stream)) { writer.WriteBytes(bytes); await writer.StoreAsync(); writer.DetachStream(); }
                 stream.Seek(0); var bitmap = new BitmapImage { DecodePixelWidth = 1280 }; await bitmap.SetSourceAsync(stream);
                 if (visual.Disposed || version != generation) return;
-                image.Source = bitmap; image.Visibility = Visibility.Visible; load.Visibility = Visibility.Collapsed;
+                image.Source = bitmap; image.Visibility = Visibility.Visible; placeholder.Visibility = Visibility.Collapsed;
             }
             catch (Exception error) { if (!visual.Disposed && version == generation) { load.Content = "加载失败，点击重试"; ToolTipService.SetToolTip(load, error.Message); load.IsEnabled = true; } }
         };
         visual.Apply = node =>
         {
             var source = S(node, "src"); description.Text = S(node, "alt"); urlText.Text = source;
-            if (source != current) { current = source; generation++; image.Source = null; image.Visibility = Visibility.Collapsed; load.Visibility = Visibility.Visible; load.Content = "点击加载"; }
+            if (source != current) { current = source; generation++; image.Source = null; image.Visibility = Visibility.Collapsed; placeholder.Visibility = Visibility.Visible; load.Content = "点击加载"; }
             load.IsEnabled = NativeUiImages.Https(source); if (!load.IsEnabled) load.Content = "仅支持 HTTPS 图片";
-            image.Stretch = S(node, "fit") == "contain" ? Stretch.Uniform : Stretch.UniformToFill; image.Height = Math.Clamp(320 / Math.Clamp(N(node, "aspectRatio", 1.5), 0.2, 5), 80, 480); AutomationProperties.SetName(image, S(node, "alt"));
-            frame.CornerRadius = NativeUiComponentTheme.Radius(P(node, "radius"));
+            image.Stretch = S(node, "fit") == "contain" ? Stretch.Uniform : Stretch.UniformToFill; aspect = Math.Clamp(N(node, "aspectRatio", 1.5), 0.2, 5); ImageSize(); AutomationProperties.SetName(image, S(node, "alt"));
+            frame.CornerRadius = placeholder.CornerRadius = NativeUiComponentTheme.Radius(P(node, "radius"));
         }; visual.Cleanup = () => { generation++; image.Source = null; }; return visual;
     }
 }

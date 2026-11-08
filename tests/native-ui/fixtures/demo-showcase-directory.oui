@@ -1,0 +1,13 @@
+$selected = "maya"
+$filter = "全部"
+people = [{id:"maya",name:"Maya Chen",role:"产品设计师",team:"设计",location:"上海 · UTC+8",bio:"把复杂工作流变成清晰、可访问的产品体验。",projects:8},{id:"lin",name:"林青",role:"前端工程师",team:"工程",location:"杭州 · UTC+8",bio:"关注原生体验、性能和可靠的交付流程。",projects:12},{id:"alex",name:"Alex Morgan",role:"用户研究员",team:"设计",location:"伦敦 · UTC+0",bio:"用访谈与数据帮助团队找到真正值得解决的问题。",projects:6}]
+visible = $filter == "全部" ? people : @Filter(people,"team","==",$filter)
+personName = $selected == "maya" ? "Maya Chen" : $selected == "lin" ? "林青" : "Alex Morgan"
+personRole = $selected == "maya" ? "产品设计师" : $selected == "lin" ? "前端工程师" : "用户研究员"
+personTeam = $selected == "lin" ? "工程" : "设计"
+personLocation = $selected == "maya" ? "上海 · UTC+8" : $selected == "lin" ? "杭州 · UTC+8" : "伦敦 · UTC+0"
+personBio = $selected == "maya" ? "把复杂工作流变成清晰、可访问的产品体验。" : $selected == "lin" ? "关注原生体验、性能和可靠的交付流程。" : "用访谈与数据帮助团队找到真正值得解决的问题。"
+location = Popover([Row([Icon("map-pin","sm","info"),Text("查看位置详情","sm")],2)],[Map([MapMarker(personName,$selected == "alex" ? 51.5074 : $selected == "lin" ? 30.2741 : 31.2304,$selected == "alex" ? -0.1278 : $selected == "lin" ? 120.1551 : 121.4737,personRole,"map-pin")],false)])
+directory = Col([Row([Title("成员","md"),Badge("" + @Count(visible),"neutral")],2,"center","between"),Select($filter,["全部","设计","工程"],"团队筛选"),@Each(visible,p,Pressable([Row([Icon("user","lg","info"),Col([Text(p.name,"md",null,"semibold"),Caption(p.role)],1),Spacer(),Icon("chevron-right","sm","faint")],3),Caption(p.location)],@Set($selected,p.id),$selected == p.id,3,$selected == p.id ? "info" : "surface","md"))],3)
+detail = Card([Row([Icon("user","xl","purple"),Col([Title(personName,"lg"),Text(personRole,"md","muted")],1)],3),Row([Badge(personTeam,"purple","users"),Badge("可协作","success","check-circle")],2),Box([Text(personBio)],"col",2,2,"surface","md"),Divider(),List([ListItem("工作地点",personLocation,"•"),ListItem("参与项目","多个跨职能项目，持续参与评审和交付。","•"),ListItem("近期关注","设计系统、客户旅程与可访问性","•")],"none"),location,Quote("好的工具应该让每个人都能专注在最重要的工作上。",personName),Row([Button("讨论合作",@ToAssistant("我想和 " + personName + " 讨论下一阶段合作。",{person:$selected}),"solid",null,"md","send"),IconButton("mail",@ToAssistant("请帮我起草一封发给 " + personName + " 的项目邀请。"),"起草邀请","outline","md")],2),Caption("成员详情 · 点击左侧列表切换 · 不会自动发送邮件")],"outline",3,3)
+root = Col([Card([Row([Col([Title("团队通讯录","lg"),Caption("带筛选的成员列表、完整详情、状态和行动入口")],1),Badge("3 位成员","info","users")],3,"center","between"),Grid([directory,detail],2,280,4),Divider(),Caption("目录筛选和选中状态独立保留；所有成员资料均为演示数据。")],"outline",4,3)])
