@@ -1,6 +1,6 @@
 {
   "parserVersion": "1.1.0",
-  "sha256": "3c22c3692b64f48fd0a4dbbb6224533121bf99d8042444e250eb518666f4504d",
+  "sha256": "928efe1e86bf5dea56b5c98795665f239cba668def02a0509a9e40095c51ced7",
   "parse": {
     "root": {
       "type": "element",
@@ -59,7 +59,7 @@
                             },
                             "then": {
                               "k": "Str",
-                              "v": "发布准备完成"
+                              "v": "发布清单已确认"
                             },
                             "else": {
                               "k": "Str",
@@ -127,7 +127,7 @@
                                   },
                                   "then": {
                                     "k": "Str",
-                                    "v": "4 / 4"
+                                    "v": "3 / 4"
                                   },
                                   "else": {
                                     "k": "Str",
@@ -1152,7 +1152,7 @@
                                 },
                                 "then": {
                                   "k": "Str",
-                                  "v": "发布准备完成"
+                                  "v": "发布清单已确认"
                                 },
                                 "else": {
                                   "k": "Str",
@@ -1220,7 +1220,7 @@
                                       },
                                       "then": {
                                         "k": "Str",
-                                        "v": "4 / 4"
+                                        "v": "3 / 4"
                                       },
                                       "else": {
                                         "k": "Str",
@@ -1270,7 +1270,7 @@
                                   "typeName": "Title",
                                   "props": {
                                     "text": "3 位",
-                                    "size": "xl"
+                                    "size": "x"
                                   },
                                   "partial": true,
                                   "hasDynamicProps": false
@@ -1313,7 +1313,7 @@
       }
     },
     {
-      "length": 1341,
+      "length": 1342,
       "result": {
         "root": {
           "type": "element",
@@ -1372,7 +1372,7 @@
                                 },
                                 "then": {
                                   "k": "Str",
-                                  "v": "发布准备完成"
+                                  "v": "发布清单已确认"
                                 },
                                 "else": {
                                   "k": "Str",
@@ -1440,7 +1440,7 @@
                                       },
                                       "then": {
                                         "k": "Str",
-                                        "v": "4 / 4"
+                                        "v": "3 / 4"
                                       },
                                       "else": {
                                         "k": "Str",

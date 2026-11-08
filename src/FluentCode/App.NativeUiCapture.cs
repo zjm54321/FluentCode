@@ -147,6 +147,9 @@ public partial class App
                     await Press("闪卡正面，点击翻面");
                     await Press("闪卡背面，点击返回");
                     if (!ReferenceEquals(flash.Content, content) || !ReferenceEquals(content.Children[0], slot)) throw new InvalidOperationException("Flashcard replaced its realized slot while flipping.");
+                    var backdrop = Descendants(timeline).OfType<Microsoft.UI.Xaml.Shapes.Rectangle>().Single(rectangle => rectangle.Width == 360 && rectangle.Height == 120);
+                    var expected = (Microsoft.UI.Xaml.Media.SolidColorBrush)NativeUiTheme.Brush("surface", true, theme);
+                    if (backdrop.Fill is not Microsoft.UI.Xaml.Media.SolidColorBrush actual || actual.Color != expected.Color) throw new InvalidOperationException("SVG surface fill does not match the native light/dark surface token.");
                 }
                 else if (name == "showcase-planner")
                 {
@@ -174,6 +177,7 @@ public partial class App
                     if (!Equals(view.Runtime?.Get("$period"), "每月") || !Equals(view.Runtime?.Get("$date"), "2026-11-12") || !Equals(view.Runtime?.Get("$note"), "回顾交付，讨论风险，明确负责人。")) throw new InvalidOperationException("Native v1 state did not survive re-realization.");
                 }
                 await Task.Delay(100); surface.UpdateLayout();
+                await WaitForNativeChartDrawsAsync(surface);
                 var file = name + "-" + theme.ToString().ToLowerInvariant() + ".png";
                 await CaptureNativeUiPngAsync(surface, Path.Combine(root, file));
                 if (name == "dashboard")
@@ -196,6 +200,31 @@ public partial class App
     {
         yield return root;
         for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++) foreach (var child in Descendants(VisualTreeHelper.GetChild(root, index))) yield return child;
+    }
+    private static async Task WaitForNativeChartDrawsAsync(FrameworkElement surface)
+    {
+        foreach (var chart in Descendants(surface).OfType<LiveChartsCore.Kernel.Sketches.IChartView>().ToArray())
+        {
+            var drawn = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            void Finished(LiveChartsCore.Kernel.Sketches.IChartView _) => drawn.TrySetResult(true);
+            chart.UpdateFinished += Finished;
+            try
+            {
+                chart.CoreChart.Update(new() { IsAutomaticUpdate = false, Throttling = false });
+                await drawn.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            }
+            finally { chart.UpdateFinished -= Finished; }
+            var control = (FrameworkElement)chart;
+            var expected = (Microsoft.UI.Xaml.Media.SolidColorBrush)NativeUiTheme.Brush("surface", true, control.ActualTheme);
+            if (((Control)control).Background is not Microsoft.UI.Xaml.Media.SolidColorBrush background || background.Color != expected.Color) throw new InvalidOperationException("Native chart background does not match its light/dark card surface.");
+            var bitmap = new RenderTargetBitmap(); await bitmap.RenderAsync(control);
+            var buffer = await bitmap.GetPixelsAsync(); var pixels = new byte[buffer.Length];
+            using (var reader = DataReader.FromBuffer(buffer)) reader.ReadBytes(pixels);
+            var accent = NativeUiTheme.ChartColor(0, control.ActualTheme); var painted = false;
+            for (var i = 0; i + 3 < pixels.Length; i += 4)
+                if (pixels[i + 3] > 240 && Math.Abs(pixels[i] - accent.B) <= 12 && Math.Abs(pixels[i + 1] - accent.G) <= 12 && Math.Abs(pixels[i + 2] - accent.R) <= 12) { painted = true; break; }
+            if (!painted) throw new InvalidOperationException("Native chart draw completed without any rendered series/legend pixels.");
+        }
     }
     private static async Task CaptureNativeUiPngAsync(UIElement element, string path)
     {

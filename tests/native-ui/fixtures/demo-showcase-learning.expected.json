@@ -1,6 +1,6 @@
 {
   "parserVersion": "1.1.0",
-  "sha256": "1312f213fefded83da01bed2803a803288c59b5541622aeb10f152845b63d5df",
+  "sha256": "97b4756b8366be7c261ad0cdc6827183cc884606c6dba902541f65becabb06d3",
   "parse": {
     "root": {
       "type": "element",
@@ -336,7 +336,9 @@
                                             "cx": 55,
                                             "cy": 58,
                                             "r": 24,
-                                            "fill": "info"
+                                            "fill": "none",
+                                            "stroke": "info",
+                                            "strokeWidth": 2
                                           },
                                           "partial": false,
                                           "hasDynamicProps": false
@@ -1078,7 +1080,9 @@
                                           "cx": 55,
                                           "cy": 58,
                                           "r": 24,
-                                          "fill": "info"
+                                          "fill": "none",
+                                          "stroke": "info",
+                                          "strokeWidth": 2
                                         },
                                         "partial": false,
                                         "hasDynamicProps": false
@@ -1454,7 +1458,7 @@
       }
     },
     {
-      "length": 652,
+      "length": 655,
       "result": {
         "root": null,
         "meta": {
@@ -1480,7 +1484,7 @@
       }
     },
     {
-      "length": 1304,
+      "length": 1310,
       "result": {
         "root": {
           "type": "element",
@@ -1538,8 +1542,7 @@
                             "partial": true,
                             "hasDynamicProps": false
                           }
-                        ],
-                        "gap": 3
+                        ]
                       },
                       "partial": true,
                       "hasDynamicProps": false
@@ -1574,7 +1577,7 @@
       }
     },
     {
-      "length": 1956,
+      "length": 1965,
       "result": {
         "root": {
           "type": "element",
@@ -1910,7 +1913,9 @@
                                                 "cx": 55,
                                                 "cy": 58,
                                                 "r": 24,
-                                                "fill": "info"
+                                                "fill": "none",
+                                                "stroke": "info",
+                                                "strokeWidth": 2
                                               },
                                               "partial": false,
                                               "hasDynamicProps": false

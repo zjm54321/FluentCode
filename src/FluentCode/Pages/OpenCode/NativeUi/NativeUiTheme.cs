@@ -161,7 +161,7 @@ internal static class NativeUiTheme
         // Preserve the catalog's bounded SVG/Box hex colour props; no model XAML or CSS is loaded.
         if (token.StartsWith('#') && (token.Length == 7 || token.Length == 9) && uint.TryParse(token.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hex))
             return new SolidColorBrush(Windows.UI.Color.FromArgb(token.Length == 9 ? (byte)(hex >> 24) : (byte)255, (byte)(hex >> 16), (byte)(hex >> 8), (byte)hex));
-        var resource = token == "divider" ? "DividerStrokeColorDefaultBrush" : background ? Background(token) : Foreground(token);
+        var resource = token == "divider" ? "DividerStrokeColorDefaultBrush" : background || token == "surface" ? Background(token) : Foreground(token);
         return OpenCodeThemedXaml.Load<Border>("Border", "RequestedTheme=\"" + theme + "\" Background=\"{ThemeResource " + resource + "}\"")?.Background
             ?? new SolidColorBrush(Microsoft.UI.Colors.Gray);
     }

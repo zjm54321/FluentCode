@@ -126,11 +126,11 @@ internal sealed partial class NativeUiRenderer
             var gridPaint = new SolidColorPaint(new SKColor(dividerColor.R, dividerColor.G, dividerColor.B, dividerColor.A)) { StrokeThickness = 1 };
             if (kind is "pie" or "donut")
             {
-                var pie = new PieChart { AnimationsSpeed = TimeSpan.Zero, LegendPosition = LegendPosition.Bottom, LegendTextPaint = labelsPaint, LegendTextSize = 12 };
+                var pie = new PieChart { Background = ComponentBrush("surface", true), AnimationsSpeed = TimeSpan.Zero, LegendPosition = LegendPosition.Bottom, LegendTextPaint = labelsPaint, LegendTextSize = 12 };
                 pie.Series = rows.Select((row, i) => (ISeries)new PieSeries<double> { Name = NativeUiValues.Text(row.GetValueOrDefault(x)), Values = new[] { Math.Max(0, Value(row, series[0])) }, InnerRadius = kind == "donut" ? 55 : 0, Fill = new SolidColorPaint(ChartColor(i)), Stroke = null, DataLabelsFormatter = point => FormatChart(point.Coordinate.PrimaryValue, node), ToolTipLabelFormatter = point => FormatChart(point.Coordinate.PrimaryValue, node) }).ToArray();
                 host.Children.Add(pie); return;
             }
-            var chart = new CartesianChart { AnimationsSpeed = TimeSpan.Zero, LegendPosition = series.Length > 1 ? LegendPosition.Bottom : LegendPosition.Hidden, LegendTextPaint = labelsPaint, LegendTextSize = 12 };
+            var chart = new CartesianChart { Background = ComponentBrush("surface", true), AnimationsSpeed = TimeSpan.Zero, LegendPosition = series.Length > 1 ? LegendPosition.Bottom : LegendPosition.Hidden, LegendTextPaint = labelsPaint, LegendTextSize = 12 };
             var plots = new List<ISeries>();
             for (var i = 0; i < series.Length; i++)
             {

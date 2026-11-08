@@ -109,6 +109,9 @@ internal static class Program
             using var planner = Demo("showcase-planner"); planner.Set("$days", 6d); planner.Set("$stay", "simple");
             Require(Elements(planner.EvaluateRoot()).Any(element => element.TypeName == "Title" && Equals(element.Props.GetValueOrDefault("text"), "¥3480")), "Showcase planner recomputes its complete budget");
             await Press(planner, "恢复默认"); Require(NativeUiValues.Number(planner.Get("$days")) == 4 && Equals(planner.Get("$stay"), "comfort"), "Showcase planner resets all inputs");
+            using var journey = Demo("showcase-journey"); journey.Set("$done", true);
+            Require(Elements(journey.EvaluateRoot()).Any(element => element.TypeName == "Title" && Equals(element.Props.GetValueOrDefault("text"), "3 / 4"))
+                && Elements(journey.EvaluateRoot()).Any(element => element.TypeName == "Badge" && Equals(element.Props.GetValueOrDefault("text"), "进行中")), "Confirming a release checklist does not mark an in-progress milestone completed");
             using var sizing = Demo("sizing");
             Require(Elements(sizing.EvaluateRoot()).Where(element => element.TypeName == "IconButton").Select(element => element.Props.GetValueOrDefault("size")).SequenceEqual(new object?[] { "sm", "md", "lg" }), "IconButton size contract reaches native models");
             form.TrySetField("$ui:flash", null, true); NativeUiStateStore.Save("part-1", form.Program.Source, form.Snapshot());
@@ -155,6 +158,13 @@ internal static class Program
             Require(dataSource.Contains("row.Owners[index]") && dataSource.Contains("previous.Content = null")
                 && dataSource.Contains("row.Owners[index] = cell"), "Component table cells clear the previous logical Content owner before virtualization/rebinding transfer");
             Require(dataSource.Contains("if (!ReferenceEquals(cell.Content, content)) cell.Content = content"), "Component table refresh does not reassign its already-owned native content");
+            Require(dataSource.Contains("new PieChart { Background = ComponentBrush(\"surface\", true)")
+                && dataSource.Contains("new CartesianChart { Background = ComponentBrush(\"surface\", true)"), "Native chart controls use the shared light/dark surface background");
+            var themeSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiTheme.cs"));
+            Require(themeSource.Contains("background || token == \"surface\" ? Background(token)"), "Surface colour semantics remain a background brush for SVG fills");
+            var captureSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/App.NativeUiCapture.cs"));
+            Require(captureSource.Contains("chart.UpdateFinished += Finished") && captureSource.Contains("Throttling = false")
+                && captureSource.Contains("Native chart draw completed without any rendered series/legend pixels"), "Native chart capture waits for draw completion and verifies painted pixels, not only populated data");
             Console.WriteLine($"PASS native reactive runtime, calculator memory/arithmetic, slider/checkbox/select, actions and safety; {_checks} checks");
             return 0;
         }
