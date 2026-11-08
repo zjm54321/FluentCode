@@ -181,7 +181,7 @@ public partial class App
             if (options.Kind == OpenCodeConnectionKind.Ssh)
             {
                 stagedSsh ??= await CreateSshRecovery().RecoverAsync(options,
-                    status => PostToApp(() => { if (generation == _configurationGeneration) SetOpenCodeRecoveryStatus(status); }), token).ConfigureAwait(false);
+                    status => PostToApp(() => { if (generation == _configurationGeneration) SetOpenCodeRecoveryStatus(status); }), token, initial: true).ConfigureAwait(false);
                 if (stagedSsh is null) { RecordDiagnostic("opencode-ssh-connect-failed"); return; }
                 clientOptions = stagedSsh.ToClientOptions();
                 sshOwner = new(settings, generation, CreateSshRecovery(), CancellationTokenSource.CreateLinkedTokenSource(_appLifetime.Token));
@@ -221,7 +221,7 @@ public partial class App
                 liveSsh.Tunnel.Exited += (_, _) => PostToApp(() => BeginSshRecovery(liveSshOwner));
                 // The process may have exited between verification and event subscription.
                 if (!liveSsh.Tunnel.IsAlive) PostToApp(() => BeginSshRecovery(liveSshOwner));
-                PostToApp(() => { if (OwnsSshRecovery(liveSshOwner)) SetOpenCodeRecoveryStatus(liveSsh.Service.Warning); });
+                PostToApp(() => { if (OwnsSshRecovery(liveSshOwner) && !liveSshOwner.Started) SetOpenCodeRecoveryStatus(OpenCodeConnectionStatus.SshWarning(liveSsh.Service.Warning)); });
                 sshOwner = null; // Published owner now owns its cancellation source.
             }
             bool started = monitor.Start(); // State observation is independent of native notification registration.

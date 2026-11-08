@@ -97,29 +97,36 @@ public sealed record SshConnectionTarget(string Host, string? User, int? Port)
     }
 }
 
-public enum SshFailureKind { Unavailable, UnknownHostKey, ChangedHostKey, Authentication, Timeout, Forward, RemoteCommand, MissingOpenCode, HostKeyProbe, TransportOwner, OutputLimit, UnsafeConfiguration, TrustFile, ProxyJump }
+public enum SshFailureKind { Unavailable, UnknownHostKey, ChangedHostKey, Authentication, Timeout, Forward, RemoteCommand, MissingOpenCode, HostKeyProbe, TransportOwner, OutputLimit, UnsafeConfiguration, TrustFile, ProxyJump, MissingOpenSsh }
 
 /// <summary>固定中文模板；不得把进程 stderr、服务配置或密码拼入异常。</summary>
-public sealed class SshOpenCodeException(SshFailureKind kind) : OpenCodeException(MessageFor(kind))
+public sealed class SshOpenCodeException(SshFailureKind kind, string? hostKeyLookup = null, string? hostKeyFile = null) : OpenCodeException(MessageFor(kind))
 {
     public SshFailureKind Kind { get; } = kind;
+    public string? HostKeyLookup { get; } = hostKeyLookup;
+    public string? HostKeyFile { get; } = hostKeyFile;
+    // A copy-only PowerShell command. Never guess the default file for a custom/global trust store.
+    public string? HostKeyRemovalCommand => HostKeyLookup is { } lookup
+        ? "ssh-keygen -R " + Quote(lookup) + " -f " + Quote(HostKeyFile ?? "<known_hosts 文件路径>") : null;
+    private static string Quote(string value) => "'" + value.Replace("'", "''", StringComparison.Ordinal) + "'";
     public bool CanRetry => Kind is SshFailureKind.Unavailable or SshFailureKind.Timeout or SshFailureKind.Forward;
 
     private static string MessageFor(SshFailureKind kind) => kind switch
     {
-        SshFailureKind.UnknownHostKey => "SSH 主机密钥尚未确认。请在连接页核对指纹；跳板机的未知密钥需先用 Windows ssh 独立确认。",
-        SshFailureKind.ChangedHostKey => "SSH 主机密钥已变化，连接已拒绝。请先向服务器管理员核对指纹，再手动修复 Windows known_hosts；不会自动覆盖旧密钥。",
-        SshFailureKind.Authentication => "SSH 公钥认证失败。带密码短语的密钥请启用 Windows 的 OpenSSH Authentication Agent（ssh-agent）服务，并在 Windows 终端运行 ssh-add 添加密钥；确认 ssh config 中的用户名与 IdentityFile。",
-        SshFailureKind.Timeout => "SSH 连接或远程命令超时，请检查主机、网络和 SSH 配置。",
-        SshFailureKind.Forward => "SSH 本地端口转发失败，请检查远端服务监听地址与 SSH 转发权限。",
-        SshFailureKind.MissingOpenCode => "远端未找到 opencode。请填写远程命令或路径，或先自行安装；FluentCode 不会安装或升级远程软件。",
-        SshFailureKind.RemoteCommand => "远程 OpenCode 命令失败，请在远端检查 opencode service status / start；不会重启或停止已有服务。",
-        SshFailureKind.HostKeyProbe => "未能取得 SSH 主机指纹。请检查网络和 SSH 配置；无会话探测不会执行远程命令或修改用户 known_hosts。",
+        SshFailureKind.UnknownHostKey => "跳板机或主机的密钥尚未信任。请先在终端用 ssh 连接一次并确认。",
+        SshFailureKind.ChangedHostKey => "主机密钥已变化，已停止连接。可能是服务器重装了系统，也可能有人冒充这台主机。请先向管理员确认新指纹，再删除 known_hosts 中的旧记录后重试。",
+        SshFailureKind.Authentication => "SSH 登录被拒绝。请确认用户名和密钥；带密码的密钥请先在终端运行 ssh-add。不能在这里输入 SSH 密码。",
+        SshFailureKind.Timeout => "连接超时。请检查主机地址、网络和 SSH 配置。",
+        SshFailureKind.Forward => "无法转发 OpenCode 端口。请确认服务器允许 SSH 端口转发。",
+        SshFailureKind.MissingOpenCode => "远程找不到 opencode。请在“远程 opencode 路径”中填写完整路径；FluentCode 不会在远程安装软件。",
+        SshFailureKind.RemoteCommand => "远程 opencode 命令出错。请登录服务器运行 opencode service status 查看原因。",
+        SshFailureKind.HostKeyProbe => "无法读取主机指纹。请检查网络和 SSH 配置。",
+        SshFailureKind.MissingOpenSsh => "未找到 Windows OpenSSH 客户端。请在 设置 › 系统 › 可选功能 中添加“OpenSSH 客户端”。",
         SshFailureKind.TransportOwner => "SSH 隧道监听者不属于本次 ssh.exe，或进程已退出；连接已关闭，未发送请求或凭据。",
         SshFailureKind.OutputLimit => "SSH 输出超过安全缓冲限制；已结束本次连接，未记录输出内容。",
         SshFailureKind.UnsafeConfiguration => "SSH 配置含本版本无法安全管理的跳板机或额外转发；请使用直接主机配置后重试。",
         SshFailureKind.TrustFile => "SSH 首个 UserKnownHostsFile 为 none、不可写或无法可靠解析；请配置可写的用户信任文件后重试。",
         SshFailureKind.ProxyJump => "暂不支持跳板机配置（ProxyJump）：本版本无法对自动创建的跳板进程统一实施严格主机密钥策略，请使用不含跳板机的直接主机配置。",
-        _ => "无法建立 SSH 连接。请确认 Windows OpenSSH 客户端已安装，且主机、端口和 SSH 配置可用。",
+        _ => "无法建立 SSH 连接。请检查主机名、端口和 SSH 配置。",
     };
 }

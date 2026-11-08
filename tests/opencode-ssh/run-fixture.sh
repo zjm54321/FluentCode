@@ -4,9 +4,9 @@ set -euo pipefail
 repo="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 fixture=/tmp/opencode/ssh-fixture
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-windows_fixture="$repo/artifacts/sshsec-fixture space's-$stamp"
-evidence="$repo/artifacts/sshsec-live-$stamp"
-sshd_log=/tmp/opencode/sshsec-fixture-sshd.log
+windows_fixture="$repo/artifacts/sshint-fixture space's-$stamp"
+evidence="$repo/artifacts/ssh-integrate-live-$stamp"
+sshd_log=/tmp/opencode/sshint-fixture-sshd.log
 pwsh='/mnt/c/Program Files/PowerShell/7/pwsh.exe'
 if [[ -e "$fixture" || -e "$windows_fixture" ]]; then
     printf 'Refusing to reuse an existing fixture directory.\n' >&2
@@ -34,8 +34,8 @@ cleanup() {
     if [[ -n "$sshd_pid" ]]; then wait "$sshd_pid" 2>/dev/null || true; fi
     # Both directories were created by this invocation; never remove a pre-existing fixture or user SSH directory.
     if [[ -f "$fixture/owner" && "$(<"$fixture/owner")" == "$$" ]]; then rm -rf -- "$fixture"; fi
-    if [[ "$windows_fixture" == "$repo/artifacts/sshsec-fixture space's-$stamp" && -d "$windows_fixture" ]]; then
-        "$pwsh" -NoProfile -NonInteractive -File "$(wslpath -w "$repo/tests/opencode-ssh/cleanup-fixture.ps1")" -FixtureDirectory "$(wslpath -w "$windows_fixture")" >/tmp/opencode/sshsec-fixture-cleanup.log 2>&1 || result=1
+    if [[ "$windows_fixture" == "$repo/artifacts/sshint-fixture space's-$stamp" && -d "$windows_fixture" ]]; then
+        "$pwsh" -NoProfile -NonInteractive -File "$(wslpath -w "$repo/tests/opencode-ssh/cleanup-fixture.ps1")" -FixtureDirectory "$(wslpath -w "$windows_fixture")" >/tmp/opencode/sshint-fixture-cleanup.log 2>&1 || result=1
     fi
     exit "$result"
 }
@@ -124,4 +124,4 @@ runner_win="$(wslpath -w "$repo/tests/opencode-ssh/run.ps1")"
     -EvidenceRoot "$evidence_win" -FixtureRoot "$fixture_win" -FixturePid "$sshd_pid"
 printf 'Live SSH evidence: %s\n' "$evidence"
 cp -- "$fixture/shim-calls" "$evidence/shim-calls.txt"
-printf '%s\n' "$(date -u +%FT%TZ): SSH security fixture passed; fixture removed on exit." >> /tmp/opencode/sshsec-progress.md
+printf '%s\n' "$(date -u +%FT%TZ): SSH integration fixture passed; fixture removed on exit." >> /tmp/opencode/sshint-progress.md

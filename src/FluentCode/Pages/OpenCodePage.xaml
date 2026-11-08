@@ -334,6 +334,12 @@
                                 <!-- Row 2 提示条（按需） -->
                                 <StackPanel Grid.Row="2" Spacing="8" Margin="0,4,0,0">
                                     <InfoBar
+                                        x:Name="SshConnectionAlert"
+                                        Severity="Warning"
+                                        IsOpen="False"
+                                        IsClosable="True"
+                                        AutomationProperties.AutomationId="OpenCodeSshConnectionAlert" />
+                                    <InfoBar
                                         x:Name="PermissionBar"
                                         Severity="Warning"
                                         IsOpen="False"

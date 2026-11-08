@@ -15,14 +15,16 @@ internal sealed class SshOpenCodeRecovery(Func<OpenCodeSettings, Action<string>,
     private readonly object _sync = new();
     private Task<SshOpenCodeConnection?>? _work;
 
-    internal Task<SshOpenCodeConnection?> RecoverAsync(OpenCodeSettings settings, Action<string> progress, CancellationToken ct)
+    internal Task<SshOpenCodeConnection?> RecoverAsync(OpenCodeSettings settings, Action<OpenCodeConnectionStatus> progress,
+        CancellationToken ct, bool initial = false)
     {
         if (settings.Kind != OpenCodeConnectionKind.Ssh || !SshConnectionTarget.TryParse(settings.SshHost, out _))
             return Task.FromResult<SshOpenCodeConnection?>(null);
-        lock (_sync) return _work ??= Task.Run(() => RunAsync(settings, progress, ct), ct);
+        lock (_sync) return _work ??= Task.Run(() => RunAsync(settings, progress, ct, initial), ct);
     }
 
-    private async Task<SshOpenCodeConnection?> RunAsync(OpenCodeSettings settings, Action<string> progress, CancellationToken ct)
+    private async Task<SshOpenCodeConnection?> RunAsync(OpenCodeSettings settings, Action<OpenCodeConnectionStatus> progress,
+        CancellationToken ct, bool initial)
     {
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
         budget.CancelAfter(TimeSpan.FromSeconds(90));
@@ -32,24 +34,25 @@ internal sealed class SshOpenCodeRecovery(Func<OpenCodeSettings, Action<string>,
             {
                 budget.Token.ThrowIfCancellationRequested();
                 if (attempt != 0) await (delay ?? Task.Delay)(TimeSpan.FromSeconds(attempt), budget.Token).ConfigureAwait(false);
-                progress("正在重新连接 SSH（" + (attempt + 1) + "/" + AttemptLimit + "）…");
+                string label = initial ? "正在连接 SSH…" : "SSH 已断开，正在重连（" + (attempt + 1) + "/" + AttemptLimit + "）";
+                progress(new(label, initial ? "正在连接 SSH…" : "正在重新连接 SSH…"));
                 SshOpenCodeConnection? candidate = null;
                 try
                 {
-                    candidate = await connect(settings, progress, budget.Token).ConfigureAwait(false);
+                    candidate = await connect(settings, detail => progress(new(label, detail)), budget.Token).ConfigureAwait(false);
                     budget.Token.ThrowIfCancellationRequested();
                     if (!candidate.Tunnel.IsAlive) { candidate.Dispose(); continue; }
                     return candidate;
                 }
-                catch (SshOpenCodeException ex) when (!ex.CanRetry) { candidate?.Dispose(); progress(ex.Message); return null; }
-                catch (OpenCodeConfigurationException ex) { candidate?.Dispose(); progress(ex.Message); return null; }
+                catch (SshOpenCodeException ex) when (!ex.CanRetry) { candidate?.Dispose(); progress(OpenCodeConnectionStatus.SshFailure(ex)); return null; }
+                catch (OpenCodeConfigurationException ex) { candidate?.Dispose(); progress(new("SSH 连接已断开", ex.Message, true)); return null; }
                 catch (Exception ex) when (ex is OpenCodeException or IOException or Win32Exception) { candidate?.Dispose(); }
                 catch { candidate?.Dispose(); throw; }
             }
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
         ct.ThrowIfCancellationRequested();
-        progress("SSH 自动连接失败（已达重试上限或等待超时）；请在连接页重新连接。");
+        progress(new("SSH 连接已断开", "SSH 连接失败（已达重试上限或等待超时）；请到 设置 › 账号与连接 重新连接。", true));
         return null;
     }
 }

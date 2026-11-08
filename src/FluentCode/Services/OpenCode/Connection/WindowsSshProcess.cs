@@ -18,11 +18,18 @@ internal sealed class SshProcessResult(int exitCode, string output, string error
 
 internal static class WindowsSshProcess
 {
+    internal static SshOwnedProcess Start(ProcessStartInfo start)
+    {
+        try { return SshOwnedProcess.Start(start); }
+        catch (Win32Exception error) { throw new SshOpenCodeException(ClassifyStartFailure(error.NativeErrorCode)); }
+    }
+
+    internal static SshFailureKind ClassifyStartFailure(int nativeErrorCode) => nativeErrorCode is 2 or 3
+        ? SshFailureKind.MissingOpenSsh : SshFailureKind.Unavailable;
+
     internal static async Task<SshProcessResult> RunAsync(ProcessStartInfo start, string? input, TimeSpan timeout, CancellationToken ct)
     {
-        SshOwnedProcess process;
-        try { process = SshOwnedProcess.Start(start); }
-        catch (Win32Exception) { throw new SshOpenCodeException(SshFailureKind.Unavailable); }
+        var process = Start(start);
         using (process)
         {
             using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -52,7 +59,7 @@ internal static class WindowsSshProcess
 
     internal static async Task<byte[]> RunHostKeyProbeAsync(ProcessStartInfo start, string keyFile, CancellationToken ct)
     {
-        using var process = SshOwnedProcess.Start(start);
+        using var process = Start(start);
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
         budget.CancelAfter(TimeSpan.FromSeconds(20));
         using var cancel = budget.Token.Register(process.KillJob);

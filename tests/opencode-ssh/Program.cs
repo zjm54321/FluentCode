@@ -124,10 +124,22 @@ internal static partial class Program
         Check(WindowsSshProcess.Classify("Host key verification failed.") != SshFailureKind.UnknownHostKey, "ambiguous verification failure does not trigger a key probe");
         Check(WindowsSshProcess.Classify("Permission denied (publickey).") == SshFailureKind.Authentication, "publickey failure classified");
         string guidance = new SshOpenCodeException(SshFailureKind.Authentication).Message;
-        Check(guidance.Contains("Windows") && guidance.Contains("ssh-agent") && guidance.Contains("ssh-add"), "passphrase agent guidance");
-        Check(SshHostKeyVerifier.ParseFingerprints("256 SHA256:abcdef123 host (ED25519)\nprivate banner\n").SequenceEqual(new[] { "ED25519 · SHA256:abcdef123" }), "fingerprint whitelist, not raw process output");
+        Check(guidance.Contains("ssh-add") && guidance.Contains("不能在这里输入 SSH 密码"), "key/passphrase guidance and no SSH password input");
+        Check(SshHostKeyVerifier.ParseFingerprints("256 SHA256:abcdef123 host (ED25519)\nprivate banner\n")
+            .SequenceEqual(new[] { new SshHostKeyFingerprint("ED25519", "SHA256:abcdef123") }), "typed fingerprint algorithm/hash whitelist, not raw process output");
+        Check(WindowsSshProcess.ClassifyStartFailure(2) == SshFailureKind.MissingOpenSsh
+            && WindowsSshProcess.ClassifyStartFailure(3) == SshFailureKind.MissingOpenSsh
+            && WindowsSshProcess.ClassifyStartFailure(5) == SshFailureKind.Unavailable, "missing executable/path has a dedicated failure, access denied stays unavailable");
+        Check(!new SshOpenCodeException(SshFailureKind.MissingOpenSsh).CanRetry, "missing OpenSSH does not auto-retry");
         var effective = EffectiveSshConfig.Parse("hostname server.example\nport 2222\nhostkeyalias server-key\nsetenv DO_NOT_LOG=opaque\n");
         Check(effective.HostName == "server.example" && effective.Port == 2222 && effective.HostKeyAlias == "server-key" && !effective.ToString().Contains("opaque"), "resolved host/port/key alias only, no secret environment values");
+        Check(effective.DisplayHost == "server.example:2222" && effective.KnownHostsLookup == "server-key", "resolved address and host-key alias are separate fields");
+        Check(new SshOpenCodeException(SshFailureKind.ChangedHostKey, effective.KnownHostsLookup, "C:/space's/known_hosts").HostKeyRemovalCommand
+            == "ssh-keygen -R 'server-key' -f 'C:/space''s/known_hosts'", "copy-only removal command quotes the resolved lookup and custom trust file");
+        Check(new SshOpenCodeException(SshFailureKind.ChangedHostKey, "host").HostKeyRemovalCommand!.Contains("<known_hosts 文件路径>"), "unknown trust file uses an explicit placeholder, not a guessed default");
+        Check(SshHostKeyVerifier.ParseOffendingKeyFile("debug3: expanded UserKnownHostsFile '~/.ssh/first' -> 'C:/first'\nOffending ED25519 key in C:/space's/second known_hosts:12\r\n")
+            == "C:/space's/second known_hosts", "removal targets the offending record file, not the first acceptance file");
+        Check(SshHostKeyVerifier.ParseOffendingKeyFile("unsupported diagnostic") is null, "unrecognized offending-file diagnostics never guess a path");
         var probe = SshCommandBuilder.HostKeyProbe(target, options, "C:\\probe\\known_hosts", "C:\\probe\\empty");
         foreach (string disabled in new[] { "PubkeyAuthentication=no", "PasswordAuthentication=no", "KbdInteractiveAuthentication=no", "GSSAPIAuthentication=no", "HostbasedAuthentication=no", "IdentityAgent=none", "ForwardAgent=no", "ClearAllForwardings=yes", "ControlMaster=no", "ControlPath=none", "RequestTTY=no" })
             Check(probe.ArgumentList.Contains(disabled), "host-key probe disables authentication, forwarding, control sockets and TTY: " + disabled);
@@ -212,10 +224,25 @@ internal static partial class Program
         Check(ReferenceEquals(await a, ready) && calls == 3, "bounded reconnect reaches fresh tunnel");
         Check(delays.SequenceEqual(new[] { TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2) }), "backoff 1s/2s");
         ready.Dispose();
+        var statuses = new List<OpenCodeConnectionStatus>();
+        using var initiallyReady = Candidate();
+        recovery = new((_, step, _) => { step("请在对话框中核对主机指纹。"); return Task.FromResult(initiallyReady); });
+        Check(await recovery.RecoverAsync(SshSettings, statuses.Add, CancellationToken.None, initial: true) == initiallyReady
+            && statuses.All(status => status.Label == "正在连接 SSH…" && !status.Failed), "cold start never says reconnect");
+        Check(statuses[^1].Detail == "请在对话框中核对主机指纹。" && !statuses[^1].Failed, "detail punctuation never determines failure or pill label");
+        statuses.Clear();
+        recovery = new((_, step, _) => { step("step without ellipsis"); return Task.FromResult(initiallyReady); });
+        await recovery.RecoverAsync(SshSettings, statuses.Add, CancellationToken.None);
+        Check(statuses.All(status => status.Label == "SSH 已断开，正在重连（1/3）" && !status.Failed), "reconnect uses typed short label with attempt count");
+        statuses.Clear();
+        recovery = new((_, _, _) => Task.FromException<SshOpenCodeConnection>(new SshOpenCodeException(SshFailureKind.ChangedHostKey)));
+        await recovery.RecoverAsync(SshSettings, statuses.Add, CancellationToken.None);
+        Check(statuses[^1] is { Label: "主机密钥已变化", Failed: true, FailureKind: SshFailureKind.ChangedHostKey }
+            && statuses[^1].Detail.Contains("冒充") && statuses[^1].Detail.Contains("账号与连接"), "changed key carries typed critical alert and recovery instructions");
         calls = 0;
         recovery = new((_, _, _) => { calls++; return Task.FromException<SshOpenCodeConnection>(new SshOpenCodeException(SshFailureKind.Unavailable)); }, (_, _) => Task.CompletedTask);
         Check(await recovery.RecoverAsync(SshSettings, _ => { }, CancellationToken.None) is null && calls == SshOpenCodeRecovery.AttemptLimit, "retry limit");
-        foreach (var kind in new[] { SshFailureKind.ChangedHostKey, SshFailureKind.UnknownHostKey, SshFailureKind.Authentication, SshFailureKind.HostKeyProbe })
+        foreach (var kind in new[] { SshFailureKind.ChangedHostKey, SshFailureKind.UnknownHostKey, SshFailureKind.Authentication, SshFailureKind.HostKeyProbe, SshFailureKind.MissingOpenSsh })
         {
             calls = 0;
             recovery = new((_, _, _) => { calls++; return Task.FromException<SshOpenCodeConnection>(new SshOpenCodeException(kind)); });
@@ -316,11 +343,12 @@ internal static partial class Program
             }, _ => { }, cancellation.Token), "canceling the owner ends confirmation even if its UI callback cannot complete");
         }
         Check(!File.Exists(trustFile) && !Directory.EnumerateDirectories(options.ProbeRoot!).Any(), "canceled confirmation cleans probe directory and leaves known_hosts untouched");
-        IReadOnlyList<string>? accepted = null;
+        IReadOnlyList<SshHostKeyFingerprint>? accepted = null;
         var primarySettings = SshSettings with { SshCommand = File.ReadAllText(Path.Combine(directory, "real-opencode")).Trim() };
         using var connection = await new SshOpenCodeConnector(options).ConnectAsync(primarySettings,
             (confirmation, _) => { accepted = confirmation.Fingerprints; return Task.FromResult(true); }, text => Console.WriteLine("Fixture progress: " + text), CancellationToken.None);
         Check(accepted is { Count: > 0 } && connection.Service.RemotePort == 49375, "Windows ssh fingerprint confirmation + real WSL discovery");
+        Check(accepted!.All(key => key.Algorithm.Length > 0 && key.Sha256.StartsWith("SHA256:", StringComparison.Ordinal)), "live confirmation supplies separate algorithm and fingerprint fields");
         Check(File.Exists(trustFile), "accepted keys saved to the configured custom trust file, not default known_hosts");
         int ownedTunnelPid = ((WindowsSshOpenCodeTunnel)connection.Tunnel).ProcessId;
         Console.WriteLine("TRACK owned tunnel PID=" + ownedTunnelPid);
@@ -414,7 +442,12 @@ internal static partial class Program
         {
             SshFailureKind? changed = null;
             try { await verifier.EnsureTrustedAsync(target, (_, _) => { changedPrompts++; return Task.FromResult(true); }, _ => { }, CancellationToken.None); }
-            catch (SshOpenCodeException ex) { changed = ex.Kind; }
+            catch (SshOpenCodeException ex)
+            {
+                changed = ex.Kind;
+                Check(ex.HostKeyLookup == "[127.0.0.1]:2222" && ex.HostKeyFile is not null
+                    && Path.GetFullPath(ex.HostKeyFile) == Path.GetFullPath(trustFile), "live changed-key action targets the resolved host and actual custom trust file");
+            }
             Check(changed == SshFailureKind.ChangedHostKey && changedPrompts == 0, "changed fixture host key is rejected before any probe/confirmation");
             Check((await File.ReadAllBytesAsync(trustFile)).SequenceEqual(trustedBefore), "changed key never overwrites/appends trusted known_hosts");
         }

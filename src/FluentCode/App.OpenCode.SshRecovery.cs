@@ -69,7 +69,7 @@ public partial class App
             replacement = null;
         }
         catch (OperationCanceledException) { }
-        catch (Exception) { PostToApp(() => { if (OwnsSshRecovery(owner)) SetOpenCodeRecoveryStatus("SSH 自动连接失败"); }); }
+        catch (Exception) { PostToApp(() => { if (OwnsSshRecovery(owner)) SetOpenCodeRecoveryStatus(new("SSH 连接已断开", "SSH 自动连接失败；请到 设置 › 账号与连接 重新连接。", true)); }); }
         finally { replacement?.Dispose(); }
     }
 

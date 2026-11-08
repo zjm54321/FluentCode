@@ -71,7 +71,7 @@ internal sealed class WindowsSshOpenCodeTunnel : ISshOpenCodeTunnel
                 var process = SshOwnedProcess.Start(start);
                 tunnel = new(process, port);
             }
-            catch (Win32Exception) { throw new SshOpenCodeException(SshFailureKind.Unavailable); }
+            catch (Win32Exception error) { throw new SshOpenCodeException(WindowsSshProcess.ClassifyStartFailure(error.NativeErrorCode)); }
             try
             {
                 await tunnel.WaitUntilListeningAsync(ct).ConfigureAwait(false);

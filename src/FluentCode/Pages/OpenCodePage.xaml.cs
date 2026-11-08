@@ -3792,17 +3792,7 @@ public sealed partial class OpenCodePage : Page
         UpdateConnectionStatus();
     }
 
-    /// <summary>
-    /// 恢复状态的顶栏短文案。服务层进度以 “…” 结尾，终止结果不以 “…” 结尾；后者用危险色圆点（不只靠颜色：文案同时变化）。
-    /// </summary>
-    internal static (string Text, bool Failed) RecoveryPillText(string status, bool ssh)
-    {
-        bool busy = status.EndsWith('…');
-        if (status.Length <= 18) return (status, !busy);
-        if (busy) return (ssh ? "正在连接 SSH…" : "正在连接 OpenCode…", false);
-        if (status.Contains("密钥已变化", StringComparison.Ordinal)) return ("主机密钥已变化", true);
-        return (ssh ? "SSH 连接已断开" : "自动连接失败", true);
-    }
+    private FluentCode.Services.OpenCode.Connection.OpenCodeConnectionStatus? _shownSshAlert;
 
     private void UpdateConnectionStatus()
     {
@@ -3835,13 +3825,27 @@ public sealed partial class OpenCodePage : Page
                 break;
         }
 
-        if ((Application.Current as App)?.OpenCodeRecoveryStatus is { } recoveryStatus)
+        var recoveryStatus = (Application.Current as App)?.OpenCodeRecoveryStatus;
+        if (recoveryStatus is not null)
         {
             // 顶栏只放短状态；完整步骤 / 原因进入提示与连接浮层（_connectionStatusDetail）。
-            (text, bool failed) = RecoveryPillText(recoveryStatus,
-                _homeSettings?.Current?.OpenCode.Kind == FluentCode.Models.OpenCodeConnectionKind.Ssh);
-            tooltip = recoveryStatus;
-            brushKey = failed ? "SystemFillColorCriticalBrush" : "TextFillColorSecondaryBrush";
+            text = recoveryStatus.Label;
+            tooltip = recoveryStatus.Detail;
+            brushKey = recoveryStatus.Failed ? "SystemFillColorCriticalBrush"
+                : recoveryStatus.Warning ? "SystemFillColorCautionBrush" : "TextFillColorSecondaryBrush";
+        }
+        // 独立、可关闭的非模态安全提示，不被普通请求结果覆盖；同一状态不反复打开。
+        if (_shownSshAlert != recoveryStatus)
+        {
+            _shownSshAlert = recoveryStatus;
+            bool changedKey = recoveryStatus?.FailureKind == FluentCode.Services.OpenCode.Connection.SshFailureKind.ChangedHostKey;
+            SshConnectionAlert.IsOpen = changedKey || recoveryStatus?.Warning == true;
+            if (SshConnectionAlert.IsOpen)
+            {
+                SshConnectionAlert.Severity = changedKey ? InfoBarSeverity.Error : InfoBarSeverity.Warning;
+                SshConnectionAlert.Title = recoveryStatus!.Label;
+                SshConnectionAlert.Message = recoveryStatus.Detail;
+            }
         }
         ConnectionStatusText.Text = text;
         // ThemeResource 样式（XamlReader 构造、按键缓存）：主题切换时由框架重取，不是一次性画刷。

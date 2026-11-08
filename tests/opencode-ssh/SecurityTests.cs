@@ -181,9 +181,20 @@ internal static partial class Program
         int writes = 0; var removed = new List<string>();
         var committer = new OpenCodeConnectionCommitter((_, _) => Task.CompletedTask, (_, _, _) => { writes++; return Task.CompletedTask; },
             (transform, _) => Task.FromResult(settings = transform(settings)), (id, _) => { removed.Add(id); return Task.CompletedTask; });
-        var options = new SshOpenCodeService(SshConnectionTarget.Parse("fixture"), 49375, Secret).ToClientOptions(45000);
-        Check((await committer.CommitAsync(OpenCodeConnectionKind.Ssh, options, null, CancellationToken.None, "fixture")).Succeeded,
+        const string warning = "安全提示：远程 OpenCode 已运行并监听全部网络接口。";
+        var options = new SshOpenCodeService(SshConnectionTarget.Parse("fixture"), 49375, Secret, warning: warning).ToClientOptions(45000);
+        var outcome = await committer.CommitAsync(OpenCodeConnectionKind.Ssh, options, null, CancellationToken.None, "fixture");
+        Check(outcome.Succeeded,
             "SSH settings committed after memory-only validation");
+        Check(outcome.Warning == warning && outcome.Message.Contains("仅在内存中") && outcome.Message.Contains("未持久化"), "success preserves warning and memory-only password copy for UI");
+        Check(OpenCodeConnectionStatus.SshWarning(outcome.Warning) is { Failed: false, Warning: true, Detail: warning }
+            && OpenCodeConnectionStatus.SshWarning(null) is null, "successful warning stays a typed non-failure, ordinary success clears recovery status");
+        try
+        {
+            await WindowsSshProcess.RunAsync(SshCommandBuilder.StartInfo(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "ssh.exe")), null, TimeSpan.FromSeconds(1), CancellationToken.None);
+            Check(false, "missing native OpenSSH executable must fail");
+        }
+        catch (SshOpenCodeException error) { Check(error.Kind == SshFailureKind.MissingOpenSsh, "native missing executable uses dedicated failure"); }
         Check(writes == 0 && settings.OpenCode.CredentialId is null && removed.Contains("old-ssh"), "SSH writes no DPAPI secret and retires old SSH ciphertext");
         settings = settings with { OpenCode = settings.OpenCode with { CredentialId = "legacy-again" } };
         await OpenCodeConnectionCommitter.RemoveStoredSshSecretAsync(settings, (transform, _) => Task.FromResult(settings = transform(settings)), () => settings,

@@ -31,8 +31,8 @@ Host dev
 ## 连接
 
 1. 选择 **SSH 自动发现**，填写 `dev` 或 `ming@dev.example.com:22`。
-2. 可选填写“远程 OpenCode 命令或路径”，例如 `opencode`、`~/bin/opencode` 或 `/etc/profiles/per-user/ming/bin/opencode`。这是一个可执行文件名或路径，不是 shell 脚本；不要填写密码、环境变量或命令参数。
-3. 点击“连接 OpenCode”。首次遇到未知主机密钥会展示 SHA256 指纹，请通过独立渠道向管理员核对，再选择“指纹一致，信任并连接”。取消不会保存密钥或替换当前连接。
+2. 可选填写“远程 opencode 路径”，例如 `opencode`、`~/bin/opencode` 或 `/etc/profiles/per-user/ming/bin/opencode`。这是一个可执行文件名或路径，不是 shell 脚本；不要填写密码、环境变量或命令参数。
+3. 点击“连接 OpenCode”。首次遇到未知主机密钥会分别展示算法与 SHA256 指纹，每个指纹旁可复制标准 `SHA256:…` 文本。请通过独立渠道向管理员核对全部指纹，再选择“一致，信任并连接”。取消为默认按钮，不会保存密钥或替换当前连接。
 4. 连接成功后安全保存并替换当前唯一 OpenCode 连接。SSH 服务密码每次发现时重新取得，**只在内存中使用，不持久化**。旧版本留下的 SSH 密码密文将在下一次设置保存后清除；其他连接类型仍使用 DPAPI。
 
 发现命令会使用登录 shell：先 `$SHELL -lc`，再 `bash -lc`；随后尝试 `~/.nix-profile/bin`、`/etc/profiles/per-user/$USER/bin` 与 `/run/current-system/sw/bin`。这用于 NixOS / home-manager 等登录环境；路径仍不正确时请明确填写可执行文件路径。远程登录脚本不要在非交互会话中读取终端输入。
@@ -46,6 +46,8 @@ Host dev
 - SSH 传输明确禁用系统/环境 HTTP 代理，WebSocket 代理也为 null；WSL 与直接远程连接的既有策略不变。SSH 退出时同步撤销传输、关闭其连接，不能等 UI 恢复队列才失效。
 - SSH 进程在 **CREATE_SUSPENDED → 加入 kill-on-close Job → ResumeThread** 后才执行，重定向管道只继承指定句柄；退出或终止 FluentCode 会结束本地进程及其 Job 内子进程，**不会停止远端 OpenCode**。
 - 隧道断开后会进行最多三次有退避的恢复（总等待上限 90 秒）。恢复会重新发现服务、获取凭据、替换连接来源；不会自动重放发送消息、权限确认等写操作。未知结果仍需用户确认。
+- 首次启动显示“正在连接 SSH…”，恢复时显示重连次数。`OpenCodeConnectionStatus(Label, Detail, Failed, FailureKind, Warning)` 分别提供顶栏短标签、提示详情和状态语义，不再按文本是否以省略号结尾推断失败；WSL 使用相同结构。
+- 连接成功仅 SSH 显示成功条；公开监听的 `Warning` 会保留到保存结果和主页面非阻断提示条，而不误标为连接失败。恢复遇到主机密钥变化时，顶栏为危险状态，并在主页面显示可关闭的独立提示条。
 
 ## 在编辑器中打开
 
@@ -65,6 +67,7 @@ Host dev
 - 追加操作保留旧字节及 CRLF/LF，不引入 BOM、覆盖或删除旧条目，并对完全相同的公钥行去重。共享冲突最多退避重试 4 次，取消只在完整记录之间生效；单个记录的写入和 flush 不受取消打断。崩溃/磁盘故障仍可能留下一条不完整记录；不同盐值的 HashKnownHosts 行不承诺语义去重，不以替换共享文件的方式实现事务。
 - 真正的连接与后续恢复始终使用 `StrictHostKeyChecking=yes`，只接受用户看到并确认的密钥；不存在展示后再用 `accept-new` 信任另一把密钥的窗口。不使用 `ssh-keyscan`，也不修改服务端算法。
 - 出现“主机密钥已变化”时停止连接；先向管理员核对指纹，再手动处理 Windows `known_hosts`，不要直接删除旧条目来绕过警告。
+- 连接页可复制删除旧记录的 PowerShell 命令，但不会执行；命令使用解析后的主机 / 密钥别名和可核实的信任文件路径，无法核实路径时保留明确占位符供用户填写。缺少 Windows OpenSSH 时以 `MissingOpenSsh` 单独报告，可从提示内打开 Windows“可选功能”。
 - `ProxyCommand` 与 `Match exec` 被视为**用户可信的本地可执行配置**，不是沙箱；它们可运行本地代码，但最终目标仍须经过强制的主机密钥验证。后续支持 ProxyJump 需要受控跳板调用与双跳测试。
 - 强制禁用 `NoHostAuthenticationForLocalhost` 绕过、DNS 主机密钥自动信任、本地命令、X11、agent 转发与自动密钥更新；普通命令清除继承的转发，探测/隧道强制无会话类型。IPv6 scope 仅接受并规范化数值接口索引，不接受任意 scope 文本。
 - 命令 stdout/stderr 共用 64 KiB 输出预算；长期隧道各保留最多 16 KiB 滚动诊断尾部，输出洪泛会结束所属 Job 并返回固定错误，不记录可能包含密码的输出。

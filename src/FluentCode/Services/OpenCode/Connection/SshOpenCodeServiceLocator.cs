@@ -65,7 +65,7 @@ public sealed class SshOpenCodeServiceLocator(ISshOpenCodeCommandRunner runner,
         bool starting = false;
         try
         {
-            progress("正在发现远程 OpenCode 服务…");
+            progress("正在查找远程 OpenCode…");
             var status = await ReadStatusAsync().ConfigureAwait(false);
             if (status.State == SshServiceState.Stopped)
             {
@@ -86,7 +86,7 @@ public sealed class SshOpenCodeServiceLocator(ISshOpenCodeCommandRunner runner,
                 catch (JsonException) { throw UnsafeStart(); }
                 if (!IPAddress.TryParse(hostname, out var binding) || !IPAddress.IsLoopback(binding) || remote != "false") throw UnsafeStart();
                 starting = true;
-                progress("远程服务未运行，已确认回环绑定与关闭远程公开入口，正在启动 OpenCode…");
+                progress("远程 OpenCode 未运行，正在启动（最多约 30 秒）…");
                 // CLI start is Service.ensure, NOT restart: never stops an existing service or its PTYs.
                 await runner.RunAsync(target, executable, SshOpenCodeCommand.ServiceStart, budget.Token).ConfigureAwait(false);
                 for (int poll = 0; poll < StartPollLimit; poll++)
@@ -96,13 +96,13 @@ public sealed class SshOpenCodeServiceLocator(ISshOpenCodeCommandRunner runner,
                     await (delay ?? Task.Delay)(TimeSpan.FromSeconds(1), budget.Token).ConfigureAwait(false);
                 }
                 if (status.State != SshServiceState.Running)
-                    throw new OpenCodeConfigurationException("远程 OpenCode 启动后仍未就绪（等待超时）。请在远端检查服务；不会重启或停止服务。");
+                    throw new OpenCodeConfigurationException("已尝试启动远程 OpenCode，但 30 秒内没有就绪。请登录服务器运行 opencode service status 查看原因。");
                 if (status.Wildcard) throw new OpenCodeConfigurationException("服务启动期间绑定配置发生变化，返回了非回环监听；已停止建立本次连接，请在远端检查配置。未重新配置或停止服务。");
             }
-            progress("正在读取服务凭据（仅保存在内存中）…");
+            progress("正在获取访问凭据…");
             string password = await runner.RunAsync(target, executable, SshOpenCodeCommand.ServicePassword, budget.Token).ConfigureAwait(false);
             password = password.TrimEnd('\r', '\n');
-            if (password.Length == 0) throw new OpenCodeConfigurationException("远程服务未返回认证凭据，请在远端检查 OpenCode CLI；未改用无认证连接。");
+            if (password.Length == 0) throw new OpenCodeConfigurationException("远程 OpenCode 没有返回访问凭据，已停止连接。");
             string? warning = status.Wildcard ? "安全提示：远程 OpenCode 已运行并监听全部网络接口，SSH 隧道不能保护该公开 HTTP 监听。建议在远端自行改为回环绑定；FluentCode 未重配或重启服务。" : null;
             if (warning is not null) progress(warning);
             return new(target, status.Port!.Value, password, status.RemoteHost, warning);
@@ -110,7 +110,7 @@ public sealed class SshOpenCodeServiceLocator(ISshOpenCodeCommandRunner runner,
 
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            throw new OpenCodeConfigurationException(starting ? "远程 OpenCode 启动超时，请在远端检查服务。"
+            throw new OpenCodeConfigurationException(starting ? "已尝试启动远程 OpenCode，但 30 秒内没有就绪。请登录服务器运行 opencode service status 查看原因。"
                 : "远程 OpenCode 服务发现超时，请检查 SSH 连接。");
         }
 
@@ -120,7 +120,7 @@ public sealed class SshOpenCodeServiceLocator(ISshOpenCodeCommandRunner runner,
         {
             string output = await runner.RunAsync(target, executable, SshOpenCodeCommand.ServiceStatus, budget.Token).ConfigureAwait(false);
             if (!SshServiceStatus.TryParse(output, out var status))
-                throw new OpenCodeConfigurationException("OpenCode CLI 未返回有效的服务状态。服务需通过 HTTP 监听回环或全部接口；未启动或修改服务。");
+                throw new OpenCodeConfigurationException("无法读取远程 OpenCode 状态。请确认 opencode 版本支持 service 命令。");
             return status!;
         }
     }

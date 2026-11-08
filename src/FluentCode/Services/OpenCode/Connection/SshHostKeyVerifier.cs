@@ -8,7 +8,9 @@ using System.Threading.Tasks;
 
 namespace FluentCode.Services.OpenCode.Connection;
 
-public sealed record SshHostKeyConfirmation(string Host, IReadOnlyList<string> Fingerprints, string? ResolvedHost = null);
+public sealed record SshHostKeyFingerprint(string Algorithm, string Sha256);
+public sealed record SshHostKeyConfirmation(string Host, IReadOnlyList<SshHostKeyFingerprint> Fingerprints,
+    string? ResolvedHost = null, string? HostKeyAlias = null);
 
 /// <summary>由无会话的 ssh.exe 学习未知公钥；确认后只追加已展示的公钥，实际连接一律 strict=yes。</summary>
 internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
@@ -17,11 +19,11 @@ internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
         Func<SshHostKeyConfirmation, CancellationToken, Task<bool>>? confirm, Action<string> progress, CancellationToken ct)
     {
         var config = await ReadSafeConfigAsync(target, options, ct).ConfigureAwait(false);
-        progress("正在检查 SSH 主机密钥与公钥认证…");
+        progress("正在连接 " + target.DisplayName + "…");
         var check = await StrictAsync().ConfigureAwait(false);
         if (check.ExitCode == 0) return;
         var failure = WindowsSshProcess.Classify(check.Error);
-        if (failure != SshFailureKind.UnknownHostKey || confirm is null) throw new SshOpenCodeException(failure);
+        if (failure != SshFailureKind.UnknownHostKey || confirm is null) throw Failure(check);
 
         string acceptedFile;
         try { acceptedFile = config.FirstResolvedUserKnownHostsFile(check.Error); }
@@ -43,7 +45,7 @@ internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
         try
         {
             await File.WriteAllBytesAsync(emptyGlobal, Array.Empty<byte>(), ct).ConfigureAwait(false);
-            progress("正在读取 SSH 主机指纹（无会话探测，尚未信任）…");
+            progress("正在读取主机指纹…");
             byte[] keys = await WindowsSshProcess.RunHostKeyProbeAsync(SshCommandBuilder.HostKeyProbe(target, options, probeFile, emptyGlobal),
                 probeFile, ct).ConfigureAwait(false);
 
@@ -52,8 +54,8 @@ internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
             var result = await WindowsSshProcess.RunAsync(keygen, null, TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
             var fingerprints = ParseFingerprints(result.Output);
             if (result.ExitCode != 0 || fingerprints.Count == 0) throw new SshOpenCodeException(SshFailureKind.HostKeyProbe);
-            progress("请核对并确认 SSH 主机指纹…");
-            if (!await confirm(new(target.DisplayName, fingerprints, config.DisplayHost), ct).WaitAsync(ct).ConfigureAwait(false))
+            progress("请在对话框中核对主机指纹。");
+            if (!await confirm(new(target.DisplayName, fingerprints, config.DisplayHost, config.HostKeyAlias), ct).WaitAsync(ct).ConfigureAwait(false))
                 throw new OperationCanceledException(ct);
             ct.ThrowIfCancellationRequested();
 
@@ -61,12 +63,25 @@ internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
             // no algorithm substitution, no overwrite/remove, and no duplicate lines on concurrent acceptance.
             await SshKnownHostsAppender.AppendAsync(acceptedFile, keys, ct).ConfigureAwait(false);
             check = await StrictAsync().ConfigureAwait(false);
-            if (check.ExitCode != 0) throw new SshOpenCodeException(WindowsSshProcess.Classify(check.Error));
+            if (check.ExitCode != 0) throw Failure(check);
         }
         finally { Directory.Delete(directory, recursive: true); }
 
         Task<SshProcessResult> StrictAsync() => WindowsSshProcess.RunAsync(
             SshCommandBuilder.Command(target, options, "true", diagnostic: true), null, TimeSpan.FromSeconds(20), ct);
+
+        SshOpenCodeException Failure(SshProcessResult result)
+        {
+            return new(WindowsSshProcess.Classify(result.Error), config.KnownHostsLookup, ParseOffendingKeyFile(result.Error));
+        }
+    }
+
+    internal static string? ParseOffendingKeyFile(string diagnostics)
+    {
+        // The changed record may be in a later user/global file, not the first writable acceptance file.
+        // Extract only the native offending-record path; unsupported diagnostics leave a copy-only placeholder.
+        var match = Regex.Match(diagnostics, @"(?m)^Offending [A-Za-z0-9-]+ key in (.+):[0-9]+\r?$");
+        return match.Success && !match.Groups[1].Value.Any(char.IsControl) ? match.Groups[1].Value : null;
     }
 
     internal static async Task<EffectiveSshConfig> ReadSafeConfigAsync(SshConnectionTarget target, SshInvocationOptions options, CancellationToken ct)
@@ -79,9 +94,9 @@ internal sealed class SshHostKeyVerifier(SshInvocationOptions options)
         return config;
     }
 
-    internal static IReadOnlyList<string> ParseFingerprints(string output) => output.Split('\n')
+    internal static IReadOnlyList<SshHostKeyFingerprint> ParseFingerprints(string output) => output.Split('\n')
         .Select(line => Regex.Match(line, @"^(\d+) (SHA256:[A-Za-z0-9+/=]+) .* \(([A-Za-z0-9-]+)\)\s*$"))
-        .Where(match => match.Success).Select(match => match.Groups[3].Value + " · " + match.Groups[2].Value).ToArray();
+        .Where(match => match.Success).Select(match => new SshHostKeyFingerprint(match.Groups[3].Value, match.Groups[2].Value)).ToArray();
 }
 
 internal sealed record EffectiveSshConfig(string HostName, int Port, string? HostKeyAlias)
@@ -89,8 +104,8 @@ internal sealed record EffectiveSshConfig(string HostName, int Port, string? Hos
     internal string? ProxyJump { get; init; }
     internal bool HasInheritedForwards { get; init; }
     internal string UserKnownHostsFiles { get; init; } = string.Empty;
-    internal string DisplayHost => (HostName.Contains(':') ? "[" + HostName + "]" : HostName) + ":" + Port
-        + (HostKeyAlias is null ? string.Empty : "（密钥别名：" + HostKeyAlias + "）");
+    internal string DisplayHost => (HostName.Contains(':') ? "[" + HostName + "]" : HostName) + ":" + Port;
+    internal string KnownHostsLookup => HostKeyAlias ?? (Port == 22 ? HostName : "[" + HostName + "]:" + Port);
 
     internal static EffectiveSshConfig Parse(string output)
     {
