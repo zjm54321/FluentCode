@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Net;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Runtime.Loader;
 using System.Text;
 using Microsoft.UI.Xaml;
@@ -24,7 +25,11 @@ internal sealed partial class ProductionAdapterProbe
         var type = value as Type ?? value.GetType();
         var method = type.GetMethods(Members).Single(m => m.Name == name && m.GetParameters().Length == arguments.Length);
         try { return method.Invoke(value is Type ? null : value, arguments); }
-        catch (TargetInvocationException error) when (error.InnerException is not null) { throw error.InnerException; }
+        catch (TargetInvocationException error) when (error.InnerException is not null)
+        {
+            ExceptionDispatchInfo.Capture(error.InnerException).Throw();
+            throw;
+        }
     }
     private static object Create(Type type, params object?[] arguments)
         => Activator.CreateInstance(type, Constructors, null, arguments, null)!;
@@ -74,6 +79,8 @@ internal sealed partial class ProductionAdapterProbe
             DelegateFor(viewParameters[1].ParameterType, _ => Call(core, "BeginCatalogLifetime")),
             DelegateFor(viewParameters[2].ParameterType, a => Call(core, "EndCatalogLifetime", a[0])));
         var editor = (RichEditBox)Create(T("Pages.OpenCode.OpenCodeComposerEditor"));
+        editor.AcceptsReturn = true;
+        editor.TextWrapping = TextWrapping.Wrap;
         editor.FontSize = 14;
         editor.Padding = new Thickness(12, 9, 12, 9);
         editor.MinHeight = 40;
@@ -90,6 +97,7 @@ internal sealed partial class ProductionAdapterProbe
             return null;
         });
         Listen(core, "SnapshotChanged", _ => Call(view, "RequestRender"));
+        Listen(view, "ModelUndoRequested", a => Call(core, "TryUndoDocument", a[0], a[1]));
         Listen(view, "CatalogOpenRequested", a =>
         {
             var e = a[1]!;
@@ -135,6 +143,9 @@ internal sealed partial class ProductionAdapterProbe
         try
         {
             await Settle();
+            await Reset();
+            await ProductionPasteScenarios(core, view, editor, Reset, Settle);
+            if (_pasteOnly) return;
             await Reset();
             Call(view, "InsertContextTrigger"); await Settle();
             Check("plus-context-opens-after-model-paint", (bool)Get(view, "IsMentionVisible")!);

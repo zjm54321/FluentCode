@@ -115,6 +115,7 @@ internal static partial class Program
     private static TaskCompletionSource<T> Signal<T>() => new(TaskCreationOptions.RunContinuationsAsynchronously);
     private static async Task Main()
     {
+        NativeGeometry();
         DocumentModel();
         DocumentProtocol();
         await Ownership();

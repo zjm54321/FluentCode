@@ -76,6 +76,12 @@ public sealed partial class OpenCodePage
                 && Composer.Text == editorText && Composer.SelectionStart == selectionStart && Composer.SelectionLength == selectionLength)
                 view.InsertPlainPaste(token, fallbackText);
         }
+        catch (Exception error) when (error is System.Runtime.InteropServices.COMException or ArgumentException)
+        {
+            System.Diagnostics.Debug.WriteLine($"Composer image paste: {error.GetType().Name} HRESULT=0x{error.HResult:X8}");
+            // The original ticket is released below. Native chip rendering owns plain-text
+            // fallback; this async event boundary must not publish or retry a partial paste.
+        }
         finally
         {
             controller.CancelPick(ticket); // Also releases a staged paste whose source/selection changed before insertion.

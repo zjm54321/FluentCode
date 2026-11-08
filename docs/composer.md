@@ -31,6 +31,8 @@ EditorSync 保留 baseline / input revision / 提交 ACK / reentrant predecessor
 - 原生 patch 先备齐全部图片，再在一个同步、版本受保护的 UI turn 中写入。原生画面落后于已确认模型时，紧接粘贴的文字、surrogate pair 与删除先作为模型操作排队，不能被临时只读吞掉，也不能用旧画面的选区覆盖模型 caret；画面一致时的主题重绘不锁住普通输入。TOM SetText 只在同步受保护写入期间临时解除只读，之后恢复。
 - 普通/全屏重挂同一个 RichEditBox 与伴随视图，不创建第二个编辑账本。组合中、有 pending receipt 或尚在渲染时拒绝重挂；ACK 后恢复焦点及方向性选区。处理 WinUI 旧宿主 Unloaded 延迟到新宿主 Loaded 之后的情况。
 - 自增高只读取真实 viewport 完成布局后 TOM 首 / 末行的坐标差，加一行行高及相同 border / padding（AllowOffClient 保留滚动区外的行；surface DesiredSize 会被 viewport 裁切，不能代替全文高度）。不对 surface 做假想宽度的 Measure（RichEdit 在 Arrange 才换行），不临时修改约束再测量；按实际全文高度将 MinHeight 限制在 40 DIP 与五行上限之间。未达最大高度时滚动条 Hidden（仍允许 caret 滚动，不占宽）；达到最大高度才 Auto。工具栏单 / 双排的假想紧凑宽度只用独立文字 / 芯片宽度投影，不决定编辑器高度或滚动条。全屏仍重挂同一编辑器，在有限的全屏 viewport 中使用 Auto 滚动条。
+- 紧凑宽度投影使用 `RichTextBlock` 的 `Paragraph` 承载 `InlineUIContainer`，不能放进 `TextBlock.Inlines`（WinUI 会返回 `E_INVALIDARG`）。芯片宽度读取已验证的规范位图尺寸，不在该投影中查询尚未布局的 TOM 对象。原生 patch 期间沿用上次完成的测量，`NativeLayoutReady` 后重新计算。
+- `OpenCodeComposerNativeGeometry` 在 TOM / 位图调用前验证有限、正值和 ascent ≤ height；布局 DIP 尺寸向上取整，避免正的小数被截为零。composer 安全预算为图像 4096 DIP、每边光栅 4096 px、段落 1638 pt（至少一个 twip），不是声明 TOM 的最大值。段落 points 转换只移除一次文字缩放。URL 位图在原始粘贴事务提交前准备；尺寸无效时原文作为一次普通文本粘贴，撤销一次即恢复。后续原生图片插入失败只显式降级失败 token 为其原始文本，保留其他 token 身份和选区方向；其他失败继续使用既有 held/recovery 流程。粘贴、芯片指针与布局回调边界只拦截 COM / 参数异常，不使用全局异常吞噬。
 
 ## 验证
 
@@ -41,8 +43,11 @@ EditorSync 保留 baseline / input revision / 提交 ACK / reentrant predecessor
 ```powershell
 tests/richedit-prototype/build-run.ps1 -LogRoot <已有日志目录> -Adapter
 # 手动输入法/朗读/显示缩放：加 -Manual；只编译：加 -BuildOnly
+# 无 SendInput / 不改共享剪贴板的真实产品粘贴回归：加 -PasteOnly
 ```
 
 它链接生产文档、收据、RichEditBox 适配器、位图缓存、URL parser、favicon policy 与 glyph 源码；只替换 controller boundary / snapshot host，不伪造 native TextChanging、SendInput 或 UIA。覆盖相邻重复标签删除、左边界插字、跨 token 替换、方向键/整选、模型撤销重做、复制/纯文本粘贴、EOP/CRLF/surrogate、UIA alt、实际富文本高度与双向重挂后的焦点/选区。组合重挂拒绝用实际适配器状态机模拟；不等于物理中文 TSF 验证。
+
+`-PasteOnly` 加载实际 Debug `FluentCode.dll` 的 controller / view / editor，把 `DataPackageView` 交给原生 Paste 与 Ctrl+V 共享的 `RequestPaste` 处理器（不是仅调用下游 helper）。覆盖 URL、已有芯片旁的纯文本 / 多行文本、空草稿纯文本 / 多行文本、真实 TextScaleFactor / DPI、原生及紧凑高度测量、无效 ascent 的普通文本退化与一次撤销。共享桌面启动仍需 Active session、无现存 fixture 以及 capture lock；编译和等待不得持有锁。锁宿主可先 `-BuildOnly`，再以 `-SkipBuild -SingleAttempt` 启动；非空闲输入测试返回 75 给宿主释放锁后重试。
 
 仍需手动验证：Microsoft Pinyin 中文模式连续两次组合与候选 Enter（包括芯片相邻/替换、首次粘贴新芯片后立即组合、全屏收起请求）；Narrator 实际语音；真实 100/150/200% 显示器缩放与基线/清晰度；Windows 10 19044。自动结果覆盖当前 Windows 主机，不替代这些项目。

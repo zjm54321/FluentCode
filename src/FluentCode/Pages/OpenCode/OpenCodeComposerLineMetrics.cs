@@ -10,9 +10,11 @@ internal readonly record struct OpenCodeComposerLineMetrics(double Height, doubl
 {
     internal static OpenCodeComposerLineMetrics Measure(FontFamily font, double size, double scale)
     {
-        var text = new TextBlock { Text = "Mg汉字", FontFamily = font, FontSize = size * scale,
+        var text = new TextBlock { Text = "Mg汉字", FontFamily = font, FontSize = OpenCodeComposerNativeGeometry.FontSize(size, scale),
             IsTextScaleFactorEnabled = false, TextWrapping = TextWrapping.NoWrap, TextLineBounds = TextLineBounds.Full };
         text.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
-        return new(Math.Ceiling(text.DesiredSize.Height), text.BaselineOffset);
+        var height = Math.Ceiling(text.DesiredSize.Height);
+        OpenCodeComposerNativeGeometry.ImageSize(1, height, text.BaselineOffset);
+        return new(height, text.BaselineOffset);
     }
 }

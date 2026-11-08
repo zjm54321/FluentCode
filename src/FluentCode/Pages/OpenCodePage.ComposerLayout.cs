@@ -86,7 +86,13 @@ public sealed partial class OpenCodePage
         {
             _composerLayoutPending = false;
             if (_isComposing || FullScreenComposerActive || ComposerInputLayout.ActualWidth <= 0) return;
-            UpdateComposerLayout();
+            try { UpdateComposerLayout(); }
+            catch (Exception error) when (error is System.Runtime.InteropServices.COMException or ArgumentException)
+            {
+                System.Diagnostics.Debug.WriteLine($"Composer layout: {error.GetType().Name} HRESULT=0x{error.HResult:X8}");
+                // A rejected native metric must not escape the dispatcher callback. Keep the
+                // current viewport; TextChanged/NativeLayoutReady will remeasure a stable surface.
+            }
         });
     }
 

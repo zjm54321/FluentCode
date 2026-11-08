@@ -27,6 +27,7 @@
     <Compile Include="../../src/FluentCode/Pages/OpenCode/OpenCodeComposerEditor.Pointer.cs" Link="Production/OpenCodeComposerEditor.Pointer.cs" />
     <Compile Include="../../src/FluentCode/Pages/OpenCode/OpenCodeComposerBitmapCache.cs" Link="Production/OpenCodeComposerBitmapCache.cs" />
     <Compile Include="../../src/FluentCode/Pages/OpenCode/OpenCodeComposerLineMetrics.cs" Link="Production/OpenCodeComposerLineMetrics.cs" />
+    <Compile Include="../../src/FluentCode/Pages/OpenCode/OpenCodeComposerNativeGeometry.cs" Link="Production/OpenCodeComposerNativeGeometry.cs" />
     <Compile Include="../../src/FluentCode/Pages/OpenCode/OpenCodeComposerActivityPolicy.cs" Link="Production/OpenCodeComposerActivityPolicy.cs" />
     <Compile Include="../../src/FluentCode/Pages/OpenCode/OpenCodeLinkChipView.cs" Link="Production/OpenCodeLinkChipView.cs" />
     <Compile Include="../../src/FluentCode/Pages/OpenCode/OpenCodeLinkChipParser.cs" Link="Production/OpenCodeLinkChipParser.cs" />

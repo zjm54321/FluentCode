@@ -32,9 +32,15 @@ internal static class OpenCodeComposerBitmapCache
         var textScale = editor.IsTextScaleFactorEnabled ? editor.TextScale : 1;
         var metrics = editor.LineMetrics;
         var iconSize = Math.Min(14 * textScale, metrics.Height - 2);
+        OpenCodeComposerNativeGeometry.ImageSize(iconSize, iconSize, 0);
         var key = new Key(token.Kind, token.Value, token.Label, token.IsSkill, token.Number, token.AttachmentId, token.Color, editor.ActualTheme,
             new AccessibilitySettings().HighContrast, OnlineEnabled(), IconOptions(), editor.FontFamily.Source, editor.FontSize, textScale, scale, _colors);
-        if (Cache.TryGetValue(key, out var cached)) return cached;
+        if (Cache.TryGetValue(key, out var cached))
+        {
+            OpenCodeComposerNativeGeometry.ImageSize(cached.Width, cached.Height, cached.Ascent);
+            OpenCodeComposerNativeGeometry.RasterSize(cached.Width, cached.Height, scale);
+            return cached;
+        }
         if (editor.Parent is not Panel parent) throw new InvalidOperationException("Composer bitmap rendering requires its editor panel.");
         var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(6, 0, 6, 0) };
@@ -71,7 +77,7 @@ internal static class OpenCodeComposerBitmapCache
             Foreground = foreground, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 260,
             TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
         label.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
-        var ascent = (int)Math.Round(label.BaselineOffset);
+        var ascent = OpenCodeComposerNativeGeometry.ImageSize(1, metrics.Height, label.BaselineOffset).Ascent;
         label.RenderTransform = new TranslateTransform { Y = ascent - label.BaselineOffset };
         content.Children.Add(label);
         var border = new Border { CornerRadius = new CornerRadius(4),
@@ -93,11 +99,13 @@ internal static class OpenCodeComposerBitmapCache
             visual.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
             var width = Math.Ceiling(visual.DesiredSize.Width);
             var height = metrics.Height;
+            OpenCodeComposerNativeGeometry.ImageSize(width, height, ascent);
+            var raster = OpenCodeComposerNativeGeometry.RasterSize(width, height, scale);
             visual.Width = width;
             staging.UpdateLayout();
             visual.Arrange(new(0, 0, width, height));
             var target = new RenderTargetBitmap();
-            await target.RenderAsync(visual, Math.Max(1, (int)Math.Ceiling(width * scale)), Math.Max(1, (int)Math.Ceiling(height * scale)));
+            await target.RenderAsync(visual, raster.Width, raster.Height);
             var pixels = await target.GetPixelsAsync();
             var bytes = new byte[pixels.Length];
             using (var reader = DataReader.FromBuffer(pixels)) reader.ReadBytes(bytes);

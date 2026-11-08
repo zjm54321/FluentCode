@@ -23,6 +23,7 @@ internal sealed partial class ProductionAdapterProbe : Window
     private readonly nint _hwnd;
     private readonly bool _manual;
     private readonly bool _alignmentOnly;
+    private readonly bool _pasteOnly;
     private Control? _triggerEditor;
     private readonly DateTime _inputDeadline = InputDeadline();
     private sealed class InputGuardStopped(string message) : InvalidOperationException(message);
@@ -40,10 +41,11 @@ internal sealed partial class ProductionAdapterProbe : Window
     private readonly Grid _expanded = new();
     private AdapterAttachment[] _attachments = Array.Empty<AdapterAttachment>();
 
-    internal ProductionAdapterProbe(bool manual, bool alignmentOnly = false)
+    internal ProductionAdapterProbe(bool manual, bool alignmentOnly = false, bool pasteOnly = false)
     {
         _manual = manual;
         _alignmentOnly = alignmentOnly;
+        _pasteOnly = pasteOnly;
         Title = "Production RichEditBox adapter tests — not FluentCode";
         _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1000, 700));
@@ -204,6 +206,7 @@ internal sealed partial class ProductionAdapterProbe : Window
     private async Task Run()
     {
         await TriggerLists(); // Validate real-product fixture wiring before the longer adapter/input matrix.
+        if (_pasteOnly) return;
         var both = Fixture();
         var a = both.Objects[0].Token.Id;
         var b = both.Objects[1].Token.Id;

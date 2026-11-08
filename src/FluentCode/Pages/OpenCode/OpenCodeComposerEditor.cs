@@ -54,6 +54,8 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
     private char? _pendingHighSurrogate;
     private ScrollViewer? _contentScroller;
     private TextBlock? _placeholder;
+    private double _lastContentHeight;
+    private double _lastCompactHeight;
     private bool NativeBehindModel => !_native.SameContent(_model) || ReadStory() != _model.Story;
     internal bool NativeLayoutPending => NativeBehindModel || _renderJobs != 0;
     internal event Action<CharacterReceivedRoutedEventArgs>? PreviewCharacterReceived;
@@ -169,7 +171,8 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
         base.OnApplyTemplate();
         _contentScroller = GetTemplateChild("ContentElement") as ScrollViewer;
         _placeholder = GetTemplateChild("PlaceholderTextContentPresenter") as TextBlock;
-        UpdateLineMetrics();
+        try { UpdateLineMetrics(); }
+        catch (Exception error) when (OpenCodeComposerNativeGeometry.IsRecoverable(error)) { ReportNativeBoundary("template metrics", error); }
     }
 
     internal OpenCodeComposerLineMetrics LineMetrics => OpenCodeComposerLineMetrics.Measure(FontFamily, FontSize,
@@ -179,15 +182,23 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
     {
         if (_composing) return; // Never change TOM formatting inside a TSF composition.
         var line = LineMetrics;
-        var format = Document.GetDefaultParagraphFormat();
         // TOM linear spacing is in points (72/in), not the DIPs (96/in) used by XAML/InsertImage.
         // RichEdit applies text scaling itself, so store the unscaled paragraph metric.
         var scale = IsTextScaleFactorEnabled ? TextScale : 1;
-        format.SetLineSpacing(LineSpacingRule.Exactly, (float)(line.Height * 72 / 96 / scale));
-        format.SpaceBefore = 0;
-        format.SpaceAfter = 0;
-        Document.SetDefaultParagraphFormat(format);
-        Document.GetRange(0, ReadStory().Length + 1).ParagraphFormat = format;
+        var spacing = OpenCodeComposerNativeGeometry.ParagraphSpacing(line.Height, scale);
+        try
+        {
+            var format = Document.GetDefaultParagraphFormat();
+            format.SetLineSpacing(LineSpacingRule.Exactly, spacing);
+            format.SpaceBefore = 0;
+            format.SpaceAfter = 0;
+            Document.SetDefaultParagraphFormat(format);
+            Document.GetRange(0, ReadStory().Length + 1).ParagraphFormat = format;
+        }
+        catch (Exception error) when (OpenCodeComposerNativeGeometry.IsRecoverable(error))
+        {
+            ReportNativeBoundary("paragraph metrics", error); // Keep native default spacing; text remains editable.
+        }
         if (_placeholder is { } placeholder)
         {
             placeholder.LineHeight = line.Height / scale;
@@ -250,15 +261,15 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
     public void SelectAll() => Select(0, Text.Length);
     internal OpenCodeComposerInlineToken? HitToken(Point point)
     {
-        if (_composing || NativeBehindModel) return null;
-        // TOM client coordinates start at the inner text surface, excluding RichEditBox chrome.
-        point = new(point.X - Padding.Left - BorderThickness.Left, point.Y - Padding.Top - BorderThickness.Top);
-        var position = Document.GetRangeFromPoint(point, PointOptions.ClientCoordinates).StartPosition;
-        foreach (var item in _model.Objects.Where(x => x.Position == position || x.Position + 1 == position))
+        if (_composing || _writing != 0 || _renderJobs != 0 || _model.Objects.Count == 0) return null;
+        try
         {
-            Document.GetRange(item.Position, item.Position + 1).GetRect(PointOptions.ClientCoordinates, out var rectangle, out _);
-            if (rectangle.Contains(point)) return item.Token;
+            if (NativeBehindModel || !TryTextClientPoint(point, out point)) return null;
+            var position = Document.GetRangeFromPoint(point, PointOptions.ClientCoordinates).StartPosition;
+            foreach (var item in _model.Objects.Where(x => x.Position == position || x.Position + 1 == position))
+                if (TryChipRectangle(item.Position, out var rectangle) && rectangle.Contains(point)) return item.Token;
         }
+        catch (Exception error) when (OpenCodeComposerNativeGeometry.IsRecoverable(error)) { ReportNativeBoundary("chip hit test", error); }
         return null;
     }
     public void CopySelectionToClipboard()
@@ -340,18 +351,22 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
         ReparentCompleted?.Invoke();
     }
 
-    private void RequestPaste()
+    private void RequestPaste(DataPackageView? content = null)
     {
-        if (!CanEditModel || PrepareModelOperation?.Invoke() == false) return;
-        DataPackageView content;
-        try { content = Clipboard.GetContent(); }
-        catch (Exception) { return; }
-        if (content.Contains(StandardDataFormats.Bitmap) || content.Contains(StandardDataFormats.StorageItems))
+        try
         {
-            SpecialPasteRequested?.Invoke(this, content);
-            return;
+            if (!CanEditModel || PrepareModelOperation?.Invoke() == false) return;
+            // Native Paste/Ctrl+V and the no-input fixture enter this exact handler. The fixture
+            // supplies a snapshot instead of touching the user's shared clipboard.
+            content ??= Clipboard.GetContent();
+            if (content.Contains(StandardDataFormats.Bitmap) || content.Contains(StandardDataFormats.StorageItems))
+            {
+                SpecialPasteRequested?.Invoke(this, content);
+                return;
+            }
+            if (content.Contains(StandardDataFormats.Text)) _ = PastePlainAsync(content);
         }
-        if (content.Contains(StandardDataFormats.Text)) _ = PastePlainAsync(content);
+        catch (Exception error) when (OpenCodeComposerNativeGeometry.IsRecoverable(error)) { ReportNativeBoundary("paste handler", error); }
     }
     private async Task PastePlainAsync(DataPackageView content)
     {
@@ -360,23 +375,36 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
         var draft = _draft;
         var token = _appliedToken;
         var document = _model;
-        string text;
-        try { text = await content.GetTextAsync(); }
-        catch (Exception) { return; }
-        if (!CanEditModel || revision != _revision || selection != _selection || draft != _draft
-            || token != _appliedToken || !document.SameContent(_model)) return;
-        text = OpenCodeComposerDocument.Normalize(text);
-        if (OpenCodeComposerChips.SingleLink(text) is { } raw && OpenCodeLinkChipParser.Parse(raw) is { } link)
+        string? text = null;
+        bool Current() => CanEditModel && revision == _revision && selection == _selection && draft == _draft
+            && token == _appliedToken && document.SameContent(_model);
+        try
         {
-            var offset = text.IndexOf(raw, StringComparison.Ordinal);
-            var runs = new OpenCodeComposerRun[] { new OpenCodeComposerTextRun(text[..offset]),
-                new OpenCodeComposerInlineToken(Guid.NewGuid(), OpenCodeComposerInlineKind.Link, raw, link.Label),
-                new OpenCodeComposerTextRun(text[(offset + raw.Length)..]) };
-            var next = _model.Replace(selection.Start, selection.End - selection.Start, runs);
-            var caret = selection.Start + next.Length - (_model.Length - (selection.End - selection.Start));
-            StageDocument(next, new(caret, caret));
+            text = OpenCodeComposerDocument.Normalize(await content.GetTextAsync());
+            if (!Current()) return;
+            if (OpenCodeComposerChips.SingleLink(text) is { } raw && OpenCodeLinkChipParser.Parse(raw) is { } link)
+            {
+                var inline = new OpenCodeComposerInlineToken(Guid.NewGuid(), OpenCodeComposerInlineKind.Link, raw, link.Label);
+                // Prepare/validate before publishing the paste: a bad bitmap is ordinary text in
+                // the original paste transaction, not a second undo step or lost clipboard value.
+                var bitmap = await OpenCodeComposerBitmapCache.GetAsync(this, inline, null);
+                OpenCodeComposerNativeGeometry.ImageSize(bitmap.Width, bitmap.Height, bitmap.Ascent);
+                if (!Current()) return;
+                var offset = text.IndexOf(raw, StringComparison.Ordinal);
+                var runs = new OpenCodeComposerRun[] { new OpenCodeComposerTextRun(text[..offset]), inline,
+                    new OpenCodeComposerTextRun(text[(offset + raw.Length)..]) };
+                var next = _model.Replace(selection.Start, selection.End - selection.Start, runs);
+                var caret = selection.Start + next.Length - (_model.Length - (selection.End - selection.Start));
+                StageDocument(next, new(caret, caret));
+            }
+            else ReplaceSelection(text); // @agent / [Image N] text never manufactures token capabilities.
         }
-        else ReplaceSelection(text); // @agent / [Image N] text never manufactures token capabilities.
+        catch (Exception error) when (OpenCodeComposerNativeGeometry.IsRecoverable(error))
+        {
+            ReportNativeBoundary("text/link paste", error);
+            try { if (text is not null && Current()) ReplaceSelection(text); }
+            catch (Exception fallback) when (OpenCodeComposerNativeGeometry.IsRecoverable(fallback)) { ReportNativeBoundary("plain paste fallback", fallback); }
+        }
     }
     internal bool ReplaceSelection(string text)
     {
@@ -558,19 +586,24 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
     private async Task RenderNativeAsync(OpenCodeComposerDocument document, string style, long version, long revision)
     {
         _renderJobs++;
-        RefreshReadOnly();
-        var images = new List<(int Position, OpenCodeComposerBitmapCache.Bitmap Bitmap, InMemoryRandomAccessStream Stream)>();
+        Guid? renderingToken = null;
+        var images = new List<(int Position, Guid Id, OpenCodeComposerBitmapCache.Bitmap Bitmap,
+            (int Width, int Height, int Ascent) Size, InMemoryRandomAccessStream Stream)>();
         try
         {
+            RefreshReadOnly();
             foreach (var item in document.Objects)
             {
+                renderingToken = item.Token.Id;
                 byte[]? thumbnail = null;
                 if (item.Token.AttachmentId is { } attachment) _thumbnails.TryGetValue(attachment, out thumbnail);
                 var bitmap = await OpenCodeComposerBitmapCache.GetAsync(this, item.Token, thumbnail);
+                var size = OpenCodeComposerNativeGeometry.ImageSize(bitmap.Width, bitmap.Height, bitmap.Ascent);
+                if (bitmap.Png.Length == 0) throw new ArgumentException("Composer image data must not be empty.");
                 var stream = new InMemoryRandomAccessStream();
+                images.Add((item.Position, item.Token.Id, bitmap, size, stream));
                 using (var writer = new DataWriter(stream)) { writer.WriteBytes(bitmap.Png); await writer.StoreAsync(); writer.DetachStream(); }
                 stream.Seek(0);
-                images.Add((item.Position, bitmap, stream));
             }
             if (!IsLoaded || _composing || version != _renderVersion || revision != _revision || !_model.SameContent(document)) return;
             _writing++;
@@ -579,11 +612,16 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
                 // TOM rejects SetText on a read-only RichEditBox. Unlock ONLY this synchronous guarded patch,
                 // after every await/ownership check; no native input can interleave in this UI turn.
                 base.IsReadOnly = false;
+                renderingToken = null;
                 Document.SetText(TextSetOptions.None, string.Concat(document.Runs.OfType<OpenCodeComposerTextRun>().Select(x => x.Text)).Replace('\n', '\r'));
                 UpdateLineMetrics();
                 foreach (var image in images)
-                    Document.GetRange(image.Position, image.Position).InsertImage((int)image.Bitmap.Width, (int)image.Bitmap.Height, image.Bitmap.Ascent,
+                {
+                    renderingToken = image.Id;
+                    Document.GetRange(image.Position, image.Position).InsertImage(image.Size.Width, image.Size.Height, image.Size.Ascent,
                         VerticalCharacterAlignment.Baseline, image.Bitmap.Alt, image.Stream);
+                }
+                renderingToken = null;
                 _selection = _selection.Clamp(document.Length);
                 SetNativeSelection();
                 Document.UndoLimit = 0;
@@ -594,35 +632,74 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
                 ObjectMap = document.Objects.Select(x => (x.Position, x.Token.Id)).ToArray();
                 _canonicalChipSizes.Clear();
                 for (var i = 0; i < document.Objects.Count; i++)
-                    _canonicalChipSizes.Add(document.Objects[i].Token.Id, new(images[i].Bitmap.Width, images[i].Bitmap.Height));
+                    _canonicalChipSizes.Add(document.Objects[i].Token.Id, new(images[i].Size.Width, images[i].Size.Height));
             }
             finally
             {
-                RefreshReadOnly();
-                _writing--;
+                try { RefreshReadOnly(); }
+                finally { _writing--; }
             }
         }
         catch (Exception error)
         {
             if (version != _renderVersion || !IsLoaded) return;
-            NativeFailure = error.ToString();
-            Document.GetText(TextGetOptions.UseObjectText, out var visible);
-            _observation = new(_model, OpenCodeComposerDocument.Text(visible), ReadSelection(), IsValid: false);
-            DocumentChanging?.Invoke(); // Existing held/recovery UI owns failure; never guess token identity.
-            DocumentChanged?.Invoke();
+            if (OpenCodeComposerNativeGeometry.IsRecoverable(error) && renderingToken is { } id && _model.SameContent(document))
+            {
+                ReportNativeBoundary("chip render; using plain text", error);
+                try
+                {
+                    var plain = OpenCodeComposerNativeGeometry.PlainToken(document, id, _selection);
+                    StageDocument(plain.Document, plain.Selection); // Explicit valid observation; unrelated token IDs survive.
+                    return;
+                }
+                catch (Exception fallback) when (OpenCodeComposerNativeGeometry.IsRecoverable(fallback)) { error = fallback; }
+            }
+            ReportNativeRenderFailure(error);
         }
         finally
         {
             foreach (var image in images) image.Stream.Dispose();
             _renderJobs--;
-            RefreshReadOnly();
-            RestoreReparentedFocus();
-            if (_renderJobs == 0)
+            try
             {
-                QueueNativeRender(); // A canceled unload render must not strand the next loaded host.
-                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => NativeLayoutReady?.Invoke());
+                RefreshReadOnly();
+                RestoreReparentedFocus();
+                if (_renderJobs == 0)
+                {
+                    QueueNativeRender(); // A canceled unload render must not strand the next loaded host.
+                    DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+                    {
+                        try { NativeLayoutReady?.Invoke(); }
+                        catch (Exception error) when (OpenCodeComposerNativeGeometry.IsRecoverable(error)) { ReportNativeBoundary("native layout callback", error); }
+                    });
+                }
             }
+            catch (Exception error) when (OpenCodeComposerNativeGeometry.IsRecoverable(error)) { ReportNativeRenderFailure(error); }
         }
+    }
+
+    private static void ReportNativeBoundary(string operation, Exception error)
+        => System.Diagnostics.Debug.WriteLine($"Composer {operation}: {error.GetType().Name} HRESULT=0x{error.HResult:X8}");
+
+    private void ReportNativeRenderFailure(Exception error)
+    {
+        NativeFailure = error.ToString();
+        var readable = OpenCodeComposerDocument.Text(_model.RawText);
+        var selection = _selection;
+        try
+        {
+            Document.GetText(TextGetOptions.UseObjectText, out var visible);
+            readable = OpenCodeComposerDocument.Text(visible);
+            selection = ReadSelection();
+        }
+        catch (Exception recovery) when (OpenCodeComposerNativeGeometry.IsRecoverable(recovery)) { ReportNativeBoundary("native failure readback", recovery); }
+        _observation = new(_model, readable, selection, IsValid: false);
+        try
+        {
+            DocumentChanging?.Invoke(); // Existing held/recovery UI owns non-chip failures; never guess token identity.
+            DocumentChanged?.Invoke();
+        }
+        catch (Exception notification) when (OpenCodeComposerNativeGeometry.IsRecoverable(notification)) { ReportNativeBoundary("native failure notification", notification); }
     }
 
     internal double MeasureContentHeight()
@@ -632,12 +709,23 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
         // is clipped to its viewport once scrolling is enabled; it is NOT the document extent.
         var chrome = Padding.Top + Padding.Bottom + BorderThickness.Top + BorderThickness.Bottom;
         var line = LineMetrics.Height;
-        if (_contentScroller is null || !IsLoaded) return line + chrome;
-        const PointOptions options = PointOptions.ClientCoordinates | PointOptions.Start | PointOptions.AllowOffClient;
-        Document.GetRange(0, 0).GetPoint(HorizontalCharacterAlignment.Left, VerticalCharacterAlignment.Top, options, out var first);
-        var end = ReadStory().Length;
-        Document.GetRange(end, end).GetPoint(HorizontalCharacterAlignment.Left, VerticalCharacterAlignment.Top, options, out var last);
-        return Math.Max(line, last.Y - first.Y + line) + chrome;
+        var previous = Math.Max(line + chrome, _lastContentHeight);
+        if (_contentScroller is null || !IsLoaded || _writing != 0 || _renderJobs != 0) return previous;
+        try
+        {
+            const PointOptions options = PointOptions.ClientCoordinates | PointOptions.Start | PointOptions.AllowOffClient;
+            Document.GetRange(0, 0).GetPoint(HorizontalCharacterAlignment.Left, VerticalCharacterAlignment.Top, options, out var first);
+            var end = ReadStory().Length;
+            Document.GetRange(end, end).GetPoint(HorizontalCharacterAlignment.Left, VerticalCharacterAlignment.Top, options, out var last);
+            var height = Math.Max(line, last.Y - first.Y + line) + chrome;
+            if (!double.IsFinite(height) || height <= 0) throw new ArgumentException("Native composer height must be finite and positive.");
+            return _lastContentHeight = height;
+        }
+        catch (Exception error) when (OpenCodeComposerNativeGeometry.IsRecoverable(error))
+        {
+            ReportNativeBoundary("native height", error);
+            return previous; // Keep the last arranged viewport until the next native-layout wake-up.
+        }
     }
 
     internal double MeasureCompactContentHeight(double width)
@@ -645,26 +733,30 @@ public sealed partial class OpenCodeComposerEditor : RichEditBox
         // This projection chooses toolbar ROWS only, never the editor's height. Its invariant
         // compact width prevents the wide/compact row choice from measuring its own output.
         var line = LineMetrics.Height;
-        var text = new TextBlock { FontFamily = FontFamily, FontSize = FontSize * (IsTextScaleFactorEnabled ? TextScale : 1), FontWeight = FontWeight,
+        if (_writing != 0 || _renderJobs != 0 || !_native.SameContent(_model)) return Math.Max(line, _lastCompactHeight);
+        // TextBlock rejects InlineUIContainer with E_INVALIDARG. Embedded UI belongs to a
+        // RichTextBlock Paragraph, even for this disconnected, measurement-only projection.
+        var text = new RichTextBlock { FontFamily = FontFamily, FontSize = OpenCodeComposerNativeGeometry.FontSize(FontSize, IsTextScaleFactorEnabled ? TextScale : 1), FontWeight = FontWeight,
             FontStyle = FontStyle, CharacterSpacing = CharacterSpacing, FlowDirection = FlowDirection, Language = Language,
             IsTextScaleFactorEnabled = false, TextWrapping = TextWrapping.Wrap,
             LineHeight = line, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-        var offset = 0;
-        foreach (var run in _native.Runs)
+        var paragraph = new Paragraph();
+        text.Blocks.Add(paragraph);
+        foreach (var run in _model.Runs)
         {
             if (run is OpenCodeComposerTextRun plain)
             {
-                text.Inlines.Add(new Run { Text = plain.Text });
-                offset += plain.Text.Length;
+                paragraph.Inlines.Add(new Run { Text = plain.Text });
             }
             else
             {
-                Document.GetRange(offset, offset + 1).GetRect(PointOptions.ClientCoordinates, out var rect, out _);
-                text.Inlines.Add(new InlineUIContainer { Child = new Border { Width = rect.Width, Height = 0 } });
-                offset++;
+                var token = (OpenCodeComposerInlineToken)run;
+                if (!_canonicalChipSizes.TryGetValue(token.Id, out var size)) return Math.Max(line, _lastCompactHeight);
+                var image = OpenCodeComposerNativeGeometry.ImageSize(size.Width, size.Height, 0);
+                paragraph.Inlines.Add(new InlineUIContainer { Child = new Border { Width = image.Width, Height = 0 } });
             }
         }
         text.Measure(new(Math.Max(1, width), double.PositiveInfinity));
-        return Math.Max(line, text.DesiredSize.Height);
+        return _lastCompactHeight = Math.Max(line, text.DesiredSize.Height);
     }
 }
