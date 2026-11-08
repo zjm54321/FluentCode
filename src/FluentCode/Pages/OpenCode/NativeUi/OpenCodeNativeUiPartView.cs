@@ -24,7 +24,9 @@ internal sealed class OpenCodeNativeUiPartView : IDisposable
     private bool _disposed;
     internal FrameworkElement Element => _root;
     internal NativeUiRuntime? Runtime => _runtime;
+    internal NativeUiRenderer? Renderer => _renderer;
     internal Func<NativeUiAssistantRequest, Task<NativeUiHostResult>>? ToAssistant { get; set; }
+    internal Func<string, Task<NativeUiHostResult>>? OpenBrowser { get; set; }
     internal OpenCodeNativeUiPartView() { NativeUiTheme.Host(_root); _root.Spacing = NativeUiTheme.Gap(2); _root.Tag = this; }
     internal void Update(OpenCodeContentPart part)
     {
@@ -50,7 +52,7 @@ internal sealed class OpenCodeNativeUiPartView : IDisposable
             NativeUiSafety.Check(parsed.StateDeclarations, _catalog.Limits);
             _runtime = new(parsed, _catalog) { ToAssistant = request => ToAssistant?.Invoke(request) ?? Task.FromResult(new NativeUiHostResult(false, "当前输入区不可用")) };
             if (_partId is { } id && NativeUiStateStore.Read(id, input.Source ?? "") is { } snapshot) _runtime.Restore(snapshot);
-            _renderer = new(_runtime); _runtime.Changed += Refresh;
+            _renderer = new(_runtime) { OpenBrowser = url => OpenBrowser?.Invoke(url) ?? Task.FromResult(new NativeUiHostResult(false, "当前会话浏览器不可用")) }; _runtime.Changed += Refresh;
             _root.Children.Clear();
             // The tool title names the card for assistive tech; the card's own Title is the visible heading.
             AutomationProperties.SetName(_renderer.Element, string.IsNullOrWhiteSpace(input.Title) ? "交互卡片" : input.Title);
@@ -82,5 +84,5 @@ internal sealed class OpenCodeNativeUiPartView : IDisposable
         _renderer?.Dispose(); _runtime?.Dispose(); _renderer = null; _runtime = null;
     }
     private void SaveState() { if (_runtime is not null && _partId is { Length: > 0 } id && _source is { } source) NativeUiStateStore.Save(id, source, _runtime.Snapshot()); }
-    public void Dispose() { _disposed = true; ToAssistant = null; ClearRuntime(); _root.Children.Clear(); _root.Tag = null; }
+    public void Dispose() { _disposed = true; ToAssistant = null; OpenBrowser = null; ClearRuntime(); _root.Children.Clear(); _root.Tag = null; }
 }

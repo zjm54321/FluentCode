@@ -1,0 +1,1 @@
+root = Card([Title("会议语音备忘", "lg"), Text("播放、暂停、进度、音量均使用原生媒体控件。"), Audio("https://media.example.org/meeting/notes.wav", "两秒离线音频"), Caption("点击后加载，不会自动播放；离开卡片时暂停。")], "outline", 4, 3)

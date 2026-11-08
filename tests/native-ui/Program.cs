@@ -2,16 +2,24 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Threading;
+using FluentCode.Models;
 using FluentCode.Services.NativeUi;
 
 internal static class Program
 {
     private static int _checks;
+    private sealed class TileHandler(Func<HttpRequestMessage, HttpResponseMessage> reply) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(reply(request));
+    }
     private static void Require(bool condition, string message) { _checks++; if (!condition) throw new InvalidOperationException(message); }
     private static void Same(JsonNode? actual, JsonNode? expected, string label)
     {
@@ -98,7 +106,7 @@ internal static class Program
             using var urlInput = new NativeUiRuntime(parser.Parse("$url = \"https://example.org\"\nroot = Input($url, \"URL\")"), catalog);
             Require(!urlInput.TrySetField("URL", urlInput.EvaluateRoot()!.Props["value"], "file:///etc/passwd")
                 && Equals(urlInput.Get("$url"), "https://example.org") && urlInput.Status.Contains("http(s)"), "Rejected native input preserves state and reports locally");
-            Require(catalog.Components.Count == 54 && !catalog.Components.ContainsKey("HtmlView"), "Complete native catalog without HTML");
+            Require(catalog.Components.Count == 57 && !catalog.Components.ContainsKey("HtmlView"), "Complete native catalog with native multimedia and without HTML");
             using var form = Demo("form"); form.Set("$period", "每月"); form.Set("$date", "2026-11-12");
             using var onboarding = Demo("showcase-onboarding"); await Press(onboarding, "下一步");
             Require(NativeUiValues.Number(onboarding.Get("$step")) == 2 && Elements(onboarding.EvaluateRoot()).Any(element => element.TypeName == "RadioGroup"), "Showcase multi-step form reveals described preference controls");
@@ -110,6 +118,9 @@ internal static class Program
             Require(Elements(planner.EvaluateRoot()).Any(element => element.TypeName == "Title" && Equals(element.Props.GetValueOrDefault("text"), "¥3480")), "Showcase planner recomputes its complete budget");
             await Press(planner, "恢复默认"); Require(NativeUiValues.Number(planner.Get("$days")) == 4 && Equals(planner.Get("$stay"), "comfort"), "Showcase planner resets all inputs");
             using var journey = Demo("showcase-journey"); journey.Set("$done", true);
+            using var keypad = Demo("calculator");
+            Require(Elements(keypad.EvaluateRoot()).Where(element => element.TypeName == "Row" && element.Props.GetValueOrDefault("children") is IReadOnlyList<object?> children && children.Count > 0 && children.All(child => child is NativeUiElement { TypeName: "Button" })).All(element => ((IReadOnlyList<object?>)element.Props["children"]!).Count == 4), "Calculator keypad rows all align to four equal columns, including the sign/zero/equals/plus row");
+            keypad.Set("$entry", 12d); await Press(keypad, "±"); Require(NativeUiValues.Number(keypad.Get("$entry")) == -12, "Calculator sign key preserves arithmetic state");
             Require(Elements(journey.EvaluateRoot()).Any(element => element.TypeName == "Title" && Equals(element.Props.GetValueOrDefault("text"), "3 / 4"))
                 && Elements(journey.EvaluateRoot()).Any(element => element.TypeName == "Badge" && Equals(element.Props.GetValueOrDefault("text"), "进行中")), "Confirming a release checklist does not mark an in-progress milestone completed");
             using var sizing = Demo("sizing");
@@ -123,6 +134,48 @@ internal static class Program
             await Press(external, "Open"); Require(asked == "https://example.org/full?query=1#anchor" && NativeUiValues.Number(external.Get("$n")) == 0, "Cancelled URL preserves full URL and stops action sequence");
             external.OpenUrl = _ => Task.FromResult(new NativeUiHostResult(true, "opened")); await Press(external, "Open"); Require(NativeUiValues.Number(external.Get("$n")) == 1, "Accepted URL continues ordered actions");
             Require(NativeUiImages.Https("https://example.org/image.png") && !NativeUiImages.Https("http://example.org/image.png") && !NativeUiImages.Https("file:///image.png"), "Image HTTPS-only policy");
+            var beijing = NativeUiCoordinates.WgsToGcj(new(39.908823, 116.397470));
+            Require(Math.Abs(beijing.Latitude - 39.910226498) < 1e-8 && Math.Abs(beijing.Longitude - 116.403713582) < 1e-8, "Known Beijing WGS84→GCJ02 point");
+            var shanghai = NativeUiCoordinates.WgsToGcj(new(31.2304, 121.4737));
+            Require(Math.Abs(shanghai.Latitude - 31.228457738) < 1e-8 && Math.Abs(shanghai.Longitude - 121.478223059) < 1e-8, "Known Shanghai WGS84→GCJ02 point");
+            foreach (var point in new[] { new NativeUiCoordinate(39.908823, 116.39747), new(31.2304, 121.4737), new(22.543096, 114.057865), new(30.572269, 104.066541) })
+            {
+                var back = NativeUiCoordinates.GcjToWgs(NativeUiCoordinates.BdToGcj(NativeUiCoordinates.GcjToBd(NativeUiCoordinates.WgsToGcj(point))));
+                Require(Math.Abs(back.Latitude - point.Latitude) < 1e-5 && Math.Abs(back.Longitude - point.Longitude) < 1e-5, "WGS84→GCJ02→BD09→WGS84 round trip below 1e-5°");
+            }
+            var london = new NativeUiCoordinate(51.5074, -.1278);
+            Require(NativeUiCoordinates.WgsToGcj(london) == london && NativeUiCoordinates.ForProvider(london, NativeUiMapProvider.OpenStreetMap) == london, "Coordinates outside China and OSM stay WGS84");
+            Require(!NativeUiCoordinates.Valid(new(double.NaN, 0)) && !NativeUiCoordinates.Valid(new(91, 181)), "Invalid/overflow map coordinates rejected");
+            var osm = new NativeUiMapSettings();
+            Require(NativeUiMapProviders.TileUrl(osm, 2, 1, 3).AbsoluteUri == "https://tile.openstreetmap.org/2/1/3.png" && NativeUiMapProviders.UserAgent.StartsWith("FluentCode/"), "OSM URL and identifying User-Agent");
+            Require(NativeUiMapProviders.TileUrl(osm with { Provider = NativeUiMapProvider.AMap }, 2, 1, 3).AbsoluteUri == "https://webrd01.is.autonavi.com/appmaptile?style=7&x=1&y=3&z=2", "AMap XYZ URL uses transformed GCJ02 coordinates");
+            var custom = osm with { Provider = NativeUiMapProvider.Custom, CustomTileUrlTemplate = "https://tiles.example/{z}/{x}/{y}.png", CustomAttribution = "© Example" };
+            Require(custom.ValidationError() is null && NativeUiMapProviders.TileUrl(custom, 2, 1, 3).AbsoluteUri == "https://tiles.example/2/1/3.png" && NativeUiMapProviders.Attribution(custom) == "© Example", "Custom HTTPS XYZ requires and preserves attribution");
+            Require((custom with { CustomAttribution = "" }).ValidationError() is not null && (custom with { CustomTileUrlTemplate = "http://tiles.example/{z}/{x}/{y}" }).ValidationError() is not null, "Custom tile templates reject missing attribution and HTTP");
+            var tdt = osm with { Provider = NativeUiMapProvider.TianDiTu };
+            Require(NativeUiMapProviders.TileUrl(tdt, 2, 1, 3, "user+key").AbsoluteUri.Contains("TILEROW=3&TILECOL=1&tk=user%2Bkey"), "TianDiTu user key is escaped, never embedded");
+            var noKey = false; try { NativeUiMapProviders.TileUrl(tdt, 2, 1, 3); } catch (InvalidOperationException) { noKey = true; }
+            var baiduBlocked = false; try { NativeUiMapProviders.TileUrl(osm with { Provider = NativeUiMapProvider.Baidu }, 2, 1, 3); } catch (NotSupportedException) { baiduBlocked = true; }
+            Require(noKey && baiduBlocked, "Missing user key and unsupported Baidu fail locally");
+            foreach (var source in new[] { "http://example.org/a.mp4", "file:///a.mp4", "https://user:secret@example.org/a.mp4", "javascript:alert(1)" }) Require(!NativeUiMediaPolicy.Https(source), "Media disallows non-HTTPS and credential URLs");
+            Require(NativeUiMediaPolicy.Https("https://example.org/full/video.mp4?token=1#track") && NativeUiMediaPolicy.YouTubeId("https://youtu.be/dQw4w9WgXcQ") == "dQw4w9WgXcQ" && NativeUiMediaPolicy.YouTubeId("https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ") is null, "Full HTTPS media and allowlisted YouTube IDs");
+            var gate = new NativeUiLoadGate(); Require(!gate.Request(), "Empty media/map source cannot be requested"); gate.Bind("https://example.org/a"); Require(!gate.Requested && gate.Request(), "Media/map source loads only after explicit request"); gate.Bind("https://example.org/a"); Require(gate.Requested, "Reactive refresh retains same-source consent"); gate.Bind("https://example.org/b"); Require(!gate.Requested, "Source change revokes load consent");
+            var cacheDirectory = Path.Combine(Path.GetTempPath(), "native-ui-tile-test-" + Guid.NewGuid().ToString("N")); var requests = 0;
+            try
+            {
+                using var client = new NativeUiTileClient(new(osm, null, cacheDirectory), new TileHandler(request =>
+                {
+                    requests++; Require(request.Headers.UserAgent.ToString().Contains("FluentCode/"), "Tile request sends identifying UA");
+                    var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) };
+                    response.Content.Headers.ContentType = new("image/png"); response.Headers.CacheControl = new() { MaxAge = TimeSpan.FromDays(7) }; response.Headers.ETag = new("\"fixture\""); return response;
+                }));
+                var firstTile = await client.GetAsync(2, 1, 3); var cachedTile = await client.GetAsync(2, 1, 3);
+                Require(firstTile.SequenceEqual(cachedTile) && requests == 1, "Fresh tile cache avoids a second network request and retains HTTP metadata");
+                using var failedClient = new NativeUiTileClient(new(osm, null, cacheDirectory), new TileHandler(_ => new(HttpStatusCode.ServiceUnavailable))); var failed = false; failedClient.Failed += () => failed = true;
+                try { await failedClient.GetAsync(2, 2, 3); } catch (InvalidOperationException) { }
+                Require(failed, "First tile failure signals native static-list fallback");
+            }
+            finally { if (Directory.Exists(cacheDirectory)) Directory.Delete(cacheDirectory, true); }
             var payload = new NativeUiAssistantRequest("Continue with this option", new Dictionary<string, object?> { ["id"] = 1d }, new Dictionary<string, object?>());
             Require(NativeUiComposerPolicy.Create(payload, true, true, catalog.Limits).Delivery == "queue", "Busy assistant queues through composer policy");
             Require(!NativeUiComposerPolicy.Create(payload, true, false, catalog.Limits).Allowed, "Unsupported queue fails closed");
@@ -141,6 +194,12 @@ internal static class Program
             var composerSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.NativeUi.cs"));
             Require(composerSource.Contains("RequestComposerSubmission(intent.Delivery)") && composerSource.Contains("OwnsComposerBinding(binding)")
                 && composerSource.Contains("snapshot.HasDraft") && !composerSource.Contains("SendPromptGuardedAsync"), "Native UI only enters the normal guarded composer, preserving drafts");
+            Require(composerSource.Contains("OnNativeUiBrowserRequested") && composerSource.Contains("IsSameMessageBinding(binding.SessionId, binding.Directory)") && composerSource.Contains("GetBrowserWorkspace(binding.SessionId)") && composerSource.Contains("workspace.OpenPage(args.Url)"), "YouTube requests enter the existing origin/session-guarded in-app browser workspace");
+            var nativeMediaSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Media.cs"));
+            Require(nativeMediaSource.Contains("player.Pause()") && nativeMediaSource.Contains("AutoPlay = false") && nativeMediaSource.Contains("element.IsFullWindow = !element.IsFullWindow") && !nativeMediaSource.Contains("WebView2"), "Native media has explicit full-window support, pause/disposal and no embedded browser");
+            Require(nativeMediaSource.Contains("new ContentDialog") && nativeMediaSource.Contains("Stretch = Stretch.None") && nativeMediaSource.Contains("terminal.SuppressAirspace(snapshot: true)"), "Full-size gallery viewer suppresses terminal airspace and retains original image size");
+            var mapSettingsSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/Settings/SettingsView.NativeUiMap.cs"));
+            Require(mapSettingsSource.Contains("IsEnabled = provider != NativeUiMapProvider.Baidu") && mapSettingsSource.Contains("_secretStore.SetAsync(created, _mapKey.Password") && mapSettingsSource.Contains("TianDiTuCredentialId = id"), "Provider settings disable Baidu and store TianDiTu only through DPAPI credential references");
             var markdownSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeRichTextPresenter.cs"));
             Require(markdownSource.Contains("_nativeUiSandbox ? null : OpenCodeImageContext.Find(_root)") && markdownSource.Contains("_nativeUiSandbox ? null : new ChipContext")
                 && markdownSource.Contains("? nativeUiSandbox ? \"text\" : \"mermaid\""), "Native Markdown has no inherited files/network/browser capability");

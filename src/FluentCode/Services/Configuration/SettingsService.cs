@@ -235,6 +235,12 @@ public sealed class SettingsService
 
         if (settings.Browser is null) errors.Add("browser 不能为空。");
         else if (settings.Browser.ValidationError() is { } browserError) errors.Add(browserError);
+        if (settings.NativeUiMap is null) errors.Add("nativeUiMap 不能为空。");
+        else
+        {
+            if (settings.NativeUiMap.ValidationError() is { } mapError) errors.Add(mapError);
+            ValidateOptionalStorageId(settings.NativeUiMap.TianDiTuCredentialId, "nativeUiMap.tianDiTuCredentialId", errors);
+        }
 
         if (settings.OpenCode is null)
         {

@@ -18,6 +18,8 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
+using Windows.Media.Editing;
+using Windows.Media.MediaProperties;
 
 namespace FluentCode;
 
@@ -51,6 +53,8 @@ public partial class App
     private static async Task CaptureNativeUiDemosAsync(string root, string fixtures, FrameworkElement surface, OpenCodeConversationView timeline)
     {
         var records = new List<object>();
+        var fixtureAssets = await CreateNativeUiMediaFixturesAsync(root);
+        var tilePng = await NativeUiFixtureImageAsync(256, 256, 0);
         var sent = new List<object>();
         NativeUiAssistantRequest? lastRequest = null;
         timeline.NativeUiAssistantRequested += (_, args) =>
@@ -93,13 +97,62 @@ public partial class App
                     continue;
                 }
                 if (view.Runtime is null) throw new InvalidOperationException("Native card parse failed: " + name);
+                var assetRequests = 0; var tileRequests = 0;
+                var rendererHost = view.Renderer ?? throw new InvalidOperationException("Native card renderer unavailable.");
+                rendererHost.MapContextProvider = () => Task.FromResult(new NativeUiMapContext(new(), null, Path.Combine(root, "tile-cache")) { FixtureTiles = (_, _, _) => { tileRequests++; return Task.FromResult(tilePng); } });
+                rendererHost.MediaAssetLoader = async (url, kind, token) =>
+                {
+                    token.ThrowIfCancellationRequested(); assetRequests++;
+                    if (kind == "image") return new(await NativeUiFixtureImageAsync(960, 540, url.Contains("coast") ? 1 : url.Contains("park") ? 2 : 0), "image/png");
+                    return fixtureAssets[kind];
+                };
+                if (assetRequests != 0 || tileRequests != 0) throw new InvalidOperationException("Native media/map fetched before explicit loading.");
                 async Task Press(string label)
                 {
-                    var button = Descendants(timeline).OfType<Button>().First(control => Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(control) == label);
+                    var button = Descendants(timeline).OfType<Button>().First(control => Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(control) == label || Equals(control.Content, label));
                     if (new ButtonAutomationPeer(button).GetPattern(PatternInterface.Invoke) is not IInvokeProvider invoke) throw new InvalidOperationException("No native Invoke provider: " + label);
                     invoke.Invoke(); await Task.Delay(25);
                 }
-                if (name == "calculator")
+                if (name is "map" or "video" or "audio" or "gallery" or "youtube")
+                {
+                    var before = name + "-before-" + theme.ToString().ToLowerInvariant() + ".png";
+                    await CaptureNativeUiPngAsync(surface, Path.Combine(root, before)); records.Add(new { program = name + "-before", theme = theme.ToString(), png = before, assetRequests, tileRequests });
+                    if (name == "map")
+                    {
+                        if (Descendants(timeline).OfType<Mapsui.UI.WinUI.MapControl>().Any()) throw new InvalidOperationException("MapControl exists before explicit load.");
+                        await Press("加载地图");
+                        for (var i = 0; i < 100 && tileRequests == 0; i++) await Task.Delay(50);
+                        var map = Descendants(timeline).OfType<Mapsui.UI.WinUI.MapControl>().Single();
+                        if (tileRequests == 0 || map.Map.Layers.Count != 3) throw new InvalidOperationException("Native map did not fetch fixture tiles or create tile/route/marker layers.");
+                        await Press("选择地点：天坛"); await Press("显示全部地点");
+                        if (!Equals(view.Runtime.Get("$selected"), "天坛")) throw new InvalidOperationException("Native map selection did not update bound state.");
+                        await Task.Delay(300); map.RefreshGraphics();
+                    }
+                    else if (name is "video" or "audio")
+                    {
+                        await Press("点击加载");
+                        var player = Descendants(timeline).OfType<MediaPlayerElement>().Single();
+                        for (var i = 0; i < 100 && player.MediaPlayer.PlaybackSession.PlaybackState != Windows.Media.Playback.MediaPlaybackState.Paused; i++) await Task.Delay(50);
+                        if (assetRequests != 1 || player.MediaPlayer.Source is null || player.MediaPlayer.AutoPlay || player.AutoPlay || !player.AreTransportControlsEnabled || player.MediaPlayer.PlaybackSession.PlaybackState != Windows.Media.Playback.MediaPlaybackState.Paused || player.MediaPlayer.PlaybackSession.NaturalDuration <= TimeSpan.Zero) throw new InvalidOperationException("Native media did not decode with transports and autoplay disabled.");
+                    }
+                    else if (name == "gallery")
+                    {
+                        await Press("加载图片集");
+                        var gallery = Descendants(timeline).OfType<FlipView>().Single();
+                        for (var i = 0; i < 100 && gallery.Visibility != Visibility.Visible; i++) await Task.Delay(25);
+                        if (assetRequests != 3 || gallery.Items.Count != 3) throw new InvalidOperationException("Native gallery did not materialize all fixture images.");
+                        gallery.SelectedIndex = 1;
+                    }
+                    else
+                    {
+                        string? browserUrl = null; rendererHost.OpenBrowser = url => { browserUrl = url; return Task.FromResult(new NativeUiHostResult(true, "离线演示：已确认应用内浏览器请求（未连接网络）")); };
+                        await Press("加载 YouTube 缩略图");
+                        for (var i = 0; i < 100 && !Descendants(timeline).OfType<Image>().Any(image => image.Visibility == Visibility.Visible && image.Source is BitmapImage); i++) await Task.Delay(25);
+                        await Press("在应用内浏览器观看");
+                        if (assetRequests != 1 || browserUrl != "https://www.youtube.com/watch?v=dQw4w9WgXcQ") throw new InvalidOperationException("YouTube thumbnail/browser request did not retain the known watch URL.");
+                    }
+                }
+                else if (name == "calculator")
                 {
                     foreach (var key in new[] { "1", "2", "+", "5", "=", "M+", "C", "8", "+", "MR", "=", "M+" }) await Press(key);
                     if (NativeUiValues.Number(view.Runtime.Get("$entry")) != 25 || NativeUiValues.Number(view.Runtime.Get("$memory")) != 42) throw new InvalidOperationException("Native calculator state/actions failed.");
@@ -205,7 +258,7 @@ public partial class App
                     if (!chart.Series.OfType<LiveChartsCore.SkiaSharpView.StackedColumnSeries<double>>().Any(series => series.Values?.Any(value => value > 0) is true)) throw new InvalidOperationException("Native chart numeric series are empty.");
                 }
                 else if (name == "mixed" && Descendants(timeline).OfType<Microsoft.UI.Xaml.Shapes.Path>().Single().Data is null) throw new InvalidOperationException("Native numeric SVG path did not materialize.");
-                records.Add(new { program = name, theme = theme.ToString(), png = file, surfaceWidth = surface.ActualWidth, cardWidth = ((StackPanel)view.Element).Children[0].ActualSize.X, state = view.Runtime!.State });
+                records.Add(new { program = name, theme = theme.ToString(), png = file, surfaceWidth = surface.ActualWidth, cardWidth = ((StackPanel)view.Element).Children[0].ActualSize.X, state = view.Runtime!.State, assetRequests, tileRequests });
             }
         }
         File.WriteAllText(Path.Combine(root, "demos.json"), JsonSerializer.Serialize(new { parser = "lang-core 1.1.0 C# port", offline = true, captures = records, assistantIntents = sent }, new JsonSerializerOptions { WriteIndented = true }));
@@ -215,6 +268,28 @@ public partial class App
     {
         yield return root;
         for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++) foreach (var child in Descendants(VisualTreeHelper.GetChild(root, index))) yield return child;
+    }
+    private static async Task<Dictionary<string, NativeUiMediaAsset>> CreateNativeUiMediaFixturesAsync(string root)
+    {
+        var path = Path.Combine(root, "offline-fixture.mp4"); File.WriteAllBytes(path, []); var file = await StorageFile.GetFileFromPathAsync(path);
+        var composition = new MediaComposition(); composition.Clips.Add(MediaClip.CreateFromColor(Windows.UI.Color.FromArgb(255, 86, 72, 145), TimeSpan.FromSeconds(2)));
+        var failure = await composition.RenderToFileAsync(file, MediaTrimmingPreference.Precise, MediaEncodingProfile.CreateMp4(VideoEncodingQuality.Wvga));
+        if (failure != Windows.Media.Transcoding.TranscodeFailureReason.None) throw new InvalidOperationException("Offline native video fixture encoding failed: " + failure);
+        using var wave = new MemoryStream(); using var writer = new BinaryWriter(wave); const int samples = 32000;
+        writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF")); writer.Write(36 + samples * 2); writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVEfmt ")); writer.Write(16); writer.Write((short)1); writer.Write((short)1); writer.Write(16000); writer.Write(32000); writer.Write((short)2); writer.Write((short)16); writer.Write(System.Text.Encoding.ASCII.GetBytes("data")); writer.Write(samples * 2);
+        for (var i = 0; i < samples; i++) writer.Write((short)(Math.Sin(i * 2 * Math.PI * 440 / 16000) * 1200)); writer.Flush();
+        return new() { ["video"] = new(File.ReadAllBytes(path), "video/mp4"), ["audio"] = new(wave.ToArray(), "audio/wav") };
+    }
+    private static async Task<byte[]> NativeUiFixtureImageAsync(int width, int height, int variant)
+    {
+        var pixels = new byte[width * height * 4]; var colors = new[] { (B: 218, G: 230, R: 223), (B: 226, G: 189, R: 146), (B: 175, G: 205, R: 169) }; var color = colors[variant];
+        for (var y = 0; y < height; y++) for (var x = 0; x < width; x++)
+        {
+            var road = x % 96 < 8 || y % 80 < 7 || Math.Abs(y - x * .45 - height * .2) < 8; var index = (y * width + x) * 4;
+            pixels[index] = (byte)(road ? 245 : color.B); pixels[index + 1] = (byte)(road ? 245 : color.G); pixels[index + 2] = (byte)(road ? 242 : color.R); pixels[index + 3] = 255;
+        }
+        using var stream = new InMemoryRandomAccessStream(); var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream); encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied, (uint)width, (uint)height, 96, 96, pixels); await encoder.FlushAsync();
+        stream.Seek(0); var result = new byte[(int)stream.Size]; using var reader = new DataReader(stream); await reader.LoadAsync((uint)result.Length); reader.ReadBytes(result); return result;
     }
     private static async Task WaitForNativeChartDrawsAsync(FrameworkElement surface)
     {

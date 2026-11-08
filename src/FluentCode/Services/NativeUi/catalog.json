@@ -1222,6 +1222,78 @@
       "additionalProperties": false,
       "description": "User/tool-provided HTTPS image. Never fetched automatically: a 点击加载 placeholder shows the full URL first. No automatic search fallback."
     },
+    "Video": {
+      "type": "object",
+      "properties": {
+        "src": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "src"
+      ],
+      "additionalProperties": false,
+      "description": "HTTPS video played inside a native MediaPlayerElement with transport controls and full-window support. Shows full URL; click to load, never autoplay. Redirects stay HTTPS; up to 128 MB, system-supported codecs. Pauses on unload."
+    },
+    "Audio": {
+      "type": "object",
+      "properties": {
+        "src": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "src"
+      ],
+      "additionalProperties": false,
+      "description": "HTTPS audio played inside a native MediaPlayerElement with transport controls. Shows full URL; click to load, never autoplay. Redirects stay HTTPS; up to 128 MB, system-supported codecs. Pauses on unload."
+    },
+    "ImageGallery": {
+      "type": "object",
+      "properties": {
+        "images": {
+          "minItems": 1,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "src": {
+                "type": "string"
+              },
+              "alt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "src",
+              "alt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "title": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "images"
+      ],
+      "additionalProperties": false,
+      "description": "Click-loaded image gallery, 1–12 HTTPS images (8 MB each). Full URLs shown before load. Large native FlipView preview; click the preview for a full-size scrollable viewer. height clamps to 180–480px."
+    },
     "SearchImage": {
       "type": "object",
       "properties": {
@@ -1294,10 +1366,14 @@
           "type": "string"
         },
         "lat": {
-          "type": "number"
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
         },
         "lng": {
-          "type": "number"
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
         },
         "category": {
           "type": "string"
@@ -1312,7 +1388,7 @@
         "lng"
       ],
       "additionalProperties": false,
-      "description": "Location marker with latitude and longitude; rendered as a selectable location card."
+      "description": "WGS-84 latitude/longitude marker. Always supply WGS-84, not GCJ-02 or BD-09; the native renderer converts for the user's map provider."
     },
     "Map": {
       "type": "object",
@@ -1337,7 +1413,7 @@
         "markers"
       ],
       "additionalProperties": false,
-      "description": "Static native location cards, not a map service. Selecting updates selected to the marker label; coordinates open externally only after confirmation. route lists locations in order (no routing/network)."
+      "description": "Interactive Mapsui map with pan/zoom, selectable markers and fit-to-markers. Always use WGS-84 lat/lng. Location list renders first; 加载地图 fetches tiles only after the user's click. Provider is configured in Settings (OSM default, AMap with GCJ-02 conversion, TianDiTu key, custom XYZ; Baidu disabled). route joins markers in order, NOT a routing service. selected is the marker label; height clamps to 180–640px. Provider attribution stays visible; tile failure keeps the location list."
     },
     "YouTube": {
       "type": "object",
@@ -1353,7 +1429,7 @@
         "video"
       ],
       "additionalProperties": false,
-      "description": "Known YouTube video ID/URL rendered as a native preview card and confirmed external link; no embedded player or automatic thumbnail request."
+      "description": "Known YouTube ID or HTTPS youtube.com/youtu.be URL. Full watch URL displayed; thumbnail fetched only after clicking load. Click the thumbnail/watch button to open FluentCode's existing in-app browser tab. No WebView or embedded player inside the card."
     },
     "Svg": {
       "type": "object",
@@ -3294,6 +3370,100 @@
         }
       ]
     },
+    "Video": {
+      "props": [
+        {
+          "name": "src",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "title",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "height",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "Audio": {
+      "props": [
+        {
+          "name": "src",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "title",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "ImageGallery": {
+      "props": [
+        {
+          "name": "images",
+          "required": true,
+          "reactive": false,
+          "type": {
+            "minItems": 1,
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "src": {
+                  "type": "string"
+                },
+                "alt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "src",
+                "alt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "name": "title",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "height",
+          "required": false,
+          "reactive": false,
+          "type": {
+            "type": "number"
+          }
+        }
+      ]
+    },
     "SearchImage": {
       "props": [
         {
@@ -3397,7 +3567,9 @@
           "required": true,
           "reactive": false,
           "type": {
-            "type": "number"
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
           }
         },
         {
@@ -3405,7 +3577,9 @@
           "required": true,
           "reactive": false,
           "type": {
-            "type": "number"
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
           }
         },
         {

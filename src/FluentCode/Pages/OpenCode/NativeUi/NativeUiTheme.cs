@@ -36,7 +36,7 @@ internal static class NativeUiTheme
     internal const string PlaceholderTag = "native-ui-placeholder";
     private const double SmallRadius = 4;
     private const string Xmlns = " xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"";
-    private static readonly HashSet<string> WideTypes = new(StringComparer.Ordinal) { "Table", "Chart", "Carousel", "Map", "Grid", "Image" };
+    private static readonly HashSet<string> WideTypes = new(StringComparer.Ordinal) { "Table", "Chart", "Carousel", "Map", "Grid", "Image", "ImageGallery", "Video" };
     private static readonly string[] LightPalette = { "", "#FF038387", "#FFCA5010", "#FF8764B8", "#FFC239B3", "#FF8A8A8A" };
     private static readonly string[] DarkPalette = { "", "#FF00B7C3", "#FFF7894A", "#FFB4A0FF", "#FFEE8BDD", "#FF9D9D9D" };
     private static readonly Dictionary<string, Style?> TextStyles = new(StringComparer.Ordinal);

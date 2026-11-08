@@ -1,0 +1,669 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "19ac984ca0db696565dfcb617565b647846acebd0ced73f1ca3a7f761a172722",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "北京文化漫步",
+                    "size": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "WGS-84",
+                    "color": "info"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2,
+              "align": "center",
+              "justify": "between"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "从故宫到天坛，按地点顺序连接；不是驾车路线。"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Map",
+            "props": {
+              "markers": [
+                {
+                  "type": "element",
+                  "typeName": "MapMarker",
+                  "props": {
+                    "label": "故宫",
+                    "lat": 39.916345,
+                    "lng": 116.397155,
+                    "category": "文化",
+                    "icon": "landmark"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "MapMarker",
+                  "props": {
+                    "label": "景山公园",
+                    "lat": 39.925005,
+                    "lng": 116.39673,
+                    "category": "公园",
+                    "icon": "trees"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "MapMarker",
+                  "props": {
+                    "label": "天坛",
+                    "lat": 39.882217,
+                    "lng": 116.406572,
+                    "category": "文化",
+                    "icon": "map-pin"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "route": true,
+              "selected": {
+                "k": "StateRef",
+                "n": "$selected"
+              },
+              "height": 320
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Caption",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "Str",
+                  "v": "当前地点："
+                },
+                "right": {
+                  "k": "StateRef",
+                  "n": "$selected"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Caption",
+            "props": {
+              "text": "点击加载后才联系设置中的地图提供方。可平移、缩放、选择地点与显示全部。"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "variant": "outline",
+        "padding": 4,
+        "gap": 3
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$selected": "故宫"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "北京文化漫步",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "WGS-84",
+                  "color": "info"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2,
+            "align": "center",
+            "justify": "between"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "从故宫到天坛，按地点顺序连接；不是驾车路线。"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Map",
+          "props": {
+            "markers": [
+              {
+                "type": "element",
+                "typeName": "MapMarker",
+                "props": {
+                  "label": "故宫",
+                  "lat": 39.916345,
+                  "lng": 116.397155,
+                  "category": "文化",
+                  "icon": "landmark"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "MapMarker",
+                "props": {
+                  "label": "景山公园",
+                  "lat": 39.925005,
+                  "lng": 116.39673,
+                  "category": "公园",
+                  "icon": "trees"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "MapMarker",
+                "props": {
+                  "label": "天坛",
+                  "lat": 39.882217,
+                  "lng": 116.406572,
+                  "category": "文化",
+                  "icon": "map-pin"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "route": true,
+            "selected": {
+              "__reactive": "assign",
+              "target": "$selected",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "height": 320
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Caption",
+          "props": {
+            "text": "当前地点：故宫"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Caption",
+          "props": {
+            "text": "点击加载后才联系设置中的地图提供方。可平移、缩放、选择地点与显示全部。"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "variant": "outline",
+      "padding": 4,
+      "gap": 3
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 141,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "北京文化漫步",
+                        "size": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "WGS-84",
+                        "color": "info"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "从故宫到天坛，按地点顺序连接；不是驾车路线。"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$selected": "故宫"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 282,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "北京文化漫步",
+                        "size": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "WGS-84",
+                        "color": "info"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "从故宫到天坛，按地点顺序连接；不是驾车路线。"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Map",
+                "props": {
+                  "markers": [
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "故宫",
+                        "lat": 39.916345,
+                        "lng": 116.397155,
+                        "category": "文化",
+                        "icon": "landmark"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "景山公园",
+                        "lat": 39.925005,
+                        "lng": 116.39673,
+                        "category": "公园",
+                        "icon": "trees"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "天坛",
+                        "lat": 39.882217,
+                        "lng": 116.4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$selected": "故宫"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 424,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "北京文化漫步",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "WGS-84",
+                        "color": "info"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": "center",
+                  "justify": "between"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "从故宫到天坛，按地点顺序连接；不是驾车路线。"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Map",
+                "props": {
+                  "markers": [
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "故宫",
+                        "lat": 39.916345,
+                        "lng": 116.397155,
+                        "category": "文化",
+                        "icon": "landmark"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "景山公园",
+                        "lat": 39.925005,
+                        "lng": 116.39673,
+                        "category": "公园",
+                        "icon": "trees"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "天坛",
+                        "lat": 39.882217,
+                        "lng": 116.406572,
+                        "category": "文化",
+                        "icon": "map-pin"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "route": true,
+                  "selected": {
+                    "k": "StateRef",
+                    "n": "$selected"
+                  },
+                  "height": 320
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "Str",
+                      "v": "当前地点："
+                    },
+                    "right": {
+                      "k": "StateRef",
+                      "n": "$selected"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "点击加载后才联系设置中的地图提供方。可平移、缩放、选择地点与显示全部。"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": "outline",
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$selected": "故宫"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+root = Card([Title("设计分享", "lg"), YouTube("dQw4w9WgXcQ", "YouTube · 应用内浏览器观看"), Caption("缩略图需要点击加载。点击预览后在当前会话的应用内浏览器标签页观看，卡片中没有 WebView。")], "outline", 4, 3)

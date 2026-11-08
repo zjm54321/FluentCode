@@ -86,7 +86,7 @@
           "code": "unknown-component",
           "component": "HtmlView",
           "path": "",
-          "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox, Chart, Table, TextArea, SegmentedControl, RadioGroup, DatePicker, Timer, IconButton, Pressable, Box, Grid, Form, Spacer, Carousel, Popover, Label, Link, ListItem, List, Quote, Code, Math, Flashcard, Celebration, Image, SearchImage, Icon, MapMarker, Map, YouTube, Svg, G, Circle, Ellipse, Rect, Line, Path, Polyline, Polygon, SvgText",
+          "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox, Chart, Table, TextArea, SegmentedControl, RadioGroup, DatePicker, Timer, IconButton, Pressable, Box, Grid, Form, Spacer, Carousel, Popover, Label, Link, ListItem, List, Quote, Code, Math, Flashcard, Celebration, Image, Video, Audio, ImageGallery, SearchImage, Icon, MapMarker, Map, YouTube, Svg, G, Circle, Ellipse, Rect, Line, Path, Polyline, Polygon, SvgText",
           "statementId": "root"
         },
         {
@@ -252,7 +252,7 @@
               "code": "unknown-component",
               "component": "HtmlView",
               "path": "",
-              "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox, Chart, Table, TextArea, SegmentedControl, RadioGroup, DatePicker, Timer, IconButton, Pressable, Box, Grid, Form, Spacer, Carousel, Popover, Label, Link, ListItem, List, Quote, Code, Math, Flashcard, Celebration, Image, SearchImage, Icon, MapMarker, Map, YouTube, Svg, G, Circle, Ellipse, Rect, Line, Path, Polyline, Polygon, SvgText",
+              "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox, Chart, Table, TextArea, SegmentedControl, RadioGroup, DatePicker, Timer, IconButton, Pressable, Box, Grid, Form, Spacer, Carousel, Popover, Label, Link, ListItem, List, Quote, Code, Math, Flashcard, Celebration, Image, Video, Audio, ImageGallery, SearchImage, Icon, MapMarker, Map, YouTube, Svg, G, Circle, Ellipse, Rect, Line, Path, Polyline, Polygon, SvgText",
               "statementId": "root"
             }
           ]
@@ -328,7 +328,7 @@
               "code": "unknown-component",
               "component": "HtmlView",
               "path": "",
-              "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox, Chart, Table, TextArea, SegmentedControl, RadioGroup, DatePicker, Timer, IconButton, Pressable, Box, Grid, Form, Spacer, Carousel, Popover, Label, Link, ListItem, List, Quote, Code, Math, Flashcard, Celebration, Image, SearchImage, Icon, MapMarker, Map, YouTube, Svg, G, Circle, Ellipse, Rect, Line, Path, Polyline, Polygon, SvgText",
+              "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox, Chart, Table, TextArea, SegmentedControl, RadioGroup, DatePicker, Timer, IconButton, Pressable, Box, Grid, Form, Spacer, Carousel, Popover, Label, Link, ListItem, List, Quote, Code, Math, Flashcard, Celebration, Image, Video, Audio, ImageGallery, SearchImage, Icon, MapMarker, Map, YouTube, Svg, G, Circle, Ellipse, Rect, Line, Path, Polyline, Polygon, SvgText",
               "statementId": "root"
             }
           ]
@@ -425,7 +425,7 @@
               "code": "unknown-component",
               "component": "HtmlView",
               "path": "",
-              "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox, Chart, Table, TextArea, SegmentedControl, RadioGroup, DatePicker, Timer, IconButton, Pressable, Box, Grid, Form, Spacer, Carousel, Popover, Label, Link, ListItem, List, Quote, Code, Math, Flashcard, Celebration, Image, SearchImage, Icon, MapMarker, Map, YouTube, Svg, G, Circle, Ellipse, Rect, Line, Path, Polyline, Polygon, SvgText",
+              "message": "Unknown component \"HtmlView\" — not found in catalog or builtins. Available components: Col, Row, Card, Divider, Title, Text, Caption, Badge, Markdown, Button, Input, Select, Slider, Checkbox, Chart, Table, TextArea, SegmentedControl, RadioGroup, DatePicker, Timer, IconButton, Pressable, Box, Grid, Form, Spacer, Carousel, Popover, Label, Link, ListItem, List, Quote, Code, Math, Flashcard, Celebration, Image, Video, Audio, ImageGallery, SearchImage, Icon, MapMarker, Map, YouTube, Svg, G, Circle, Ellipse, Rect, Line, Path, Polyline, Polygon, SvgText",
               "statementId": "root"
             },
             {

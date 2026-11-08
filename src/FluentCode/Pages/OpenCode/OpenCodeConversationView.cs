@@ -60,6 +60,7 @@ public sealed class OpenCodeConversationView : StackPanel
     private readonly OpenCodeManualBackgroundIndex _manualBackground = new();
     internal event EventHandler? BindingCleared;
     internal event EventHandler<NativeUiAssistantRequestedEventArgs>? NativeUiAssistantRequested;
+    internal event EventHandler<NativeUiBrowserRequestedEventArgs>? NativeUiBrowserRequested;
     private long _nativeUiGeneration;
     internal event EventHandler? IdleViewportInvalidated;
     internal long RenderVersion { get; private set; }
@@ -3300,6 +3301,13 @@ public sealed class OpenCodeConversationView : StackPanel
                         return System.Threading.Tasks.Task.FromResult(new NativeUiHostResult(false, "卡片所属会话已失效，未发送"));
                     var args = new NativeUiAssistantRequestedEventArgs(parent, id, request);
                     NativeUiAssistantRequested?.Invoke(this, args);
+                    return System.Threading.Tasks.Task.FromResult(new NativeUiHostResult(args.Accepted, args.Notice));
+                };
+                view.OpenBrowser = url =>
+                {
+                    if (!alive || generation != _nativeUiGeneration || string.IsNullOrEmpty(parent) || string.IsNullOrEmpty(id))
+                        return System.Threading.Tasks.Task.FromResult(new NativeUiHostResult(false, "卡片所属会话已失效"));
+                    var args = new NativeUiBrowserRequestedEventArgs(parent, id, url); NativeUiBrowserRequested?.Invoke(this, args);
                     return System.Threading.Tasks.Task.FromResult(new NativeUiHostResult(args.Accepted, args.Notice));
                 };
                 view.Update(part);

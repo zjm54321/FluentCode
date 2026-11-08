@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$AppPath,
     [Parameter(Mandatory = $true)][string]$EvidenceRoot,
-    [string]$FixturesRoot = ''
+    [string]$FixturesRoot = '',
+    [string]$BeforeEvidenceRoot = ''
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -45,7 +46,15 @@ try {
             if (!(Test-Path $file) -or (Get-Item $file).Length -eq 0) { throw "Missing PNG: $file" }
         }
     }
-    Write-Output "PASS $(($demos.Count + 2) * 2) native UI merged demo/state PNGs: $root"
+    foreach ($name in @('map', 'video', 'audio', 'gallery', 'youtube')) {
+        if ($demos -contains $name) { foreach ($theme in @('light', 'dark')) { if (!(Test-Path (Join-Path $root "$name-before-$theme.png"))) { throw "Missing click-to-load before capture: $name / $theme" } } }
+    }
+    if ($BeforeEvidenceRoot) {
+        $before = Join-Path $root 'before-visual-fixes'; New-Item -ItemType Directory -Path $before | Out-Null
+        foreach ($name in @('calculator', 'sizing', 'showcase-analytics')) { foreach ($theme in @('light', 'dark')) { Copy-Item -LiteralPath (Join-Path $BeforeEvidenceRoot "$name-$theme.png") -Destination $before } }
+        [IO.File]::WriteAllText((Join-Path $before 'provenance.txt'), "Unmodified prior-candidate PNGs copied from $BeforeEvidenceRoot`nAfter-fix PNGs are in the parent directory.`n", [Text.UTF8Encoding]::new($false))
+    }
+    Write-Output "PASS $(@(Get-ChildItem $root -Filter '*.png').Count) native UI merged demo/state/before PNGs: $root"
 }
 finally {
     if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id }

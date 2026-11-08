@@ -97,33 +97,10 @@ internal sealed partial class NativeUiRenderer
                 var searchPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var searchText = NativeUiComponentTheme.Text(""); var searchButton = new Button { Content = "在浏览器中搜索图片" }; var searchPreview = MediaPreview("image", searchText, searchButton); searchPanel.Children.Add(searchPreview); searchPanel.Children.Add(NativeUiComponentTheme.Text("图片搜索 · 确认后在浏览器中查看，不自动联网", true)); var searchVisual = new Visual(searchPanel);
                 searchButton.Click += async (_, _) => { if (!searchVisual.Disposed) await OpenAsync("https://www.google.com/search?tbm=isch&q=" + Uri.EscapeDataString(S(searchVisual.Model, "query"))); };
                 searchVisual.Apply = node => { searchText.Text = S(node, "query"); searchPreview.Height = Math.Clamp(320 / Math.Clamp(N(node, "aspectRatio", 1.5), .2, 5), 80, 320); searchPreview.CornerRadius = NativeUiComponentTheme.Radius(P(node, "radius")); }; return searchVisual;
-            case "YouTube":
-                var videoPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var videoTitle = NativeUiComponentTheme.Text(""); var videoButton = new Button { Content = "在 YouTube 中观看" }; videoPanel.Children.Add(MediaPreview("play", videoTitle, videoButton)); videoPanel.Children.Add(NativeUiComponentTheme.Text("外部视频 · 确认链接后打开，无自动缩略图或嵌入播放器", true)); var videoVisual = new Visual(videoPanel); string videoId = "";
-                videoButton.Click += async (_, _) => { if (!videoVisual.Disposed && videoId.Length > 0) await OpenAsync("https://www.youtube.com/watch?v=" + videoId); };
-                videoVisual.Apply = node => { var match = Regex.Match(S(node, "video").Trim(), @"(?:youtu\.be/|[?&]v=|/embed/|/shorts/)([\w-]{11})|^([\w-]{11})$"); videoId = match.Success ? match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value : ""; videoTitle.Text = (S(node, "title") is { Length: > 0 } title ? title : "YouTube 视频") + (videoId.Length == 0 ? " · 无效的视频编号" : ""); videoButton.IsEnabled = videoId.Length > 0; }; return videoVisual;
-            case "Map": case "MapMarker":
-                var places = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var mapVisual = new Visual(places);
-                mapVisual.Apply = node =>
-                {
-                    var markers = type == "MapMarker" ? new[] { node } : (P(node, "markers") as IReadOnlyList<object?> ?? []).OfType<NativeUiElement>().ToArray();
-                    var children = new List<UIElement>(); if (type == "Map") children.Add(NativeUiComponentTheme.Text(B(node, "route") ? "地点顺序（静态位置卡片）" : "位置（静态卡片）", true));
-                    for (var i = 0; i < markers.Length; i++)
-                    {
-                        var marker = markers[i]; var label = S(marker, "label"); var lat = N(marker, "lat"); var lng = N(marker, "lng"); var valid = lat is >= -90 and <= 90 && lng is >= -180 and <= 180;
-                        var location = new StackPanel { Spacing = NativeUiTheme.Gap(1) };
-                        var markerContent = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-                        if (NativeUiTheme.Icon(S(marker, "icon") is { Length: > 0 } glyph ? glyph : "map-pin") is { } pin) markerContent.Children.Add(pin);
-                        markerContent.Children.Add(NativeUiComponentTheme.Text((B(node, "route") ? (i + 1) + ". " : "") + label));
-                        var choose = new Button { Content = markerContent, HorizontalAlignment = HorizontalAlignment.Stretch };
-                        choose.Click += (_, _) => SetField(mapVisual, key, "selected", "", label); location.Children.Add(choose);
-                        location.Children.Add(NativeUiComponentTheme.Text(S(marker, "category") + " · " + lat.ToString("0.#####", CultureInfo.InvariantCulture) + ", " + lng.ToString("0.#####", CultureInfo.InvariantCulture), true));
-                        var external = new HyperlinkButton { Content = "在地图中打开", IsEnabled = valid };
-                        var url = "https://www.openstreetmap.org/?mlat=" + lat.ToString(CultureInfo.InvariantCulture) + "&mlon=" + lng.ToString(CultureInfo.InvariantCulture) + "#map=15/" + lat.ToString(CultureInfo.InvariantCulture) + "/" + lng.ToString(CultureInfo.InvariantCulture);
-                        external.Click += async (_, _) => { if (!mapVisual.Disposed) await OpenAsync(url); }; location.Children.Add(external);
-                        var card = new Border { Child = location }; NativeUiTheme.Card(card, location, new("Card", new Dictionary<string, object?> { ["variant"] = NativeUiValues.Text(Field(mapVisual, key, "selected", "")) == label ? "soft" : "outline", ["padding"] = 3d })); children.Add(card);
-                    }
-                    Sync(places, children);
-                }; return mapVisual;
+            case "YouTube": return CreateYouTube();
+            case "Video": case "Audio": return CreateMedia(type);
+            case "ImageGallery": return CreateGallery();
+            case "Map": case "MapMarker": return CreateMap(type, key);
             default: return null;
         }
     }

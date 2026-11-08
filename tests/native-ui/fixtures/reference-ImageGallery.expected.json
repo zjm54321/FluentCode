@@ -1,0 +1,190 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "dce2de72dc5f8c925059a915bf5c732c26715929440673c648b0e3ea42131eca",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "ImageGallery",
+      "props": {
+        "images": [
+          {
+            "src": "https://example.org/one.png",
+            "alt": "Overview"
+          },
+          {
+            "src": "https://example.org/two.png",
+            "alt": "Detail"
+          }
+        ],
+        "title": "Gallery",
+        "height": 320
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "ImageGallery",
+    "props": {
+      "images": [
+        {
+          "src": "https://example.org/one.png",
+          "alt": "Overview"
+        },
+        {
+          "src": "https://example.org/two.png",
+          "alt": "Detail"
+        }
+      ],
+      "title": "Gallery",
+      "height": 320
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 46,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "ImageGallery",
+          "props": {
+            "images": [
+              {
+                "src": "https://example.org"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 92,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "ImageGallery",
+          "props": {
+            "images": [
+              {
+                "src": "https://example.org/one.png",
+                "alt": "Overview"
+              },
+              {
+                "src": "https://exampl"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 139,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "ImageGallery",
+          "props": {
+            "images": [
+              {
+                "src": "https://example.org/one.png",
+                "alt": "Overview"
+              },
+              {
+                "src": "https://example.org/two.png",
+                "alt": "Detail"
+              }
+            ],
+            "title": "Gallery",
+            "height": 320
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

@@ -7,6 +7,19 @@ namespace FluentCode.Pages;
 
 public sealed partial class OpenCodePage
 {
+    private void OnNativeUiBrowserRequested(object? sender, NativeUiBrowserRequestedEventArgs args)
+    {
+        if (!DispatcherQueue.HasThreadAccess || !ReferenceEquals(sender, _conversationView) || !_pageActive || !SourceReady
+            || !_messageWindowAccepted || _messageBinding is not { } binding || !IsSameMessageBinding(binding.SessionId, binding.Directory)
+            || !_conversationView.ContainsRenderedMessage(args.ParentMessageId) || NativeUiMediaPolicy.YouTubeId(args.Url) is null) return;
+        try
+        {
+            var workspace = GetBrowserWorkspace(binding.SessionId);
+            if (_browserPanelStates.TryGetValue(workspace, out var panel)) panel.Expand();
+            workspace.OpenPage(args.Url); RenderBrowserPanel(); args.Accepted = true; args.Notice = "已在应用内浏览器标签页打开";
+        }
+        catch (Exception) { args.Notice = "应用内浏览器暂时不可用；请检查浏览器设置。"; }
+    }
     private void OnNativeUiAssistantRequested(object? sender, NativeUiAssistantRequestedEventArgs args)
     {
         // A card's event is a user intent, not send authority. Bind it to this live transcript, source and session.

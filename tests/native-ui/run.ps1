@@ -13,6 +13,7 @@ New-Item -ItemType Directory -Path $output | Out-Null
 Write-Output "Evidence directory: $output"
 $assembly = Join-Path $output 'NativeUiTests.dll'
 $production = Get-ChildItem (Join-Path $repo 'src/FluentCode/Services/NativeUi/*.cs') | ForEach-Object FullName
+$production += (Join-Path $repo 'src/FluentCode/Models/NativeUiMapSettings.cs')
 $catalog = Join-Path $repo 'src/FluentCode/Services/NativeUi/catalog.json'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'), ('/resource:"' + $catalog + '",FluentCode.NativeUi.catalog.json'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
