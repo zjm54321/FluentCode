@@ -1,0 +1,817 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "d0b2ef0f6ecd6d5e358333f31422c6e64ed1137676289a8ab9bc55156ee8ea49",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "San Francisco, your way",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "Tap a pin to choose where to start.",
+              "size": "sm",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Map",
+            "props": {
+              "markers": [
+                {
+                  "type": "element",
+                  "typeName": "MapMarker",
+                  "props": {
+                    "label": "Ferry Building",
+                    "lat": 37.7955,
+                    "lng": -122.3937,
+                    "category": "Food",
+                    "icon": "☕"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "m1"
+                },
+                {
+                  "type": "element",
+                  "typeName": "MapMarker",
+                  "props": {
+                    "label": "Coit Tower",
+                    "lat": 37.8024,
+                    "lng": -122.4058,
+                    "category": "Views"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "m2"
+                },
+                {
+                  "type": "element",
+                  "typeName": "MapMarker",
+                  "props": {
+                    "label": "Palace of Fine Arts",
+                    "lat": 37.8029,
+                    "lng": -122.4484,
+                    "category": "Landmarks",
+                    "icon": "🏛️"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "m3"
+                },
+                {
+                  "type": "element",
+                  "typeName": "MapMarker",
+                  "props": {
+                    "label": "Golden Gate Bridge",
+                    "lat": 37.8199,
+                    "lng": -122.4783,
+                    "category": "Views",
+                    "icon": "🌉"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "m4"
+                }
+              ],
+              "route": true,
+              "selected": {
+                "k": "StateRef",
+                "n": "$stop"
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "map"
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Icon",
+                        "props": {
+                          "name": "map-pin",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "Str",
+                                "v": "Starting at **"
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$stop"
+                              }
+                            },
+                            "right": {
+                              "k": "Str",
+                              "v": "**"
+                            }
+                          },
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "variant": "soft",
+              "padding": 3
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 7,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$stop": "Ferry Building"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "San Francisco, your way",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Tap a pin to choose where to start.",
+            "size": "sm",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Map",
+          "props": {
+            "markers": [
+              {
+                "type": "element",
+                "typeName": "MapMarker",
+                "props": {
+                  "label": "Ferry Building",
+                  "lat": 37.7955,
+                  "lng": -122.3937,
+                  "category": "Food",
+                  "icon": "☕"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "m1"
+              },
+              {
+                "type": "element",
+                "typeName": "MapMarker",
+                "props": {
+                  "label": "Coit Tower",
+                  "lat": 37.8024,
+                  "lng": -122.4058,
+                  "category": "Views"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "m2"
+              },
+              {
+                "type": "element",
+                "typeName": "MapMarker",
+                "props": {
+                  "label": "Palace of Fine Arts",
+                  "lat": 37.8029,
+                  "lng": -122.4484,
+                  "category": "Landmarks",
+                  "icon": "🏛️"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "m3"
+              },
+              {
+                "type": "element",
+                "typeName": "MapMarker",
+                "props": {
+                  "label": "Golden Gate Bridge",
+                  "lat": 37.8199,
+                  "lng": -122.4783,
+                  "category": "Views",
+                  "icon": "🌉"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "m4"
+              }
+            ],
+            "route": true,
+            "selected": {
+              "__reactive": "assign",
+              "target": "$stop",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            }
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "map"
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Icon",
+                      "props": {
+                        "name": "map-pin",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Starting at **Ferry Building**",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "variant": "soft",
+            "padding": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 185,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "San Francisco, your way",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Tap a pin to choose where to start.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "map-pin",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "Str",
+                                    "v": "Starting at **"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$stop"
+                                  }
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "*"
+                                }
+                              }
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "map"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$stop": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 370,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "San Francisco, your way",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Tap a pin to choose where to start.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Map",
+                "props": {
+                  "markers": [
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "Ferry Building",
+                        "lat": 37.7955,
+                        "lng": -122.3937,
+                        "category": "Food",
+                        "icon": "☕"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "m1"
+                    }
+                  ],
+                  "route": true,
+                  "selected": {
+                    "k": "StateRef",
+                    "n": "$stop"
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "map"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "map-pin",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "Str",
+                                    "v": "Starting at **"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$stop"
+                                  }
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "**"
+                                }
+                              },
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "m3",
+            "m4"
+          ],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "MapMarker",
+              "path": "/lat",
+              "message": "missing required field \"/lat\" — signature: MapMarker(label*: string, lat*: number, lng*: number, category: string, icon: string)",
+              "statementId": "m2"
+            },
+            {
+              "code": "missing-required",
+              "component": "MapMarker",
+              "path": "/lng",
+              "message": "missing required field \"/lng\" — signature: MapMarker(label*: string, lat*: number, lng*: number, category: string, icon: string)",
+              "statementId": "m2"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$stop": "Ferry Building"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 555,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "San Francisco, your way",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Tap a pin to choose where to start.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Map",
+                "props": {
+                  "markers": [
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "Ferry Building",
+                        "lat": 37.7955,
+                        "lng": -122.3937,
+                        "category": "Food",
+                        "icon": "☕"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "m1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "Coit Tower",
+                        "lat": 37.8024,
+                        "lng": -122.4058,
+                        "category": "Views"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "m2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "Palace of Fine Arts",
+                        "lat": 37.8029,
+                        "lng": -122.4484,
+                        "category": "Landmarks",
+                        "icon": "🏛️"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "m3"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "MapMarker",
+                      "props": {
+                        "label": "Golden Gate Bridge",
+                        "lat": 37.8199,
+                        "lng": -122.4783,
+                        "category": "Views",
+                        "icon": "🌉"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "m4"
+                    }
+                  ],
+                  "route": true,
+                  "selected": {
+                    "k": "StateRef",
+                    "n": "$stop"
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "map"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "map-pin",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "Str",
+                                    "v": "Starting at **"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$stop"
+                                  }
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "**"
+                                }
+                              },
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 7,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$stop": "Ferry Building"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

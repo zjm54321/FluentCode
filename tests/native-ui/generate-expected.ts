@@ -13,7 +13,8 @@ for (const type of ["bar", "line", "area", "pie", "donut", "scatter"]) for (cons
   const data = type === "scatter" ? '[{x:1,y:12},{x:2,y:24},{x:3,y:18}]' : '[{x:"A",y:12},{x:"B",y:24},{x:"C",y:18}]';
   await Bun.write(path.join(folder, `chart-${type}-${format}.oui`), `root = Chart("${type}", ${data}, "x", ["y"], "${format}", "EUR", true, 220)\n`);
 }
-const names = [...new Bun.Glob("*.oui").scanSync(folder)].sort();
+// upstream/ holds OIU gallery ports (see showcase-provenance.md); they share the same oracle.
+const names = ["*.oui", "upstream/*.oui"].flatMap(pattern => [...new Bun.Glob(pattern).scanSync(folder)]).sort();
 for (const name of names) {
   const source = await Bun.file(path.join(folder, name)).text();
   const parser = core.createParser(librarySchema, library.root);

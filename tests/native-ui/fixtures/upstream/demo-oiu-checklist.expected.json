@@ -1,0 +1,2302 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "36f22669f917f346ef5fd0e47a92a0023d7f7fdeff7df3e28ed60f692e81d73a",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Your suitcase",
+                    "size": "md"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Spacer",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Comp",
+                        "name": "Count",
+                        "args": [
+                          {
+                            "k": "Comp",
+                            "name": "Filter",
+                            "args": [
+                              {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p1"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p2"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p3"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p4"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p5"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p6"
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Str",
+                                "v": ""
+                              },
+                              {
+                                "k": "Str",
+                                "v": "=="
+                              },
+                              {
+                                "k": "Bool",
+                                "v": true
+                              }
+                            ],
+                            "mappedProps": {
+                              "array": {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p1"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p2"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p3"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p4"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p5"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p6"
+                                  }
+                                ]
+                              },
+                              "field": {
+                                "k": "Str",
+                                "v": ""
+                              },
+                              "operator": {
+                                "k": "Str",
+                                "v": "=="
+                              },
+                              "value": {
+                                "k": "Bool",
+                                "v": true
+                              }
+                            }
+                          }
+                        ],
+                        "mappedProps": {
+                          "array": {
+                            "k": "Comp",
+                            "name": "Filter",
+                            "args": [
+                              {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p1"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p2"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p3"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p4"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p5"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p6"
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Str",
+                                "v": ""
+                              },
+                              {
+                                "k": "Str",
+                                "v": "=="
+                              },
+                              {
+                                "k": "Bool",
+                                "v": true
+                              }
+                            ],
+                            "mappedProps": {
+                              "array": {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p1"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p2"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p3"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p4"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p5"
+                                  },
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$p6"
+                                  }
+                                ]
+                              },
+                              "field": {
+                                "k": "Str",
+                                "v": ""
+                              },
+                              "operator": {
+                                "k": "Str",
+                                "v": "=="
+                              },
+                              "value": {
+                                "k": "Bool",
+                                "v": true
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": "/6 packed"
+                      }
+                    },
+                    "size": "sm",
+                    "color": "muted",
+                    "weight": null,
+                    "italic": null,
+                    "lineThrough": null,
+                    "tabularNums": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Box",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "ink",
+                    "radius": "full",
+                    "border": null,
+                    "width": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "BinOp",
+                        "op": "*",
+                        "left": {
+                          "k": "BinOp",
+                          "op": "/",
+                          "left": {
+                            "k": "Comp",
+                            "name": "Count",
+                            "args": [
+                              {
+                                "k": "Comp",
+                                "name": "Filter",
+                                "args": [
+                                  {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "array": {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  "field": {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  "operator": {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  "value": {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                }
+                              }
+                            ],
+                            "mappedProps": {
+                              "array": {
+                                "k": "Comp",
+                                "name": "Filter",
+                                "args": [
+                                  {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "array": {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  "field": {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  "operator": {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  "value": {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "right": {
+                            "k": "Num",
+                            "v": 6
+                          }
+                        },
+                        "right": {
+                          "k": "Num",
+                          "v": 100
+                        }
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": "%"
+                      }
+                    },
+                    "height": 4
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "direction": null,
+              "gap": null,
+              "padding": null,
+              "background": "border",
+              "radius": "full",
+              "border": null,
+              "width": "100%",
+              "height": 4
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "bar"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Checkbox",
+                  "props": {
+                    "checked": {
+                      "k": "StateRef",
+                      "n": "$p1"
+                    },
+                    "label": "The everyday tee",
+                    "lineThrough": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Checkbox",
+                  "props": {
+                    "checked": {
+                      "k": "StateRef",
+                      "n": "$p2"
+                    },
+                    "label": "Relaxed Oxford shirt",
+                    "lineThrough": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Checkbox",
+                  "props": {
+                    "checked": {
+                      "k": "StateRef",
+                      "n": "$p3"
+                    },
+                    "label": "Unstructured jacket",
+                    "lineThrough": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Checkbox",
+                  "props": {
+                    "checked": {
+                      "k": "StateRef",
+                      "n": "$p4"
+                    },
+                    "label": "Straight-leg trousers",
+                    "lineThrough": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Checkbox",
+                  "props": {
+                    "checked": {
+                      "k": "StateRef",
+                      "n": "$p5"
+                    },
+                    "label": "Minimal leather sneakers",
+                    "lineThrough": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Checkbox",
+                  "props": {
+                    "checked": {
+                      "k": "StateRef",
+                      "n": "$p6"
+                    },
+                    "label": "Everywhere tote",
+                    "lineThrough": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 220,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "list"
+          },
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "Clear",
+              "action": {
+                "k": "Comp",
+                "name": "Reset",
+                "args": [
+                  {
+                    "k": "StateRef",
+                    "n": "$p1"
+                  },
+                  {
+                    "k": "StateRef",
+                    "n": "$p2"
+                  },
+                  {
+                    "k": "StateRef",
+                    "n": "$p3"
+                  },
+                  {
+                    "k": "StateRef",
+                    "n": "$p4"
+                  },
+                  {
+                    "k": "StateRef",
+                    "n": "$p5"
+                  },
+                  {
+                    "k": "StateRef",
+                    "n": "$p6"
+                  }
+                ]
+              },
+              "variant": "outline",
+              "color": null,
+              "size": "sm"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ],
+        "variant": "soft"
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 10,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$p1": true,
+      "$p2": false,
+      "$p3": true,
+      "$p4": false,
+      "$p5": false,
+      "$p6": false
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Your suitcase",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Spacer",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "2/6 packed",
+                  "size": "sm",
+                  "color": "muted",
+                  "weight": null,
+                  "italic": null,
+                  "lineThrough": null,
+                  "tabularNums": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "ink",
+                  "radius": "full",
+                  "border": null,
+                  "width": "33.33333333333333%",
+                  "height": 4
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "direction": null,
+            "gap": null,
+            "padding": null,
+            "background": "border",
+            "radius": "full",
+            "border": null,
+            "width": "100%",
+            "height": 4
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "bar"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "__reactive": "assign",
+                    "target": "$p1",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "The everyday tee",
+                  "lineThrough": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "__reactive": "assign",
+                    "target": "$p2",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "Relaxed Oxford shirt",
+                  "lineThrough": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "__reactive": "assign",
+                    "target": "$p3",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "Unstructured jacket",
+                  "lineThrough": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "__reactive": "assign",
+                    "target": "$p4",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "Straight-leg trousers",
+                  "lineThrough": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "__reactive": "assign",
+                    "target": "$p5",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "Minimal leather sneakers",
+                  "lineThrough": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Checkbox",
+                "props": {
+                  "checked": {
+                    "__reactive": "assign",
+                    "target": "$p6",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "Everywhere tote",
+                  "lineThrough": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 220,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "list"
+        },
+        {
+          "type": "element",
+          "typeName": "Button",
+          "props": {
+            "label": "Clear",
+            "action": {
+              "steps": [
+                {
+                  "type": "reset",
+                  "targets": [
+                    "$p1",
+                    "$p2",
+                    "$p3",
+                    "$p4",
+                    "$p5",
+                    "$p6"
+                  ]
+                }
+              ]
+            },
+            "variant": "outline",
+            "color": null,
+            "size": "sm"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ],
+      "variant": "soft"
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 264,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Your suitcase",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "Ph",
+                            "n": "done"
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "/6 packed"
+                          }
+                        },
+                        "size": "sm",
+                        "color": "muted",
+                        "weight": null,
+                        "italic": null,
+                        "lineThrough": null,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Clear",
+                  "action": {
+                    "k": "Comp",
+                    "name": "Reset",
+                    "args": [
+                      {
+                        "k": "StateRef",
+                        "n": "$p1"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p2"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p3"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p4"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p5"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p6"
+                      }
+                    ]
+                  },
+                  "variant": "outline",
+                  "color": null,
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "variant": "soft"
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [
+            "done",
+            "bar",
+            "list",
+            "f"
+          ],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$p1": true,
+          "$p2": false,
+          "$p3": true,
+          "$p4": null,
+          "$p5": null,
+          "$p6": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 529,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Your suitcase",
+                        "size": "md"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "Comp",
+                            "name": "Count",
+                            "args": [
+                              {
+                                "k": "Comp",
+                                "name": "Filter",
+                                "args": [
+                                  {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "array": {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  "field": {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  "operator": {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  "value": {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                }
+                              }
+                            ],
+                            "mappedProps": {
+                              "array": {
+                                "k": "Comp",
+                                "name": "Filter",
+                                "args": [
+                                  {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "array": {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  "field": {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  "operator": {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  "value": {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "/6 packed"
+                          }
+                        },
+                        "size": "sm",
+                        "color": "muted",
+                        "weight": null,
+                        "italic": null,
+                        "lineThrough": null,
+                        "tabularNums": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "ink",
+                        "radius": "full",
+                        "border": null,
+                        "width": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "*",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "/",
+                              "left": {
+                                "k": "Comp",
+                                "name": "Count",
+                                "args": [
+                                  {
+                                    "k": "Comp",
+                                    "name": "Filter",
+                                    "args": [
+                                      {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p1"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p2"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p3"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p4"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p5"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p6"
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": ""
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": "=="
+                                      },
+                                      {
+                                        "k": "Bool",
+                                        "v": true
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "array": {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p1"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p2"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p3"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p4"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p5"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p6"
+                                          }
+                                        ]
+                                      },
+                                      "field": {
+                                        "k": "Str",
+                                        "v": ""
+                                      },
+                                      "operator": {
+                                        "k": "Str",
+                                        "v": "=="
+                                      },
+                                      "value": {
+                                        "k": "Bool",
+                                        "v": true
+                                      }
+                                    }
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "array": {
+                                    "k": "Comp",
+                                    "name": "Filter",
+                                    "args": [
+                                      {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p1"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p2"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p3"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p4"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p5"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p6"
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": ""
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": "=="
+                                      },
+                                      {
+                                        "k": "Bool",
+                                        "v": true
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "array": {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p1"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p2"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p3"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p4"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p5"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p6"
+                                          }
+                                        ]
+                                      },
+                                      "field": {
+                                        "k": "Str",
+                                        "v": ""
+                                      },
+                                      "operator": {
+                                        "k": "Str",
+                                        "v": "=="
+                                      },
+                                      "value": {
+                                        "k": "Bool",
+                                        "v": true
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "right": {
+                                "k": "Num",
+                                "v": 6
+                              }
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 100
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "%"
+                          }
+                        },
+                        "height": 4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "border",
+                  "radius": "full",
+                  "border": null,
+                  "width": "100%",
+                  "height": 4
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "bar"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": []
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "list"
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Clear",
+                  "action": {
+                    "k": "Comp",
+                    "name": "Reset",
+                    "args": [
+                      {
+                        "k": "StateRef",
+                        "n": "$p1"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p2"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p3"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p4"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p5"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p6"
+                      }
+                    ]
+                  },
+                  "variant": "outline",
+                  "color": null,
+                  "size": "sm"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ],
+            "variant": "soft"
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 10,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Checkbox",
+              "path": "/label",
+              "message": "missing required field \"/label\" — signature: Checkbox(checked*: boolean, label*: string, lineThrough: boolean)",
+              "statementId": "list"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$p1": true,
+          "$p2": false,
+          "$p3": true,
+          "$p4": false,
+          "$p5": false,
+          "$p6": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 794,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Your suitcase",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "Comp",
+                            "name": "Count",
+                            "args": [
+                              {
+                                "k": "Comp",
+                                "name": "Filter",
+                                "args": [
+                                  {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "array": {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  "field": {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  "operator": {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  "value": {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                }
+                              }
+                            ],
+                            "mappedProps": {
+                              "array": {
+                                "k": "Comp",
+                                "name": "Filter",
+                                "args": [
+                                  {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "array": {
+                                    "k": "Arr",
+                                    "els": [
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p1"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p2"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p3"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p4"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p5"
+                                      },
+                                      {
+                                        "k": "StateRef",
+                                        "n": "$p6"
+                                      }
+                                    ]
+                                  },
+                                  "field": {
+                                    "k": "Str",
+                                    "v": ""
+                                  },
+                                  "operator": {
+                                    "k": "Str",
+                                    "v": "=="
+                                  },
+                                  "value": {
+                                    "k": "Bool",
+                                    "v": true
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "/6 packed"
+                          }
+                        },
+                        "size": "sm",
+                        "color": "muted",
+                        "weight": null,
+                        "italic": null,
+                        "lineThrough": null,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "ink",
+                        "radius": "full",
+                        "border": null,
+                        "width": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "*",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "/",
+                              "left": {
+                                "k": "Comp",
+                                "name": "Count",
+                                "args": [
+                                  {
+                                    "k": "Comp",
+                                    "name": "Filter",
+                                    "args": [
+                                      {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p1"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p2"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p3"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p4"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p5"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p6"
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": ""
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": "=="
+                                      },
+                                      {
+                                        "k": "Bool",
+                                        "v": true
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "array": {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p1"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p2"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p3"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p4"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p5"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p6"
+                                          }
+                                        ]
+                                      },
+                                      "field": {
+                                        "k": "Str",
+                                        "v": ""
+                                      },
+                                      "operator": {
+                                        "k": "Str",
+                                        "v": "=="
+                                      },
+                                      "value": {
+                                        "k": "Bool",
+                                        "v": true
+                                      }
+                                    }
+                                  }
+                                ],
+                                "mappedProps": {
+                                  "array": {
+                                    "k": "Comp",
+                                    "name": "Filter",
+                                    "args": [
+                                      {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p1"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p2"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p3"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p4"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p5"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p6"
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": ""
+                                      },
+                                      {
+                                        "k": "Str",
+                                        "v": "=="
+                                      },
+                                      {
+                                        "k": "Bool",
+                                        "v": true
+                                      }
+                                    ],
+                                    "mappedProps": {
+                                      "array": {
+                                        "k": "Arr",
+                                        "els": [
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p1"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p2"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p3"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p4"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p5"
+                                          },
+                                          {
+                                            "k": "StateRef",
+                                            "n": "$p6"
+                                          }
+                                        ]
+                                      },
+                                      "field": {
+                                        "k": "Str",
+                                        "v": ""
+                                      },
+                                      "operator": {
+                                        "k": "Str",
+                                        "v": "=="
+                                      },
+                                      "value": {
+                                        "k": "Bool",
+                                        "v": true
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "right": {
+                                "k": "Num",
+                                "v": 6
+                              }
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 100
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "%"
+                          }
+                        },
+                        "height": 4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "border",
+                  "radius": "full",
+                  "border": null,
+                  "width": "100%",
+                  "height": 4
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "bar"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Checkbox",
+                      "props": {
+                        "checked": {
+                          "k": "StateRef",
+                          "n": "$p1"
+                        },
+                        "label": "The everyday tee",
+                        "lineThrough": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Checkbox",
+                      "props": {
+                        "checked": {
+                          "k": "StateRef",
+                          "n": "$p2"
+                        },
+                        "label": "Relaxed Oxford shirt",
+                        "lineThrough": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Checkbox",
+                      "props": {
+                        "checked": {
+                          "k": "StateRef",
+                          "n": "$p3"
+                        },
+                        "label": "Unstructured jacket",
+                        "lineThrough": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Checkbox",
+                      "props": {
+                        "checked": {
+                          "k": "StateRef",
+                          "n": "$p4"
+                        },
+                        "label": "Straight-leg trousers",
+                        "lineThrough": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Checkbox",
+                      "props": {
+                        "checked": {
+                          "k": "StateRef",
+                          "n": "$p5"
+                        },
+                        "label": "Minimal leather sneakers",
+                        "lineThrough": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Checkbox",
+                      "props": {
+                        "checked": {
+                          "k": "StateRef",
+                          "n": "$p6"
+                        },
+                        "label": "Everywhere tote",
+                        "lineThrough": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 220,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "list"
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Clear",
+                  "action": {
+                    "k": "Comp",
+                    "name": "Reset",
+                    "args": [
+                      {
+                        "k": "StateRef",
+                        "n": "$p1"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p2"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p3"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p4"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p5"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$p6"
+                      }
+                    ]
+                  },
+                  "variant": "outline",
+                  "color": null,
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "variant": "soft"
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 10,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$p1": true,
+          "$p2": false,
+          "$p3": true,
+          "$p4": false,
+          "$p5": false,
+          "$p6": false
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

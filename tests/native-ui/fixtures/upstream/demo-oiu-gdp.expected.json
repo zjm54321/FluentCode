@@ -1,0 +1,2184 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "21c2472652088e44bf33e69372edd5ac356334f9a9b8a4ac7f18ac1b36877874",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "What makes up GDP?",
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "An economy, in four parts.",
+                          "size": "sm",
+                          "color": "muted"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Spacer",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Illustrative economy"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 3,
+              "align": "start"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Caption",
+            "props": {
+              "text": "Total output"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "BinOp",
+                  "op": "+",
+                  "left": {
+                    "k": "Str",
+                    "v": "$"
+                  },
+                  "right": {
+                    "k": "Comp",
+                    "name": "Round",
+                    "args": [
+                      {
+                        "k": "BinOp",
+                        "op": "/",
+                        "left": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "StateRef",
+                                "n": "$c"
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$i"
+                              }
+                            },
+                            "right": {
+                              "k": "StateRef",
+                              "n": "$g"
+                            }
+                          },
+                          "right": {
+                            "k": "StateRef",
+                            "n": "$x"
+                          }
+                        },
+                        "right": {
+                          "k": "Num",
+                          "v": 1000
+                        }
+                      },
+                      {
+                        "k": "Num",
+                        "v": 2
+                      }
+                    ],
+                    "mappedProps": {
+                      "number": {
+                        "k": "BinOp",
+                        "op": "/",
+                        "left": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "StateRef",
+                                "n": "$c"
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$i"
+                              }
+                            },
+                            "right": {
+                              "k": "StateRef",
+                              "n": "$g"
+                            }
+                          },
+                          "right": {
+                            "k": "StateRef",
+                            "n": "$x"
+                          }
+                        },
+                        "right": {
+                          "k": "Num",
+                          "v": 1000
+                        }
+                      },
+                      "decimals": {
+                        "k": "Num",
+                        "v": 2
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "k": "Str",
+                  "v": " trillion"
+                }
+              },
+              "size": "2xl"
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "total"
+          },
+          {
+            "type": "element",
+            "typeName": "Box",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "Str",
+                                "v": "$"
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$c"
+                              }
+                            },
+                            "right": {
+                              "k": "Str",
+                              "v": "B"
+                            }
+                          },
+                          "size": "xs",
+                          "color": "#ffffff",
+                          "weight": "medium"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "chart1",
+                    "radius": 0,
+                    "border": null,
+                    "width": null,
+                    "height": "100%",
+                    "flex": {
+                      "k": "StateRef",
+                      "n": "$c"
+                    },
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "seg1"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "Str",
+                                "v": "$"
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$i"
+                              }
+                            },
+                            "right": {
+                              "k": "Str",
+                              "v": "B"
+                            }
+                          },
+                          "size": "xs",
+                          "color": "#ffffff",
+                          "weight": "medium"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "chart2",
+                    "radius": 0,
+                    "border": null,
+                    "width": null,
+                    "height": "100%",
+                    "flex": {
+                      "k": "StateRef",
+                      "n": "$i"
+                    },
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "seg2"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "Str",
+                                "v": "$"
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$g"
+                              }
+                            },
+                            "right": {
+                              "k": "Str",
+                              "v": "B"
+                            }
+                          },
+                          "size": "xs",
+                          "color": "#ffffff",
+                          "weight": "medium"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "chart4",
+                    "radius": 0,
+                    "border": null,
+                    "width": null,
+                    "height": "100%",
+                    "flex": {
+                      "k": "StateRef",
+                      "n": "$g"
+                    },
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "seg3"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "chart3",
+                    "radius": 0,
+                    "border": null,
+                    "width": null,
+                    "height": "100%",
+                    "flex": {
+                      "k": "Ternary",
+                      "cond": {
+                        "k": "BinOp",
+                        "op": ">",
+                        "left": {
+                          "k": "StateRef",
+                          "n": "$x"
+                        },
+                        "right": {
+                          "k": "Num",
+                          "v": 0
+                        }
+                      },
+                      "then": {
+                        "k": "StateRef",
+                        "n": "$x"
+                      },
+                      "else": {
+                        "k": "Num",
+                        "v": 0
+                      }
+                    }
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "seg4"
+                }
+              ],
+              "direction": "row",
+              "gap": 0.5,
+              "padding": null,
+              "background": null,
+              "radius": "md",
+              "border": null,
+              "width": "100%",
+              "height": 38
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "bar"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$c"
+                    },
+                    "min": 0,
+                    "max": 1200,
+                    "step": 10,
+                    "label": "Consumer spending",
+                    "unit": "B"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$i"
+                    },
+                    "min": 0,
+                    "max": 600,
+                    "step": 10,
+                    "label": "Business investment",
+                    "unit": "B"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$g"
+                    },
+                    "min": 0,
+                    "max": 500,
+                    "step": 10,
+                    "label": "Government spending",
+                    "unit": "B"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$x"
+                    },
+                    "min": -200,
+                    "max": 300,
+                    "step": 10,
+                    "label": "Net exports",
+                    "unit": "B"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 240,
+              "gap": 6
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "sliders"
+          },
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "Reset economy",
+              "action": {
+                "k": "Comp",
+                "name": "Reset",
+                "args": [
+                  {
+                    "k": "StateRef",
+                    "n": "$c"
+                  },
+                  {
+                    "k": "StateRef",
+                    "n": "$i"
+                  },
+                  {
+                    "k": "StateRef",
+                    "n": "$g"
+                  },
+                  {
+                    "k": "StateRef",
+                    "n": "$x"
+                  }
+                ]
+              },
+              "variant": "ghost",
+              "color": null,
+              "size": "sm",
+              "icon": "rotate-ccw"
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "reset"
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "GDP = C + I + G + (X − M). Move any slider: the total and the bar follow.",
+              "size": "sm",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 15,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$c": 600,
+      "$i": 200,
+      "$g": 170,
+      "$x": 30
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "What makes up GDP?",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "An economy, in four parts.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Spacer",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "Illustrative economy"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 3,
+            "align": "start"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Caption",
+          "props": {
+            "text": "Total output"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "$1 trillion",
+            "size": "2xl"
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "total"
+        },
+        {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$600B",
+                        "size": "xs",
+                        "color": "#ffffff",
+                        "weight": "medium"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "chart1",
+                  "radius": 0,
+                  "border": null,
+                  "width": null,
+                  "height": "100%",
+                  "flex": 600,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "seg1"
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$200B",
+                        "size": "xs",
+                        "color": "#ffffff",
+                        "weight": "medium"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "chart2",
+                  "radius": 0,
+                  "border": null,
+                  "width": null,
+                  "height": "100%",
+                  "flex": 200,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "seg2"
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$170B",
+                        "size": "xs",
+                        "color": "#ffffff",
+                        "weight": "medium"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "chart4",
+                  "radius": 0,
+                  "border": null,
+                  "width": null,
+                  "height": "100%",
+                  "flex": 170,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "seg3"
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "chart3",
+                  "radius": 0,
+                  "border": null,
+                  "width": null,
+                  "height": "100%",
+                  "flex": 30
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "seg4"
+              }
+            ],
+            "direction": "row",
+            "gap": 0.5,
+            "padding": null,
+            "background": null,
+            "radius": "md",
+            "border": null,
+            "width": "100%",
+            "height": 38
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "bar"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$c",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 1200,
+                  "step": 10,
+                  "label": "Consumer spending",
+                  "unit": "B"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$i",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 600,
+                  "step": 10,
+                  "label": "Business investment",
+                  "unit": "B"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$g",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 500,
+                  "step": 10,
+                  "label": "Government spending",
+                  "unit": "B"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$x",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": -200,
+                  "max": 300,
+                  "step": 10,
+                  "label": "Net exports",
+                  "unit": "B"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 240,
+            "gap": 6
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "sliders"
+        },
+        {
+          "type": "element",
+          "typeName": "Button",
+          "props": {
+            "label": "Reset economy",
+            "action": {
+              "steps": [
+                {
+                  "type": "reset",
+                  "targets": [
+                    "$c",
+                    "$i",
+                    "$g",
+                    "$x"
+                  ]
+                }
+              ]
+            },
+            "variant": "ghost",
+            "color": null,
+            "size": "sm",
+            "icon": "rotate-ccw"
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "reset"
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "GDP = C + I + G + (X − M). Move any slider: the total and the bar follow.",
+            "size": "sm",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 451,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "What makes up GDP?",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "An economy, in four parts.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Illustrative economy"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "start"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Total output"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Str",
+                        "v": "$"
+                      },
+                      "right": {
+                        "k": "Comp",
+                        "name": "Round",
+                        "args": [
+                          {
+                            "k": "BinOp",
+                            "op": "/",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "StateRef",
+                                    "n": "$c"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$i"
+                                  }
+                                },
+                                "right": {
+                                  "k": "StateRef",
+                                  "n": "$g"
+                                }
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$x"
+                              }
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 1000
+                            }
+                          },
+                          {
+                            "k": "Num",
+                            "v": 2
+                          }
+                        ],
+                        "mappedProps": {
+                          "number": {
+                            "k": "BinOp",
+                            "op": "/",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "StateRef",
+                                    "n": "$c"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$i"
+                                  }
+                                },
+                                "right": {
+                                  "k": "StateRef",
+                                  "n": "$g"
+                                }
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$x"
+                              }
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 1000
+                            }
+                          },
+                          "decimals": {
+                            "k": "Num",
+                            "v": 2
+                          }
+                        }
+                      }
+                    },
+                    "right": {
+                      "k": "Str",
+                      "v": " trillion"
+                    }
+                  },
+                  "size": "2"
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "total"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "GDP = C + I + G + (X − M). Move any slider: the total and the bar follow.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "bar",
+            "sliders",
+            "reset"
+          ],
+          "orphaned": [],
+          "statementCount": 8,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$c": 600,
+          "$i": 200,
+          "$g": 170,
+          "$x": 30
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 903,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "What makes up GDP?",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "An economy, in four parts.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Illustrative economy"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "start"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Total output"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Str",
+                        "v": "$"
+                      },
+                      "right": {
+                        "k": "Comp",
+                        "name": "Round",
+                        "args": [
+                          {
+                            "k": "BinOp",
+                            "op": "/",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "StateRef",
+                                    "n": "$c"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$i"
+                                  }
+                                },
+                                "right": {
+                                  "k": "StateRef",
+                                  "n": "$g"
+                                }
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$x"
+                              }
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 1000
+                            }
+                          },
+                          {
+                            "k": "Num",
+                            "v": 2
+                          }
+                        ],
+                        "mappedProps": {
+                          "number": {
+                            "k": "BinOp",
+                            "op": "/",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "StateRef",
+                                    "n": "$c"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$i"
+                                  }
+                                },
+                                "right": {
+                                  "k": "StateRef",
+                                  "n": "$g"
+                                }
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$x"
+                              }
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 1000
+                            }
+                          },
+                          "decimals": {
+                            "k": "Num",
+                            "v": 2
+                          }
+                        }
+                      }
+                    },
+                    "right": {
+                      "k": "Str",
+                      "v": " trillion"
+                    }
+                  },
+                  "size": "2xl"
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "total"
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "Str",
+                                    "v": "$"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$c"
+                                  }
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "B"
+                                }
+                              },
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart1",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": {
+                          "k": "StateRef",
+                          "n": "$c"
+                        },
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true,
+                      "statementId": "seg1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "Str",
+                                    "v": "$"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$i"
+                                  }
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "B"
+                                }
+                              },
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart2",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": {
+                          "k": "StateRef",
+                          "n": "$i"
+                        },
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true,
+                      "statementId": "seg2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "Str",
+                                    "v": "$"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$g"
+                                  }
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "B"
+                                }
+                              },
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart4"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true,
+                      "statementId": "seg3"
+                    }
+                  ],
+                  "direction": "row",
+                  "gap": 0.5,
+                  "padding": null,
+                  "background": null,
+                  "radius": "md",
+                  "border": null,
+                  "width": "100%",
+                  "height": 38
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "bar"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "GDP = C + I + G + (X − M). Move any slider: the total and the bar follow.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "seg4",
+            "sliders",
+            "reset"
+          ],
+          "orphaned": [],
+          "statementCount": 12,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$c": 600,
+          "$i": 200,
+          "$g": 170,
+          "$x": 30
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1355,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "What makes up GDP?",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "An economy, in four parts.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Illustrative economy"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "start"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Total output"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Str",
+                        "v": "$"
+                      },
+                      "right": {
+                        "k": "Comp",
+                        "name": "Round",
+                        "args": [
+                          {
+                            "k": "BinOp",
+                            "op": "/",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "StateRef",
+                                    "n": "$c"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$i"
+                                  }
+                                },
+                                "right": {
+                                  "k": "StateRef",
+                                  "n": "$g"
+                                }
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$x"
+                              }
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 1000
+                            }
+                          },
+                          {
+                            "k": "Num",
+                            "v": 2
+                          }
+                        ],
+                        "mappedProps": {
+                          "number": {
+                            "k": "BinOp",
+                            "op": "/",
+                            "left": {
+                              "k": "BinOp",
+                              "op": "+",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "StateRef",
+                                    "n": "$c"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$i"
+                                  }
+                                },
+                                "right": {
+                                  "k": "StateRef",
+                                  "n": "$g"
+                                }
+                              },
+                              "right": {
+                                "k": "StateRef",
+                                "n": "$x"
+                              }
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 1000
+                            }
+                          },
+                          "decimals": {
+                            "k": "Num",
+                            "v": 2
+                          }
+                        }
+                      }
+                    },
+                    "right": {
+                      "k": "Str",
+                      "v": " trillion"
+                    }
+                  },
+                  "size": "2xl"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "total"
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "Str",
+                                    "v": "$"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$c"
+                                  }
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "B"
+                                }
+                              },
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart1",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": {
+                          "k": "StateRef",
+                          "n": "$c"
+                        },
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "seg1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "Str",
+                                    "v": "$"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$i"
+                                  }
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "B"
+                                }
+                              },
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart2",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": {
+                          "k": "StateRef",
+                          "n": "$i"
+                        },
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "seg2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "BinOp",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "Str",
+                                    "v": "$"
+                                  },
+                                  "right": {
+                                    "k": "StateRef",
+                                    "n": "$g"
+                                  }
+                                },
+                                "right": {
+                                  "k": "Str",
+                                  "v": "B"
+                                }
+                              },
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart4",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": {
+                          "k": "StateRef",
+                          "n": "$g"
+                        },
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "seg3"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart3",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": {
+                          "k": "Ternary",
+                          "cond": {
+                            "k": "BinOp",
+                            "op": ">",
+                            "left": {
+                              "k": "StateRef",
+                              "n": "$x"
+                            },
+                            "right": {
+                              "k": "Num",
+                              "v": 0
+                            }
+                          },
+                          "then": {
+                            "k": "StateRef",
+                            "n": "$x"
+                          },
+                          "else": {
+                            "k": "Num",
+                            "v": 0
+                          }
+                        }
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "seg4"
+                    }
+                  ],
+                  "direction": "row",
+                  "gap": 0.5,
+                  "padding": null,
+                  "background": null,
+                  "radius": "md",
+                  "border": null,
+                  "width": "100%",
+                  "height": 38
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "bar"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$c"
+                        },
+                        "min": 0,
+                        "max": 1200,
+                        "step": 10,
+                        "label": "Consumer spending",
+                        "unit": "B"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$i"
+                        },
+                        "min": 0,
+                        "max": 600,
+                        "step": 10,
+                        "label": "Business investment",
+                        "unit": "B"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$g"
+                        },
+                        "min": 0,
+                        "max": 500,
+                        "step": 10,
+                        "label": "Government spending",
+                        "unit": "B"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$x"
+                        },
+                        "min": -200,
+                        "max": 300,
+                        "step": 10,
+                        "label": "Net exports",
+                        "unit": "B"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 240,
+                  "gap": 6
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "sliders"
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Reset economy",
+                  "action": {
+                    "k": "Comp",
+                    "name": "Reset",
+                    "args": [
+                      {
+                        "k": "StateRef",
+                        "n": "$c"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$i"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$g"
+                      },
+                      {
+                        "k": "StateRef",
+                        "n": "$x"
+                      }
+                    ]
+                  },
+                  "variant": "ghost",
+                  "color": null,
+                  "size": "sm",
+                  "icon": "rotate-ccw"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "reset"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "GDP = C + I + G + (X − M). Move any slider: the total and the bar follow.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 15,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$c": 600,
+          "$i": 200,
+          "$g": 170,
+          "$x": 30
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

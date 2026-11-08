@@ -1,0 +1,1132 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "63fd11eafd3acee5f40759b5e161fb9b9a6ee0f403ea4268d638b2bb1d9f1681",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Drone services revenue",
+                          "size": "md"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Illustrative revenue path, not a forecast"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Spacer",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SegmentedControl",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$type"
+                    },
+                    "options": [
+                      "bar",
+                      "line",
+                      "area"
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "gap": 3,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Chart",
+            "props": {
+              "type": {
+                "k": "StateRef",
+                "n": "$type"
+              },
+              "data": [
+                {
+                  "year": "2025",
+                  "Photography": 617000000,
+                  "Inspection": 410000000
+                },
+                {
+                  "year": "2027",
+                  "Photography": 820000000,
+                  "Inspection": 690000000
+                },
+                {
+                  "year": "2030",
+                  "Photography": 1240000000,
+                  "Inspection": 1310000000
+                },
+                {
+                  "year": "2034",
+                  "Photography": 1900000000,
+                  "Inspection": 2350000000
+                }
+              ],
+              "x": "year",
+              "series": [
+                "Photography",
+                "Inspection"
+              ],
+              "format": "currency",
+              "currency": null,
+              "stacked": {
+                "k": "BinOp",
+                "op": "!=",
+                "left": {
+                  "k": "StateRef",
+                  "n": "$type"
+                },
+                "right": {
+                  "k": "Str",
+                  "v": "line"
+                }
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "chart"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "How people get around",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Chart",
+                        "props": {
+                          "type": "pie",
+                          "data": [
+                            {
+                              "mode": "Walking",
+                              "share": 52
+                            },
+                            {
+                              "mode": "Transit",
+                              "share": 31
+                            },
+                            {
+                              "mode": "Cycling",
+                              "share": 17
+                            }
+                          ],
+                          "x": "mode",
+                          "series": [
+                            "share"
+                          ],
+                          "format": "percent"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "pie"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Budget",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Chart",
+                        "props": {
+                          "type": "donut",
+                          "data": [
+                            {
+                              "item": "Lodging",
+                              "amount": 840
+                            },
+                            {
+                              "item": "Food",
+                              "amount": 420
+                            },
+                            {
+                              "item": "Transport",
+                              "amount": 260
+                            },
+                            {
+                              "item": "Museums",
+                              "amount": 90
+                            }
+                          ],
+                          "x": "item",
+                          "series": [
+                            "amount"
+                          ],
+                          "format": "currency",
+                          "currency": "EUR"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "donut"
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 260,
+              "gap": 6
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 9,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$type": "bar"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Drone services revenue",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Illustrative revenue path, not a forecast"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Spacer",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$type",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    "bar",
+                    "line",
+                    "area"
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "gap": 3,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Chart",
+          "props": {
+            "type": "bar",
+            "data": [
+              {
+                "year": "2025",
+                "Photography": 617000000,
+                "Inspection": 410000000
+              },
+              {
+                "year": "2027",
+                "Photography": 820000000,
+                "Inspection": 690000000
+              },
+              {
+                "year": "2030",
+                "Photography": 1240000000,
+                "Inspection": 1310000000
+              },
+              {
+                "year": "2034",
+                "Photography": 1900000000,
+                "Inspection": 2350000000
+              }
+            ],
+            "x": "year",
+            "series": [
+              "Photography",
+              "Inspection"
+            ],
+            "format": "currency",
+            "currency": null,
+            "stacked": true
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "chart"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "How people get around",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Chart",
+                      "props": {
+                        "type": "pie",
+                        "data": [
+                          {
+                            "mode": "Walking",
+                            "share": 52
+                          },
+                          {
+                            "mode": "Transit",
+                            "share": 31
+                          },
+                          {
+                            "mode": "Cycling",
+                            "share": 17
+                          }
+                        ],
+                        "x": "mode",
+                        "series": [
+                          "share"
+                        ],
+                        "format": "percent"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "pie"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Budget",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Chart",
+                      "props": {
+                        "type": "donut",
+                        "data": [
+                          {
+                            "item": "Lodging",
+                            "amount": 840
+                          },
+                          {
+                            "item": "Food",
+                            "amount": 420
+                          },
+                          {
+                            "item": "Transport",
+                            "amount": 260
+                          },
+                          {
+                            "item": "Museums",
+                            "amount": 90
+                          }
+                        ],
+                        "x": "item",
+                        "series": [
+                          "amount"
+                        ],
+                        "format": "currency",
+                        "currency": "EUR"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "donut"
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 260,
+            "gap": 6
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 358,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Drone services revenue",
+                              "size": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Illustrative revenue path, not a forecast"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$type"
+                        },
+                        "options": [
+                          "bar",
+                          "line",
+                          "area"
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [],
+                  "columns": 2,
+                  "minChildWidth": 260,
+                  "gap": 6
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "rows",
+            "pie",
+            "donut"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": [
+            {
+              "code": "null-required",
+              "component": "Chart",
+              "path": "/data",
+              "message": "required field \"/data\" cannot be null — signature: Chart(type*: \"bar\"|\"line\"|\"area\"|\"pie\"|\"donut\"|\"scatter\", data*: array, x: string, series: array, format: \"number\"|\"currency\"|\"percent\", currency: string, stacked: boolean, height: number)",
+              "statementId": "chart"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$type": "bar"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 717,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Drone services revenue",
+                              "size": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Illustrative revenue path, not a forecast"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$type"
+                        },
+                        "options": [
+                          "bar",
+                          "line",
+                          "area"
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Chart",
+                "props": {
+                  "type": {
+                    "k": "StateRef",
+                    "n": "$type"
+                  },
+                  "data": [
+                    {
+                      "year": "2025",
+                      "Photography": 617000000,
+                      "Inspection": 410000000
+                    },
+                    {
+                      "year": "2027",
+                      "Photography": 820000000,
+                      "Inspection": 690000000
+                    },
+                    {
+                      "year": "2030",
+                      "Photography": 1240000000,
+                      "Inspection": 1310000000
+                    },
+                    {
+                      "year": "2034",
+                      "Photography": 1900000000,
+                      "Inspection": 2350000000
+                    }
+                  ],
+                  "x": "year",
+                  "series": [
+                    "Photography",
+                    "Inspection"
+                  ],
+                  "format": "currency",
+                  "currency": null,
+                  "stacked": {
+                    "k": "BinOp",
+                    "op": "!=",
+                    "left": {
+                      "k": "StateRef",
+                      "n": "$type"
+                    },
+                    "right": {
+                      "k": "Str",
+                      "v": "line"
+                    }
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "chart"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "How people get around",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "pie"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 260,
+                  "gap": 6
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "modes",
+            "donut"
+          ],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": [
+            {
+              "code": "null-required",
+              "component": "Chart",
+              "path": "/data",
+              "message": "required field \"/data\" cannot be null — signature: Chart(type*: \"bar\"|\"line\"|\"area\"|\"pie\"|\"donut\"|\"scatter\", data*: array, x: string, series: array, format: \"number\"|\"currency\"|\"percent\", currency: string, stacked: boolean, height: number)",
+              "statementId": "pie"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$type": "bar"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1076,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Drone services revenue",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Illustrative revenue path, not a forecast"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$type"
+                        },
+                        "options": [
+                          "bar",
+                          "line",
+                          "area"
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Chart",
+                "props": {
+                  "type": {
+                    "k": "StateRef",
+                    "n": "$type"
+                  },
+                  "data": [
+                    {
+                      "year": "2025",
+                      "Photography": 617000000,
+                      "Inspection": 410000000
+                    },
+                    {
+                      "year": "2027",
+                      "Photography": 820000000,
+                      "Inspection": 690000000
+                    },
+                    {
+                      "year": "2030",
+                      "Photography": 1240000000,
+                      "Inspection": 1310000000
+                    },
+                    {
+                      "year": "2034",
+                      "Photography": 1900000000,
+                      "Inspection": 2350000000
+                    }
+                  ],
+                  "x": "year",
+                  "series": [
+                    "Photography",
+                    "Inspection"
+                  ],
+                  "format": "currency",
+                  "currency": null,
+                  "stacked": {
+                    "k": "BinOp",
+                    "op": "!=",
+                    "left": {
+                      "k": "StateRef",
+                      "n": "$type"
+                    },
+                    "right": {
+                      "k": "Str",
+                      "v": "line"
+                    }
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "chart"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "How people get around",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Chart",
+                            "props": {
+                              "type": "pie",
+                              "data": [
+                                {
+                                  "mode": "Walking",
+                                  "share": 52
+                                },
+                                {
+                                  "mode": "Transit",
+                                  "share": 31
+                                },
+                                {
+                                  "mode": "Cycling",
+                                  "share": 17
+                                }
+                              ],
+                              "x": "mode",
+                              "series": [
+                                "share"
+                              ],
+                              "format": "percent"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "pie"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Budget",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Chart",
+                            "props": {
+                              "type": "donut",
+                              "data": [
+                                {
+                                  "item": "Lodging",
+                                  "amount": 840
+                                },
+                                {
+                                  "item": "Food",
+                                  "amount": 420
+                                },
+                                {
+                                  "item": "Transport",
+                                  "amount": 260
+                                },
+                                {
+                                  "item": "Museums",
+                                  "amount": 90
+                                }
+                              ],
+                              "x": "item",
+                              "series": [
+                                "amount"
+                              ],
+                              "format": "currency",
+                              "currency": "EUR"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "donut"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 260,
+                  "gap": 6
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 9,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$type": "bar"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,1375 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "500bb41183a3c376fff1bc4706ee94746058cf622332222f5c20d3ed779bc390",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "New primitives",
+              "size": "lg"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": [
+                "Text can mix ",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "inline",
+                    "color": "purple"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                " components, ",
+                {
+                  "type": "element",
+                  "typeName": "Icon",
+                  "props": {
+                    "name": "sparkles",
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                " icons and ",
+                {
+                  "type": "element",
+                  "typeName": "Math",
+                  "props": {
+                    "tex": "\\sqrt{2}",
+                    "inline": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                " math."
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Carousel",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "Golden Gate Bridge",
+                    "aspectRatio": 1.4
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "Alcatraz Island",
+                    "aspectRatio": 1.4
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "Painted Ladies",
+                    "aspectRatio": 1.4
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "Lombard Street",
+                    "aspectRatio": 1.4
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "itemWidth": 220
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Inflation adjusts nominal GDP"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Popover",
+                  "props": {
+                    "trigger": {
+                      "type": "element",
+                      "typeName": "Icon",
+                      "props": {
+                        "name": "info",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    "content": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "**Real GDP** removes price changes, so it measures output.",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Link",
+                        "props": {
+                          "text": "Read more",
+                          "url": "https://www.bea.gov"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Quote",
+            "props": {
+              "text": "Simplicity is the ultimate sophistication.",
+              "cite": "Leonardo da Vinci"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Math",
+            "props": {
+              "tex": "\\bar{x} \\sim \\mathcal{N}\\left(\\mu, \\frac{\\sigma^2}{n}\\right)"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Code",
+            "props": {
+              "code": "const total = items.reduce((sum, i) => sum + i.price, 0)",
+              "language": "javascript"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "RadioGroup",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$size"
+              },
+              "options": [
+                "S",
+                "M",
+                "L",
+                "XL"
+              ],
+              "label": "Size",
+              "variant": "pills"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Chart",
+            "props": {
+              "type": "scatter",
+              "data": [
+                {
+                  "car": "Civic",
+                  "hp": 158,
+                  "mpg": 36
+                },
+                {
+                  "car": "Model 3",
+                  "hp": 271,
+                  "mpg": 132
+                },
+                {
+                  "car": "F-150",
+                  "hp": 400,
+                  "mpg": 20
+                },
+                {
+                  "car": "Prius",
+                  "hp": 194,
+                  "mpg": 57
+                },
+                {
+                  "car": "Mustang",
+                  "hp": 480,
+                  "mpg": 19
+                }
+              ],
+              "x": "hp",
+              "series": [
+                "mpg"
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Flashcard",
+                  "props": {
+                    "front": "Bonjour",
+                    "back": "Hello"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Flashcard",
+                  "props": {
+                    "front": "Merci",
+                    "back": "Thank you"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 160,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "YouTube",
+            "props": {
+              "video": "dQw4w9WgXcQ",
+              "title": "A music video"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 2,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$size": "M"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "New primitives",
+            "size": "lg"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": [
+              "Text can mix ",
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "inline",
+                  "color": "purple"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              " components, ",
+              {
+                "type": "element",
+                "typeName": "Icon",
+                "props": {
+                  "name": "sparkles",
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              " icons and ",
+              {
+                "type": "element",
+                "typeName": "Math",
+                "props": {
+                  "tex": "\\sqrt{2}",
+                  "inline": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              " math."
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Carousel",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "Golden Gate Bridge",
+                  "aspectRatio": 1.4
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "Alcatraz Island",
+                  "aspectRatio": 1.4
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "Painted Ladies",
+                  "aspectRatio": 1.4
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "Lombard Street",
+                  "aspectRatio": 1.4
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "itemWidth": 220
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Inflation adjusts nominal GDP"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Popover",
+                "props": {
+                  "trigger": {
+                    "type": "element",
+                    "typeName": "Icon",
+                    "props": {
+                      "name": "info",
+                      "size": "sm",
+                      "color": "muted"
+                    },
+                    "partial": false,
+                    "hasDynamicProps": false
+                  },
+                  "content": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "**Real GDP** removes price changes, so it measures output.",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Link",
+                      "props": {
+                        "text": "Read more",
+                        "url": "https://www.bea.gov"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Quote",
+          "props": {
+            "text": "Simplicity is the ultimate sophistication.",
+            "cite": "Leonardo da Vinci"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Math",
+          "props": {
+            "tex": "\\bar{x} \\sim \\mathcal{N}\\left(\\mu, \\frac{\\sigma^2}{n}\\right)"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Code",
+          "props": {
+            "code": "const total = items.reduce((sum, i) => sum + i.price, 0)",
+            "language": "javascript"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "RadioGroup",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$size",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "options": [
+              "S",
+              "M",
+              "L",
+              "XL"
+            ],
+            "label": "Size",
+            "variant": "pills"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Chart",
+          "props": {
+            "type": "scatter",
+            "data": [
+              {
+                "car": "Civic",
+                "hp": 158,
+                "mpg": 36
+              },
+              {
+                "car": "Model 3",
+                "hp": 271,
+                "mpg": 132
+              },
+              {
+                "car": "F-150",
+                "hp": 400,
+                "mpg": 20
+              },
+              {
+                "car": "Prius",
+                "hp": 194,
+                "mpg": 57
+              },
+              {
+                "car": "Mustang",
+                "hp": 480,
+                "mpg": 19
+              }
+            ],
+            "x": "hp",
+            "series": [
+              "mpg"
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Flashcard",
+                "props": {
+                  "front": "Bonjour",
+                  "back": "Hello"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Flashcard",
+                "props": {
+                  "front": "Merci",
+                  "back": "Thank you"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 160,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "YouTube",
+          "props": {
+            "video": "dQw4w9WgXcQ",
+            "title": "A music video"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 398,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "New primitives",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": [
+                    "Text can mix ",
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "inline",
+                        "color": "purple"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    " components, ",
+                    {
+                      "type": "element",
+                      "typeName": "Icon",
+                      "props": {
+                        "name": "sparkles",
+                        "size": "sm"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    " icons and ",
+                    {
+                      "type": "element",
+                      "typeName": "Math",
+                      "props": {
+                        "tex": "\\sqrt{2}",
+                        "inline": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    " math."
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Carousel",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Golden Gate Bridge",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Alcatraz Island",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Painted Ladies",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Lombard Street",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "itemWidth": 220
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Inflation adjusts nominal GDP"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "Po"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 796,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "New primitives",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": [
+                    "Text can mix ",
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "inline",
+                        "color": "purple"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    " components, ",
+                    {
+                      "type": "element",
+                      "typeName": "Icon",
+                      "props": {
+                        "name": "sparkles",
+                        "size": "sm"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    " icons and ",
+                    {
+                      "type": "element",
+                      "typeName": "Math",
+                      "props": {
+                        "tex": "\\sqrt{2}",
+                        "inline": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    " math."
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Carousel",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Golden Gate Bridge",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Alcatraz Island",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Painted Ladies",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Lombard Street",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "itemWidth": 220
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Inflation adjusts nominal GDP"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Popover",
+                      "props": {
+                        "trigger": {
+                          "type": "element",
+                          "typeName": "Icon",
+                          "props": {
+                            "name": "info",
+                            "size": "sm",
+                            "color": "muted"
+                          },
+                          "partial": true,
+                          "hasDynamicProps": false
+                        },
+                        "content": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "**Real GDP** removes price changes, so it measures output.",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Link",
+                            "props": {
+                              "text": "Read more",
+                              "url": "https://www.bea.gov"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Quote",
+                "props": {
+                  "text": "Simplicity is the ultimate sophistication.",
+                  "cite": "Leonardo da Vinci"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Math",
+                "props": {
+                  "tex": "\\bar{x} \\sim \\mathcal{N}\\left(\\mu, \\frac{\\sigma^2}{n}\\right)"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Code",
+                "props": {
+                  "code": "const total = items.reduce((sum, i) => sum + i.price, 0)",
+                  "language": "javascript"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "RadioGr"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1195,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "New primitives",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": [
+                    "Text can mix ",
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "inline",
+                        "color": "purple"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    " components, ",
+                    {
+                      "type": "element",
+                      "typeName": "Icon",
+                      "props": {
+                        "name": "sparkles",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    " icons and ",
+                    {
+                      "type": "element",
+                      "typeName": "Math",
+                      "props": {
+                        "tex": "\\sqrt{2}",
+                        "inline": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    " math."
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Carousel",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Golden Gate Bridge",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Alcatraz Island",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Painted Ladies",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Lombard Street",
+                        "aspectRatio": 1.4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "itemWidth": 220
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Inflation adjusts nominal GDP"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Popover",
+                      "props": {
+                        "trigger": {
+                          "type": "element",
+                          "typeName": "Icon",
+                          "props": {
+                            "name": "info",
+                            "size": "sm",
+                            "color": "muted"
+                          },
+                          "partial": false,
+                          "hasDynamicProps": false
+                        },
+                        "content": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "**Real GDP** removes price changes, so it measures output.",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Link",
+                            "props": {
+                              "text": "Read more",
+                              "url": "https://www.bea.gov"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Quote",
+                "props": {
+                  "text": "Simplicity is the ultimate sophistication.",
+                  "cite": "Leonardo da Vinci"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Math",
+                "props": {
+                  "tex": "\\bar{x} \\sim \\mathcal{N}\\left(\\mu, \\frac{\\sigma^2}{n}\\right)"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Code",
+                "props": {
+                  "code": "const total = items.reduce((sum, i) => sum + i.price, 0)",
+                  "language": "javascript"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "RadioGroup",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$size"
+                  },
+                  "options": [
+                    "S",
+                    "M",
+                    "L",
+                    "XL"
+                  ],
+                  "label": "Size",
+                  "variant": "pills"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Chart",
+                "props": {
+                  "type": "scatter",
+                  "data": [
+                    {
+                      "car": "Civic",
+                      "hp": 158,
+                      "mpg": 36
+                    },
+                    {
+                      "car": "Model 3",
+                      "hp": 271,
+                      "mpg": 132
+                    },
+                    {
+                      "car": "F-150",
+                      "hp": 400,
+                      "mpg": 20
+                    },
+                    {
+                      "car": "Prius",
+                      "hp": 194,
+                      "mpg": 57
+                    },
+                    {
+                      "car": "Mustang",
+                      "hp": 480,
+                      "mpg": 19
+                    }
+                  ],
+                  "x": "hp",
+                  "series": [
+                    "mpg"
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Flashcard",
+                      "props": {
+                        "front": "Bonjour",
+                        "back": "Hello"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Flashcard",
+                      "props": {
+                        "front": "Merci",
+                        "back": "Thank you"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 160,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "YouTube",
+                "props": {
+                  "video": "dQw4w9WgXcQ",
+                  "title": "A music video"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$size": "M"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

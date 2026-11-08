@@ -44,7 +44,7 @@ internal static class Program
         {
             var repo = args[0]; var fixtures = Path.Combine(repo, "tests/native-ui/fixtures");
             var catalog = NativeUiCatalog.Default; var parser = new NativeUiParser(catalog);
-            var sourceFiles = Directory.GetFiles(fixtures, "*.oui").Order().ToArray();
+            var sourceFiles = Directory.GetFiles(fixtures, "*.oui").Concat(Directory.GetFiles(Path.Combine(fixtures, "upstream"), "*.oui")).Order().ToArray();
             foreach (var file in sourceFiles)
             {
                 var source = File.ReadAllText(file); var expected = JsonNode.Parse(File.ReadAllText(Path.ChangeExtension(file, ".expected.json")))!;

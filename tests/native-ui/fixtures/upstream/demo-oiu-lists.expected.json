@@ -1,0 +1,842 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "293c33b21b89570515ef675f41517e6e17e7d4dc6c1a3c8bcf51300680a28aa2",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Sunday cooking schedule",
+              "size": "lg"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "Assuming you serve at **2:00 PM**.",
+              "size": "sm",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "List",
+            "props": {
+              "items": [
+                {
+                  "type": "element",
+                  "typeName": "ListItem",
+                  "props": {
+                    "title": "Prepare everything",
+                    "description": "Season the lamb, peel the potatoes and trim the beans.",
+                    "marker": "10:45 AM"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "a"
+                },
+                {
+                  "type": "element",
+                  "typeName": "ListItem",
+                  "props": {
+                    "title": "Start roasting",
+                    "description": "The lamb goes into a 200°C oven until it reaches 60°C inside.",
+                    "marker": "11:15 AM"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "b"
+                },
+                {
+                  "type": "element",
+                  "typeName": "ListItem",
+                  "props": {
+                    "title": "Potatoes in",
+                    "description": "Parboil for 10 minutes, rough up the edges and roast in hot oil.",
+                    "marker": "12:00 PM"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "c"
+                },
+                {
+                  "type": "element",
+                  "typeName": "ListItem",
+                  "props": {
+                    "title": "Rest and carve",
+                    "description": "Rest the lamb for 20 minutes while the gravy simmers.",
+                    "marker": "1:30 PM"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "d"
+                }
+              ],
+              "marker": "none",
+              "timeline": true
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "schedule"
+          },
+          {
+            "type": "element",
+            "typeName": "Divider",
+            "props": {},
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Packing",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "List",
+                        "props": {
+                          "items": [
+                            "Light rain jacket",
+                            "Comfortable shoes",
+                            "A reusable bottle"
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "packing"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Steps",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "List",
+                        "props": {
+                          "items": [
+                            "Choose a direction",
+                            "Explore the answer",
+                            "Keep the conversation going"
+                          ],
+                          "marker": "number"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "steps"
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 240,
+              "gap": 6
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 8,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Sunday cooking schedule",
+            "size": "lg"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Assuming you serve at **2:00 PM**.",
+            "size": "sm",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "List",
+          "props": {
+            "items": [
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "Prepare everything",
+                  "description": "Season the lamb, peel the potatoes and trim the beans.",
+                  "marker": "10:45 AM"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "a"
+              },
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "Start roasting",
+                  "description": "The lamb goes into a 200°C oven until it reaches 60°C inside.",
+                  "marker": "11:15 AM"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "b"
+              },
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "Potatoes in",
+                  "description": "Parboil for 10 minutes, rough up the edges and roast in hot oil.",
+                  "marker": "12:00 PM"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "c"
+              },
+              {
+                "type": "element",
+                "typeName": "ListItem",
+                "props": {
+                  "title": "Rest and carve",
+                  "description": "Rest the lamb for 20 minutes while the gravy simmers.",
+                  "marker": "1:30 PM"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "d"
+              }
+            ],
+            "marker": "none",
+            "timeline": true
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "schedule"
+        },
+        {
+          "type": "element",
+          "typeName": "Divider",
+          "props": {},
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Packing",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "List",
+                      "props": {
+                        "items": [
+                          "Light rain jacket",
+                          "Comfortable shoes",
+                          "A reusable bottle"
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "packing"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Steps",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "List",
+                      "props": {
+                        "items": [
+                          "Choose a direction",
+                          "Explore the answer",
+                          "Keep the conversation going"
+                        ],
+                        "marker": "number"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "steps"
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 240,
+            "gap": 6
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 293,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Sunday cooking schedule",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Assuming you serve at **2:00 PM**.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "List",
+                "props": {
+                  "items": [
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "Prepare everything",
+                        "description": "Season the lamb, peel the potatoes and trim"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "a"
+                    }
+                  ],
+                  "marker": "none",
+                  "timeline": true
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "schedule"
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [],
+                  "columns": 2,
+                  "minChildWidth": 240,
+                  "gap": 6
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "b",
+            "c",
+            "d",
+            "packing",
+            "steps"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 586,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Sunday cooking schedule",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Assuming you serve at **2:00 PM**.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "List",
+                "props": {
+                  "items": [
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "Prepare everything",
+                        "description": "Season the lamb, peel the potatoes and trim the beans.",
+                        "marker": "10:45 AM"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "a"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "Start roasting",
+                        "description": "The lamb goes into a 200°C oven until it reaches 60°C inside.",
+                        "marker": "11:15 AM"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "b"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "Potatoes in",
+                        "description": "Parboil for 10 minutes, rough up the edges and roast in hot oil.",
+                        "marker": "12:00 PM"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "c"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "Rest and carve",
+                        "description": "Rest the lamb for 20"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "d"
+                    }
+                  ],
+                  "marker": "none",
+                  "timeline": true
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "schedule"
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [],
+                  "columns": 2,
+                  "minChildWidth": 240,
+                  "gap": 6
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "packing",
+            "steps"
+          ],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 879,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Sunday cooking schedule",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Assuming you serve at **2:00 PM**.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "List",
+                "props": {
+                  "items": [
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "Prepare everything",
+                        "description": "Season the lamb, peel the potatoes and trim the beans.",
+                        "marker": "10:45 AM"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "a"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "Start roasting",
+                        "description": "The lamb goes into a 200°C oven until it reaches 60°C inside.",
+                        "marker": "11:15 AM"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "b"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "Potatoes in",
+                        "description": "Parboil for 10 minutes, rough up the edges and roast in hot oil.",
+                        "marker": "12:00 PM"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "c"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "ListItem",
+                      "props": {
+                        "title": "Rest and carve",
+                        "description": "Rest the lamb for 20 minutes while the gravy simmers.",
+                        "marker": "1:30 PM"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "d"
+                    }
+                  ],
+                  "marker": "none",
+                  "timeline": true
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "schedule"
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Packing",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "List",
+                            "props": {
+                              "items": [
+                                "Light rain jacket",
+                                "Comfortable shoes",
+                                "A reusable bottle"
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "packing"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Steps",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "List",
+                            "props": {
+                              "items": [
+                                "Choose a direction",
+                                "Explore the answer",
+                                "Keep the conversation going"
+                              ],
+                              "marker": "number"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "steps"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 240,
+                  "gap": 6
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 8,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}
