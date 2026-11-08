@@ -20,7 +20,7 @@ public sealed partial class OpenCodePage
             if (!Current()) return new(true, null, "会话服务器未连接");
             var settings = _homeSettings?.Current?.OpenCode;
             if (settings?.Kind is not (OpenCodeConnectionKind.Wsl or OpenCodeConnectionKind.Ssh))
-                return new(true, null, "Remote 连接没有已授权的 WSL / SSH 编辑器路径映射");
+                return new(true, null, "远程地址连接不能在本机编辑器中打开文件");
             var directory = BrowserSessionDirectory(workspace.SessionId);
             if (!path.StartsWith('/'))
             {
@@ -32,13 +32,13 @@ public sealed partial class OpenCodePage
                 : OpenCodeWslQuickAccess.Resolve(settings.Kind, true, settings.WslDistribution, path);
         }
         workspace.PreviewPathUnavailableReason = (path, editor) => Target(path) is var state && state.Target is null
-            ? state.Reason : state.IsSsh && !editor ? "SSH v1 不支持在 Windows 资源管理器中打开远端路径"
+            ? state.Reason : state.IsSsh && !editor ? "SSH 连接的文件夹不能在资源管理器中打开，请用 Zed 或 VS Code"
                 : editor && DetailPathEditor() is null ? "未检测到可用的主机编辑器" : null;
         workspace.OpenPreviewPathAsync = async (path, editor) =>
         {
             var state = Target(path);
             if (state.Target is not { } target) throw new IOException(state.Reason);
-            if (state.IsSsh && !editor) throw new IOException("SSH v1 不支持在 Windows 资源管理器中打开远端路径");
+            if (state.IsSsh && !editor) throw new IOException("SSH 连接的文件夹不能在资源管理器中打开，请用 Zed 或 VS Code");
             if (!editor)
             {
                 // Existing Explorer route opens the containing folder, not a guessed /select shell command.

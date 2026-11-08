@@ -740,6 +740,8 @@
                                                                         <TextBlock
                                                                             x:Name="ConnectionStatusText"
                                                                             Text="尚未连接"
+                                                                            MaxWidth="240"
+                                                                            TextTrimming="CharacterEllipsis"
                                                                             Style="{ThemeResource CaptionTextBlockStyle}"
                                                                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                                             VerticalAlignment="Center" />

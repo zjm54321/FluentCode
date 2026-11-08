@@ -3792,6 +3792,18 @@ public sealed partial class OpenCodePage : Page
         UpdateConnectionStatus();
     }
 
+    /// <summary>
+    /// 恢复状态的顶栏短文案。服务层进度以 “…” 结尾，终止结果不以 “…” 结尾；后者用危险色圆点（不只靠颜色：文案同时变化）。
+    /// </summary>
+    internal static (string Text, bool Failed) RecoveryPillText(string status, bool ssh)
+    {
+        bool busy = status.EndsWith('…');
+        if (status.Length <= 18) return (status, !busy);
+        if (busy) return (ssh ? "正在连接 SSH…" : "正在连接 OpenCode…", false);
+        if (status.Contains("密钥已变化", StringComparison.Ordinal)) return ("主机密钥已变化", true);
+        return (ssh ? "SSH 连接已断开" : "自动连接失败", true);
+    }
+
     private void UpdateConnectionStatus()
     {
         RefreshWslQuickAccess();
@@ -3825,9 +3837,11 @@ public sealed partial class OpenCodePage : Page
 
         if ((Application.Current as App)?.OpenCodeRecoveryStatus is { } recoveryStatus)
         {
-            text = recoveryStatus;
+            // 顶栏只放短状态；完整步骤 / 原因进入提示与连接浮层（_connectionStatusDetail）。
+            (text, bool failed) = RecoveryPillText(recoveryStatus,
+                _homeSettings?.Current?.OpenCode.Kind == FluentCode.Models.OpenCodeConnectionKind.Ssh);
             tooltip = recoveryStatus;
-            brushKey = "TextFillColorSecondaryBrush";
+            brushKey = failed ? "SystemFillColorCriticalBrush" : "TextFillColorSecondaryBrush";
         }
         ConnectionStatusText.Text = text;
         // ThemeResource 样式（XamlReader 构造、按键缓存）：主题切换时由框架重取，不是一次性画刷。
