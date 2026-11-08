@@ -655,7 +655,7 @@ internal sealed class OpenCodeAgentSelector : StackPanel
     {
         var selected = _rows.Find(row => row.Id == CurrentAgentId);
         OpenCodeAgentPresentation.Apply(_currentText, selected?.Color);
-        ToolTipService.SetToolTip(_currentText, "切换智能体（/agents）");
+        ToolTipService.SetToolTip(_currentText, selected?.Description is { Length: > 0 } description ? description : "切换智能体（/agents）");
         AutomationProperties.SetHelpText(_currentText, selected?.Description ?? string.Empty);
         AutomationProperties.SetName(_currentText, string.IsNullOrEmpty(_currentAgentId) ? UnknownAgentText : "智能体：" + _currentText.Text);
     }

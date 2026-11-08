@@ -64,6 +64,13 @@ internal static partial class Program
         Check(composer.Contains("ToolTipService.SetToolTip(item, row.Selectable ? \"/\" + row.Name")
             && composer.Contains("AutomationProperties.SetName(item, automation)"), "command-row tooltip is concise without changing its accessible name");
         Check(!composer.Contains("Text = image.Details"), "attachment tooltip does not expose raw selection metadata");
+        Check(composer.Contains("ToolTipService.SetToolTip(item, candidate.Description is { Length: > 0 } description ? description : \"@\" + candidate.Id)"), "mention tooltip keeps the hidden description and falls back to the full mention ID");
+        var selector = Read("Pages/OpenCode/OpenCodeAgentSelector.cs");
+        Check(selector.Contains("ToolTipService.SetToolTip(_currentText, selected?.Description is { Length: > 0 } description ? description : \"切换智能体（/agents）\")")
+            && selector.Contains("AutomationProperties.SetHelpText(_currentText, selected?.Description ?? string.Empty)"), "selected-agent tooltip keeps the hidden description with an action fallback and unchanged accessible help");
+        var tree = Read("Pages/OpenCode/OpenCodeAgentTreeView.cs");
+        Check(tree.Contains("ToolTipService.SetToolTip(row, title + (string.IsNullOrWhiteSpace(subtitle) ? string.Empty : \" · \" + subtitle) + \"\\n\" + statusText)")
+            && tree.Contains("NameTreeContent(row, title + \"，\" + subtitle + \"，\" + statusText)"), "subagent tooltip keeps the glyph-only status text without changing its accessible name");
         var ring = Read("Pages/OpenCode/OpenCodeContextRing.cs");
         Check(ring.Contains("AutomationProperties.SetHelpText(_button, Summary)")
             && !ring.Contains("ToolTipService.SetToolTip(_button, Summary)"), "context ring preserves its accessible summary independently");

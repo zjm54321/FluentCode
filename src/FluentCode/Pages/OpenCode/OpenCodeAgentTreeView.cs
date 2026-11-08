@@ -396,7 +396,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         row.Children.Add(indicator);
         foreach (var child in row.Children) child.IsHitTestVisible = false;
         NameTreeContent(row, title + "，" + subtitle + "，" + statusText);
-        ToolTipService.SetToolTip(row, title + (string.IsNullOrWhiteSpace(subtitle) ? string.Empty : " · " + subtitle));
+        ToolTipService.SetToolTip(row, title + (string.IsNullOrWhiteSpace(subtitle) ? string.Empty : " · " + subtitle) + "\n" + statusText);
         return row;
     }
 

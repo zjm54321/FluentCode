@@ -1479,7 +1479,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         }
         var item = new ListViewItem { Content = row, Tag = candidate, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetName(item, parent + " " + candidate.Id);
-        ToolTipService.SetToolTip(item, "@" + candidate.Id);
+        ToolTipService.SetToolTip(item, candidate.Description is { Length: > 0 } description ? description : "@" + candidate.Id);
         return item;
     }
 
