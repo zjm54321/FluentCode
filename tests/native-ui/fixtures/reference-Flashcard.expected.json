@@ -1,6 +1,6 @@
 {
   "parserVersion": "1.1.0",
-  "sha256": "263efd5e4a2b38cb153dc6c7ef1b8a8e50eae2108b08f556704fcd928e986970",
+  "sha256": "ccca3b7ebaa6bf392b90c94cb22071669a2fa9675755310a8203013652c8f426",
   "parse": {
     "root": {
       "type": "element",
@@ -8,7 +8,7 @@
       "props": {
         "front": "Capital of France?",
         "back": "Paris",
-        "hint": "点击翻面"
+        "hint": "Tap to flip"
       },
       "partial": false,
       "hasDynamicProps": false,
@@ -31,7 +31,7 @@
     "props": {
       "front": "Capital of France?",
       "back": "Paris",
-      "hint": "点击翻面"
+      "hint": "Tap to flip"
     },
     "partial": false,
     "hasDynamicProps": false,
@@ -71,7 +71,7 @@
       }
     },
     {
-      "length": 18,
+      "length": 21,
       "result": {
         "root": null,
         "meta": {
@@ -95,23 +95,25 @@
       }
     },
     {
-      "length": 37,
+      "length": 42,
       "result": {
-        "root": null,
+        "root": {
+          "type": "element",
+          "typeName": "Flashcard",
+          "props": {
+            "front": "Capital of France?",
+            "back": "Pa"
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
         "meta": {
           "incomplete": true,
           "unresolved": [],
           "orphaned": [],
           "statementCount": 1,
-          "errors": [
-            {
-              "code": "missing-required",
-              "component": "Flashcard",
-              "path": "/back",
-              "message": "missing required field \"/back\" — signature: Flashcard(front*, back*, hint: string)",
-              "statementId": "root"
-            }
-          ]
+          "errors": []
         },
         "stateDeclarations": {},
         "queryStatements": [],
@@ -119,7 +121,7 @@
       }
     },
     {
-      "length": 56,
+      "length": 63,
       "result": {
         "root": {
           "type": "element",
@@ -127,7 +129,7 @@
           "props": {
             "front": "Capital of France?",
             "back": "Paris",
-            "hint": "点击翻面"
+            "hint": "Tap to flip"
           },
           "partial": false,
           "hasDynamicProps": false,
