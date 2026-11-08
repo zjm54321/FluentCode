@@ -90,6 +90,10 @@ $production = @()
     'OpenCodeShellTerminalText.cs', 'OpenCodeShellTerminalPreview.cs', 'OpenCodeMessageRollbackPolicy.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/FluentCode/Pages/OpenCode" $_
 }
+$production += Join-Path "$repo/src/FluentCode/Services/NativeUi" 'NativeUiHostContracts.cs'
+@('NativeUiAssistantRequestedEventArgs.cs', 'NativeUiBrowserRequestedEventArgs.cs') | ForEach-Object {
+    $production += Join-Path "$repo/src/FluentCode/Pages/OpenCode/NativeUi" $_
+}
 # Reuse only inert WinUI/presenter definitions; neither old test runner nor old scenarios are included.
 $commonHost = Join-Path $PSScriptRoot 'ConversationView.TestHost.cs'
 $commonHostInput = $commonHost

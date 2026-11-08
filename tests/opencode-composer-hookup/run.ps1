@@ -46,6 +46,10 @@ $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeHomeProjection
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeModelPresentation.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'ComposerActivity.cs')
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.AgentIntegration.cs"
+$sources += Get-Item "$repo/src/FluentCode/Services/NativeUi/NativeUiHostContracts.cs"
+foreach ($name in @('NativeUiAssistantRequestedEventArgs.cs', 'NativeUiBrowserRequestedEventArgs.cs')) {
+    $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/NativeUi/$name"
+}
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.BuiltinActions.cs"
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.MessagePagination.cs"
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.MessageBinding.cs"

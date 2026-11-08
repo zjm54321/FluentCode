@@ -32,9 +32,6 @@ internal sealed record NativeUiActionPlan(IReadOnlyList<NativeUiActionStep> Step
 {
     internal JsonObject ToJson() => new() { ["steps"] = new JsonArray(Steps.Select(s => (JsonNode)s.ToJson()).ToArray()) };
 }
-internal sealed record NativeUiAssistantRequest(string Message, object? Context, IReadOnlyDictionary<string, object?> FormState);
-internal sealed record NativeUiHostResult(bool Accepted, string Message);
-
 internal sealed class NativeUiEvaluator
 {
     private readonly NativeUiCatalog _catalog;

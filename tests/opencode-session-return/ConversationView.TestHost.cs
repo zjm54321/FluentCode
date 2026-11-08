@@ -6,6 +6,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
+using FluentCode.Services.NativeUi;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -96,6 +98,17 @@ namespace FluentCode.Pages.OpenCode
     }
 
     internal sealed class OpenCodeToolDetailOptions { }
+
+    // Native rendering is an inert boundary. The real ConversationView owns all dispatch/lifetime guards.
+    internal sealed class OpenCodeNativeUiPartView : IDisposable
+    {
+        internal FrameworkElement Element { get; } = new StackPanel();
+        internal Func<NativeUiAssistantRequest, Task<NativeUiHostResult>>? ToAssistant { get; set; }
+        internal Func<string, Task<NativeUiHostResult>>? OpenBrowser { get; set; }
+        internal OpenCodeNativeUiPartView() => ConversationViewTestProbe.Record("Construct", this, Element);
+        internal void Update(OpenCodeContentPart part) => ConversationViewTestProbe.Record("Update", this, part);
+        public void Dispose() => ConversationViewTestProbe.Record("Dispose", this);
+    }
 
     public sealed class OpenCodeToolPartView
     {

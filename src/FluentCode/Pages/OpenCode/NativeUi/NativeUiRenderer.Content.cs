@@ -84,7 +84,7 @@ internal sealed partial class NativeUiRenderer
                     for (var i = 0; i < 24; i++)
                     {
                         var transform = new TranslateTransform(); var confetti = new Rectangle { Width = 5 + i % 4, Height = 8, Fill = ComponentBrush(new[] { "info", "success", "warning", "purple", "pink", "danger" }[i % 6]), RenderTransform = transform }; Canvas.SetLeft(confetti, (i * 29) % 600); Canvas.SetTop(confetti, -12); celebration.Children.Add(confetti);
-                        var fall = new DoubleAnimation { From = -12, To = 110, Duration = new(TimeSpan.FromSeconds(1.2 + i % 4 * 0.15)), EnableDependentAnimation = true }; Storyboard.SetTarget(fall, transform); Storyboard.SetTargetProperty(fall, "Y"); storyboard.Children.Add(fall);
+                        var fall = new DoubleAnimation { From = -12, To = 110, Duration = new(TimeSpan.FromSeconds(1.2 + i % 4 * 0.15)) }; Storyboard.SetTarget(fall, transform); Storyboard.SetTargetProperty(fall, "Y"); storyboard.Children.Add(fall);
                     }
                     storyboard.Begin();
                 };

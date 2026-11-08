@@ -1166,6 +1166,11 @@ namespace FluentCode.Pages
         private void HandleApiException(OpenCodeApiException ex, string operation) { if (ex.StatusCode == 404) { _sessionMissing = true; BindComposer(); } }
         private void UpdateInteractionsSection() => RefreshComposerView();
         private void OnSubagentSessionRequested(object? sender, EventArgs args) { }
+        // Native card dispatch is outside this composer-only host; wire the real typed events but fail if invoked.
+        private void OnNativeUiAssistantRequested(object? sender, NativeUiAssistantRequestedEventArgs args)
+            => throw new InvalidOperationException("Native card dispatch is outside this inert composer host.");
+        private void OnNativeUiBrowserRequested(object? sender, NativeUiBrowserRequestedEventArgs args)
+            => throw new InvalidOperationException("Native card browser dispatch is outside this inert composer host.");
     }
 }
 namespace FluentCode
@@ -1241,6 +1246,8 @@ namespace FluentCode.Pages.OpenCode
         public void PreserveReadingAnchor(Microsoft.UI.Xaml.Controls.ScrollViewer viewport, Func<bool> ownerCurrent) { }
         public event EventHandler? SubagentSessionRequested;
         public event Action<string>? TerminalRequested;
+        internal event EventHandler<NativeUiAssistantRequestedEventArgs>? NativeUiAssistantRequested;
+        internal event EventHandler<NativeUiBrowserRequestedEventArgs>? NativeUiBrowserRequested;
         public List<OpenCodeMessage> Last = new();
         public bool ContainsRenderedMessage(string id) => Last.Any(message => message.Id == id);
         public void ApplyMessages(List<OpenCodeMessage> messages) => Last = messages;
