@@ -29,8 +29,11 @@ try {
     $env:FC_STARTUP_SMOKE_ROOT = Join-Path $root 'profile'
     New-Item -ItemType Directory -Path $env:FC_STARTUP_SMOKE_ROOT | Out-Null
     $process = Start-Process -FilePath $app -WorkingDirectory (Split-Path $app) -PassThru
-    if (!$process.WaitForExit(120000)) { throw 'Offline native UI capture timed out.' }
-    if (Test-Path (Join-Path $root 'failed.txt')) { throw ([IO.File]::ReadAllText((Join-Path $root 'failed.txt'))) }
+    $finished = $process.WaitForExit(120000)
+    foreach ($failure in @((Join-Path $root 'failed.txt'), (Join-Path $env:FC_STARTUP_SMOKE_ROOT 'failed.txt'))) {
+        if (Test-Path $failure) { throw ([IO.File]::ReadAllText($failure)) }
+    }
+    if (!$finished) { throw 'Offline native UI capture timed out.' }
     if (!(Test-Path (Join-Path $root 'ready.txt'))) { throw "Offline capture did not finish (process exit $($process.ExitCode))." }
     # Keep generated evidence metadata LF-only; artifacts are never committed.
     $manifest = Join-Path $root 'demos.json'

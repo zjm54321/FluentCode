@@ -25,18 +25,30 @@ internal sealed partial class NativeUiRenderer
         internal int Index { get; } = index;
         internal object?[] Values { get; } = new object?[columns];
         internal Border[] Cells { get; } = Enumerable.Range(0, columns).Select(column => new Border { Padding = new Thickness(column == 0 ? 16 : 12, 0, column == columns - 1 ? 16 : 12, 0), VerticalAlignment = VerticalAlignment.Center }).ToArray();
+        internal TableViewCell?[] Owners { get; } = new TableViewCell?[columns];
     }
     private sealed partial class ComponentColumn(int index) : TableViewColumn
     {
         public override FrameworkElement GenerateElement(TableViewCell cell, object? dataItem)
         {
-            var content = dataItem is TableRow row ? row.Cells[index] : null;
-            if (content is null) return new TextBlock { Text = NativeUiValues.Text(dataItem) };
-            Detach(content); return content;
+            if (dataItem is not TableRow row) return new TextBlock { Text = NativeUiValues.Text(dataItem) };
+            var content = row.Cells[index]; var previous = row.Owners[index];
+            if (!ReferenceEquals(previous, cell))
+            {
+                // Parent is the template's ContentPresenter, not the logical cell.
+                // Clear the previous Content owner before a recycled cell claims it.
+                if (previous is not null && ReferenceEquals(previous.Content, content)) previous.Content = null;
+                Detach(content); row.Owners[index] = cell;
+            }
+            return content;
         }
         public override FrameworkElement GenerateEditingElement(TableViewCell cell, object? dataItem) => GenerateElement(cell, dataItem);
         // TableView initially creates cells before the row Content is assigned, then refreshes them.
-        public override void RefreshElement(TableViewCell cell, object? dataItem) => cell.Content = GenerateElement(cell, dataItem);
+        public override void RefreshElement(TableViewCell cell, object? dataItem)
+        {
+            var content = GenerateElement(cell, dataItem);
+            if (!ReferenceEquals(cell.Content, content)) cell.Content = content;
+        }
         public override object? GetCellContent(object? dataItem) => dataItem is TableRow row ? row.Values[index] is NativeUiElement element ? S(element, "text") : row.Values[index] : null;
         public override object? GetClipboardContent(object? dataItem) => NativeUiValues.Text(GetCellContent(dataItem));
     }

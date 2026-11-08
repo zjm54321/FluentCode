@@ -152,6 +152,10 @@ public partial class App
                 {
                     var days = Descendants(timeline).OfType<Slider>().Single(); days.Value = 6;
                     if (NativeUiValues.Number(view.Runtime.Get("$days")) != 6) throw new InvalidOperationException("Showcase planner slider did not update its budget state.");
+                    await Task.Delay(75); surface.UpdateLayout();
+                    var table = Descendants(timeline).OfType<WinUI.TableView.TableView>().Single();
+                    var cells = Descendants(table).OfType<WinUI.TableView.TableViewCell>().Select(cell => cell.Content).OfType<Border>().ToArray();
+                    if (cells.Length == 0 || cells.Distinct().Count() != cells.Length) throw new InvalidOperationException("Native component table cell hosts have duplicate owners after reactive refresh.");
                 }
                 else if (name == "form")
                 {

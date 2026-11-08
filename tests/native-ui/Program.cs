@@ -151,6 +151,10 @@ internal static class Program
             var contentSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Content.cs"));
             Require(contentSource.Contains("Slot(row.Body, values[i]") && contentSource.Contains("Content = flashContent")
                 && contentSource.Contains("Slot(flashFace,") && !contentSource.Contains("flash.Content = face"), "List rows and Flashcard retain native slot hosts across refreshes");
+            var dataSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Data.cs"));
+            Require(dataSource.Contains("row.Owners[index]") && dataSource.Contains("previous.Content = null")
+                && dataSource.Contains("row.Owners[index] = cell"), "Component table cells clear the previous logical Content owner before virtualization/rebinding transfer");
+            Require(dataSource.Contains("if (!ReferenceEquals(cell.Content, content)) cell.Content = content"), "Component table refresh does not reassign its already-owned native content");
             Console.WriteLine($"PASS native reactive runtime, calculator memory/arithmetic, slider/checkbox/select, actions and safety; {_checks} checks");
             return 0;
         }
