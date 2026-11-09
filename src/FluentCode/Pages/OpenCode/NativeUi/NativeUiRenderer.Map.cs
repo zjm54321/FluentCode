@@ -51,11 +51,11 @@ internal sealed partial class NativeUiRenderer
         attribution.HorizontalAlignment = HorizontalAlignment.Right; attribution.VerticalAlignment = VerticalAlignment.Bottom; attribution.Margin = new(8); attribution.IsHitTestVisible = false;
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { load, fit } };
         panel.Children.Add(actions); panel.Children.Add(status); panel.Children.Add(host); panel.Children.Add(locations);
-        var visual = new Visual(panel); var gate = new NativeUiLoadGate(); MapControl? control = null; NativeUiTileClient? tiles = null;
+        var visual = new Visual(panel); var gate = new NativeUiLoadGate(); MapControl? control = null; NativeUiTileClient? tiles = null; NativeUiBaiduTileSource? baiduTiles = null;
         NativeUiMapContext? context = null; MemoryLayer? points = null; MemoryLayer? route = null; NativeUiElement[] markers = []; var generation = 0;
         void StopMap()
         {
-            generation++; control?.Dispose(); control = null; tiles?.Dispose(); tiles = null; points = route = null; context = null;
+            generation++; control?.Dispose(); control = null; tiles?.Dispose(); tiles = null; baiduTiles?.Dispose(); baiduTiles = null; points = route = null; context = null;
             host.Children.Clear(); host.Visibility = fit.Visibility = Visibility.Collapsed;
         }
         (MPoint Point, NativeUiElement Marker)[] Projected() => markers.Where(marker => NativeUiCoordinates.Valid(new(N(marker, "lat"), N(marker, "lng"))))
@@ -94,9 +94,13 @@ internal sealed partial class NativeUiRenderer
             {
                 context = await GetMapContextAsync();
                 if (visual.Disposed || version != generation) return;
-                tiles = new(context); var owned = tiles;
-                owned.Failed += () => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed && version == generation) { StopMap(); status.Text = "地图瓦片不可用，已保留地点列表；可重试或更换提供方。"; load.Content = "重试加载地图"; } });
-                var source = new CardTileSource(context, owned); var map = new Map(); NativeUiMapTileSchema.ConfigureMap(map, source.Schema);
+                void TileFailed() => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed && version == generation) { StopMap(); status.Text = "地图瓦片不可用，已保留地点列表；可重试或更换提供方。"; load.Content = "重试加载地图"; } });
+                IHttpTileSource source;
+                if (context.Settings.Provider == NativeUiMapProvider.Baidu)
+                { baiduTiles = new(context); baiduTiles.Failed += TileFailed; source = baiduTiles; }
+                else
+                { tiles = new(context); tiles.Failed += TileFailed; source = new CardTileSource(context, tiles); }
+                var map = new Map(); NativeUiMapTileSchema.ConfigureMap(map, source.Schema);
                 map.Layers.Add(new TileLayer(source) { Name = "底图" });
                 route = new MemoryLayer { Name = "地点顺序连线", Style = null }; points = new MemoryLayer { Name = "地点", Style = null };
                 map.Layers.Add(route); map.Layers.Add(points);

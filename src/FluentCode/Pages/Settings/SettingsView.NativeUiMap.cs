@@ -20,6 +20,7 @@ public sealed partial class SettingsView
     private readonly TextBox _mapTemplate = new() { PlaceholderText = "https://tiles.example.org/{z}/{x}/{y}.png", TextWrapping = TextWrapping.Wrap, MinWidth = 240 };
     private readonly TextBox _mapAttribution = new() { PlaceholderText = "地图数据与瓦片提供方署名", TextWrapping = TextWrapping.Wrap, MinWidth = 240 };
     private readonly StackPanel _mapTianDiTu = new() { Spacing = SettingsCards.RowSpacing };
+    private readonly StackPanel _mapBaidu = new() { Spacing = SettingsCards.RowSpacing, Visibility = Visibility.Collapsed };
     private readonly StackPanel _mapCustom = new() { Spacing = SettingsCards.RowSpacing };
     private readonly Button _mapSave = new() { Content = "保存" };
 
@@ -31,12 +32,13 @@ public sealed partial class SettingsView
         AutomationProperties.SetName(_mapKey, "天地图用户密钥"); AutomationProperties.SetName(_mapTemplate, "自定义 XYZ HTTPS 瓦片模板"); AutomationProperties.SetName(_mapAttribution, "自定义地图署名");
         _mapTianDiTu.Children.Add(SettingsCards.Card("\uE72E", "天地图用户密钥", "免费用户密钥在 Windows DPAPI 中加密保存；界面不会回显已有密钥", _mapKey));
         _mapTianDiTu.Children.Add(SettingsCards.SubContent(new StackPanel { Spacing = 8, Children = { _mapKeyNote, _mapClearKey } }));
+        _mapBaidu.Children.Add(SettingsCards.Card("\uE946", "百度地图", "百度地图服务条款适用。", new HyperlinkButton { Content = "服务条款", NavigateUri = new Uri("https://lbsyun.baidu.com/docs/pcsa?title=law/open/law") }));
         _mapCustom.Children.Add(SettingsCards.Expander("\uE774", "XYZ 瓦片地址", "必须为 HTTPS，并包含 {z}、{x}、{y}", null, SettingsCards.SubContent(_mapTemplate)));
         _mapCustom.Children.Add(SettingsCards.Expander("\uE946", "提供方署名", "按提供方要求填写；会显示在地图上", null, SettingsCards.SubContent(_mapAttribution)));
         var panel = new StackPanel { Spacing = SettingsCards.GroupSpacing };
         panel.Children.Add(SettingsCards.Group("原生交互卡片",
-            SettingsCards.Card("\uE707", "地图提供方", "卡片先显示地点列表；点击“加载地图”后才会请求瓦片", _mapProvider), _mapTianDiTu, _mapCustom));
-        panel.Children.Add(SettingsCards.Group(null, SettingsCards.Card("\uE946", "地图服务条款", "请遵守各提供方服务条款及授权范围。AI 使用 WGS-84；高德转换为 GCJ-02，百度转换为 BD-09 / BD09MC。百度瓦片无需 AK，使用仍受百度地图条款约束。OpenStreetMap 请求带 User-Agent、缓存和署名。", null)));
+            SettingsCards.Card("\uE707", "地图提供方", "卡片先显示地点列表；点击“加载地图”后才会请求瓦片", _mapProvider), _mapTianDiTu, _mapBaidu, _mapCustom));
+        panel.Children.Add(SettingsCards.Group(null, SettingsCards.Card("\uE946", "地图服务条款", "请遵守所选提供方的服务条款及授权范围。", null)));
         panel.Children.Add(SettingsCards.Group(null, SettingsCards.Card("\uE74E", "保存地图设置", "下次点击加载或重新加载卡片地图时生效；媒体和图片也只在点击后加载", _mapSave)));
         _mapProvider.SelectionChanged += (_, _) => MapDraftChanged(); _mapKey.PasswordChanged += (_, _) => MapDraftChanged();
         _mapClearKey.Checked += (_, _) => MapDraftChanged(); _mapClearKey.Unchecked += (_, _) => MapDraftChanged();
@@ -49,6 +51,7 @@ public sealed partial class SettingsView
     private void MapDraftChanged()
     {
         _mapTianDiTu.Visibility = SelectedMapProvider == NativeUiMapProvider.TianDiTu ? Visibility.Visible : Visibility.Collapsed;
+        _mapBaidu.Visibility = SelectedMapProvider == NativeUiMapProvider.Baidu ? Visibility.Visible : Visibility.Collapsed;
         _mapCustom.Visibility = SelectedMapProvider == NativeUiMapProvider.Custom ? Visibility.Visible : Visibility.Collapsed;
         if (!_suppressUiEvents) _mapDirty = true;
         _mapSave.IsEnabled = _mapDirty && !_mapSaving;
