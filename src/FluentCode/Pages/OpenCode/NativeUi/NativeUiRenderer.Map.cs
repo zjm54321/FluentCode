@@ -7,7 +7,6 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using BruTile;
-using BruTile.Predefined;
 using FluentCode.Models;
 using FluentCode.Services.Configuration;
 using FluentCode.Services.NativeUi;
@@ -31,7 +30,7 @@ internal sealed partial class NativeUiRenderer
     internal Func<Task<NativeUiMapContext>>? MapContextProvider { get; set; }
     private sealed class CardTileSource(NativeUiMapContext context, NativeUiTileClient client) : IHttpTileSource
     {
-        public ITileSchema Schema { get; } = new GlobalSphericalMercator(0, NativeUiMapProviders.MaxZoom(context.Settings.Provider));
+        public ITileSchema Schema { get; } = NativeUiMapTileSchema.Create(context.Settings.Provider);
         public string Name => NativeUiMapProviders.Name(context.Settings.Provider);
         public Attribution Attribution => new(NativeUiMapProviders.Attribution(context.Settings), "");
         public async Task<byte[]?> GetTileAsync(HttpClient _, TileInfo tile, CancellationToken? cancellationToken = null) => await client.GetAsync(tile.Index.Level, tile.Index.Col, tile.Index.Row, cancellationToken ?? default);
@@ -60,7 +59,7 @@ internal sealed partial class NativeUiRenderer
             host.Children.Clear(); host.Visibility = fit.Visibility = Visibility.Collapsed;
         }
         (MPoint Point, NativeUiElement Marker)[] Projected() => markers.Where(marker => NativeUiCoordinates.Valid(new(N(marker, "lat"), N(marker, "lng"))))
-            .Select(marker => { var p = NativeUiCoordinates.ForProvider(new(N(marker, "lat"), N(marker, "lng")), context?.Settings.Provider ?? NativeUiMapProvider.OpenStreetMap); var xy = NativeUiCoordinates.WebMercator(p); return (new MPoint(xy.X, xy.Y), marker); }).ToArray();
+            .Select(marker => { var xy = NativeUiCoordinates.Project(new(N(marker, "lat"), N(marker, "lng")), context?.Settings.Provider ?? NativeUiMapProvider.OpenStreetMap); return (new MPoint(xy.X, xy.Y), marker); }).ToArray();
         void Fit()
         {
             if (control is null) return; var projected = Projected(); if (projected.Length == 0) return;
@@ -95,10 +94,10 @@ internal sealed partial class NativeUiRenderer
             {
                 context = await GetMapContextAsync();
                 if (visual.Disposed || version != generation) return;
-                if (context.Settings.Provider == NativeUiMapProvider.Baidu) throw new NotSupportedException("百度地图暂不支持，请在设置中选择其他提供方。");
                 tiles = new(context); var owned = tiles;
                 owned.Failed += () => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed && version == generation) { StopMap(); status.Text = "地图瓦片不可用，已保留地点列表；可重试或更换提供方。"; load.Content = "重试加载地图"; } });
-                var map = new Map { CRS = "EPSG:3857" }; map.Layers.Add(new TileLayer(new CardTileSource(context, owned)) { Name = "底图" });
+                var source = new CardTileSource(context, owned); var map = new Map(); NativeUiMapTileSchema.ConfigureMap(map, source.Schema);
+                map.Layers.Add(new TileLayer(source) { Name = "底图" });
                 route = new MemoryLayer { Name = "地点顺序连线", Style = null }; points = new MemoryLayer { Name = "地点", Style = null };
                 map.Layers.Add(route); map.Layers.Add(points);
                 map.Tapped += (_, args) => { if (visual.Disposed || points is null) return; var feature = args.GetMapInfo(new ILayer[] { points }).Feature; if (feature?["label"] is string label) { SetField(visual, key, "selected", "", label); args.Handled = true; } };
