@@ -15,9 +15,22 @@ $assembly = Join-Path $output 'NativeUiTests.dll'
 $production = Get-ChildItem (Join-Path $repo 'src/FluentCode/Services/NativeUi/*.cs') | ForEach-Object FullName
 $production += (Join-Path $repo 'src/FluentCode/Models/NativeUiMapSettings.cs')
 $catalog = Join-Path $repo 'src/FluentCode/Services/NativeUi/catalog.json'
-$arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'), ('/resource:"' + $catalog + '",FluentCode.NativeUi.catalog.json'))
+# The locked map libraries target .NET 9; .NET 10 unifies their framework references.
+$arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', '/nowarn:CS1701', ('/out:"' + $assembly + '"'), ('/resource:"' + $catalog + '",FluentCode.NativeUi.catalog.json'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
-$arguments += ($production + @((Join-Path $PSScriptRoot 'Program.cs'))) | ForEach-Object { '"' + $_ + '"' }
+# Exercise the real tile schema and navigator headlessly, using the app's locked packages.
+$packages = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $env:USERPROFILE '.nuget/packages' }
+$lock = Get-Content (Join-Path $repo 'src/FluentCode/packages.lock.json') -Raw | ConvertFrom-Json
+$dependencies = ($lock.dependencies.PSObject.Properties | Select-Object -First 1).Value
+foreach ($package in @('BruTile', 'Mapsui')) {
+    $version = $dependencies.$package.resolved
+    $library = Join-Path $packages ($package.ToLowerInvariant() + '/' + $version + '/lib/net9.0/' + $package + '.dll')
+    if (!(Test-Path -LiteralPath $library)) { throw "Cached $package $version is required; restore the app before running focused tests." }
+    $arguments += '/reference:"' + $library + '"'
+    Copy-Item -LiteralPath $library -Destination $output
+}
+$testSources = Get-ChildItem (Join-Path $PSScriptRoot '*.cs') | ForEach-Object FullName
+$arguments += ($production + $testSources) | ForEach-Object { '"' + $_ + '"' }
 $response = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $response
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$response" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')

@@ -155,8 +155,8 @@ internal static class Program
             var tdt = osm with { Provider = NativeUiMapProvider.TianDiTu };
             Require(NativeUiMapProviders.TileUrl(tdt, 2, 1, 3, "user+key").AbsoluteUri.Contains("TILEROW=3&TILECOL=1&tk=user%2Bkey"), "TianDiTu user key is escaped, never embedded");
             var noKey = false; try { NativeUiMapProviders.TileUrl(tdt, 2, 1, 3); } catch (InvalidOperationException) { noKey = true; }
-            var baiduBlocked = false; try { NativeUiMapProviders.TileUrl(osm with { Provider = NativeUiMapProvider.Baidu }, 2, 1, 3); } catch (NotSupportedException) { baiduBlocked = true; }
-            Require(noKey && baiduBlocked, "Missing user key and unsupported Baidu fail locally");
+            Require(noKey, "Missing TianDiTu user key fails locally");
+            await BaiduMapTests.Run(repo, Require);
             foreach (var source in new[] { "http://example.org/a.mp4", "file:///a.mp4", "https://user:secret@example.org/a.mp4", "javascript:alert(1)" }) Require(!NativeUiMediaPolicy.Https(source), "Media disallows non-HTTPS and credential URLs");
             Require(NativeUiMediaPolicy.Https("https://example.org/full/video.mp4?token=1#track") && NativeUiMediaPolicy.YouTubeId("https://youtu.be/dQw4w9WgXcQ") == "dQw4w9WgXcQ" && NativeUiMediaPolicy.YouTubeId("https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ") is null, "Full HTTPS media and allowlisted YouTube IDs");
             var gate = new NativeUiLoadGate(); Require(!gate.Request(), "Empty media/map source cannot be requested"); gate.Bind("https://example.org/a"); Require(!gate.Requested && gate.Request(), "Media/map source loads only after explicit request"); gate.Bind("https://example.org/a"); Require(gate.Requested, "Reactive refresh retains same-source consent"); gate.Bind("https://example.org/b"); Require(!gate.Requested, "Source change revokes load consent");
@@ -202,7 +202,7 @@ internal static class Program
             var nativeMapSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Map.cs"));
             Require(nativeMapSource.Contains("FontFamily = NativeUiTheme.MapLabelFont"), "Mapsui labels use the shared CJK-capable font instead of Skia's Latin-only default");
             var mapSettingsSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/Settings/SettingsView.NativeUiMap.cs"));
-            Require(mapSettingsSource.Contains("IsEnabled = provider != NativeUiMapProvider.Baidu") && mapSettingsSource.Contains("_secretStore.SetAsync(created, _mapKey.Password") && mapSettingsSource.Contains("TianDiTuCredentialId = id"), "Provider settings disable Baidu and store TianDiTu only through DPAPI credential references");
+            Require(!mapSettingsSource.Contains("IsEnabled = provider != NativeUiMapProvider.Baidu") && mapSettingsSource.Contains("_secretStore.SetAsync(created, _mapKey.Password") && mapSettingsSource.Contains("TianDiTuCredentialId = id"), "Provider settings enable Baidu and store TianDiTu only through DPAPI credential references");
             var markdownSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeRichTextPresenter.cs"));
             Require(markdownSource.Contains("_nativeUiSandbox ? null : OpenCodeImageContext.Find(_root)") && markdownSource.Contains("_nativeUiSandbox ? null : new ChipContext")
                 && markdownSource.Contains("? nativeUiSandbox ? \"text\" : \"mermaid\""), "Native Markdown has no inherited files/network/browser capability");
