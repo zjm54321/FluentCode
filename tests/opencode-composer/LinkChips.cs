@@ -216,6 +216,7 @@ internal static partial class Program
             && chipView.Contains("HighContrast"), "click opens http/https only; Narrator name; HC");
         var fav = Src("OpenCodeFaviconCache.cs");
         Check(fav.Contains("ConnectCallback") && fav.Contains("IsPrivateAddress"), "favicon fetch refuses private addresses after DNS");
+        await LinkStatus();
     }
 
     private static async Task ImagePasteEditorRegression()
