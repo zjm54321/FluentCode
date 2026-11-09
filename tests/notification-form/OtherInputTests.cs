@@ -60,6 +60,11 @@ internal static class OtherInputTests
         var card = new OpenCodeFormCard(form, (_, answer) => submitted.Add(answer), _ => { }, _ => { }, (_, _) => { });
         var overlay = new OpenCodeQuestionOverlay();
         Check(overlay.Sync([card]) == 1 && card.Editor is { PageCount: 2 }, "CR-laden question form is answerable");
+        // Closed InfoBars must leave layout: WinUI keeps a closed bar Visible at zero height, and the
+        // layout StackPanel (Spacing 12) then opened a ~60 px gap above the first question (1.2611.15 capture).
+        var bars = Descendants(overlay).OfType<InfoBar>().ToList();
+        Check(bars.Count == 5 && bars.All(bar => !bar.IsOpen && bar.Visibility == Visibility.Collapsed),
+            "closed status bars are collapsed so the first question follows the header at normal spacing");
         Check(card.QuestionTitle == "你的手机 等 2 个问题", "multi-question title replaces the generic “Questions”");
         var texts = Texts(card.Editor!).ToList();
         Check(!texts.Any(t => t.Contains('\r')), "no rendered question text keeps a bare CR");
@@ -77,6 +82,8 @@ internal static class OtherInputTests
         Check(submitted.Count == 1 && submitted[0]["q0"].GetString() == "可视化设计稿\r（推荐\r）\r \r(Recommended\r)"
             && submitted[0]["q1"].EnumerateArray().Single().GetString() == "主\r agent\r 与\r subagent\r 的区分",
             "answers still submit the exact server option values");
+        Check(bars.All(bar => bar.Visibility == (bar.IsOpen ? Visibility.Visible : Visibility.Collapsed)),
+            "status bar visibility follows IsOpen after submit");
 
         // Single question: the overlay title already names it, so the editor does not repeat the label.
         var single = JsonSerializer.Deserialize<OpenCodeFormInfo>("""
@@ -85,6 +92,8 @@ internal static class OtherInputTests
             """)!;
         var one = new OpenCodeFormCard(single, (_, _) => { }, _ => { }, _ => { }, (_, _) => { });
         overlay.Sync([one]);
+        Check(Descendants(overlay).OfType<InfoBar>().All(bar => bar.Visibility == Visibility.Collapsed),
+            "single-question overlay has no reserved status-bar space");
         Check(one.QuestionTitle == "性能修复是否先开工" && !Texts(one.Editor!).Contains("性能修复是否先开工")
             && Texts(one.Editor!).Contains("要现在先开始改吗？"), "single-question card shows header once (title) and the question body");
         var required = single with { Fields = [single.Fields![0] with { Required = true }] };
