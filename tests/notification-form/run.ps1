@@ -42,7 +42,7 @@ $other = $common | Where-Object { !$_.StartsWith('/out:') -and !$_.EndsWith('Pro
 $other += '/define:QUESTION_INPUT_TESTS'
 $other += '/out:"' + (Join-Path $output 'OtherInputTests.dll') + '"'
 $other += '"' + (Join-Path $repo 'tests/opencode-event-sync/InteractionUi.TestHost.cs') + '"'
-foreach ($name in @('OpenCodeFormCard.cs', 'OpenCodeQuestionOverlay.cs', 'OpenCodeInteractionPolicy.cs', 'OpenCodeFormFieldPresentation.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeDisplayText.cs')) {
+foreach ($name in @('OpenCodeFormCard.cs', 'OpenCodeQuestionOverlay.cs', 'OpenCodeInteractionPolicy.cs', 'OpenCodeFormFieldPresentation.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeDisplayText.cs', 'OpenCodeOptionLabelPanel.cs')) {
     $other += '"' + (Join-Path $repo "src/FluentCode/Pages/OpenCode/$name") + '"'
 }
 foreach ($name in @('OtherInput.TestHost.cs', 'OtherInputTests.cs')) { $other += '"' + (Join-Path $PSScriptRoot $name) + '"' }

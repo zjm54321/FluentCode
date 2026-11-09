@@ -582,18 +582,18 @@ internal sealed class OpenCodeQuestionOverlay : Grid
             _confirming = false;
         }
 
-        _staleBar.IsOpen = stale;
-        _busyBar.IsOpen = card.IsBusy;
+        SetBarOpen(_staleBar, stale);
+        SetBarOpen(_busyBar, card.IsBusy);
         _busyBar.Message = card.IsBusy ? card.StatusMessage : string.Empty;
-        _blockedBar.IsOpen = card.IsBlocked && !card.IsBusy && !card.IsResolutionPending;
+        SetBarOpen(_blockedBar, card.IsBlocked && !card.IsBusy && !card.IsResolutionPending);
         _blockedBar.Message = _blockedBar.IsOpen ? card.StatusMessage : string.Empty;
         _recheckButton.IsEnabled = card.ActionsEnabled;
-        _resolveBar.IsOpen = card.IsResolutionPending;
+        SetBarOpen(_resolveBar, card.IsResolutionPending);
         _resolveBar.Message = card.IsResolutionPending ? card.StatusMessage : string.Empty;
         _resolveRetryButton.IsEnabled = card.ActionsEnabled;
         _resolveSettledButton.IsEnabled = card.ActionsEnabled;
         _errorBar.Message = card.ErrorMessage;
-        _errorBar.IsOpen = card.ErrorMessage.Length > 0 && !card.IsBusy;
+        SetBarOpen(_errorBar, card.ErrorMessage.Length > 0 && !card.IsBusy);
 
         _progress.IsActive = card.IsBusy;
         _progress.Visibility = card.IsBusy ? Visibility.Visible : Visibility.Collapsed;
@@ -766,9 +766,19 @@ internal sealed class OpenCodeQuestionOverlay : Grid
             Title = title,
             IsClosable = false,
             IsOpen = false,
+            // A closed InfoBar only collapses its template; the control itself stays Visible
+            // at zero height, so the layout StackPanel still adds Spacing (12) around each one.
+            // Five closed bars used to open a ~60 px hole between the header and the first question.
+            Visibility = Visibility.Collapsed,
         };
         AutomationProperties.SetLiveSetting(bar, AutomationLiveSetting.Polite);
         return bar;
+    }
+
+    private static void SetBarOpen(InfoBar bar, bool open)
+    {
+        bar.IsOpen = open;
+        bar.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private static void Place(Grid grid, FrameworkElement element, int column)
