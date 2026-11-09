@@ -278,6 +278,10 @@ internal sealed class NativeUiRuntime : IDisposable
     {
         if (_disposed) return;
         NativeUiSafety.Check(value, _catalog.Limits);
+        // Controls re-assert their current value while WinUI applies templates during measure
+        // (CommunityToolkit Segmented sets SelectedIndex in OnApplyTemplate). A no-op write must not
+        // re-render the card, or the render mutates panels inside that layout pass and WinUI fails fast.
+        if (_state.TryGetValue(name, out var current) && Same(current, value)) return;
         _state[name] = value; Changed?.Invoke();
     }
     internal object? Field(string name, object? value)
@@ -291,8 +295,9 @@ internal sealed class NativeUiRuntime : IDisposable
         if (_disposed) return;
         NativeUiSafety.Check(newValue, _catalog.Limits);
         if (bindingValue is NativeUiBinding binding) Set(binding.Target, Evaluator(new Dictionary<string, object?> { ["$value"] = newValue }).Evaluate(binding.Expression));
-        else { _fields[name] = newValue; Changed?.Invoke(); }
+        else { if (_fields.TryGetValue(name, out var current) && Same(current, newValue)) return; _fields[name] = newValue; Changed?.Invoke(); }
     }
+    private static bool Same(object? left, object? right) => ReferenceEquals(left, right) || NativeUiValues.ToJson(left) is { } a && NativeUiValues.ToJson(right) is { } b && a.ToJsonString() == b.ToJsonString();
     internal bool TrySetField(string name, object? bindingValue, object? newValue)
     {
         if (_disposed) return false;

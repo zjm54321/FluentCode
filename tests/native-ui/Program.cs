@@ -264,6 +264,20 @@ internal static class Program
             Require(themeSource.Contains("\"ink\" => \"TextFillColorPrimaryBrush\", \"canvas\" => \"SolidBackgroundFillColorBaseBrush\"")
                 && themeSource.Contains("=> Palette ? \"NativeUiChart\" + color[5] + \"Brush\" : \"AccentFillColorDefaultBrush\"")
                 && themeSource.Contains("text.Foreground = new SolidColorBrush(raw)"), "Chart/ink/canvas backgrounds are solid fills and raw text colours apply");
+            // A control re-asserting its current value (Segmented.OnApplyTemplate sets SelectedIndex during measure)
+            // must not re-render the card: the re-render mutated panels inside the layout pass and crashed the app
+            // with 0xC000027B (oiu-chart, oiu-segmented and the dashboard snapshots).
+            using (var segmentedRuntime = new NativeUiRuntime(parser.Parse("$range = \"30d\"\nroot = Col([SegmentedControl($range, [\"7d\", \"30d\"]), Text($range), SegmentedControl(\"a\", [\"a\", \"b\"])])"), catalog))
+            {
+                var renders = 0; segmentedRuntime.Changed += () => renders++;
+                var bound = Elements(segmentedRuntime.EvaluateRoot()).Where(e => e.TypeName == "SegmentedControl").ToArray();
+                // The renderer reads Field (Apply) before the control can echo the value back.
+                segmentedRuntime.Field("plain", bound[1].Props["value"]);
+                segmentedRuntime.SetField("range", bound[0].Props["value"], "30d"); segmentedRuntime.SetField("plain", bound[1].Props["value"], "a");
+                Require(renders == 0, "Re-asserting the current bound/field value does not re-render (" + renders + ")");
+                segmentedRuntime.SetField("range", bound[0].Props["value"], "7d"); segmentedRuntime.SetField("plain", bound[1].Props["value"], "b");
+                Require(renders == 2 && NativeUiValues.Text(segmentedRuntime.Get("$range")) == "7d", "A real selection change still re-renders once per change");
+            }
             // Node limit counts real nodes like the official validator: string characters and keys are not nodes.
             var prose = string.Concat(Enumerable.Repeat("Strings are one node each, however long the paragraph is. ", 60));
             var longCard = parser.Parse("root = Card([Title(\"Long answer\"), " + string.Join(", ", Enumerable.Range(0, 8).Select(i => "Text(\"" + prose + i + "\")")) + "])");
