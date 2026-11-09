@@ -815,6 +815,7 @@ public sealed class OpenCodeConversationView : StackPanel
         internal OpenCodeMessage? Snapshot { get; set; }
         internal OpenCodeMessage? RawSnapshot { get; set; }
         internal string RawFingerprint { get; set; } = string.Empty;
+        internal bool TimelineVisible { get; set; } = true;
         public required Action<OpenCodeMessage> Update { get; init; }
 
         /// <summary>该条目是否为指令通知的安全呈现；呈现方式改变时据其整体替换旧条目。</summary>
@@ -3035,6 +3036,10 @@ public sealed class OpenCodeConversationView : StackPanel
             }
 
             var visible = state.HasBoundary || state.CompletionShown || hasVisibleRun;
+            // A represented completion keeps its raw entry but its content wrapper is empty.
+            entry.TimelineVisible = visible && !(state.CompletionShown
+                && OpenCodeSubagentPresentation.TryReadCompletionMetadata(state.Message?.Metadata, out var completion)
+                && _subagentInvocationKeys.Contains(completion.ChildSessionId));
             if (!visible) _window.Measure(entry.Key, 0);
             else if (_window.Height(entry.Key) == 0) _window.Measure(entry.Key, _window.EstimatedHeight);
             if (state.Element is { } element)
@@ -3043,8 +3048,27 @@ public sealed class OpenCodeConversationView : StackPanel
                 element.Margin = state.HasBoundary ? new Thickness(0, 6, 0, 6) : new Thickness(0);
             }
         }
+        if (startIndex == 0) ApplyTurnEndProjection();
         if (_retryDeadline is not null && _retryStatus is not null && !Children.Contains(_retryStatus)) Children.Add(_retryStatus);
         ReconcileSteerRows();
+    }
+
+    private void ApplyTurnEndProjection()
+    {
+        var dividers = OpenCodeTurnEndProjection.Collapse(_entries.Select(entry => (entry.Snapshot, entry.TimelineVisible)));
+        for (var index = 0; index < _entries.Count; index++)
+        {
+            var entry = _entries[index];
+            if (entry.MessageType != OpenCodeMessageTypes.Idle) continue;
+            var visible = dividers.TryGetValue(index, out var caption);
+            entry.TimelineVisible = visible;
+            if (!visible) _window.Measure(entry.Key, 0);
+            else if (_window.Height(entry.Key) == 0) _window.Measure(entry.Key, _window.EstimatedHeight);
+            if (!entry.Realized) continue;
+            entry.Element.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            // Never replace Snapshot/IdleWatermark: receipts still use the real latest raw idle.
+            if (caption is not null) entry.Update(caption);
+        }
     }
 
     private OpenCodeToolRowModel? StepModel(PartEntry part)

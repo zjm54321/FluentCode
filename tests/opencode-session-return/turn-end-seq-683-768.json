@@ -1,0 +1,21 @@
+[
+  { "id": "msg_seq_683", "seq": 683, "type": "idle", "time": { "created": 1794207396990 }, "outcome": "succeeded" },
+  { "id": "msg_seq_689", "seq": 689, "type": "idle", "time": { "created": 1794207432024 }, "outcome": "succeeded" },
+  { "id": "msg_seq_694", "seq": 694, "type": "idle", "time": { "created": 1794207447004 }, "outcome": "succeeded" },
+  { "id": "msg_seq_697", "seq": 697, "type": "synthetic", "time": { "created": 1794207464260 }, "text": "Redacted child result", "metadata": { "source": "subagent", "childID": "ses_fixture_child_a", "agent": "fixer", "state": "completed" } },
+  { "id": "msg_seq_698", "seq": 698, "type": "assistant", "time": { "created": 1794207464309, "streamed": 1794207500349, "completed": 1794207503861 }, "content": [ { "id": "part_698_reasoning", "type": "reasoning", "text": "Redacted reasoning" }, { "id": "part_698_text", "type": "text", "text": "Redacted visible answer" } ] },
+  { "id": "msg_seq_705", "seq": 705, "type": "idle", "time": { "created": 1794207503874 }, "outcome": "succeeded" },
+  { "id": "msg_seq_707", "seq": 707, "type": "idle", "time": { "created": 1794207514626 }, "outcome": "succeeded" },
+  { "id": "msg_seq_709", "seq": 709, "type": "idle", "time": { "created": 1794207557798 }, "outcome": "succeeded" },
+  { "id": "msg_seq_711", "seq": 711, "type": "idle", "time": { "created": 1794207558953 }, "outcome": "succeeded" },
+  { "id": "msg_seq_720", "seq": 720, "type": "idle", "time": { "created": 1794207599461 }, "outcome": "succeeded" },
+  { "id": "msg_seq_723", "seq": 723, "type": "idle", "time": { "created": 1794207619286 }, "outcome": "succeeded" },
+  { "id": "msg_seq_725", "seq": 725, "type": "idle", "time": { "created": 1794207641486 }, "outcome": "succeeded" },
+  { "id": "msg_seq_736", "seq": 736, "type": "idle", "time": { "created": 1794207682235 }, "outcome": "succeeded" },
+  { "id": "msg_seq_742", "seq": 742, "type": "idle", "time": { "created": 1794207695921 }, "outcome": "succeeded" },
+  { "id": "msg_seq_745", "seq": 745, "type": "synthetic", "time": { "created": 1794207715979 }, "text": "Redacted child result", "metadata": { "source": "subagent", "childID": "ses_fixture_child_b", "agent": "fixer", "state": "completed" } },
+  { "id": "msg_seq_752", "seq": 752, "type": "assistant", "time": { "created": 1794207716013, "streamed": 1794207749842, "completed": 1794207751580 }, "content": [ { "id": "part_752_reasoning", "type": "reasoning", "text": "Redacted reasoning" }, { "id": "part_752_tool", "type": "tool", "name": "subagent", "state": { "status": "completed", "input": { "description": "Redacted task" }, "output": "Redacted result", "metadata": { "sessionID": "ses_fixture_child_c" } } } ] },
+  { "id": "msg_seq_761", "seq": 761, "type": "assistant", "time": { "created": 1794207751619, "streamed": 1794207796424, "completed": 1794207798084 }, "content": [ { "id": "part_761_text", "type": "text", "text": "Redacted final answer" } ] },
+  { "id": "msg_seq_766", "seq": 766, "type": "idle", "time": { "created": 1794207798088 }, "outcome": "succeeded" },
+  { "id": "msg_seq_768", "seq": 768, "type": "idle", "time": { "created": 1794207821684 }, "outcome": "succeeded" }
+]
