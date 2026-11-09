@@ -133,7 +133,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         AutomationProperties.SetAutomationId(list, "OpenCodeToolDetailTodoList");
         var shown = compact ? Math.Min(items.Length, OpenCodeToolDetailBuiltinData.CompactTodoRows) : items.Length;
         for (var index = 0; index < shown; index++)
-            list.Children.Add(TodoDetailRow(items[index].Content, items[index].Status, index));
+            list.Children.Add(OpenCodeSessionInsightsView.TodoRow(items[index], index, "OpenCodeToolDetailTodoItem."));
         panel.Children.Add(list);
         AddMore(panel, items.Length - shown, "项");
         return panel;
@@ -250,7 +250,7 @@ internal static partial class OpenCodeToolDetailBuiltins
 
             if (options.Children.Count > 0) block.Children.Add(options);
             var c = 0;
-            foreach (var custom in question.CustomAnswers()) block.Children.Add(CustomAnswer(custom, group + ".custom." + (c++).ToString(CultureInfo.InvariantCulture)));
+            foreach (var custom in question.CustomAnswers()) block.Children.Add(CustomAnswer(OpenCodeDisplayText.Block(custom), group + ".custom." + (c++).ToString(CultureInfo.InvariantCulture)));
             if (skipped > 0) AddMore(block, skipped, "个未选的选项");
 
             if (!answered)

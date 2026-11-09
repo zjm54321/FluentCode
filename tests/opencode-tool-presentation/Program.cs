@@ -25,6 +25,7 @@ internal static partial class Program
         SidebarModelNames();
         SessionToolViews();
         QuestionAndDuration();
+        QuestionTodoFormat(args[0]);
         RedesignSourceContracts(args[0]);
         HeaderAffordance(args[0]);
         HomeSettingsLayouts(args[0]);

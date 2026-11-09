@@ -176,7 +176,10 @@ internal static class OpenCodeFormInputPolicy
             }
 
             var key = field.Key;
-            var label = string.IsNullOrWhiteSpace(field.Title) ? (key ?? "（无 key）") : field.Title!;
+            // Display text only (Key and option Value stay exact): stray CR / controls in model-authored titles
+            // would otherwise split the question card's label into one fragment per line.
+            var label = OpenCodeDisplayText.Line(field.Title) is { Length: > 0 } title ? title : (key ?? "（无 key）");
+            var description = OpenCodeDisplayText.Block(field.Description) is { Length: > 0 } body ? body : null;
 
             if (string.IsNullOrWhiteSpace(key))
             {
@@ -239,10 +242,11 @@ internal static class OpenCodeFormInputPolicy
                         break;
                     }
 
-                    var optionLabel = string.IsNullOrWhiteSpace(option.Label) ? option.Value : option.Label!;
-                    options.Add(new OpenCodeFormOptionPlan(option.Value, optionLabel)
+                    var optionLabel = OpenCodeDisplayText.Line(option.Label) is { Length: > 0 } shown ? shown : OpenCodeDisplayText.Line(option.Value);
+                    options.Add(new OpenCodeFormOptionPlan(option.Value, optionLabel.Length > 0 ? optionLabel : option.Value)
                     {
-                        Description = Present(option.GetDescription()) ? option.GetDescription().GetString() : null,
+                        Description = Present(option.GetDescription())
+                            && OpenCodeDisplayText.Block(option.GetDescription().GetString()) is { Length: > 0 } optionDescription ? optionDescription : null,
                     });
                 }
 
@@ -259,7 +263,7 @@ internal static class OpenCodeFormInputPolicy
                     fieldPlans.Add(new OpenCodeFormFieldPlan(
                         key,
                         label,
-                        field.Description,
+                        description,
                         field.Required == true,
                         options.Count == 0
                             ? OpenCodeFormFieldKind.Text
@@ -271,17 +275,17 @@ internal static class OpenCodeFormInputPolicy
 
                 case OpenCodeFormFieldTypes.Boolean when options.Count == 0 && field.Custom != true:
                     fieldPlans.Add(new OpenCodeFormFieldPlan(
-                        key, label, field.Description, field.Required == true, OpenCodeFormFieldKind.Boolean, options));
+                        key, label, description, field.Required == true, OpenCodeFormFieldKind.Boolean, options));
                     break;
 
                 case OpenCodeFormFieldTypes.Number when options.Count == 0 && field.Custom != true:
                     fieldPlans.Add(new OpenCodeFormFieldPlan(
-                        key, label, field.Description, field.Required == true, OpenCodeFormFieldKind.Number, options));
+                        key, label, description, field.Required == true, OpenCodeFormFieldKind.Number, options));
                     break;
 
                 case OpenCodeFormFieldTypes.Integer when options.Count == 0 && field.Custom != true:
                     fieldPlans.Add(new OpenCodeFormFieldPlan(
-                        key, label, field.Description, field.Required == true, OpenCodeFormFieldKind.Integer, options));
+                        key, label, description, field.Required == true, OpenCodeFormFieldKind.Integer, options));
                     break;
 
                 case OpenCodeFormFieldTypes.Multiselect:
@@ -293,7 +297,7 @@ internal static class OpenCodeFormInputPolicy
 
                     // custom=true（D4）：勾选项 + 追加一条自定义文本，答案仍为字符串数组。
                     fieldPlans.Add(new OpenCodeFormFieldPlan(
-                        key, label, field.Description, field.Required == true, OpenCodeFormFieldKind.MultiSelect, options)
+                        key, label, description, field.Required == true, OpenCodeFormFieldKind.MultiSelect, options)
                     {
                         AllowsCustom = field.Custom == true,
                     });
@@ -613,7 +617,7 @@ internal static class OpenCodeFormInputPolicy
 
         enriched = field with
         {
-            Placeholder = Present(source.GetPlaceholder()) ? source.GetPlaceholder().GetString() : null,
+            Placeholder = Present(source.GetPlaceholder()) && OpenCodeDisplayText.Line(source.GetPlaceholder().GetString()) is { Length: > 0 } placeholder ? placeholder : null,
             MinLength = minLength,
             MaxLength = maxLength,
             Minimum = minimum,

@@ -61,7 +61,7 @@ foreach ($name in @('OpenCodeConstants.cs', 'OpenCodeJson.cs', 'OpenCodeExceptio
     $production += Join-Path "$repo/src/FluentCode/Services/OpenCode" $name
 }
 foreach ($name in @('OpenCodeToolRowPresentation.cs', 'OpenCodeDetailPopupLayout.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeLineDiff.cs',
-    'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeBrowserToolPresentation.cs', 'OpenCodeSubagentPresentation.cs',
+    'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeDisplayText.cs', 'OpenCodeBrowserToolPresentation.cs', 'OpenCodeSubagentPresentation.cs',
     'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeSessionToolData.cs', 'OpenCodeContextStatusParser.cs', 'OpenCodeWorkingPhrases.cs', 'OpenCodeWorkingClock.cs',
     'OpenCodeWorkingFamily.cs', 'OpenCodeModelPresentation.cs', 'OpenCodeAgentIcons.cs', 'OpenCodeAgentMentionScope.cs', 'OpenCodeAgentTreeProjection.cs', 'OpenCodeComposerNativeDialogModels.cs', 'OpenCodeComposerInputPolicy.cs')) {
     $production += Join-Path "$repo/src/FluentCode/Pages/OpenCode" $name
@@ -69,7 +69,7 @@ foreach ($name in @('OpenCodeToolRowPresentation.cs', 'OpenCodeDetailPopupLayout
 $assembly = Join-Path $output 'OpenCodeToolPresentationTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
-$arguments += ($production + @($extracted, $tooltipGenerated, (Join-Path $PSScriptRoot 'View.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'Omo307PresentationTests.cs'), (Join-Path $PSScriptRoot 'AgentIdentityTests.cs'), (Join-Path $PSScriptRoot 'TooltipCopyTests.cs'))) | ForEach-Object { '"' + $_ + '"' }
+$arguments += ($production + @($extracted, $tooltipGenerated, (Join-Path $PSScriptRoot 'View.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'Omo307PresentationTests.cs'), (Join-Path $PSScriptRoot 'AgentIdentityTests.cs'), (Join-Path $PSScriptRoot 'TooltipCopyTests.cs'), (Join-Path $PSScriptRoot 'QuestionTodoFormatTests.cs'))) | ForEach-Object { '"' + $_ + '"' }
 $response = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $response
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$response" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')

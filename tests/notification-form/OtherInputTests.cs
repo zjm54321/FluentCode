@@ -26,7 +26,70 @@ internal static class OtherInputTests
         QueuedPageFocus();
         QueuedRequestSwitchFocus();
         PageNavigationStillFocusesNewQuestion();
+        QuestionCardFormat();
         Console.WriteLine($"PASS Other input: {_checks} assertions; production FormCard/QuestionOverlay, controlled dispatcher/native control doubles, no physical IME.");
+    }
+
+    private static IEnumerable<string> Texts(UIElement root) => Deep(root).OfType<TextBlock>().Select(t => t.Text);
+
+    private static IEnumerable<UIElement> Deep(UIElement root)
+    {
+        foreach (var item in Descendants(root))
+        {
+            yield return item;
+            if (item is RadioButtons radios)
+                foreach (var child in radios.Items.OfType<UIElement>())
+                    foreach (var nested in Deep(child)) yield return nested;
+        }
+    }
+
+    // Real question-tool form shape (OpenCode maps questions[] to fields q0..qN, title "Questions", custom=true),
+    // with the bare-CR text recorded in the local DB on 2026-11-08.
+    private static void QuestionCardFormat()
+    {
+        var submitted = new List<IReadOnlyDictionary<string, JsonElement>>();
+        var form = JsonSerializer.Deserialize<OpenCodeFormInfo>("""
+            {"id":"frm_cr","sessionID":"ses_cr","title":"Questions","metadata":{"kind":"question"},"fields":[
+              {"key":"q0","type":"string","title":"你的手机","description":"你平时用什么设备\r？我会按它的尺寸\r \r+\r 字体大小\r 4\r 去重新设计。","custom":true,
+               "options":[{"value":"常见\r 6\r.1\r~6\r.7\r 寸直屏","label":"常见\r 6\r.1\r~6\r.7\r 寸直屏","description":"我直接拿模拟器按这个尺寸复现"},
+                          {"value":"可视化设计稿\r（推荐\r）\r \r(Recommended\r)","label":"可视化设计稿\r（推荐\r）\r \r(Recommended\r)","description":""}]},
+              {"key":"q1","type":"multiselect","title":"重做\r范围","description":"这次重新设计覆盖哪些\r？（可多选\r）","custom":true,
+               "options":[{"value":"主\r agent\r 与\r subagent\r 的区分","label":"主\r agent\r 与\r subagent\r 的区分","description":"主会话\r/子代理的层级"}]}
+            ]}
+            """)!;
+        var card = new OpenCodeFormCard(form, (_, answer) => submitted.Add(answer), _ => { }, _ => { }, (_, _) => { });
+        var overlay = new OpenCodeQuestionOverlay();
+        Check(overlay.Sync([card]) == 1 && card.Editor is { PageCount: 2 }, "CR-laden question form is answerable");
+        Check(card.QuestionTitle == "你的手机 等 2 个问题", "multi-question title replaces the generic “Questions”");
+        var texts = Texts(card.Editor!).ToList();
+        Check(!texts.Any(t => t.Contains('\r')), "no rendered question text keeps a bare CR");
+        Check(texts.Contains("你平时用什么设备？我会按它的尺寸 + 字体大小 4 去重新设计。") && texts.Contains("常见 6.1~6.7 寸直屏")
+            && texts.Contains("可视化设计稿") && texts.Contains("推荐") && texts.Contains("重做范围") && texts.Contains("主会话/子代理的层级"),
+            "question, option labels, descriptions and recommended tag render as clean single lines");
+        Check(!texts.Any(t => t.Contains("Recommended", StringComparison.Ordinal)), "the raw (Recommended) suffix is not shown");
+        var radios = Descendants(card.Editor!).OfType<RadioButtons>().Single();
+        Check(((UIElement)radios.Items[1]).AutomationName == "可视化设计稿（推荐）", "recommended option reads as one name");
+        radios.SelectedIndex = 1;
+        var submit = Descendants(overlay).OfType<Button>().Single(b => b.AutomationId == "OpenCodeFormSubmit_frm_cr");
+        submit.ClickForTest();
+        Descendants(card.Editor!).OfType<CheckBox>().First(c => c.AutomationId.EndsWith("_q1_主\r agent\r 与\r subagent\r 的区分", StringComparison.Ordinal)).IsChecked = true;
+        submit.ClickForTest();
+        Check(submitted.Count == 1 && submitted[0]["q0"].GetString() == "可视化设计稿\r（推荐\r）\r \r(Recommended\r)"
+            && submitted[0]["q1"].EnumerateArray().Single().GetString() == "主\r agent\r 与\r subagent\r 的区分",
+            "answers still submit the exact server option values");
+
+        // Single question: the overlay title already names it, so the editor does not repeat the label.
+        var single = JsonSerializer.Deserialize<OpenCodeFormInfo>("""
+            {"id":"frm_one","sessionID":"ses_cr","title":"Questions","fields":[
+              {"key":"q0","type":"string","title":"性能修复是否先开工","description":"要现在先开始改吗？","custom":true,"options":[{"value":"现在先改","label":"现在先改"}]}]}
+            """)!;
+        var one = new OpenCodeFormCard(single, (_, _) => { }, _ => { }, _ => { }, (_, _) => { });
+        overlay.Sync([one]);
+        Check(one.QuestionTitle == "性能修复是否先开工" && !Texts(one.Editor!).Contains("性能修复是否先开工")
+            && Texts(one.Editor!).Contains("要现在先开始改吗？"), "single-question card shows header once (title) and the question body");
+        var required = single with { Fields = [single.Fields![0] with { Required = true }] };
+        var requiredCard = new OpenCodeFormCard(required, (_, _) => { }, _ => { }, _ => { }, (_, _) => { });
+        Check(Texts(requiredCard.Editor!).Contains("必答"), "a required single question still says so");
     }
     private static void RepeatedOtherInput(bool multi)
     {

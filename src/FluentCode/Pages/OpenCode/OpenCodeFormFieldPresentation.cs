@@ -194,19 +194,35 @@ internal static class OpenCodeFormFieldPresentation
     /// <summary>“其他（自己输入）”选项的固定文案（单选可自定义时追加为最后一项）。</summary>
     internal const string OtherChoiceLabel = "其他（自己输入）";
 
+    /// <summary>question 工具给整份表单的通用英文标题（OpenCode 固定写 "Questions"），不作为界面标题显示。</summary>
+    internal const string GenericQuestionFormTitle = "Questions";
+
     /// <summary>
-    /// 时间线紧凑条目的标题：单题表单优先用该题标题（question 工具表单的整体标题通常是通用的 “Questions”），
-    /// 否则用表单标题；都缺失时为“（无标题提问）”。只读 schema 文本，不含用户输入。
+    /// 时间线条目与提问卡片的标题（单行）：单题表单用该题标题；多题时表单标题若缺失或只是通用的 “Questions”，
+    /// 用“首题标题 等 N 个问题”（与时间线工具行一致），否则用表单标题；都缺失时为“（无标题提问）”。
+    /// 只读 schema 文本，不含用户输入；换行、游离的 CR 与控制字符按 <see cref="OpenCodeDisplayText.Line"/> 清理。
     /// </summary>
     internal static string QuestionTitle(string? formTitle, IReadOnlyList<string> fieldLabels)
     {
         ArgumentNullException.ThrowIfNull(fieldLabels);
-        if (fieldLabels.Count == 1 && !string.IsNullOrWhiteSpace(fieldLabels[0]))
+        if (fieldLabels.Count == 1 && OpenCodeDisplayText.Line(fieldLabels[0]) is { Length: > 0 } only)
         {
-            return fieldLabels[0].Trim();
+            return only;
         }
 
-        return string.IsNullOrWhiteSpace(formTitle) ? "（无标题提问）" : formTitle!.Trim();
+        var title = OpenCodeDisplayText.Line(formTitle);
+        if (fieldLabels.Count > 1 && (title.Length == 0 || string.Equals(title, GenericQuestionFormTitle, StringComparison.OrdinalIgnoreCase)))
+        {
+            foreach (var label in fieldLabels)
+            {
+                if (OpenCodeDisplayText.Line(label) is { Length: > 0 } first)
+                {
+                    return first + " 等 " + fieldLabels.Count.ToString(CultureInfo.InvariantCulture) + " 个问题";
+                }
+            }
+        }
+
+        return title.Length == 0 ? "（无标题提问）" : title;
     }
 
     /// <summary>

@@ -667,10 +667,12 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
     }
 
     // Shared with the todowrite tool detail (TL1) so both lists render identical states.
+    // An item is one logical line: stray CR / line breaks / controls in the stored content are cleaned for display only.
     internal static UIElement TodoRow(OpenCodeTodoItem item, int index, string automationPrefix = "OpenCodeInsightsTodoItem.")
     {
         var finished = item.Status is "completed" or "cancelled";
-        var text = OpenCodeInteractionUi.StyledText(item.Content,
+        var content = OpenCodeDisplayText.Line(item.Content) is { Length: > 0 } line ? line : "（空）";
+        var text = OpenCodeInteractionUi.StyledText(content,
             item.Status == "in_progress" ? OpenCodeInteractionUi.BodyStrongStyleKey
                 : finished ? OpenCodeInteractionUi.BodySubtleStyleKey : OpenCodeInteractionUi.BodyStyleKey);
         text.FontSize = 14;
@@ -686,7 +688,7 @@ internal sealed class OpenCodeSessionInsightsView : UserControl
             Width = 20, Height = 20, Padding = new Thickness(0),
         };
         AutomationProperties.SetAutomationId(check, automationPrefix + index);
-        AutomationProperties.SetName(check, DescribeTodoStatus(item.Status) + "：" + item.Content);
+        AutomationProperties.SetName(check, DescribeTodoStatus(item.Status) + "：" + content);
         // WinUI 1.8's template uses StaticResource CheckBoxSize/GlyphSize, not per-control lightweight
         // ThemeResource sizing. Scale the native visual (box AND animated/fallback glyph) together, never the text.
         var box = new Viewbox

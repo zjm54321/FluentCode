@@ -692,7 +692,7 @@ internal static class OpenCodeToolRowPresentation
                 break;
 
             case OpenCodeToolKind.Question:
-                target = QuestionFallbackTitle(input);
+                target = OpenCodeDisplayText.Line(QuestionFallbackTitle(input));
                 var answers = ReadAnswers(metadata);
                 summary = answers.Count > 0 ? "已回答：" + string.Join("；", answers.Select(OpenCodeQuestionOption.Plain)) : "未回答";
                 break;
