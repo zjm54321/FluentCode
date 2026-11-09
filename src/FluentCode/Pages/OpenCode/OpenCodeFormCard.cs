@@ -1147,7 +1147,7 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
 
     /// <summary>
     /// 选项内容：标签（Body）+ 较小说明（Caption 次要色）。模型写在标签末尾的 “(Recommended)” / “（推荐）”
-    /// 改为右侧的“推荐”小标签（与时间线提问详情一致）；提交的仍是原始选项 value，不受影响。
+    /// 改为紧跟标签文字的“推荐”小标签（与时间线提问详情一致）；提交的仍是原始选项 value，不受影响。
     /// </summary>
     private static UIElement CreateOptionContent(string label, string? description)
     {
@@ -1156,14 +1156,8 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
         var labelText = OpenCodeInteractionUi.StyledText(shown, OpenCodeInteractionUi.BodyStyleKey);
         if (recommended)
         {
-            var row = new Grid { ColumnSpacing = 8 };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row.Children.Add(labelText);
-            var tag = RecommendedTag();
-            Grid.SetColumn(tag, 1);
-            row.Children.Add(tag);
-            panel.Children.Add(row);
+            // 小标签紧跟标签文字，居中于首行；不再推到说明文字宽度的最右侧。
+            panel.Children.Add(new OpenCodeOptionLabelPanel(labelText, RecommendedTag()) { HorizontalAlignment = HorizontalAlignment.Left });
         }
         else
         {
@@ -1182,11 +1176,10 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
     {
         var tag = OpenCodeThemedXaml.Load<Border>("Border",
             "BorderBrush=\"{ThemeResource CardStrokeColorDefaultBrush}\" Background=\"{ThemeResource SubtleFillColorSecondaryBrush}\"" +
-            " BorderThickness=\"1\" CornerRadius=\"4\" Padding=\"6,1,6,2\" VerticalAlignment=\"Top\" Margin=\"0,1,0,0\"")
+            " BorderThickness=\"1\" CornerRadius=\"4\" Padding=\"6,1,6,2\"")
             ?? new Border
             {
                 BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(6, 1, 6, 2),
-                VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 1, 0, 0),
             };
         tag.Child = OpenCodeInteractionUi.StyledText("推荐", OpenCodeInteractionUi.CaptionStyleKey);
         AutomationProperties.SetAccessibilityView(tag, AccessibilityView.Raw);
