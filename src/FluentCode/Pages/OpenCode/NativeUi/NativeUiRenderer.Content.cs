@@ -91,7 +91,7 @@ internal sealed partial class NativeUiRenderer
                 storyboard.Completed += (_, _) => { celebration.Height = 0; celebration.Children.Clear(); }; celebrationVisual.Cleanup = storyboard.Stop; return celebrationVisual;
             case "Icon":
                 var iconHost = new ContentControl(); var iconVisual = new Visual(iconHost);
-                iconVisual.Apply = node => { var icon = NativeUiTheme.Icon(S(node, "name")); if (icon is not null) { icon.FontSize = S(node, "size") switch { "sm" => 14, "lg" => 24, "xl" => 32, _ => 16 }; icon.Foreground = ComponentBrush(S(node, "color")); } iconHost.Content = icon; AutomationProperties.SetName(iconHost, S(node, "name")); }; return iconVisual;
+                iconVisual.Apply = node => { var icon = NativeUiTheme.Icon(S(node, "name")); if (icon is not null) { icon.FontSize = S(node, "size") switch { "sm" => 14, "lg" => 24, "xl" => 32, _ => 16 }; if (S(node, "color").Length > 0) icon.Foreground = ComponentBrush(S(node, "color")); } iconHost.Content = icon; AutomationProperties.SetName(iconHost, S(node, "name")); }; return iconVisual;
             case "Image": return CreateImage(key);
             case "SearchImage":
                 var searchPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var searchText = NativeUiComponentTheme.Text(""); var searchButton = new Button { Content = "在浏览器中搜索图片" }; var searchPreview = MediaPreview("image", searchText, searchButton); searchPanel.Children.Add(searchPreview); searchPanel.Children.Add(NativeUiComponentTheme.Text("图片搜索 · 确认后在浏览器中查看，不自动联网", true)); var searchVisual = new Visual(searchPanel);

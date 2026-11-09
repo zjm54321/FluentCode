@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Threading;
 using FluentCode.Models;
+using FluentCode.Pages.OpenCode;
 using FluentCode.Services.NativeUi;
 
 internal static class Program
@@ -44,7 +45,7 @@ internal static class Program
         {
             var repo = args[0]; var fixtures = Path.Combine(repo, "tests/native-ui/fixtures");
             var catalog = NativeUiCatalog.Default; var parser = new NativeUiParser(catalog);
-            var sourceFiles = Directory.GetFiles(fixtures, "*.oui").Order().ToArray();
+            var sourceFiles = Directory.GetFiles(fixtures, "*.oui").Concat(Directory.GetFiles(Path.Combine(fixtures, "upstream"), "*.oui")).Order().ToArray();
             foreach (var file in sourceFiles)
             {
                 var source = File.ReadAllText(file); var expected = JsonNode.Parse(File.ReadAllText(Path.ChangeExtension(file, ".expected.json")))!;
@@ -53,7 +54,13 @@ internal static class Program
                 var result = parser.Parse(source);
                 Same(result.ToJson(), expected["parse"], Path.GetFileName(file) + " parse");
                 using var runtime = new NativeUiRuntime(result, catalog);
-                if (!result.Errors.Any(error => error.Code == "query-cycle")) Same(runtime.EvaluateRoot()?.ToJson(), expected["evaluated"], Path.GetFileName(file) + " runtime");
+                if (!result.Errors.Any(error => error.Code == "query-cycle"))
+                {
+                    NativeUiElement? evaluated;
+                    try { evaluated = runtime.EvaluateRoot(); }
+                    catch (NativeUiLimitException error) { throw new InvalidOperationException(Path.GetFileName(file) + " runtime: " + error.Message, error); }
+                    Same(evaluated?.ToJson(), expected["evaluated"], Path.GetFileName(file) + " runtime");
+                }
                 var stream = new NativeUiStreamParser(parser);
                 foreach (var snapshot in expected["streaming"]!.AsArray())
                 {
@@ -229,6 +236,83 @@ internal static class Program
             var captureSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/App.NativeUiCapture.cs"));
             Require(captureSource.Contains("chart.UpdateFinished += Finished") && captureSource.Contains("Throttling = false")
                 && captureSource.Contains("Native chart draw completed without any rendered series/legend pixels"), "Native chart capture waits for draw completion and verifies painted pixels, not only populated data");
+            // Upstream gallery parity (tests/native-ui/fixtures/upstream): renderer rules checked without WinUI.
+            Require(NativeUiStyleMath.DarkTextOn("#f5e6c8") == true && NativeUiStyleMath.DarkTextOn("#d6e8cf") == true && NativeUiStyleMath.DarkTextOn("#1e3a5f") == false
+                && NativeUiStyleMath.DarkTextOn("#fff") == true && NativeUiStyleMath.DarkTextOn("#000") == false && NativeUiStyleMath.DarkTextOn("chart1") is null
+                && NativeUiStyleMath.DarkTextOn("#00ffffff") is null && NativeUiStyleMath.DarkTextOn("#12345") is null, "Raw colour backgrounds pick legible text like OIU contrastOn (luminance > 0.36)");
+            Require(NativeUiStyleMath.TryHex("#abc", out var ha, out var hr, out var hg, out var hb) && (ha, hr, hg, hb) == (255, 0xaa, 0xbb, 0xcc)
+                && NativeUiStyleMath.TryHex("#80102030", out ha, out hr, out _, out _) && ha == 0x80 && hr == 0x10 && !NativeUiStyleMath.TryHex("#ggg", out _, out _, out _, out _), "Hex colours: #rgb, #rrggbb, #aarrggbb");
+            Require(NativeUiStyleMath.Percent("62%") == .62 && NativeUiStyleMath.Percent("140%") == 1 && NativeUiStyleMath.Percent("100%") == 1 && NativeUiStyleMath.Percent("62") is null && NativeUiStyleMath.Percent("") is null, "Box percentage lengths");
+            var shares = NativeUiStyleMath.FlexShares(300, new[] { 1d, 0d, 2d });
+            Require(shares[0] == 100 && shares[1] == 0 && shares[2] == 200 && NativeUiStyleMath.FlexShares(-5, new[] { 1d })[0] == 0, "Box flex shares free space in proportion (basis 0)");
+            var upstreamIcons = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var file in Directory.GetFiles(Path.Combine(fixtures, "upstream"), "*.oui"))
+            {
+                using var upstream = new NativeUiRuntime(parser.Parse(File.ReadAllText(file)), catalog);
+                foreach (var element in Elements(upstream.EvaluateRoot()))
+                    foreach (var name in new[] { element.TypeName == "Icon" ? element.Props.GetValueOrDefault("name") : element.Props.GetValueOrDefault("icon") }.Select(NativeUiValues.Text).Where(name => name.Length > 0 && name.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-')))
+                        upstreamIcons.Add(name);
+            }
+            var unmapped = upstreamIcons.Where(name => NativeUiStyleMath.Glyph(name) is null).Order().ToArray();
+            Require(upstreamIcons.Count >= 20 && unmapped.All(name => name is "bike" or "no-such-icon"), "Upstream gallery icons map to Fluent glyphs (only bike has no counterpart): " + string.Join(",", unmapped));
+            // Capture-6 visual parity: inline Markdown in Text, pill radius, Pressable tile chrome, natural-width buttons.
+            var spans = NativeUiStyleMath.Inline("Selected: **Lettuce + radishes**. Use `npm`, *gently*, ~~not~~ [docs](https://openui.com) or __bold__.");
+            Require(string.Concat(spans.Select(span => span.Text)) == "Selected: Lettuce + radishes. Use npm, gently, not docs or bold."
+                && spans.Single(span => span.Text == "Lettuce + radishes").Style == NativeUiStyleMath.InlineStyle.Bold
+                && spans.Single(span => span.Text == "npm").Style == NativeUiStyleMath.InlineStyle.Code
+                && spans.Single(span => span.Text == "gently").Style == NativeUiStyleMath.InlineStyle.Italic
+                && spans.Single(span => span.Text == "not").Style == NativeUiStyleMath.InlineStyle.Strike
+                && spans.Single(span => span.Text == "bold").Style == NativeUiStyleMath.InlineStyle.Bold
+                && NativeUiStyleMath.Inline("2 * 3 * 4").Count == 1, "Text renders OIU inline Markdown instead of literal ** markers");
+            Require(NativeUiStyleMath.FitRadius(1000, 300, 6) == 3 && NativeUiStyleMath.FitRadius(8, 300, 40) == 8 && NativeUiStyleMath.FitRadius(1000, 0, 0) == 1000, "A full radius on a thin bar becomes a pill, not a distorted outline");
+            var tileSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Controls.cs"));
+            Require(tileSource.Contains("Template = NativeUiTheme.TileTemplate") && themeSource.Contains("Background=\\\"{TemplateBinding Background}\\\"")
+                && !themeSource.Contains("foreach (var button in panel.Children.OfType<Button>()) button.HorizontalAlignment = HorizontalAlignment.Stretch;")
+                && themeSource.Contains("node.TypeName == \"IconButton\" ? \"outline\" : \"solid\""), "Pressable paints its tile; Row buttons keep natural width unless block; IconButton defaults to outline");
+            var flexSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiFlexPanel.cs"));
+            Require(flexSource.Contains("internal sealed partial class NativeUiBoxHost : Panel") && flexSource.Contains("NativeUiStyleMath.FlexShares(")
+                && flexSource.Contains("!cell.FixedCross ? lineCross"), "Box percent lengths resolve against the parent and sized Boxes do not stretch");
+            Require(confirmationSource.Contains("new Visual(boxHost)") && confirmationSource.Contains("border.RequestedTheme = NativeUiTheme.ContrastTheme(")
+                && confirmationSource.Contains("new(flex, GridUnitType.Star)"), "Box hosts percent lengths, follows raw-colour contrast, and flex Boxes share a Row");
+            Require(controlsSource.Contains("tile.RequestedTheme = NativeUiTheme.ContrastTheme("), "Pressable follows raw-colour contrast");
+            Require(themeSource.Contains("\"ink\" => \"TextFillColorPrimaryBrush\", \"canvas\" => \"SolidBackgroundFillColorBaseBrush\"")
+                && themeSource.Contains("=> Palette ? \"NativeUiChart\" + color[5] + \"Brush\" : \"AccentFillColorDefaultBrush\"")
+                && themeSource.Contains("text.Foreground = new SolidColorBrush(raw)"), "Chart/ink/canvas backgrounds are solid fills and raw text colours apply");
+            // A control re-asserting its current value (Segmented.OnApplyTemplate sets SelectedIndex during measure)
+            // must not re-render the card: the re-render mutated panels inside the layout pass and crashed the app
+            // with 0xC000027B (oiu-chart, oiu-segmented and the dashboard snapshots).
+            using (var segmentedRuntime = new NativeUiRuntime(parser.Parse("$range = \"30d\"\nroot = Col([SegmentedControl($range, [\"7d\", \"30d\"]), Text($range), SegmentedControl(\"a\", [\"a\", \"b\"])])"), catalog))
+            {
+                var renders = 0; segmentedRuntime.Changed += () => renders++;
+                var bound = Elements(segmentedRuntime.EvaluateRoot()).Where(e => e.TypeName == "SegmentedControl").ToArray();
+                // The renderer reads Field (Apply) before the control can echo the value back.
+                segmentedRuntime.Field("plain", bound[1].Props["value"]);
+                segmentedRuntime.SetField("range", bound[0].Props["value"], "30d"); segmentedRuntime.SetField("plain", bound[1].Props["value"], "a");
+                Require(renders == 0, "Re-asserting the current bound/field value does not re-render (" + renders + ")");
+                segmentedRuntime.SetField("range", bound[0].Props["value"], "7d"); segmentedRuntime.SetField("plain", bound[1].Props["value"], "b");
+                Require(renders == 2 && NativeUiValues.Text(segmentedRuntime.Get("$range")) == "7d", "A real selection change still re-renders once per change");
+            }
+            // Node limit counts real nodes like the official validator: string characters and keys are not nodes.
+            var prose = string.Concat(Enumerable.Repeat("Strings are one node each, however long the paragraph is. ", 60));
+            var longCard = parser.Parse("root = Card([Title(\"Long answer\"), " + string.Join(", ", Enumerable.Range(0, 8).Select(i => "Text(\"" + prose + i + "\")")) + "])");
+            using (var longRuntime = new NativeUiRuntime(longCard, catalog))
+            {
+                var longRoot = longRuntime.EvaluateRoot();
+                Require(longCard.Errors.Count == 0 && longRoot is not null && Elements(longRoot).Count(e => e.TypeName == "Text") == 8 && Elements(longRoot).Where(e => e.TypeName == "Text").Sum(e => NativeUiValues.Text(e.Props.GetValueOrDefault("text")).Length) >= 3000,
+                    "A card with 3,000+ characters of text renders under the 4,096 node limit");
+            }
+            Require(Directory.GetFiles(Path.Combine(fixtures, "upstream"), "demo-oiu-snap-web-analytics.oui").Length == 1, "Text-heavy upstream ports (web-analytics, ~9 KB) are in the evaluated corpus");
+            NativeUiSafety.Check(Enumerable.Repeat((object?)new string('x', 4000), 1000).ToList(), catalog.Limits);
+            var wideRefused = false; try { NativeUiSafety.Check(Enumerable.Repeat((object?)"x", catalog.Limits.Nodes).ToList(), catalog.Limits); } catch (NativeUiLimitException) { wideRefused = true; }
+            Require(wideRefused, "A value with more than 4,096 real nodes is still refused");
+            object? deep = "leaf"; for (var i = 0; i < catalog.Limits.Depth + 1; i++) deep = new List<object?> { deep };
+            var deepRefused = false; try { NativeUiSafety.Check(deep, catalog.Limits); } catch (NativeUiLimitException) { deepRefused = true; }
+            Require(deepRefused, "Depth over 64 is still refused");
+            var hugeKey = false; try { NativeUiSafety.Check(new Dictionary<string, object?> { [new string('k', catalog.Limits.StringLength + 1)] = 1d }, catalog.Limits); } catch (NativeUiLimitException) { hugeKey = true; }
+            Require(hugeKey, "Object keys stay bounded by the string limit");
+            var grid = parser.Parse("xs = [" + string.Join(", ", Enumerable.Range(0, 70)) + "]\nroot = Col(@Each(xs, \"x\", Row(@Each(xs, \"y\", Text(\"cell\")))))");
+            var gridRefused = false; try { using var gridRuntime = new NativeUiRuntime(grid, catalog); gridRuntime.EvaluateRoot(); } catch (NativeUiLimitException) { gridRefused = true; }
+            Require(gridRefused, "A genuinely oversized card (70 x 70 generated Text elements) still trips the 4,096 node limit at runtime");
             Console.WriteLine($"PASS native reactive runtime, calculator memory/arithmetic, slider/checkbox/select, actions and safety; {_checks} checks");
             return 0;
         }

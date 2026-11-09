@@ -1,0 +1,4285 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "8a573a59467aaf8e851a8dd38a70ab7ec1755d1eb84367381e5cbad8150833bc",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "The check, please",
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Tap names on an item to say who shared it.",
+                          "size": "sm",
+                          "color": "muted"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Spacer",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SegmentedControl",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$mode"
+                    },
+                    "options": [
+                      {
+                        "value": "item",
+                        "label": "By item"
+                      },
+                      {
+                        "value": "equal",
+                        "label": "Equally"
+                      }
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "gap": 3,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "You",
+                    "action": null,
+                    "variant": "soft",
+                    "color": null,
+                    "size": "sm",
+                    "icon": "x"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Alex",
+                    "action": null,
+                    "variant": "soft",
+                    "color": null,
+                    "size": "sm",
+                    "icon": "x"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Sam",
+                    "action": null,
+                    "variant": "soft",
+                    "color": null,
+                    "size": "sm",
+                    "icon": "x"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Jordan",
+                    "action": null,
+                    "variant": "soft",
+                    "color": null,
+                    "size": "sm",
+                    "icon": "x"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "people"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Input",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$name"
+                    },
+                    "label": null,
+                    "type": "text",
+                    "placeholder": "Add a person"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Add",
+                    "action": null,
+                    "variant": "outline",
+                    "color": null,
+                    "size": null,
+                    "icon": "user-plus",
+                    "disabled": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "addPerson"
+          },
+          {
+            "type": "element",
+            "typeName": "Divider",
+            "props": {},
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Items",
+                    "size": "md"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Spacer",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "$156.00",
+                    "size": "sm",
+                    "color": "muted",
+                    "weight": "medium",
+                    "italic": false,
+                    "lineThrough": false,
+                    "tabularNums": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "itemsHead"
+          },
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Burrata & sourdough",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "semibold"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Spacer",
+                              "props": {},
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "$18.00",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "medium",
+                                "italic": false,
+                                "lineThrough": false,
+                                "tabularNums": true
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "IconButton",
+                              "props": {
+                                "icon": "trash-2",
+                                "action": null,
+                                "label": "Remove Burrata & sourdough",
+                                "variant": "ghost"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "You",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "Alex",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "Sam",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "Jordan",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": null,
+                          "justify": null,
+                          "wrap": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Mains",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "semibold"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Spacer",
+                              "props": {},
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "$96.00",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "medium",
+                                "italic": false,
+                                "lineThrough": false,
+                                "tabularNums": true
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "IconButton",
+                              "props": {
+                                "icon": "trash-2",
+                                "action": null,
+                                "label": "Remove Mains",
+                                "variant": "ghost"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "You",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "Alex",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "Sam",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "Jordan",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": null,
+                          "justify": null,
+                          "wrap": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "A bottle of red",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "semibold"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Spacer",
+                              "props": {},
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "$42.00",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "medium",
+                                "italic": false,
+                                "lineThrough": false,
+                                "tabularNums": true
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "IconButton",
+                              "props": {
+                                "icon": "trash-2",
+                                "action": null,
+                                "label": "Remove A bottle of red",
+                                "variant": "ghost"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "You",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "Alex",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "Sam",
+                                "action": null,
+                                "variant": "outline",
+                                "color": null,
+                                "size": "sm"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Button",
+                              "props": {
+                                "label": "Jordan",
+                                "action": null,
+                                "variant": "solid",
+                                "color": null,
+                                "size": "sm",
+                                "icon": "check"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": null,
+                          "justify": null,
+                          "wrap": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "items"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Input",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$itemName"
+                    },
+                    "label": null,
+                    "type": "text",
+                    "placeholder": "Item"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Input",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$itemAmount"
+                    },
+                    "label": null,
+                    "type": "number",
+                    "placeholder": "Price"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Add item",
+                    "action": null,
+                    "variant": "outline",
+                    "color": null,
+                    "size": null,
+                    "icon": "plus",
+                    "disabled": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "addItem"
+          },
+          {
+            "type": "element",
+            "typeName": "Divider",
+            "props": {},
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$tax"
+                    },
+                    "min": 0,
+                    "max": 15,
+                    "step": 0.5,
+                    "label": "Tax",
+                    "unit": "%"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$tip"
+                    },
+                    "min": 0,
+                    "max": 30,
+                    "step": 1,
+                    "label": "Tip",
+                    "unit": "%"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 220,
+              "gap": 6
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "rates"
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "You"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Spacer",
+                              "props": {},
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "$54.62",
+                                "size": null,
+                                "color": null,
+                                "weight": "semibold",
+                                "italic": false,
+                                "lineThrough": false,
+                                "tabularNums": true
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Alex"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Spacer",
+                              "props": {},
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "$54.61",
+                                "size": null,
+                                "color": null,
+                                "weight": "semibold",
+                                "italic": false,
+                                "lineThrough": false,
+                                "tabularNums": true
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Sam"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Spacer",
+                              "props": {},
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "$36.62",
+                                "size": null,
+                                "color": null,
+                                "weight": "semibold",
+                                "italic": false,
+                                "lineThrough": false,
+                                "tabularNums": true
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Jordan"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Spacer",
+                              "props": {},
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "$54.61",
+                                "size": null,
+                                "color": null,
+                                "weight": "semibold",
+                                "italic": false,
+                                "lineThrough": false,
+                                "tabularNums": true
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Divider",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Total with tax and tip",
+                          "size": "sm",
+                          "color": "muted"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "$200.46",
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                null,
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Copy the split",
+                    "action": null,
+                    "variant": "solid",
+                    "color": null,
+                    "size": "sm",
+                    "icon": "copy"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": "soft",
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "summary"
+          }
+        ],
+        "variant": null,
+        "padding": 5,
+        "gap": 4
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 15,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$itemAmount": "",
+      "$itemName": "",
+      "$mode": "item",
+      "$name": "",
+      "$tax": 8.5,
+      "$tip": 20
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "The check, please",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Tap names on an item to say who shared it.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Spacer",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$mode",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    {
+                      "value": "item",
+                      "label": "By item"
+                    },
+                    {
+                      "value": "equal",
+                      "label": "Equally"
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "gap": 3,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "You",
+                  "action": null,
+                  "variant": "soft",
+                  "color": null,
+                  "size": "sm",
+                  "icon": "x"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Alex",
+                  "action": null,
+                  "variant": "soft",
+                  "color": null,
+                  "size": "sm",
+                  "icon": "x"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Sam",
+                  "action": null,
+                  "variant": "soft",
+                  "color": null,
+                  "size": "sm",
+                  "icon": "x"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Jordan",
+                  "action": null,
+                  "variant": "soft",
+                  "color": null,
+                  "size": "sm",
+                  "icon": "x"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "people"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$name",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": null,
+                  "type": "text",
+                  "placeholder": "Add a person"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Add",
+                  "action": null,
+                  "variant": "outline",
+                  "color": null,
+                  "size": null,
+                  "icon": "user-plus",
+                  "disabled": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "addPerson"
+        },
+        {
+          "type": "element",
+          "typeName": "Divider",
+          "props": {},
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Items",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Spacer",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "$156.00",
+                  "size": "sm",
+                  "color": "muted",
+                  "weight": "medium",
+                  "italic": false,
+                  "lineThrough": false,
+                  "tabularNums": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "itemsHead"
+        },
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Burrata & sourdough",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$18.00",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "trash-2",
+                              "action": null,
+                              "label": "Remove Burrata & sourdough",
+                              "variant": "ghost"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "You",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Alex",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Sam",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Jordan",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Mains",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$96.00",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "trash-2",
+                              "action": null,
+                              "label": "Remove Mains",
+                              "variant": "ghost"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "You",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Alex",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Sam",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Jordan",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "A bottle of red",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$42.00",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "IconButton",
+                            "props": {
+                              "icon": "trash-2",
+                              "action": null,
+                              "label": "Remove A bottle of red",
+                              "variant": "ghost"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "You",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Alex",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Sam",
+                              "action": null,
+                              "variant": "outline",
+                              "color": null,
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Jordan",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "check"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "items"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$itemName",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": null,
+                  "type": "text",
+                  "placeholder": "Item"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$itemAmount",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": null,
+                  "type": "number",
+                  "placeholder": "Price"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Add item",
+                  "action": null,
+                  "variant": "outline",
+                  "color": null,
+                  "size": null,
+                  "icon": "plus",
+                  "disabled": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "addItem"
+        },
+        {
+          "type": "element",
+          "typeName": "Divider",
+          "props": {},
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$tax",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 15,
+                  "step": 0.5,
+                  "label": "Tax",
+                  "unit": "%"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$tip",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 30,
+                  "step": 1,
+                  "label": "Tip",
+                  "unit": "%"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 220,
+            "gap": 6
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "rates"
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "You"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$54.62",
+                              "size": null,
+                              "color": null,
+                              "weight": "semibold",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Alex"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$54.61",
+                              "size": null,
+                              "color": null,
+                              "weight": "semibold",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Sam"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$36.62",
+                              "size": null,
+                              "color": null,
+                              "weight": "semibold",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Jordan"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$54.61",
+                              "size": null,
+                              "color": null,
+                              "weight": "semibold",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Total with tax and tip",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "$200.46",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              null,
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Copy the split",
+                  "action": null,
+                  "variant": "solid",
+                  "color": null,
+                  "size": "sm",
+                  "icon": "copy"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": "soft",
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "summary"
+        }
+      ],
+      "variant": null,
+      "padding": 5,
+      "gap": 4
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1029,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "The check, please",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Tap names on an item to say who shared it.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$mode"
+                        },
+                        "options": [
+                          {
+                            "value": "item",
+                            "label": "By item"
+                          },
+                          {
+                            "value": "equal",
+                            "label": "Equally"
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "You",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Alex",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Sam",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Jordan",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "people"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$name"
+                        },
+                        "label": null,
+                        "type": "text",
+                        "placeholder": "Add a person"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Add",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": null,
+                        "icon": "user-plus",
+                        "disabled": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "addPerson"
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Items",
+                        "size": "md"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$156.00",
+                        "size": "sm",
+                        "color": "muted",
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "itemsHead"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Burrata & sourdough",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$18.00",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "IconButton",
+                                  "props": {
+                                    "icon": "trash-2",
+                                    "action": null,
+                                    "label": "Remove Burrata & sourd"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "items"
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "addItem",
+            "rates",
+            "summary"
+          ],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$mode": null,
+          "$name": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2059,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "The check, please",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Tap names on an item to say who shared it.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$mode"
+                        },
+                        "options": [
+                          {
+                            "value": "item",
+                            "label": "By item"
+                          },
+                          {
+                            "value": "equal",
+                            "label": "Equally"
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "You",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Alex",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Sam",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Jordan",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "people"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$name"
+                        },
+                        "label": null,
+                        "type": "text",
+                        "placeholder": "Add a person"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Add",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": null,
+                        "icon": "user-plus",
+                        "disabled": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "addPerson"
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Items",
+                        "size": "md"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$156.00",
+                        "size": "sm",
+                        "color": "muted",
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "itemsHead"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Burrata & sourdough",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$18.00",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "IconButton",
+                                  "props": {
+                                    "icon": "trash-2",
+                                    "action": null,
+                                    "label": "Remove Burrata & sourdough",
+                                    "variant": "ghost"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "You",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Alex",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Sam",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Jordan",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": null,
+                              "justify": null,
+                              "wrap": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Mains",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$96.00",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "IconButton",
+                                  "props": {
+                                    "icon": "trash-2",
+                                    "action": null,
+                                    "label": "Remove Mains",
+                                    "variant": "ghost"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "You",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Alex",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Sam",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Jordan",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": null,
+                              "justify": null,
+                              "wrap": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "A bottle of red",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$42.00",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "IconButton",
+                                  "props": {
+                                    "icon": "trash-2",
+                                    "action": null,
+                                    "label": "Remove A bottle of red",
+                                    "variant": "ghost"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "You",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Alex",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Sam",
+                                    "action": null,
+                                    "variant": "outli"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "items"
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "addItem",
+            "rates",
+            "summary"
+          ],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$mode": null,
+          "$name": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 3089,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "The check, please",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Tap names on an item to say who shared it.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$mode"
+                        },
+                        "options": [
+                          {
+                            "value": "item",
+                            "label": "By item"
+                          },
+                          {
+                            "value": "equal",
+                            "label": "Equally"
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "You",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Alex",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Sam",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Jordan",
+                        "action": null,
+                        "variant": "soft",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "x"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "people"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$name"
+                        },
+                        "label": null,
+                        "type": "text",
+                        "placeholder": "Add a person"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Add",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": null,
+                        "icon": "user-plus",
+                        "disabled": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "addPerson"
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Items",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$156.00",
+                        "size": "sm",
+                        "color": "muted",
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "itemsHead"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Burrata & sourdough",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$18.00",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "IconButton",
+                                  "props": {
+                                    "icon": "trash-2",
+                                    "action": null,
+                                    "label": "Remove Burrata & sourdough",
+                                    "variant": "ghost"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "You",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Alex",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Sam",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Jordan",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": null,
+                              "justify": null,
+                              "wrap": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Mains",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$96.00",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "IconButton",
+                                  "props": {
+                                    "icon": "trash-2",
+                                    "action": null,
+                                    "label": "Remove Mains",
+                                    "variant": "ghost"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "You",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Alex",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Sam",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Jordan",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": null,
+                              "justify": null,
+                              "wrap": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "A bottle of red",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$42.00",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "IconButton",
+                                  "props": {
+                                    "icon": "trash-2",
+                                    "action": null,
+                                    "label": "Remove A bottle of red",
+                                    "variant": "ghost"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "You",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Alex",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Sam",
+                                    "action": null,
+                                    "variant": "outline",
+                                    "color": null,
+                                    "size": "sm"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Button",
+                                  "props": {
+                                    "label": "Jordan",
+                                    "action": null,
+                                    "variant": "solid",
+                                    "color": null,
+                                    "size": "sm",
+                                    "icon": "check"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": null,
+                              "justify": null,
+                              "wrap": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "items"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$itemName"
+                        },
+                        "label": null,
+                        "type": "text",
+                        "placeholder": "Item"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$itemAmount"
+                        },
+                        "label": null,
+                        "type": "number",
+                        "placeholder": "Price"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Add item",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": null,
+                        "icon": "plus",
+                        "disabled": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "addItem"
+              },
+              {
+                "type": "element",
+                "typeName": "Divider",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$tax"
+                        },
+                        "min": 0,
+                        "max": 15,
+                        "step": 0.5,
+                        "label": "Tax",
+                        "unit": "%"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$tip"
+                        },
+                        "min": 0,
+                        "max": 30,
+                        "step": 1,
+                        "label": "Tip",
+                        "unit": "%"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 220,
+                  "gap": 6
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "rates"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "You"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$54.62",
+                                    "size": null,
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Alex"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$54.61",
+                                    "size": null,
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Sam"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$36.62",
+                                    "size": null,
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Jordan"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "$54.61",
+                                    "size": null,
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false,
+                                    "tabularNums": true
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Divider",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Total with tax and tip",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$200.46",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    null,
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Copy the split",
+                        "action": null,
+                        "variant": "solid",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "copy"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "summary"
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 15,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$itemAmount": "",
+          "$itemName": "",
+          "$mode": "item",
+          "$name": "",
+          "$tax": 8.5,
+          "$tip": 20
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

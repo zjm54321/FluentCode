@@ -16,12 +16,16 @@ internal sealed partial class NativeUiRenderer
 {
     private Flyout? _confirmation;
     private Brush ComponentBrush(string token, bool background = false) => NativeUiTheme.Brush(token, background, _root.ActualTheme);
+    // Spacers and flex Boxes take the Row's free space (OIU `flex: N 1 0%`), in proportion to flex.
     private static void ApplySpacers(Grid row)
     {
-        foreach (var spacer in row.Children.OfType<FrameworkElement>().Where(child => Equals(child.Tag, "native-ui-spacer")))
+        foreach (var child in row.Children.OfType<FrameworkElement>())
         {
-            var column = Grid.GetColumn(spacer);
-            if (column < row.ColumnDefinitions.Count) row.ColumnDefinitions[column].Width = new(1, GridUnitType.Star);
+            // Text fields fill the rest of a Row like OIU's width:100% inputs, instead of shrinking to their placeholder.
+            var flex = Equals(child.Tag, "native-ui-spacer") || child is TextBox or ComboBox or CalendarDatePicker ? 1 : child.Tag is NativeUiElement node ? Math.Min(N(node, "flex"), 1000) : 0;
+            if (flex <= 0) continue;
+            var column = Grid.GetColumn(child);
+            if (column < row.ColumnDefinitions.Count) row.ColumnDefinitions[column].Width = new(flex, GridUnitType.Star);
             row.HorizontalAlignment = HorizontalAlignment.Stretch;
         }
     }
@@ -40,16 +44,21 @@ internal sealed partial class NativeUiRenderer
         switch (type)
         {
             case "Box":
-                var panel = new NativeUiFlexPanel(); var border = new Border { Child = panel }; var box = new Visual(border);
+                var panel = new NativeUiFlexPanel(); var border = new Border { Child = panel }; var boxHost = new NativeUiBoxHost { Children = { border } }; var box = new Visual(boxHost);
+                // CSS clamps an oversized radius ("full" = 1000) to a pill; WinUI draws a distorted outline, so clamp to half the short side.
+                var radius = 0d; void FitRadius() => border.CornerRadius = new(NativeUiStyleMath.FitRadius(radius, border.ActualWidth, border.ActualHeight));
+                border.SizeChanged += (_, _) => { if (!box.Disposed) FitRadius(); };
                 box.Apply = node =>
                 {
                     Sync(panel, Children(P(node, "children"), key + "/children", depth + 1).Cast<UIElement>().ToArray());
                     panel.Model = node; panel.InvalidateMeasure();
-                    border.Padding = new(NativeUiTheme.Gap(P(node, "padding"), 0)); border.CornerRadius = NativeUiComponentTheme.Radius(P(node, "radius"));
+                    border.Padding = new(NativeUiTheme.Gap(P(node, "padding"), 0)); radius = NativeUiComponentTheme.Radius(P(node, "radius")).TopLeft; FitRadius();
                     border.Background = S(node, "background").Length > 0 ? ComponentBrush(S(node, "background"), true) : null;
+                    // Raw colours do not follow the app theme; text on them switches to the legible ramp (OIU onColor).
+                    border.RequestedTheme = NativeUiTheme.ContrastTheme(S(node, "background"));
                     border.BorderBrush = ComponentBrush("faint"); border.BorderThickness = new(B(node, "border") ? 1 : 0);
                     NativeUiComponentTheme.Length(border, P(node, "width")); NativeUiComponentTheme.Length(border, P(node, "height"), true);
-                    border.Tag = node;
+                    boxHost.Tag = node; boxHost.InvalidateMeasure();
                 }; return box;
             case "Grid":
                 var grid = new Grid(); var gridVisual = new Visual(grid);

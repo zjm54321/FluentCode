@@ -1,0 +1,1191 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "08f8406de71fb8424a78fa60a3b48e290fc3beac077a583e981bebe24e74bbbd",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Make it yours",
+              "size": "lg"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Form",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Input",
+                        "props": {
+                          "value": {
+                            "k": "StateRef",
+                            "n": "$name"
+                          },
+                          "label": "Name",
+                          "type": "text",
+                          "placeholder": "Your name"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Input",
+                        "props": {
+                          "value": {
+                            "k": "StateRef",
+                            "n": "$people"
+                          },
+                          "label": "Travelers",
+                          "type": "number"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "columns": 2,
+                    "minChildWidth": 200,
+                    "gap": 4
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "DatePicker",
+                        "props": {
+                          "value": {
+                            "k": "StateRef",
+                            "n": "$date"
+                          },
+                          "label": "Start date"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Select",
+                        "props": {
+                          "value": {
+                            "k": "StateRef",
+                            "n": "$pace"
+                          },
+                          "options": [
+                            {
+                              "value": "relaxed",
+                              "label": "Relaxed"
+                            },
+                            {
+                              "value": "balanced",
+                              "label": "Balanced"
+                            },
+                            {
+                              "value": "active",
+                              "label": "Active"
+                            }
+                          ],
+                          "label": "Preferred pace"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "columns": 2,
+                    "minChildWidth": 200,
+                    "gap": 4
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "RadioGroup",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$weather"
+                    },
+                    "options": [
+                      {
+                        "value": "hot",
+                        "label": "Hot / tropical"
+                      },
+                      {
+                        "value": "mild",
+                        "label": "Mild / mixed weather"
+                      },
+                      {
+                        "value": "cold",
+                        "label": "Cold / rainy"
+                      }
+                    ],
+                    "label": "What weather are you packing for?"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "TextArea",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$notes"
+                    },
+                    "label": "Anything else?",
+                    "placeholder": "A place you would love to visit…",
+                    "rows": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Customize my trip",
+                    "action": {
+                      "k": "Comp",
+                      "name": "ToAssistant",
+                      "args": [
+                        {
+                          "k": "Str",
+                          "v": "Customize my trip"
+                        },
+                        {
+                          "k": "Obj",
+                          "entries": [
+                            [
+                              "name",
+                              {
+                                "k": "StateRef",
+                                "n": "$name"
+                              }
+                            ],
+                            [
+                              "people",
+                              {
+                                "k": "StateRef",
+                                "n": "$people"
+                              }
+                            ],
+                            [
+                              "date",
+                              {
+                                "k": "StateRef",
+                                "n": "$date"
+                              }
+                            ],
+                            [
+                              "pace",
+                              {
+                                "k": "StateRef",
+                                "n": "$pace"
+                              }
+                            ],
+                            [
+                              "weather",
+                              {
+                                "k": "StateRef",
+                                "n": "$weather"
+                              }
+                            ],
+                            [
+                              "notes",
+                              {
+                                "k": "StateRef",
+                                "n": "$notes"
+                              }
+                            ]
+                          ]
+                        }
+                      ],
+                      "mappedProps": {
+                        "message": {
+                          "k": "Str",
+                          "v": "Customize my trip"
+                        },
+                        "context": {
+                          "k": "Obj",
+                          "entries": [
+                            [
+                              "name",
+                              {
+                                "k": "StateRef",
+                                "n": "$name"
+                              }
+                            ],
+                            [
+                              "people",
+                              {
+                                "k": "StateRef",
+                                "n": "$people"
+                              }
+                            ],
+                            [
+                              "date",
+                              {
+                                "k": "StateRef",
+                                "n": "$date"
+                              }
+                            ],
+                            [
+                              "pace",
+                              {
+                                "k": "StateRef",
+                                "n": "$pace"
+                              }
+                            ],
+                            [
+                              "weather",
+                              {
+                                "k": "StateRef",
+                                "n": "$weather"
+                              }
+                            ],
+                            [
+                              "notes",
+                              {
+                                "k": "StateRef",
+                                "n": "$notes"
+                              }
+                            ]
+                          ]
+                        }
+                      }
+                    },
+                    "variant": "solid",
+                    "color": null,
+                    "size": null,
+                    "icon": "arrow-right"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "submit"
+                }
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "form"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 9,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$name": "",
+      "$people": 4,
+      "$date": "2026-10-24",
+      "$pace": "balanced",
+      "$weather": "mild",
+      "$notes": ""
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Make it yours",
+            "size": "lg"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Form",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "__reactive": "assign",
+                          "target": "$name",
+                          "expr": {
+                            "k": "StateRef",
+                            "n": "$value"
+                          }
+                        },
+                        "label": "Name",
+                        "type": "text",
+                        "placeholder": "Your name"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "__reactive": "assign",
+                          "target": "$people",
+                          "expr": {
+                            "k": "StateRef",
+                            "n": "$value"
+                          }
+                        },
+                        "label": "Travelers",
+                        "type": "number"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 200,
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "DatePicker",
+                      "props": {
+                        "value": {
+                          "__reactive": "assign",
+                          "target": "$date",
+                          "expr": {
+                            "k": "StateRef",
+                            "n": "$value"
+                          }
+                        },
+                        "label": "Start date"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Select",
+                      "props": {
+                        "value": {
+                          "__reactive": "assign",
+                          "target": "$pace",
+                          "expr": {
+                            "k": "StateRef",
+                            "n": "$value"
+                          }
+                        },
+                        "options": [
+                          {
+                            "value": "relaxed",
+                            "label": "Relaxed"
+                          },
+                          {
+                            "value": "balanced",
+                            "label": "Balanced"
+                          },
+                          {
+                            "value": "active",
+                            "label": "Active"
+                          }
+                        ],
+                        "label": "Preferred pace"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 200,
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "RadioGroup",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$weather",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    {
+                      "value": "hot",
+                      "label": "Hot / tropical"
+                    },
+                    {
+                      "value": "mild",
+                      "label": "Mild / mixed weather"
+                    },
+                    {
+                      "value": "cold",
+                      "label": "Cold / rainy"
+                    }
+                  ],
+                  "label": "What weather are you packing for?"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "TextArea",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$notes",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "Anything else?",
+                  "placeholder": "A place you would love to visit…",
+                  "rows": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Customize my trip",
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "continue_conversation",
+                        "message": "Customize my trip",
+                        "context": {
+                          "name": "",
+                          "people": 4,
+                          "date": "2026-10-24",
+                          "pace": "balanced",
+                          "weather": "mild",
+                          "notes": ""
+                        }
+                      }
+                    ]
+                  },
+                  "variant": "solid",
+                  "color": null,
+                  "size": null,
+                  "icon": "arrow-right"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "submit"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "form"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 310,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Make it yours",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Form",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Input",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$name"
+                              },
+                              "label": "Name",
+                              "type": "text",
+                              "placeholder": "Your name"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Input",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$people"
+                              },
+                              "label": "Travelers",
+                              "type": "number"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "columns": 2,
+                        "minChildWidth": 200,
+                        "gap": 4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "DatePicker",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$date"
+                              },
+                              "label": "Start date"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "form"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 8,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Select",
+              "path": "/options",
+              "message": "missing required field \"/options\" — signature: Select(value*: string, options*: array, label: string, placeholder: string)",
+              "statementId": "form"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$name": "",
+          "$people": 4,
+          "$date": "2026-10-24",
+          "$pace": "balanced",
+          "$weather": "mild",
+          "$notes": ""
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 621,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Make it yours",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Form",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Input",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$name"
+                              },
+                              "label": "Name",
+                              "type": "text",
+                              "placeholder": "Your name"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Input",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$people"
+                              },
+                              "label": "Travelers",
+                              "type": "number"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "columns": 2,
+                        "minChildWidth": 200,
+                        "gap": 4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "DatePicker",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$date"
+                              },
+                              "label": "Start date"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Select",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$pace"
+                              },
+                              "options": [
+                                {
+                                  "value": "relaxed",
+                                  "label": "Relaxed"
+                                },
+                                {
+                                  "value": "balanced",
+                                  "label": "Balanced"
+                                },
+                                {
+                                  "value": "active",
+                                  "label": "Active"
+                                }
+                              ],
+                              "label": "Preferred pace"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "columns": 2,
+                        "minChildWidth": 200,
+                        "gap": 4
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$weather"
+                        },
+                        "options": [
+                          {
+                            "value": "hot",
+                            "label": "Hot / tropical"
+                          },
+                          {
+                            "value": "mild",
+                            "label": "Mild / mixed weather"
+                          },
+                          {
+                            "value": "cold",
+                            "label": "Cold / rainy"
+                          }
+                        ],
+                        "label": "What weath"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "form"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 8,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$name": "",
+          "$people": 4,
+          "$date": "2026-10-24",
+          "$pace": "balanced",
+          "$weather": "mild",
+          "$notes": ""
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 932,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Make it yours",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Form",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Input",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$name"
+                              },
+                              "label": "Name",
+                              "type": "text",
+                              "placeholder": "Your name"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Input",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$people"
+                              },
+                              "label": "Travelers",
+                              "type": "number"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "columns": 2,
+                        "minChildWidth": 200,
+                        "gap": 4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "DatePicker",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$date"
+                              },
+                              "label": "Start date"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Select",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$pace"
+                              },
+                              "options": [
+                                {
+                                  "value": "relaxed",
+                                  "label": "Relaxed"
+                                },
+                                {
+                                  "value": "balanced",
+                                  "label": "Balanced"
+                                },
+                                {
+                                  "value": "active",
+                                  "label": "Active"
+                                }
+                              ],
+                              "label": "Preferred pace"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "columns": 2,
+                        "minChildWidth": 200,
+                        "gap": 4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$weather"
+                        },
+                        "options": [
+                          {
+                            "value": "hot",
+                            "label": "Hot / tropical"
+                          },
+                          {
+                            "value": "mild",
+                            "label": "Mild / mixed weather"
+                          },
+                          {
+                            "value": "cold",
+                            "label": "Cold / rainy"
+                          }
+                        ],
+                        "label": "What weather are you packing for?"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "TextArea",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$notes"
+                        },
+                        "label": "Anything else?",
+                        "placeholder": "A place you would love to visit…",
+                        "rows": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Customize my trip",
+                        "action": {
+                          "k": "Comp",
+                          "name": "ToAssistant",
+                          "args": [
+                            {
+                              "k": "Str",
+                              "v": "Customize my trip"
+                            },
+                            {
+                              "k": "Obj",
+                              "entries": [
+                                [
+                                  "name",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$name"
+                                  }
+                                ],
+                                [
+                                  "people",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$people"
+                                  }
+                                ],
+                                [
+                                  "date",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$date"
+                                  }
+                                ],
+                                [
+                                  "pace",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$pace"
+                                  }
+                                ],
+                                [
+                                  "weather",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$weather"
+                                  }
+                                ],
+                                [
+                                  "notes",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$notes"
+                                  }
+                                ]
+                              ]
+                            }
+                          ],
+                          "mappedProps": {
+                            "message": {
+                              "k": "Str",
+                              "v": "Customize my trip"
+                            },
+                            "context": {
+                              "k": "Obj",
+                              "entries": [
+                                [
+                                  "name",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$name"
+                                  }
+                                ],
+                                [
+                                  "people",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$people"
+                                  }
+                                ],
+                                [
+                                  "date",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$date"
+                                  }
+                                ],
+                                [
+                                  "pace",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$pace"
+                                  }
+                                ],
+                                [
+                                  "weather",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$weather"
+                                  }
+                                ],
+                                [
+                                  "notes",
+                                  {
+                                    "k": "StateRef",
+                                    "n": "$notes"
+                                  }
+                                ]
+                              ]
+                            }
+                          }
+                        },
+                        "variant": "solid",
+                        "color": null,
+                        "size": null,
+                        "icon": "arrow-right"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "submit"
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "form"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 9,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$name": "",
+          "$people": 4,
+          "$date": "2026-10-24",
+          "$pace": "balanced",
+          "$weather": "mild",
+          "$notes": ""
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,1408 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "b17101d553d22b21b6b6ce16b336843deb7b341ea1694b16c3684c8960d9a38e",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Customize my capsule",
+                    "action": {
+                      "k": "Comp",
+                      "name": "ToAssistant",
+                      "args": [
+                        {
+                          "k": "Str",
+                          "v": "Customize my capsule"
+                        }
+                      ],
+                      "mappedProps": {
+                        "message": {
+                          "k": "Str",
+                          "v": "Customize my capsule"
+                        }
+                      }
+                    },
+                    "variant": "solid",
+                    "color": null,
+                    "size": null,
+                    "icon": "arrow-right"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Copy split",
+                    "action": null,
+                    "variant": "outline",
+                    "color": null,
+                    "size": null,
+                    "icon": "copy"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Reset",
+                    "action": null,
+                    "variant": "ghost",
+                    "color": null,
+                    "size": null,
+                    "icon": "rotate-ccw"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Soft",
+                    "action": null,
+                    "variant": "soft"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "main"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Small",
+                    "action": null,
+                    "variant": "outline",
+                    "color": null,
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Medium",
+                    "action": null,
+                    "variant": "outline"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Large",
+                    "action": null,
+                    "variant": "outline",
+                    "color": null,
+                    "size": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Disabled",
+                    "action": null,
+                    "variant": "solid",
+                    "color": null,
+                    "size": null,
+                    "icon": null,
+                    "disabled": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "sizes"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Delete",
+                    "action": null,
+                    "variant": "solid",
+                    "color": "danger"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Confirm",
+                    "action": null,
+                    "variant": "solid",
+                    "color": "success"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Remove",
+                    "action": null,
+                    "variant": "outline",
+                    "color": "danger",
+                    "size": null,
+                    "icon": "trash-2"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Open docs",
+                    "action": {
+                      "k": "Comp",
+                      "name": "OpenUrl",
+                      "args": [
+                        {
+                          "k": "Str",
+                          "v": "https://openui.com"
+                        }
+                      ],
+                      "mappedProps": {
+                        "url": {
+                          "k": "Str",
+                          "v": "https://openui.com"
+                        }
+                      }
+                    },
+                    "variant": "ghost",
+                    "color": null,
+                    "size": null,
+                    "icon": "external-link"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "gap": 2,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "colors"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "IconButton",
+                  "props": {
+                    "icon": "heart",
+                    "action": null,
+                    "label": "Save"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "IconButton",
+                  "props": {
+                    "icon": "share",
+                    "action": null,
+                    "label": "Share",
+                    "variant": "ghost"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "IconButton",
+                  "props": {
+                    "icon": "plus",
+                    "action": null,
+                    "label": "Add",
+                    "variant": "solid"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "IconButton",
+                  "props": {
+                    "icon": "bookmark",
+                    "action": null,
+                    "label": "Bookmark"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "icons"
+          },
+          {
+            "type": "element",
+            "typeName": "Button",
+            "props": {
+              "label": "Add to my route",
+              "action": {
+                "k": "Comp",
+                "name": "ToAssistant",
+                "args": [
+                  {
+                    "k": "Str",
+                    "v": "Add Lands End to my route"
+                  }
+                ],
+                "mappedProps": {
+                  "message": {
+                    "k": "Str",
+                    "v": "Add Lands End to my route"
+                  }
+                }
+              },
+              "variant": "solid",
+              "color": null,
+              "size": "lg",
+              "icon": "plus",
+              "disabled": false,
+              "block": true
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 5,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Customize my capsule",
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "continue_conversation",
+                        "message": "Customize my capsule"
+                      }
+                    ]
+                  },
+                  "variant": "solid",
+                  "color": null,
+                  "size": null,
+                  "icon": "arrow-right"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Copy split",
+                  "action": null,
+                  "variant": "outline",
+                  "color": null,
+                  "size": null,
+                  "icon": "copy"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Reset",
+                  "action": null,
+                  "variant": "ghost",
+                  "color": null,
+                  "size": null,
+                  "icon": "rotate-ccw"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Soft",
+                  "action": null,
+                  "variant": "soft"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "main"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Small",
+                  "action": null,
+                  "variant": "outline",
+                  "color": null,
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Medium",
+                  "action": null,
+                  "variant": "outline"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Large",
+                  "action": null,
+                  "variant": "outline",
+                  "color": null,
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Disabled",
+                  "action": null,
+                  "variant": "solid",
+                  "color": null,
+                  "size": null,
+                  "icon": null,
+                  "disabled": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "sizes"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Delete",
+                  "action": null,
+                  "variant": "solid",
+                  "color": "danger"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Confirm",
+                  "action": null,
+                  "variant": "solid",
+                  "color": "success"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Remove",
+                  "action": null,
+                  "variant": "outline",
+                  "color": "danger",
+                  "size": null,
+                  "icon": "trash-2"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Open docs",
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "open_url",
+                        "url": "https://openui.com"
+                      }
+                    ]
+                  },
+                  "variant": "ghost",
+                  "color": null,
+                  "size": null,
+                  "icon": "external-link"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "gap": 2,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "colors"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "IconButton",
+                "props": {
+                  "icon": "heart",
+                  "action": null,
+                  "label": "Save"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "IconButton",
+                "props": {
+                  "icon": "share",
+                  "action": null,
+                  "label": "Share",
+                  "variant": "ghost"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "IconButton",
+                "props": {
+                  "icon": "plus",
+                  "action": null,
+                  "label": "Add",
+                  "variant": "solid"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "IconButton",
+                "props": {
+                  "icon": "bookmark",
+                  "action": null,
+                  "label": "Bookmark"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "icons"
+        },
+        {
+          "type": "element",
+          "typeName": "Button",
+          "props": {
+            "label": "Add to my route",
+            "action": {
+              "steps": [
+                {
+                  "type": "continue_conversation",
+                  "message": "Add Lands End to my route"
+                }
+              ]
+            },
+            "variant": "solid",
+            "color": null,
+            "size": "lg",
+            "icon": "plus",
+            "disabled": false,
+            "block": true
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 373,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Customize my capsule",
+                        "action": {
+                          "k": "Comp",
+                          "name": "ToAssistant",
+                          "args": [
+                            {
+                              "k": "Str",
+                              "v": "Customize my capsule"
+                            }
+                          ],
+                          "mappedProps": {
+                            "message": {
+                              "k": "Str",
+                              "v": "Customize my capsule"
+                            }
+                          }
+                        },
+                        "variant": "solid",
+                        "color": null,
+                        "size": null,
+                        "icon": "arrow-right"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Copy split",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": null,
+                        "icon": "copy"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": null
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "main"
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Add to my route",
+                  "action": {
+                    "k": "Comp",
+                    "name": "ToAssistant",
+                    "args": [
+                      {
+                        "k": "Str",
+                        "v": "Add Lands End to my route"
+                      }
+                    ],
+                    "mappedProps": {
+                      "message": {
+                        "k": "Str",
+                        "v": "Add Lands End to my route"
+                      }
+                    }
+                  },
+                  "variant": "solid",
+                  "color": null,
+                  "size": "lg",
+                  "icon": "plus",
+                  "disabled": false,
+                  "block": true
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "sizes",
+            "colors",
+            "icons"
+          ],
+          "orphaned": [],
+          "statementCount": 2,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 746,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Customize my capsule",
+                        "action": {
+                          "k": "Comp",
+                          "name": "ToAssistant",
+                          "args": [
+                            {
+                              "k": "Str",
+                              "v": "Customize my capsule"
+                            }
+                          ],
+                          "mappedProps": {
+                            "message": {
+                              "k": "Str",
+                              "v": "Customize my capsule"
+                            }
+                          }
+                        },
+                        "variant": "solid",
+                        "color": null,
+                        "size": null,
+                        "icon": "arrow-right"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Copy split",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": null,
+                        "icon": "copy"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": null,
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Soft",
+                        "action": null,
+                        "variant": "soft"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "main"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Small",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": "sm"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Medium",
+                        "action": null,
+                        "variant": "outline"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Large",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Disabled",
+                        "action": null,
+                        "variant": "solid",
+                        "color": null,
+                        "size": null,
+                        "icon": null,
+                        "disabled": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "sizes"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Delete",
+                        "action": null,
+                        "variant": "solid",
+                        "color": "danger"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Confirm",
+                        "action": null,
+                        "variant": "so"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "colors"
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Add to my route",
+                  "action": {
+                    "k": "Comp",
+                    "name": "ToAssistant",
+                    "args": [
+                      {
+                        "k": "Str",
+                        "v": "Add Lands End to my route"
+                      }
+                    ],
+                    "mappedProps": {
+                      "message": {
+                        "k": "Str",
+                        "v": "Add Lands End to my route"
+                      }
+                    }
+                  },
+                  "variant": "solid",
+                  "color": null,
+                  "size": "lg",
+                  "icon": "plus",
+                  "disabled": false,
+                  "block": true
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "icons"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1120,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Customize my capsule",
+                        "action": {
+                          "k": "Comp",
+                          "name": "ToAssistant",
+                          "args": [
+                            {
+                              "k": "Str",
+                              "v": "Customize my capsule"
+                            }
+                          ],
+                          "mappedProps": {
+                            "message": {
+                              "k": "Str",
+                              "v": "Customize my capsule"
+                            }
+                          }
+                        },
+                        "variant": "solid",
+                        "color": null,
+                        "size": null,
+                        "icon": "arrow-right"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Copy split",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": null,
+                        "icon": "copy"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": null,
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Soft",
+                        "action": null,
+                        "variant": "soft"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "main"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Small",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Medium",
+                        "action": null,
+                        "variant": "outline"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Large",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Disabled",
+                        "action": null,
+                        "variant": "solid",
+                        "color": null,
+                        "size": null,
+                        "icon": null,
+                        "disabled": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "sizes"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Delete",
+                        "action": null,
+                        "variant": "solid",
+                        "color": "danger"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Confirm",
+                        "action": null,
+                        "variant": "solid",
+                        "color": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Remove",
+                        "action": null,
+                        "variant": "outline",
+                        "color": "danger",
+                        "size": null,
+                        "icon": "trash-2"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Open docs",
+                        "action": {
+                          "k": "Comp",
+                          "name": "OpenUrl",
+                          "args": [
+                            {
+                              "k": "Str",
+                              "v": "https://openui.com"
+                            }
+                          ],
+                          "mappedProps": {
+                            "url": {
+                              "k": "Str",
+                              "v": "https://openui.com"
+                            }
+                          }
+                        },
+                        "variant": "ghost",
+                        "color": null,
+                        "size": null,
+                        "icon": "external-link"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "colors"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "heart",
+                        "action": null,
+                        "label": "Save"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "share",
+                        "action": null,
+                        "label": "Share",
+                        "variant": "ghost"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "plus",
+                        "action": null,
+                        "label": "Add",
+                        "variant": "solid"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "IconButton",
+                      "props": {
+                        "icon": "bookmark",
+                        "action": null,
+                        "label": "Bookmark"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "icons"
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Add to my route",
+                  "action": {
+                    "k": "Comp",
+                    "name": "ToAssistant",
+                    "args": [
+                      {
+                        "k": "Str",
+                        "v": "Add Lands End to my route"
+                      }
+                    ],
+                    "mappedProps": {
+                      "message": {
+                        "k": "Str",
+                        "v": "Add Lands End to my route"
+                      }
+                    }
+                  },
+                  "variant": "solid",
+                  "color": null,
+                  "size": "lg",
+                  "icon": "plus",
+                  "disabled": false,
+                  "block": true
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,602 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "730df78fad0881904d9ce0ae1e8dcaa033d684f9e3d1b43705f35d2db06810b1",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Who makes money in this market?",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Table",
+            "props": {
+              "columns": [
+                "Player",
+                "Business model",
+                "Typical margin",
+                "Difficulty"
+              ],
+              "rows": [
+                [
+                  "Drone manufacturers",
+                  "Sell drones, cameras and accessories",
+                  "38%",
+                  {
+                    "type": "element",
+                    "typeName": "Badge",
+                    "props": {
+                      "text": "Hard",
+                      "color": "danger"
+                    },
+                    "partial": false,
+                    "hasDynamicProps": false
+                  }
+                ],
+                [
+                  "Freelance pilots",
+                  "Charge per shoot or project",
+                  "55%",
+                  {
+                    "type": "element",
+                    "typeName": "Badge",
+                    "props": {
+                      "text": "Easy",
+                      "color": "success"
+                    },
+                    "partial": false,
+                    "hasDynamicProps": false
+                  }
+                ],
+                [
+                  "Mapping companies",
+                  "SaaS and data processing fees",
+                  "24%",
+                  {
+                    "type": "element",
+                    "typeName": "Badge",
+                    "props": {
+                      "text": "Medium",
+                      "color": "warning"
+                    },
+                    "partial": false,
+                    "hasDynamicProps": false
+                  }
+                ],
+                [
+                  "Enterprises",
+                  "Operate their own fleets",
+                  "n/a",
+                  {
+                    "type": "element",
+                    "typeName": "Badge",
+                    "props": {
+                      "text": "Medium",
+                      "color": "warning"
+                    },
+                    "partial": false,
+                    "hasDynamicProps": false
+                  }
+                ]
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Table",
+            "props": {
+              "columns": [
+                "Month",
+                "Shoots",
+                "Revenue"
+              ],
+              "rows": [
+                [
+                  "January",
+                  8,
+                  "$2,000"
+                ],
+                [
+                  "February",
+                  12,
+                  "$3,000"
+                ],
+                [
+                  "March",
+                  15,
+                  "$3,750"
+                ]
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Who makes money in this market?",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Table",
+          "props": {
+            "columns": [
+              "Player",
+              "Business model",
+              "Typical margin",
+              "Difficulty"
+            ],
+            "rows": [
+              [
+                "Drone manufacturers",
+                "Sell drones, cameras and accessories",
+                "38%",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Hard",
+                    "color": "danger"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              [
+                "Freelance pilots",
+                "Charge per shoot or project",
+                "55%",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Easy",
+                    "color": "success"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              [
+                "Mapping companies",
+                "SaaS and data processing fees",
+                "24%",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Medium",
+                    "color": "warning"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              [
+                "Enterprises",
+                "Operate their own fleets",
+                "n/a",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Medium",
+                    "color": "warning"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ]
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Table",
+          "props": {
+            "columns": [
+              "Month",
+              "Shoots",
+              "Revenue"
+            ],
+            "rows": [
+              [
+                "January",
+                8,
+                "$2,000"
+              ],
+              [
+                "February",
+                12,
+                "$3,000"
+              ],
+              [
+                "March",
+                15,
+                "$3,750"
+              ]
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 202,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Who makes money in this market?",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "Player",
+                    "Business model",
+                    "Typical margin",
+                    "Difficulty"
+                  ],
+                  "rows": [
+                    [
+                      "Drone manufacturers",
+                      "Sell drones, cameras and accessories",
+                      "38%"
+                    ]
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "B"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 404,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Who makes money in this market?",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "Player",
+                    "Business model",
+                    "Typical margin",
+                    "Difficulty"
+                  ],
+                  "rows": [
+                    [
+                      "Drone manufacturers",
+                      "Sell drones, cameras and accessories",
+                      "38%",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Hard",
+                          "color": "danger"
+                        },
+                        "partial": true,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Freelance pilots",
+                      "Charge per shoot or project",
+                      "55%",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Easy",
+                          "color": "success"
+                        },
+                        "partial": true,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Mapping companies",
+                      "SaaS and data processing fees",
+                      "24%",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Medium",
+                          "color": "warning"
+                        },
+                        "partial": true,
+                        "hasDynamicProps": false
+                      }
+                    ]
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 607,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Who makes money in this market?",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "Player",
+                    "Business model",
+                    "Typical margin",
+                    "Difficulty"
+                  ],
+                  "rows": [
+                    [
+                      "Drone manufacturers",
+                      "Sell drones, cameras and accessories",
+                      "38%",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Hard",
+                          "color": "danger"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Freelance pilots",
+                      "Charge per shoot or project",
+                      "55%",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Easy",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Mapping companies",
+                      "SaaS and data processing fees",
+                      "24%",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Medium",
+                          "color": "warning"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Enterprises",
+                      "Operate their own fleets",
+                      "n/a",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Medium",
+                          "color": "warning"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ]
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "Month",
+                    "Shoots",
+                    "Revenue"
+                  ],
+                  "rows": [
+                    [
+                      "January",
+                      8,
+                      "$2,000"
+                    ],
+                    [
+                      "February",
+                      12,
+                      "$3,000"
+                    ],
+                    [
+                      "March",
+                      15,
+                      "$3,750"
+                    ]
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

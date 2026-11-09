@@ -1,0 +1,917 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "8ebab489bfe783fa5c992afd388c0d1855e8365c7e70268559603a8e635e4406",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "A slow Saturday in Lisbon",
+              "size": "lg"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "title"
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "Start by the river, climb into **Alfama** for lunch, and end the day at a *miradouro* with the city below you."
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "intro"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "Belém Tower Lisbon"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "Alfama Lisbon"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "Miradouro da Senhora do Monte"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 3,
+              "minChildWidth": 100,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "photos"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Before you go",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "h2"
+          },
+          {
+            "type": "element",
+            "typeName": "Markdown",
+            "props": {
+              "text": "- Trams 28 and 12 get crowded after 10 AM.\n- Wear shoes with grip: the cobbles are polished smooth.\n- Most museums close on **Mondays**."
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "md"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Walking"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "6.4 km",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 4,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "s1"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Day pass"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "€6.80",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 4,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "s2"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Sunset"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "7:42 PM",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 4,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "s3"
+                }
+              ],
+              "columns": 3,
+              "minChildWidth": 150,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "stats"
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "Times are estimates, not live data.",
+              "size": "xs",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "closing"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 11,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "A slow Saturday in Lisbon",
+            "size": "lg"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "title"
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Start by the river, climb into **Alfama** for lunch, and end the day at a *miradouro* with the city below you."
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "intro"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "Belém Tower Lisbon"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "Alfama Lisbon"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "Miradouro da Senhora do Monte"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 3,
+            "minChildWidth": 100,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "photos"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Before you go",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "h2"
+        },
+        {
+          "type": "element",
+          "typeName": "Markdown",
+          "props": {
+            "text": "- Trams 28 and 12 get crowded after 10 AM.\n- Wear shoes with grip: the cobbles are polished smooth.\n- Most museums close on **Mondays**."
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "md"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Walking"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "6.4 km",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "s1"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Day pass"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "€6.80",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "s2"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Sunset"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "7:42 PM",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "s3"
+              }
+            ],
+            "columns": 3,
+            "minChildWidth": 150,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "stats"
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Times are estimates, not live data.",
+            "size": "xs",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "closing"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 290,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "A slow Saturday in Lisbon",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "title"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Start by the river, climb into **Alfama** for lunch, and end the day at a *miradouro* with the city below you."
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "intro"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Belém Tower Lisbon"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "photos"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "Searc",
+            "h2",
+            "md",
+            "stats",
+            "closing"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 580,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "A slow Saturday in Lisbon",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "title"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Start by the river, climb into **Alfama** for lunch, and end the day at a *miradouro* with the city below you."
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "intro"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Belém Tower Lisbon"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Alfama Lisbon"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Miradouro da Senhora do Monte"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 100,
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "photos"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Before you go",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "h2"
+              },
+              {
+                "type": "element",
+                "typeName": "Markdown",
+                "props": {
+                  "text": "- Trams 28 and 12 get crowded after 10 AM.\n- Wear shoes with grip: the cobbles are polished smooth.\n- Most museums close on **Mondays**."
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "md"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": []
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "stats"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "s1",
+            "closing"
+          ],
+          "orphaned": [],
+          "statementCount": 7,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 871,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "A slow Saturday in Lisbon",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "title"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Start by the river, climb into **Alfama** for lunch, and end the day at a *miradouro* with the city below you."
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "intro"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Belém Tower Lisbon"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Alfama Lisbon"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Miradouro da Senhora do Monte"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 100,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "photos"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Before you go",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "h2"
+              },
+              {
+                "type": "element",
+                "typeName": "Markdown",
+                "props": {
+                  "text": "- Trams 28 and 12 get crowded after 10 AM.\n- Wear shoes with grip: the cobbles are polished smooth.\n- Most museums close on **Mondays**."
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "md"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Walking"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "6.4 km",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 4,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "s1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Day pass"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "€6.80",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 4,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "s2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Sunset"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "7:42 PM",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 4,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "s3"
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 150,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "stats"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Times are estimates, not live data.",
+                  "size": "xs",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "closing"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 11,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

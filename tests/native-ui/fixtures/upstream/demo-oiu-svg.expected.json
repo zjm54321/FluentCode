@@ -1,0 +1,1550 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "2cbfbe79cbe1ed1ff2a16f15e2c8c87d593b55d50df50b04625c8f285353ca96",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Turn the crank",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": {
+                "k": "BinOp",
+                "op": "+",
+                "left": {
+                  "k": "BinOp",
+                  "op": "+",
+                  "left": {
+                    "k": "Str",
+                    "v": "The rear sprocket turns "
+                  },
+                  "right": {
+                    "k": "Num",
+                    "v": 2.5
+                  }
+                },
+                "right": {
+                  "k": "Str",
+                  "v": " times as far as the chainring."
+                }
+              },
+              "size": "sm",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Svg",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Path",
+                  "props": {
+                    "d": "M 90 40 L 240 62 A 18 18 0 0 1 240 98 L 90 120 A 40 40 0 0 1 90 40 Z",
+                    "fill": null,
+                    "stroke": "faint",
+                    "strokeWidth": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "chain"
+                },
+                {
+                  "type": "element",
+                  "typeName": "G",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Circle",
+                        "props": {
+                          "cx": 90,
+                          "cy": 80,
+                          "r": 40,
+                          "fill": "surface",
+                          "stroke": "ink",
+                          "strokeWidth": 3
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Line",
+                        "props": {
+                          "x1": 90,
+                          "y1": 80,
+                          "x2": 90,
+                          "y2": 44,
+                          "stroke": "ink",
+                          "strokeWidth": 4
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Circle",
+                        "props": {
+                          "cx": 90,
+                          "cy": 80,
+                          "r": 6,
+                          "fill": "ink"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "transform": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "BinOp",
+                        "op": "+",
+                        "left": {
+                          "k": "Str",
+                          "v": "rotate("
+                        },
+                        "right": {
+                          "k": "StateRef",
+                          "n": "$angle"
+                        }
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": " 90 80)"
+                      }
+                    }
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "front"
+                },
+                {
+                  "type": "element",
+                  "typeName": "G",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Circle",
+                        "props": {
+                          "cx": 240,
+                          "cy": 80,
+                          "r": 18,
+                          "fill": "surface",
+                          "stroke": "ink",
+                          "strokeWidth": 3
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Line",
+                        "props": {
+                          "x1": 240,
+                          "y1": 80,
+                          "x2": 240,
+                          "y2": 64,
+                          "stroke": "info",
+                          "strokeWidth": 3
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Circle",
+                        "props": {
+                          "cx": 240,
+                          "cy": 80,
+                          "r": 4,
+                          "fill": "ink"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "transform": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "BinOp",
+                        "op": "+",
+                        "left": {
+                          "k": "Str",
+                          "v": "rotate("
+                        },
+                        "right": {
+                          "k": "BinOp",
+                          "op": "*",
+                          "left": {
+                            "k": "StateRef",
+                            "n": "$angle"
+                          },
+                          "right": {
+                            "k": "Num",
+                            "v": 2.5
+                          }
+                        }
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": " 240 80)"
+                      }
+                    }
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "rear"
+                },
+                {
+                  "type": "element",
+                  "typeName": "SvgText",
+                  "props": {
+                    "text": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "BinOp",
+                        "op": "+",
+                        "left": {
+                          "k": "Str",
+                          "v": "Rear "
+                        },
+                        "right": {
+                          "k": "Comp",
+                          "name": "Round",
+                          "args": [
+                            {
+                              "k": "BinOp",
+                              "op": "%",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "*",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$angle"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 2.5
+                                }
+                              },
+                              "right": {
+                                "k": "Num",
+                                "v": 360
+                              }
+                            },
+                            {
+                              "k": "Num",
+                              "v": 0
+                            }
+                          ],
+                          "mappedProps": {
+                            "number": {
+                              "k": "BinOp",
+                              "op": "%",
+                              "left": {
+                                "k": "BinOp",
+                                "op": "*",
+                                "left": {
+                                  "k": "StateRef",
+                                  "n": "$angle"
+                                },
+                                "right": {
+                                  "k": "Num",
+                                  "v": 2.5
+                                }
+                              },
+                              "right": {
+                                "k": "Num",
+                                "v": 360
+                              }
+                            },
+                            "decimals": {
+                              "k": "Num",
+                              "v": 0
+                            }
+                          }
+                        }
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": "°"
+                      }
+                    },
+                    "x": 240,
+                    "y": 132,
+                    "size": 12,
+                    "fill": "muted",
+                    "anchor": "middle"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "readout"
+                }
+              ],
+              "viewBox": "0 0 320 160"
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "drawing"
+          },
+          {
+            "type": "element",
+            "typeName": "Slider",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$angle"
+              },
+              "min": 0,
+              "max": 360,
+              "step": 5,
+              "label": "Crank angle",
+              "unit": "°"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "type": "element",
+            "typeName": "Svg",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Rect",
+                  "props": {
+                    "x": 10,
+                    "y": 10,
+                    "width": 60,
+                    "height": 40,
+                    "fill": "info",
+                    "stroke": null,
+                    "strokeWidth": null,
+                    "opacity": 0.8,
+                    "rx": 8
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Ellipse",
+                  "props": {
+                    "cx": 120,
+                    "cy": 30,
+                    "rx": 34,
+                    "ry": 20,
+                    "fill": "success"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Polygon",
+                  "props": {
+                    "points": "180,50 205,10 230,50",
+                    "fill": "warning"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Polyline",
+                  "props": {
+                    "points": "250,45 265,15 280,40 295,12",
+                    "stroke": "danger",
+                    "strokeWidth": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SvgText",
+                  "props": {
+                    "text": "Rect · Ellipse · Polygon · Polyline",
+                    "x": 160,
+                    "y": 72,
+                    "size": 11,
+                    "fill": "muted",
+                    "anchor": "middle"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "viewBox": "0 0 320 80",
+              "width": null,
+              "height": null
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "shapes"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 9,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$angle": 40
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Turn the crank",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "The rear sprocket turns 2.5 times as far as the chainring.",
+            "size": "sm",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Svg",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Path",
+                "props": {
+                  "d": "M 90 40 L 240 62 A 18 18 0 0 1 240 98 L 90 120 A 40 40 0 0 1 90 40 Z",
+                  "fill": null,
+                  "stroke": "faint",
+                  "strokeWidth": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "chain"
+              },
+              {
+                "type": "element",
+                "typeName": "G",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Circle",
+                      "props": {
+                        "cx": 90,
+                        "cy": 80,
+                        "r": 40,
+                        "fill": "surface",
+                        "stroke": "ink",
+                        "strokeWidth": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Line",
+                      "props": {
+                        "x1": 90,
+                        "y1": 80,
+                        "x2": 90,
+                        "y2": 44,
+                        "stroke": "ink",
+                        "strokeWidth": 4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Circle",
+                      "props": {
+                        "cx": 90,
+                        "cy": 80,
+                        "r": 6,
+                        "fill": "ink"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "transform": "rotate(40 90 80)"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "front"
+              },
+              {
+                "type": "element",
+                "typeName": "G",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Circle",
+                      "props": {
+                        "cx": 240,
+                        "cy": 80,
+                        "r": 18,
+                        "fill": "surface",
+                        "stroke": "ink",
+                        "strokeWidth": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Line",
+                      "props": {
+                        "x1": 240,
+                        "y1": 80,
+                        "x2": 240,
+                        "y2": 64,
+                        "stroke": "info",
+                        "strokeWidth": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Circle",
+                      "props": {
+                        "cx": 240,
+                        "cy": 80,
+                        "r": 4,
+                        "fill": "ink"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "transform": "rotate(100 240 80)"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "rear"
+              },
+              {
+                "type": "element",
+                "typeName": "SvgText",
+                "props": {
+                  "text": "Rear 100°",
+                  "x": 240,
+                  "y": 132,
+                  "size": 12,
+                  "fill": "muted",
+                  "anchor": "middle"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "readout"
+              }
+            ],
+            "viewBox": "0 0 320 160"
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "drawing"
+        },
+        {
+          "type": "element",
+          "typeName": "Slider",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$angle",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "min": 0,
+            "max": 360,
+            "step": 5,
+            "label": "Crank angle",
+            "unit": "°"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Svg",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Rect",
+                "props": {
+                  "x": 10,
+                  "y": 10,
+                  "width": 60,
+                  "height": 40,
+                  "fill": "info",
+                  "stroke": null,
+                  "strokeWidth": null,
+                  "opacity": 0.8,
+                  "rx": 8
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Ellipse",
+                "props": {
+                  "cx": 120,
+                  "cy": 30,
+                  "rx": 34,
+                  "ry": 20,
+                  "fill": "success"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Polygon",
+                "props": {
+                  "points": "180,50 205,10 230,50",
+                  "fill": "warning"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Polyline",
+                "props": {
+                  "points": "250,45 265,15 280,40 295,12",
+                  "stroke": "danger",
+                  "strokeWidth": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SvgText",
+                "props": {
+                  "text": "Rect · Ellipse · Polygon · Polyline",
+                  "x": 160,
+                  "y": 72,
+                  "size": 11,
+                  "fill": "muted",
+                  "anchor": "middle"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "viewBox": "0 0 320 80",
+            "width": null,
+            "height": null
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "shapes"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 364,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Turn the crank",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Str",
+                        "v": "The rear sprocket turns "
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 2.5
+                      }
+                    },
+                    "right": {
+                      "k": "Str",
+                      "v": " times as far as the chainring."
+                    }
+                  },
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Svg",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Path",
+                      "props": {
+                        "d": "M 90 40 L 240 62 A 18 18 0 0 1 240 98 L 90 120 A 40 40 0 0 1 90"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "chain"
+                    }
+                  ],
+                  "viewBox": "0 0 320 160"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "drawing"
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$angle"
+                  },
+                  "min": 0,
+                  "max": 360,
+                  "step": 5,
+                  "label": "Crank angle",
+                  "unit": "°"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "front",
+            "rear",
+            "readout",
+            "shapes"
+          ],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$angle": 40
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 729,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Turn the crank",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Str",
+                        "v": "The rear sprocket turns "
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 2.5
+                      }
+                    },
+                    "right": {
+                      "k": "Str",
+                      "v": " times as far as the chainring."
+                    }
+                  },
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Svg",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Path",
+                      "props": {
+                        "d": "M 90 40 L 240 62 A 18 18 0 0 1 240 98 L 90 120 A 40 40 0 0 1 90 40 Z",
+                        "fill": null,
+                        "stroke": "faint",
+                        "strokeWidth": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "chain"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 90,
+                              "cy": 80,
+                              "r": 40,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 3
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 90,
+                              "y1": 80,
+                              "x2": 90,
+                              "y2": 44,
+                              "stroke": "ink",
+                              "strokeWidth": 4
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 90,
+                              "cy": 80,
+                              "r": 6,
+                              "fill": "ink"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "transform": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "rotate("
+                            },
+                            "right": {
+                              "k": "StateRef",
+                              "n": "$angle"
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": " 90 80)"
+                          }
+                        }
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true,
+                      "statementId": "front"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 240,
+                              "cy": 80,
+                              "r": 18,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 3
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 240,
+                              "y1": 80,
+                              "x2": 240,
+                              "y2": 64,
+                              "stroke": "info",
+                              "strokeWidth": 3
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 240,
+                              "cy": 80,
+                              "r": 4,
+                              "fill": "ink"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "transform": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "rotate("
+                            },
+                            "right": {
+                              "k": "BinOp",
+                              "op": "*",
+                              "left": {
+                                "k": "StateRef",
+                                "n": "$angle"
+                              },
+                              "right": {
+                                "k": "Num",
+                                "v": 2.5
+                              }
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": " 240 80)"
+                          }
+                        }
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true,
+                      "statementId": "rear"
+                    }
+                  ],
+                  "viewBox": "0 0 320 160"
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "drawing"
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$angle"
+                  },
+                  "min": 0,
+                  "max": 360,
+                  "step": 5,
+                  "label": "Crank angle",
+                  "unit": "°"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "shapes"
+          ],
+          "orphaned": [],
+          "statementCount": 8,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "SvgText",
+              "path": "/x",
+              "message": "missing required field \"/x\" — signature: SvgText(text*: string, x*: number, y*: number, size: number, fill: string, anchor: \"start\"|\"middle\"|\"end\", weight: \"normal\"|\"medium\"|\"semibold\")",
+              "statementId": "readout"
+            },
+            {
+              "code": "missing-required",
+              "component": "SvgText",
+              "path": "/y",
+              "message": "missing required field \"/y\" — signature: SvgText(text*: string, x*: number, y*: number, size: number, fill: string, anchor: \"start\"|\"middle\"|\"end\", weight: \"normal\"|\"medium\"|\"semibold\")",
+              "statementId": "readout"
+            }
+          ]
+        },
+        "stateDeclarations": {
+          "$angle": 40
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1094,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Turn the crank",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": {
+                    "k": "BinOp",
+                    "op": "+",
+                    "left": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "Str",
+                        "v": "The rear sprocket turns "
+                      },
+                      "right": {
+                        "k": "Num",
+                        "v": 2.5
+                      }
+                    },
+                    "right": {
+                      "k": "Str",
+                      "v": " times as far as the chainring."
+                    }
+                  },
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Svg",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Path",
+                      "props": {
+                        "d": "M 90 40 L 240 62 A 18 18 0 0 1 240 98 L 90 120 A 40 40 0 0 1 90 40 Z",
+                        "fill": null,
+                        "stroke": "faint",
+                        "strokeWidth": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "chain"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 90,
+                              "cy": 80,
+                              "r": 40,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 3
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 90,
+                              "y1": 80,
+                              "x2": 90,
+                              "y2": 44,
+                              "stroke": "ink",
+                              "strokeWidth": 4
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 90,
+                              "cy": 80,
+                              "r": 6,
+                              "fill": "ink"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "transform": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "rotate("
+                            },
+                            "right": {
+                              "k": "StateRef",
+                              "n": "$angle"
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": " 90 80)"
+                          }
+                        }
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "front"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 240,
+                              "cy": 80,
+                              "r": 18,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 3
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 240,
+                              "y1": 80,
+                              "x2": 240,
+                              "y2": 64,
+                              "stroke": "info",
+                              "strokeWidth": 3
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 240,
+                              "cy": 80,
+                              "r": 4,
+                              "fill": "ink"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "transform": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "rotate("
+                            },
+                            "right": {
+                              "k": "BinOp",
+                              "op": "*",
+                              "left": {
+                                "k": "StateRef",
+                                "n": "$angle"
+                              },
+                              "right": {
+                                "k": "Num",
+                                "v": 2.5
+                              }
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": " 240 80)"
+                          }
+                        }
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "rear"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SvgText",
+                      "props": {
+                        "text": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "Rear "
+                            },
+                            "right": {
+                              "k": "Comp",
+                              "name": "Round",
+                              "args": [
+                                {
+                                  "k": "BinOp",
+                                  "op": "%",
+                                  "left": {
+                                    "k": "BinOp",
+                                    "op": "*",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$angle"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 2.5
+                                    }
+                                  },
+                                  "right": {
+                                    "k": "Num",
+                                    "v": 360
+                                  }
+                                },
+                                {
+                                  "k": "Num",
+                                  "v": 0
+                                }
+                              ],
+                              "mappedProps": {
+                                "number": {
+                                  "k": "BinOp",
+                                  "op": "%",
+                                  "left": {
+                                    "k": "BinOp",
+                                    "op": "*",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$angle"
+                                    },
+                                    "right": {
+                                      "k": "Num",
+                                      "v": 2.5
+                                    }
+                                  },
+                                  "right": {
+                                    "k": "Num",
+                                    "v": 360
+                                  }
+                                },
+                                "decimals": {
+                                  "k": "Num",
+                                  "v": 0
+                                }
+                              }
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "°"
+                          }
+                        },
+                        "x": 240,
+                        "y": 132,
+                        "size": 12,
+                        "fill": "muted",
+                        "anchor": "middle"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "readout"
+                    }
+                  ],
+                  "viewBox": "0 0 320 160"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "drawing"
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$angle"
+                  },
+                  "min": 0,
+                  "max": 360,
+                  "step": 5,
+                  "label": "Crank angle",
+                  "unit": "°"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Svg",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 10,
+                        "y": 10,
+                        "width": 60,
+                        "height": 40,
+                        "fill": "info",
+                        "stroke": null,
+                        "strokeWidth": null,
+                        "opacity": 0.8,
+                        "rx": 8
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Ellipse",
+                      "props": {
+                        "cx": 120,
+                        "cy": 30,
+                        "rx": 34,
+                        "ry": 20,
+                        "fill": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Polygon",
+                      "props": {
+                        "points": "180,50 205,10 230,50",
+                        "fill": "warning"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Polyline",
+                      "props": {
+                        "points": "250,45 265,15 280,40 295,12",
+                        "stroke": "danger",
+                        "strokeWidth": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SvgText",
+                      "props": {
+                        "text": "Rect · Ellipse · Polygon · Polyline",
+                        "x": 160,
+                        "y": 72,
+                        "size": 11,
+                        "fill": "muted",
+                        "anchor": "middle"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "viewBox": "0 0 320 80",
+                  "width": null,
+                  "height": null
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "shapes"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 9,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$angle": 40
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

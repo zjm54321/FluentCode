@@ -1,0 +1,3535 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "659737f9bf2ae7f4b59fb2f8eb59fa888f505b805ed4824fa261857637e6523b",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "The drone photography market",
+                    "size": "xl"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Aerial photos and video for property, events, inspection and media: a young market where cheap hardware meets licensed, skilled work.",
+                    "size": "md",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "How the market is structured",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "SearchImage",
+                        "props": {
+                          "query": "Suburb aerial view",
+                          "aspectRatio": 1.7,
+                          "radius": "md"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Real estate and architecture",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Listing photos and video, the steadiest source of work."
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "SearchImage",
+                        "props": {
+                          "query": "Wedding photography",
+                          "aspectRatio": 1.7,
+                          "radius": "md"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Weddings and events",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Seasonal and priced per event, often sold with a ground crew."
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "SearchImage",
+                        "props": {
+                          "query": "Solar farm aerial",
+                          "aspectRatio": 1.7,
+                          "radius": "md"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Inspection and surveying",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Roofs, solar farms and building sites; more training, better pay."
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "SearchImage",
+                        "props": {
+                          "query": "Aerial photography coastline",
+                          "aspectRatio": 1.7,
+                          "radius": "md"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Media and tourism",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Stock footage, tourism boards and film: visible but competitive."
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": null,
+                    "padding": 3,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 220,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "segments"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "How big is it?",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Drone photography services, worldwide, 2026"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "$1.1B",
+                                "size": "2xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "About 19% a year",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 3,
+                    "align": null,
+                    "justify": null,
+                    "wrap": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Chart",
+                  "props": {
+                    "type": "bar",
+                    "data": [
+                      {
+                        "year": "2024",
+                        "size": 860000000
+                      },
+                      {
+                        "year": "2026",
+                        "size": 1110000000
+                      },
+                      {
+                        "year": "2028",
+                        "size": 1520000000
+                      },
+                      {
+                        "year": "2030",
+                        "size": 2260000000
+                      }
+                    ],
+                    "x": "year",
+                    "series": [
+                      "size"
+                    ],
+                    "format": "currency",
+                    "currency": null,
+                    "stacked": false,
+                    "height": 200
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Illustrative figures in the range of public market reports; estimates vary widely with the market definition."
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": null,
+              "padding": 4,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "sizeCard"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Who makes money",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Table",
+            "props": {
+              "columns": [
+                "Who",
+                "How they earn",
+                "Margin"
+              ],
+              "rows": [
+                [
+                  "Drone makers",
+                  "Hardware, cameras and accessories",
+                  {
+                    "type": "element",
+                    "typeName": "Badge",
+                    "props": {
+                      "text": "Medium",
+                      "color": "warning"
+                    },
+                    "partial": false,
+                    "hasDynamicProps": false
+                  }
+                ],
+                [
+                  "Freelance pilots",
+                  "Per shoot or per project",
+                  {
+                    "type": "element",
+                    "typeName": "Badge",
+                    "props": {
+                      "text": "High",
+                      "color": "success"
+                    },
+                    "partial": false,
+                    "hasDynamicProps": false
+                  }
+                ],
+                [
+                  "Agencies",
+                  "Bundles of photo, video and editing",
+                  {
+                    "type": "element",
+                    "typeName": "Badge",
+                    "props": {
+                      "text": "Medium",
+                      "color": "warning"
+                    },
+                    "partial": false,
+                    "hasDynamicProps": false
+                  }
+                ],
+                [
+                  "Software platforms",
+                  "Mapping and processing subscriptions",
+                  {
+                    "type": "element",
+                    "typeName": "Badge",
+                    "props": {
+                      "text": "High",
+                      "color": "success"
+                    },
+                    "partial": false,
+                    "hasDynamicProps": false
+                  }
+                ]
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "players"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Try the economics of a drone photo business",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Slider",
+                        "props": {
+                          "value": {
+                            "k": "StateRef",
+                            "n": "$projects"
+                          },
+                          "min": 0,
+                          "max": 40,
+                          "step": 1,
+                          "label": "Projects per month"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Slider",
+                        "props": {
+                          "value": {
+                            "k": "StateRef",
+                            "n": "$price"
+                          },
+                          "min": 100,
+                          "max": 1500,
+                          "step": 25,
+                          "label": "Price per project",
+                          "unit": "$"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Slider",
+                        "props": {
+                          "value": {
+                            "k": "StateRef",
+                            "n": "$cost"
+                          },
+                          "min": 0,
+                          "max": 400,
+                          "step": 10,
+                          "label": "Cost per project",
+                          "unit": "$"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Slider",
+                        "props": {
+                          "value": {
+                            "k": "StateRef",
+                            "n": "$fixed"
+                          },
+                          "min": 0,
+                          "max": 6000,
+                          "step": 100,
+                          "label": "Fixed costs per month",
+                          "unit": "$"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "columns": 2,
+                    "minChildWidth": 240,
+                    "gap": 5
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Revenue a month"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "$5,400",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false,
+                        "statementId": "k1"
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Profit a month"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "$2,520",
+                                "size": "lg",
+                                "color": "success"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false,
+                        "statementId": "k2"
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Margin"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "46.7%",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false,
+                        "statementId": "k3"
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Break-even"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "5 projects",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false,
+                        "statementId": "k4"
+                      }
+                    ],
+                    "columns": 4,
+                    "minChildWidth": 130,
+                    "gap": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Chart",
+                  "props": {
+                    "type": "line",
+                    "data": [
+                      {
+                        "projects": "0",
+                        "Revenue": 0,
+                        "Costs": 1800
+                      },
+                      {
+                        "projects": "5",
+                        "Revenue": 2250,
+                        "Costs": 2250
+                      },
+                      {
+                        "projects": "10",
+                        "Revenue": 4500,
+                        "Costs": 2700
+                      },
+                      {
+                        "projects": "15",
+                        "Revenue": 6750,
+                        "Costs": 3150
+                      },
+                      {
+                        "projects": "20",
+                        "Revenue": 9000,
+                        "Costs": 3600
+                      },
+                      {
+                        "projects": "25",
+                        "Revenue": 11250,
+                        "Costs": 4050
+                      },
+                      {
+                        "projects": "30",
+                        "Revenue": 13500,
+                        "Costs": 4500
+                      },
+                      {
+                        "projects": "35",
+                        "Revenue": 15750,
+                        "Costs": 4950
+                      },
+                      {
+                        "projects": "40",
+                        "Revenue": 18000,
+                        "Costs": 5400
+                      }
+                    ],
+                    "x": "projects",
+                    "series": [
+                      "Revenue",
+                      "Costs"
+                    ],
+                    "format": "currency",
+                    "currency": null,
+                    "stacked": false,
+                    "height": 200
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Fixed costs are covered from project 5 each month; every project after that adds $360 of profit.",
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Illustrative. Fixed costs cover insurance, gear, software and marketing; project costs cover editing and travel."
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": null,
+              "padding": 4,
+              "gap": 4
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "sim"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "What is changing",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "List",
+            "props": {
+              "items": [
+                "Cheaper drones with better cameras push basic photo prices down.",
+                "Licensing, such as FAA Part 107 in the US, keeps casual competition out of paid work.",
+                "Inspection, mapping and thermal imaging grow faster than photography alone.",
+                "Clients increasingly want edited video and 3D models, not just photos."
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "changes"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Compare with drone inspection services",
+                    "action": null,
+                    "variant": "outline",
+                    "color": null,
+                    "size": "sm",
+                    "icon": "arrow-right"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "ask"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 16,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$cost": 90,
+      "$fixed": 1800,
+      "$price": 450,
+      "$projects": 12
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "The drone photography market",
+                  "size": "xl"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Aerial photos and video for property, events, inspection and media: a young market where cheap hardware meets licensed, skilled work.",
+                  "size": "md",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "How the market is structured",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Suburb aerial view",
+                        "aspectRatio": 1.7,
+                        "radius": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Real estate and architecture",
+                        "size": "sm",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Listing photos and video, the steadiest source of work."
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Wedding photography",
+                        "aspectRatio": 1.7,
+                        "radius": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Weddings and events",
+                        "size": "sm",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Seasonal and priced per event, often sold with a ground crew."
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Solar farm aerial",
+                        "aspectRatio": 1.7,
+                        "radius": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Inspection and surveying",
+                        "size": "sm",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Roofs, solar farms and building sites; more training, better pay."
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Aerial photography coastline",
+                        "aspectRatio": 1.7,
+                        "radius": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Media and tourism",
+                        "size": "sm",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Stock footage, tourism boards and film: visible but competitive."
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 220,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "segments"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "How big is it?",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Drone photography services, worldwide, 2026"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$1.1B",
+                              "size": "2xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "About 19% a year",
+                        "color": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Chart",
+                "props": {
+                  "type": "bar",
+                  "data": [
+                    {
+                      "year": "2024",
+                      "size": 860000000
+                    },
+                    {
+                      "year": "2026",
+                      "size": 1110000000
+                    },
+                    {
+                      "year": "2028",
+                      "size": 1520000000
+                    },
+                    {
+                      "year": "2030",
+                      "size": 2260000000
+                    }
+                  ],
+                  "x": "year",
+                  "series": [
+                    "size"
+                  ],
+                  "format": "currency",
+                  "currency": null,
+                  "stacked": false,
+                  "height": 200
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Illustrative figures in the range of public market reports; estimates vary widely with the market definition."
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 4,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "sizeCard"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Who makes money",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Table",
+          "props": {
+            "columns": [
+              "Who",
+              "How they earn",
+              "Margin"
+            ],
+            "rows": [
+              [
+                "Drone makers",
+                "Hardware, cameras and accessories",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Medium",
+                    "color": "warning"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              [
+                "Freelance pilots",
+                "Per shoot or per project",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "High",
+                    "color": "success"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              [
+                "Agencies",
+                "Bundles of photo, video and editing",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Medium",
+                    "color": "warning"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              [
+                "Software platforms",
+                "Mapping and processing subscriptions",
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "High",
+                    "color": "success"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ]
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "players"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Try the economics of a drone photo business",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "__reactive": "assign",
+                          "target": "$projects",
+                          "expr": {
+                            "k": "StateRef",
+                            "n": "$value"
+                          }
+                        },
+                        "min": 0,
+                        "max": 40,
+                        "step": 1,
+                        "label": "Projects per month"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "__reactive": "assign",
+                          "target": "$price",
+                          "expr": {
+                            "k": "StateRef",
+                            "n": "$value"
+                          }
+                        },
+                        "min": 100,
+                        "max": 1500,
+                        "step": 25,
+                        "label": "Price per project",
+                        "unit": "$"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "__reactive": "assign",
+                          "target": "$cost",
+                          "expr": {
+                            "k": "StateRef",
+                            "n": "$value"
+                          }
+                        },
+                        "min": 0,
+                        "max": 400,
+                        "step": 10,
+                        "label": "Cost per project",
+                        "unit": "$"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "__reactive": "assign",
+                          "target": "$fixed",
+                          "expr": {
+                            "k": "StateRef",
+                            "n": "$value"
+                          }
+                        },
+                        "min": 0,
+                        "max": 6000,
+                        "step": 100,
+                        "label": "Fixed costs per month",
+                        "unit": "$"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 240,
+                  "gap": 5
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Revenue a month"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$5,400",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Profit a month"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$2,520",
+                              "size": "lg",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Margin"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "46.7%",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k3"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Break-even"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "5 projects",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k4"
+                    }
+                  ],
+                  "columns": 4,
+                  "minChildWidth": 130,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Chart",
+                "props": {
+                  "type": "line",
+                  "data": [
+                    {
+                      "projects": "0",
+                      "Revenue": 0,
+                      "Costs": 1800
+                    },
+                    {
+                      "projects": "5",
+                      "Revenue": 2250,
+                      "Costs": 2250
+                    },
+                    {
+                      "projects": "10",
+                      "Revenue": 4500,
+                      "Costs": 2700
+                    },
+                    {
+                      "projects": "15",
+                      "Revenue": 6750,
+                      "Costs": 3150
+                    },
+                    {
+                      "projects": "20",
+                      "Revenue": 9000,
+                      "Costs": 3600
+                    },
+                    {
+                      "projects": "25",
+                      "Revenue": 11250,
+                      "Costs": 4050
+                    },
+                    {
+                      "projects": "30",
+                      "Revenue": 13500,
+                      "Costs": 4500
+                    },
+                    {
+                      "projects": "35",
+                      "Revenue": 15750,
+                      "Costs": 4950
+                    },
+                    {
+                      "projects": "40",
+                      "Revenue": 18000,
+                      "Costs": 5400
+                    }
+                  ],
+                  "x": "projects",
+                  "series": [
+                    "Revenue",
+                    "Costs"
+                  ],
+                  "format": "currency",
+                  "currency": null,
+                  "stacked": false,
+                  "height": 200
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Fixed costs are covered from project 5 each month; every project after that adds $360 of profit.",
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Illustrative. Fixed costs cover insurance, gear, software and marketing; project costs cover editing and travel."
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 4,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "sim"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "What is changing",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "List",
+          "props": {
+            "items": [
+              "Cheaper drones with better cameras push basic photo prices down.",
+              "Licensing, such as FAA Part 107 in the US, keeps casual competition out of paid work.",
+              "Inspection, mapping and thermal imaging grow faster than photography alone.",
+              "Clients increasingly want edited video and 3D models, not just photos."
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "changes"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Compare with drone inspection services",
+                  "action": null,
+                  "variant": "outline",
+                  "color": null,
+                  "size": "sm",
+                  "icon": "arrow-right"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "ask"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1344,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "The drone photography market",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Aerial photos and video for property, events, inspection and media: a young market where cheap hardware meets licensed, skilled work.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "How the market is structured",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Suburb aerial view",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Real estate and architecture",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Listing photos and video, the steadiest source of work."
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Wedding photography",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Weddings and events",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Seasonal and priced per event, often sold with a ground crew."
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Solar farm aerial",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Inspection and surveying",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Roofs, solar farms and building sites; more training, better pay."
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Aerial photography coastline",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Media and tourism",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Stock footage, tourism boards and film: visible but competitive."
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 220,
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "segments"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "How big is it?",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": []
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "sizeCard"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Who makes money",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Try the economics of a drone photo business",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "What is changing",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "Captio",
+            "players",
+            "sim",
+            "changes",
+            "ask"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2689,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "The drone photography market",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Aerial photos and video for property, events, inspection and media: a young market where cheap hardware meets licensed, skilled work.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "How the market is structured",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Suburb aerial view",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Real estate and architecture",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Listing photos and video, the steadiest source of work."
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Wedding photography",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Weddings and events",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Seasonal and priced per event, often sold with a ground crew."
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Solar farm aerial",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Inspection and surveying",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Roofs, solar farms and building sites; more training, better pay."
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Aerial photography coastline",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Media and tourism",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Stock footage, tourism boards and film: visible but competitive."
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 220,
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "segments"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "How big is it?",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Drone photography services, worldwide, 2026"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "$1.1B",
+                                    "size": "2xl"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "About 19% a year",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Chart",
+                      "props": {
+                        "type": "bar",
+                        "data": [
+                          {
+                            "year": "2024",
+                            "size": 860000000
+                          },
+                          {
+                            "year": "2026",
+                            "size": 1110000000
+                          },
+                          {
+                            "year": "2028",
+                            "size": 1520000000
+                          },
+                          {
+                            "year": "2030",
+                            "size": 2260000000
+                          }
+                        ],
+                        "x": "year",
+                        "series": [
+                          "size"
+                        ],
+                        "format": "currency",
+                        "currency": null,
+                        "stacked": false,
+                        "height": 200
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Illustrative figures in the range of public market reports; estimates vary widely with the market definition."
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "sizeCard"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Who makes money",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "Who",
+                    "How they earn",
+                    "Margin"
+                  ],
+                  "rows": [
+                    [
+                      "Drone makers",
+                      "Hardware, cameras and accessories",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Medium",
+                          "color": "warning"
+                        },
+                        "partial": true,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Freelance pilots",
+                      "Per shoot or per project",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "High",
+                          "color": "success"
+                        },
+                        "partial": true,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Agencies",
+                      "Bundles of photo, video and editing",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Medium",
+                          "color": "warning"
+                        },
+                        "partial": true,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Software platforms",
+                      "Mapping and processing subscriptions",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "High",
+                          "color": "success"
+                        },
+                        "partial": true,
+                        "hasDynamicProps": false
+                      }
+                    ]
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "players"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Try the economics of a drone photo business",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Slider",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$projects"
+                              },
+                              "min": 0,
+                              "max": 40,
+                              "step": 1,
+                              "label": "Projects per month"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Slider",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$price"
+                              },
+                              "min": 100,
+                              "max": 1500,
+                              "step": 25,
+                              "label": "Price per project",
+                              "unit": "$"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Slider",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$cost"
+                              },
+                              "min": 0,
+                              "max": 400,
+                              "step": 10,
+                              "label": "Cost per project"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": true
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "sim"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "What is changing",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "changes",
+            "ask"
+          ],
+          "orphaned": [
+            "k1",
+            "k2",
+            "k3",
+            "k4"
+          ],
+          "statementCount": 10,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$projects": null,
+          "$price": null,
+          "$cost": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 4034,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "The drone photography market",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Aerial photos and video for property, events, inspection and media: a young market where cheap hardware meets licensed, skilled work.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "How the market is structured",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Suburb aerial view",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Real estate and architecture",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Listing photos and video, the steadiest source of work."
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Wedding photography",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Weddings and events",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Seasonal and priced per event, often sold with a ground crew."
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Solar farm aerial",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Inspection and surveying",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Roofs, solar farms and building sites; more training, better pay."
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Aerial photography coastline",
+                              "aspectRatio": 1.7,
+                              "radius": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Media and tourism",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Stock footage, tourism boards and film: visible but competitive."
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": null,
+                        "padding": 3,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 220,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "segments"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "How big is it?",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Drone photography services, worldwide, 2026"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "$1.1B",
+                                    "size": "2xl"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "About 19% a year",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Chart",
+                      "props": {
+                        "type": "bar",
+                        "data": [
+                          {
+                            "year": "2024",
+                            "size": 860000000
+                          },
+                          {
+                            "year": "2026",
+                            "size": 1110000000
+                          },
+                          {
+                            "year": "2028",
+                            "size": 1520000000
+                          },
+                          {
+                            "year": "2030",
+                            "size": 2260000000
+                          }
+                        ],
+                        "x": "year",
+                        "series": [
+                          "size"
+                        ],
+                        "format": "currency",
+                        "currency": null,
+                        "stacked": false,
+                        "height": 200
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Illustrative figures in the range of public market reports; estimates vary widely with the market definition."
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "sizeCard"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Who makes money",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "Who",
+                    "How they earn",
+                    "Margin"
+                  ],
+                  "rows": [
+                    [
+                      "Drone makers",
+                      "Hardware, cameras and accessories",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Medium",
+                          "color": "warning"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Freelance pilots",
+                      "Per shoot or per project",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "High",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Agencies",
+                      "Bundles of photo, video and editing",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Medium",
+                          "color": "warning"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    [
+                      "Software platforms",
+                      "Mapping and processing subscriptions",
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "High",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ]
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "players"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Try the economics of a drone photo business",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Slider",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$projects"
+                              },
+                              "min": 0,
+                              "max": 40,
+                              "step": 1,
+                              "label": "Projects per month"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Slider",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$price"
+                              },
+                              "min": 100,
+                              "max": 1500,
+                              "step": 25,
+                              "label": "Price per project",
+                              "unit": "$"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Slider",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$cost"
+                              },
+                              "min": 0,
+                              "max": 400,
+                              "step": 10,
+                              "label": "Cost per project",
+                              "unit": "$"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Slider",
+                            "props": {
+                              "value": {
+                                "k": "StateRef",
+                                "n": "$fixed"
+                              },
+                              "min": 0,
+                              "max": 6000,
+                              "step": 100,
+                              "label": "Fixed costs per month",
+                              "unit": "$"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "columns": 2,
+                        "minChildWidth": 240,
+                        "gap": 5
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Revenue a month"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "$5,400",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false,
+                            "statementId": "k1"
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Profit a month"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "$2,520",
+                                    "size": "lg",
+                                    "color": "success"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false,
+                            "statementId": "k2"
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Margin"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "46.7%",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false,
+                            "statementId": "k3"
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Break-even"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "5 projects",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false,
+                            "statementId": "k4"
+                          }
+                        ],
+                        "columns": 4,
+                        "minChildWidth": 130,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Chart",
+                      "props": {
+                        "type": "line",
+                        "data": [
+                          {
+                            "projects": "0",
+                            "Revenue": 0,
+                            "Costs": 1800
+                          },
+                          {
+                            "projects": "5",
+                            "Revenue": 2250,
+                            "Costs": 2250
+                          },
+                          {
+                            "projects": "10",
+                            "Revenue": 4500,
+                            "Costs": 2700
+                          },
+                          {
+                            "projects": "15",
+                            "Revenue": 6750,
+                            "Costs": 3150
+                          },
+                          {
+                            "projects": "20",
+                            "Revenue": 9000,
+                            "Costs": 3600
+                          },
+                          {
+                            "projects": "25",
+                            "Revenue": 11250,
+                            "Costs": 4050
+                          },
+                          {
+                            "projects": "30",
+                            "Revenue": 13500,
+                            "Costs": 4500
+                          },
+                          {
+                            "projects": "35",
+                            "Revenue": 15750,
+                            "Costs": 4950
+                          },
+                          {
+                            "projects": "40",
+                            "Revenue": 18000,
+                            "Costs": 5400
+                          }
+                        ],
+                        "x": "projects",
+                        "series": [
+                          "Revenue",
+                          "Costs"
+                        ],
+                        "format": "currency",
+                        "currency": null,
+                        "stacked": false,
+                        "height": 200
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Fixed costs are covered from project 5 each month; every project after that adds $360 of profit.",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Illustrative. Fixed costs cover insurance, gear, software and marketing; project costs cover editing and travel."
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "sim"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "What is changing",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "List",
+                "props": {
+                  "items": [
+                    "Cheaper drones with better cameras push basic photo prices down.",
+                    "Licensing, such as FAA Part 107 in the US, keeps casual competition out of paid work.",
+                    "Inspection, mapping and thermal imaging grow faster than photography alone.",
+                    "Clients increasingly want edited video and 3D models, not just photos."
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "changes"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Compare with drone inspection services",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "arrow-right"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "ask"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 16,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$cost": 90,
+          "$fixed": 1800,
+          "$price": 450,
+          "$projects": 12
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

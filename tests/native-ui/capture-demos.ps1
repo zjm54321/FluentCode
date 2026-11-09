@@ -3,7 +3,9 @@ param(
     [Parameter(Mandatory = $true)][string]$AppPath,
     [Parameter(Mandatory = $true)][string]$EvidenceRoot,
     [string]$FixturesRoot = '',
-    [string]$BeforeEvidenceRoot = ''
+    [string]$BeforeEvidenceRoot = '',
+    # The 120 s default covers the bundled demo set; larger fixture folders (upstream parity ports) need more.
+    [ValidateRange(30, 3600)][int]$TimeoutSeconds = 120
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -30,7 +32,7 @@ try {
     $env:FC_STARTUP_SMOKE_ROOT = Join-Path $root 'profile'
     New-Item -ItemType Directory -Path $env:FC_STARTUP_SMOKE_ROOT | Out-Null
     $process = Start-Process -FilePath $app -WorkingDirectory (Split-Path $app) -PassThru
-    $finished = $process.WaitForExit(120000)
+    $finished = $process.WaitForExit($TimeoutSeconds * 1000)
     foreach ($failure in @((Join-Path $root 'failed.txt'), (Join-Path $env:FC_STARTUP_SMOKE_ROOT 'failed.txt'))) {
         if (Test-Path $failure) { throw ([IO.File]::ReadAllText($failure)) }
     }
@@ -55,6 +57,11 @@ try {
         [IO.File]::WriteAllText((Join-Path $before 'provenance.txt'), "Unmodified prior-candidate PNGs copied from $BeforeEvidenceRoot`nAfter-fix PNGs are in the parent directory.`n", [Text.UTF8Encoding]::new($false))
     }
     Write-Output "PASS $(@(Get-ChildItem $root -Filter '*.png').Count) native UI merged demo/state/before PNGs: $root"
+}
+catch {
+    # Leave the reason beside the evidence so a per-fixture caller can record it and carry on with the rest.
+    if (Test-Path $root) { [IO.File]::WriteAllText((Join-Path $root 'capture-failure.txt'), ($_.Exception.Message.Replace("`r`n", "`n").TrimEnd() + "`n"), [Text.UTF8Encoding]::new($false)) }
+    throw
 }
 finally {
     if ($process -and !$process.HasExited) { Stop-Process -Id $process.Id }

@@ -14,6 +14,8 @@ Write-Output "Evidence directory: $output"
 $assembly = Join-Path $output 'NativeUiTests.dll'
 $production = Get-ChildItem (Join-Path $repo 'src/FluentCode/Services/NativeUi/*.cs') | ForEach-Object FullName
 $production += (Join-Path $repo 'src/FluentCode/Models/NativeUiMapSettings.cs')
+# WinUI-free renderer rules (colour contrast, % lengths, flex shares, icon glyphs) are unit-checked directly.
+$production += (Join-Path $repo 'src/FluentCode/Pages/OpenCode/NativeUi/NativeUiStyleMath.cs')
 $catalog = Join-Path $repo 'src/FluentCode/Services/NativeUi/catalog.json'
 # The locked map libraries target .NET 9; .NET 10 unifies their framework references.
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', '/nowarn:CS1701', ('/out:"' + $assembly + '"'), ('/resource:"' + $catalog + '",FluentCode.NativeUi.catalog.json'))

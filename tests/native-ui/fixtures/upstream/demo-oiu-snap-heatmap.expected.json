@@ -1,0 +1,5127 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "c66c6cfafccdeba00d5c02870d8cc6c4e276b9a26c34ce26e645596bdb9b5b1c",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "When the café is busiest",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Caption",
+            "props": {
+              "text": "Average customers per hour, last 4 weeks"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Mon"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Tue"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Wed"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Thu"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Fri"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Sat"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Sun"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 7,
+              "minChildWidth": null,
+              "gap": 1
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "12",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#bedaf2",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "14",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#b6d5ef",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "13",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#bad7f0",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "15",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#b3d3ee",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "18",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#a7cbeb",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "34",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#67a6d9",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "30",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#77afde",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "28",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#7fb4e0",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "30",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#77afde",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "29",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#7bb1df",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "31",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#73addc",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "36",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#5fa1d7",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "52",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#207bc5",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "47",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#3487cb",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "41",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#4b95d1",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "44",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#3f8ece",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "40",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#4f97d2",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "45",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#3c8ccd",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "50",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#2880c7",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "58",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#086dbe",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "49",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#2c82c8",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "22",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#97c2e6",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "24",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#8fbde4",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "23",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#93c0e5",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "27",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#83b6e1",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "38",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#579cd5",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "44",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#3f8ece",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "35",
+                          "size": "xs",
+                          "color": null,
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 1,
+                    "background": "#63a3d8",
+                    "radius": "sm",
+                    "border": null,
+                    "width": null,
+                    "height": 32,
+                    "flex": null,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 7,
+              "minChildWidth": null,
+              "gap": 1
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Quiet"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "#eef6ff",
+                          "radius": "sm",
+                          "border": null,
+                          "width": 20,
+                          "height": 10
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "#b3d3ee",
+                          "radius": "sm",
+                          "border": null,
+                          "width": 20,
+                          "height": 10
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "#77afde",
+                          "radius": "sm",
+                          "border": null,
+                          "width": 20,
+                          "height": 10
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "#3c8ccd",
+                          "radius": "sm",
+                          "border": null,
+                          "width": 20,
+                          "height": 10
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "#0068bc",
+                          "radius": "sm",
+                          "border": null,
+                          "width": 20,
+                          "height": 10
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Busy"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 1,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "When the café is busiest",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Caption",
+          "props": {
+            "text": "Average customers per hour, last 4 weeks"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Mon"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Tue"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Wed"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Thu"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Fri"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Sat"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Sun"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 7,
+            "minChildWidth": null,
+            "gap": 1
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "12",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#bedaf2",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "14",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#b6d5ef",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "13",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#bad7f0",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "15",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#b3d3ee",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "18",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#a7cbeb",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "34",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#67a6d9",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "30",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#77afde",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "28",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#7fb4e0",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "30",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#77afde",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "29",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#7bb1df",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "31",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#73addc",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "36",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#5fa1d7",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "52",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#207bc5",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "47",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#3487cb",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "41",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#4b95d1",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "44",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#3f8ece",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "40",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#4f97d2",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "45",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#3c8ccd",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "50",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#2880c7",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "58",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#086dbe",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "49",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#2c82c8",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "22",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#97c2e6",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "24",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#8fbde4",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "23",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#93c0e5",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "27",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#83b6e1",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "38",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#579cd5",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "44",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#3f8ece",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "35",
+                        "size": "xs",
+                        "color": null,
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 1,
+                  "background": "#63a3d8",
+                  "radius": "sm",
+                  "border": null,
+                  "width": null,
+                  "height": 32,
+                  "flex": null,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 7,
+            "minChildWidth": null,
+            "gap": 1
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Quiet"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "#eef6ff",
+                        "radius": "sm",
+                        "border": null,
+                        "width": 20,
+                        "height": 10
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "#b3d3ee",
+                        "radius": "sm",
+                        "border": null,
+                        "width": 20,
+                        "height": 10
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "#77afde",
+                        "radius": "sm",
+                        "border": null,
+                        "width": 20,
+                        "height": 10
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "#3c8ccd",
+                        "radius": "sm",
+                        "border": null,
+                        "width": 20,
+                        "height": 10
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "#0068bc",
+                        "radius": "sm",
+                        "border": null,
+                        "width": 20,
+                        "height": 10
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Busy"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1461,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "When the café is busiest",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Average customers per hour, last 4 weeks"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Mon"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Tue"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Wed"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Thu"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Fri"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Sat"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Sun"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 7,
+                  "minChildWidth": null,
+                  "gap": 1
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "12",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#bedaf2",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "14",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#b6d5ef",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "13",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#bad7f0",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "15",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#b3d3ee",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "18",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#a7cbeb",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "34",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#67a6d9",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "30",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#77afde",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "28",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#7fb4e0",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "30",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#77afde",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "B"
+          ],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2923,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "When the café is busiest",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Average customers per hour, last 4 weeks"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Mon"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Tue"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Wed"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Thu"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Fri"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Sat"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Sun"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 7,
+                  "minChildWidth": null,
+                  "gap": 1
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "12",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#bedaf2",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "14",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#b6d5ef",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "13",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#bad7f0",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "15",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#b3d3ee",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "18",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#a7cbeb",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "34",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#67a6d9",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "30",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#77afde",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "28",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#7fb4e0",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "30",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#77afde",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "29",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#7bb1df",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "31",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#73addc",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "36",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#5fa1d7",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "52",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#207bc5",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "47",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#3487cb",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "41",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#4b95d1",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "44",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#3f8ece",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "40",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#4f97d2",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "45",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#3c8ccd",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "50",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#2880c7",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "58",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#086dbe",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 4385,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "When the café is busiest",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Average customers per hour, last 4 weeks"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Mon"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Tue"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Wed"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Thu"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Fri"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Sat"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Sun"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 7,
+                  "minChildWidth": null,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "12",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#bedaf2",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "14",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#b6d5ef",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "13",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#bad7f0",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "15",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#b3d3ee",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "18",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#a7cbeb",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "34",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#67a6d9",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "30",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#77afde",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "28",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#7fb4e0",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "30",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#77afde",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "29",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#7bb1df",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "31",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#73addc",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "36",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#5fa1d7",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "52",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#207bc5",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "47",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#3487cb",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "41",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#4b95d1",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "44",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#3f8ece",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "40",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#4f97d2",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "45",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#3c8ccd",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "50",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#2880c7",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "58",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#086dbe",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "49",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#2c82c8",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "22",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#97c2e6",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "24",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#8fbde4",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "23",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#93c0e5",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "27",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#83b6e1",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "38",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#579cd5",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "44",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#3f8ece",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "35",
+                              "size": "xs",
+                              "color": null,
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 1,
+                        "background": "#63a3d8",
+                        "radius": "sm",
+                        "border": null,
+                        "width": null,
+                        "height": 32,
+                        "flex": null,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 7,
+                  "minChildWidth": null,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Quiet"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#eef6ff",
+                              "radius": "sm",
+                              "border": null,
+                              "width": 20,
+                              "height": 10
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#b3d3ee",
+                              "radius": "sm",
+                              "border": null,
+                              "width": 20,
+                              "height": 10
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#77afde",
+                              "radius": "sm",
+                              "border": null,
+                              "width": 20,
+                              "height": 10
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#3c8ccd",
+                              "radius": "sm",
+                              "border": null,
+                              "width": 20,
+                              "height": 10
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#0068bc",
+                              "radius": "sm",
+                              "border": null,
+                              "width": 20,
+                              "height": 10
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Busy"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 1,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

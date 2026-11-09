@@ -146,23 +146,34 @@ internal static class NativeUiTheme
         "warning" => "SystemFillColorCautionBrush", "danger" => "SystemFillColorCriticalBrush", "info" => "AccentTextFillColorPrimaryBrush",
         "purple" => Palette ? "NativeUiPurpleBrush" : "AccentTextFillColorPrimaryBrush", "pink" => Palette ? "NativeUiPinkBrush" : "AccentTextFillColorPrimaryBrush",
         "chart1" or "chart2" or "chart3" or "chart4" or "chart5" or "chart6" => Palette ? "NativeUiChart" + token[5] + "Brush" : "AccentTextFillColorPrimaryBrush",
+        "canvas" => "TextOnAccentFillColorPrimaryBrush",
         _ => "TextFillColorPrimaryBrush",
     };
     private static string BadgeTone(string color) => color is "info" or "success" or "warning" or "danger" or "purple" or "pink" ? color : "muted";
+    // OIU backgrounds: status tokens are soft tints; chart, ink and canvas are solid fills
+    // (split bars, funnels, progress tracks), border/surface-strong are the neutral greys.
     private static string Background(string color) => color switch
     {
         "surface" => "SolidBackgroundFillColorQuarternaryBrush",
         "success" => "SystemFillColorSuccessBackgroundBrush", "warning" => "SystemFillColorCautionBackgroundBrush", "danger" => "SystemFillColorCriticalBackgroundBrush",
         "info" => Palette ? "NativeUiAccentTintBrush" : "SystemFillColorAttentionBackgroundBrush",
         "purple" => Palette ? "NativeUiPurpleTintBrush" : "ControlAltFillColorTertiaryBrush", "pink" => Palette ? "NativeUiPinkTintBrush" : "ControlAltFillColorTertiaryBrush",
+        "chart1" or "chart2" or "chart3" or "chart4" or "chart5" or "chart6" => Palette ? "NativeUiChart" + color[5] + "Brush" : "AccentFillColorDefaultBrush",
+        "ink" => "TextFillColorPrimaryBrush", "canvas" => "SolidBackgroundFillColorBaseBrush", "border" => "DividerStrokeColorDefaultBrush",
         _ => "ControlAltFillColorTertiaryBrush",
     };
+    private static bool Hex(string token, out Windows.UI.Color color)
+    {
+        var parsed = NativeUiStyleMath.TryHex(token, out var a, out var r, out var g, out var b);
+        color = Windows.UI.Color.FromArgb(a, r, g, b); return parsed;
+    }
+    internal static ElementTheme ContrastTheme(string background)
+        => NativeUiStyleMath.DarkTextOn(background) switch { true => ElementTheme.Light, false => ElementTheme.Dark, null => ElementTheme.Default };
     internal static Brush Brush(string token, bool background = false, ElementTheme theme = ElementTheme.Default)
     {
         if (token == "none") return new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         // Preserve the catalog's bounded SVG/Box hex colour props; no model XAML or CSS is loaded.
-        if (token.StartsWith('#') && (token.Length == 7 || token.Length == 9) && uint.TryParse(token.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hex))
-            return new SolidColorBrush(Windows.UI.Color.FromArgb(token.Length == 9 ? (byte)(hex >> 24) : (byte)255, (byte)(hex >> 16), (byte)(hex >> 8), (byte)hex));
+        if (Hex(token, out var hex)) return new SolidColorBrush(hex);
         var resource = token == "divider" ? "DividerStrokeColorDefaultBrush" : background || token == "surface" ? Background(token) : Foreground(token);
         return OpenCodeThemedXaml.Load<Border>("Border", "RequestedTheme=\"" + theme + "\" Background=\"{ThemeResource " + resource + "}\"")?.Background
             ?? new SolidColorBrush(Microsoft.UI.Colors.Gray);
@@ -197,6 +208,8 @@ internal static class NativeUiTheme
         };
         var token = type == "Badge" ? BadgeTone(color) : color.Length > 0 ? color : type == "Caption" ? "muted" : "ink";
         text.Style = TextStyle("TextBlock", ramp.Style, Foreground(token), ramp.Size, ramp.Line, ramp.Weight);
+        // A raw colour (OIU allows any CSS colour) is a local brush; tokens stay theme resources.
+        if (type != "Badge" && Hex(color, out var raw)) text.Foreground = new SolidColorBrush(raw); else text.ClearValue(TextBlock.ForegroundProperty);
         text.TextWrapping = TextWrapping.Wrap;
         text.IsTextSelectionEnabled = true;
         Typography.SetNumeralAlignment(text, FontNumeralAlignment.Tabular);
@@ -205,6 +218,7 @@ internal static class NativeUiTheme
     {
         var (fontSize, line) = String(node, "size") switch { "xs" or "sm" => (12d, 16d), "lg" => (18d, 24d), _ => (14d, 20d) };
         text.Style = TextStyle("RichTextBlock", "", Foreground(String(node, "color")));
+        if (Hex(String(node, "color"), out var raw)) text.Foreground = new SolidColorBrush(raw); else text.ClearValue(RichTextBlock.ForegroundProperty);
         text.FontSize = fontSize; text.LineHeight = line;
         text.FontWeight = String(node, "weight") switch { "medium" => FontWeights.Medium, "semibold" => FontWeights.SemiBold, _ => FontWeights.Normal };
         text.FontStyle = Flag(node, "italic") ? FontStyle.Italic : FontStyle.Normal;
@@ -214,7 +228,17 @@ internal static class NativeUiTheme
         text.TextTrimming = text.MaxLines > 0 ? TextTrimming.CharacterEllipsis : TextTrimming.None;
         Typography.SetNumeralAlignment(text, Flag(node, "tabularNums") ? FontNumeralAlignment.Tabular : FontNumeralAlignment.Normal);
     }
-    internal static void Inline(Run run, NativeUiElement node) => run.TextDecorations = Flag(node, "lineThrough") ? TextDecorations.Strikethrough : TextDecorations.None;
+    internal static ControlTemplate? TileTemplate => _tileTemplate ??= OpenCodeThemedXaml.Load<ControlTemplate>("ControlTemplate", "TargetType=\"ContentControl\"",
+        "<Border Background=\"{TemplateBinding Background}\" BorderBrush=\"{TemplateBinding BorderBrush}\" BorderThickness=\"{TemplateBinding BorderThickness}\" CornerRadius=\"{TemplateBinding CornerRadius}\" Padding=\"{TemplateBinding Padding}\">"
+        + "<ContentPresenter Content=\"{TemplateBinding Content}\" HorizontalContentAlignment=\"{TemplateBinding HorizontalContentAlignment}\" VerticalContentAlignment=\"Center\" /></Border>");
+    private static ControlTemplate? _tileTemplate;
+    internal static void Inline(Run run, NativeUiElement node, NativeUiStyleMath.InlineStyle style = NativeUiStyleMath.InlineStyle.None)
+    {
+        run.TextDecorations = Flag(node, "lineThrough") || style.HasFlag(NativeUiStyleMath.InlineStyle.Strike) ? TextDecorations.Strikethrough : TextDecorations.None;
+        if (style.HasFlag(NativeUiStyleMath.InlineStyle.Bold)) run.FontWeight = FontWeights.SemiBold;
+        if (style.HasFlag(NativeUiStyleMath.InlineStyle.Italic)) run.FontStyle = FontStyle.Italic;
+        if (style.HasFlag(NativeUiStyleMath.InlineStyle.Code)) run.FontFamily = new FontFamily("Cascadia Mono, Consolas");
+    }
 
     // ---------------------------------------------------------------- containers
 
@@ -244,9 +268,12 @@ internal static class NativeUiTheme
     {
         panel.ColumnSpacing = panel.RowSpacing = Gap(Prop(node, "gap"), 2);
         var count = panel.Children.Count;
-        if (count > 0 && panel.Children.All(child => child is Button))
-            foreach (var button in panel.Children.OfType<Button>()) button.HorizontalAlignment = HorizontalAlignment.Stretch;
-        var columns = Flag(node, "wrap") && panel.ActualWidth > 0 ? Math.Max(1, Math.Min(count, (int)(panel.ActualWidth / WrapCellWidth))) : Math.Max(1, count);
+        // Buttons keep their natural width unless they are block (OIU Row is a flex row). Wrapped cells are at least as
+        // wide as the widest child, so a long label wraps to the next line instead of being clipped by an equal column.
+        var cell = WrapCellWidth;
+        if (Flag(node, "wrap") && panel.ActualWidth > 0)
+            foreach (var child in panel.Children) { child.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity)); cell = Math.Max(cell, child.DesiredSize.Width + panel.ColumnSpacing); }
+        var columns = Flag(node, "wrap") && panel.ActualWidth > 0 ? Math.Max(1, Math.Min(count, (int)((panel.ActualWidth + panel.ColumnSpacing) / cell))) : Math.Max(1, count);
         panel.ColumnDefinitions.Clear(); panel.RowDefinitions.Clear();
         var block = panel.Children.OfType<Button>().Any(button => button.HorizontalAlignment == HorizontalAlignment.Stretch);
         var justify = String(node, "justify");
@@ -283,7 +310,8 @@ internal static class NativeUiTheme
     }
     internal static void Button(Button button, NativeUiElement node)
     {
-        var variant = String(node, "variant") is { Length: > 0 } named ? named : "solid";
+        // OIU: Button defaults to solid, IconButton to outline.
+        var variant = String(node, "variant") is { Length: > 0 } named ? named : node.TypeName == "IconButton" ? "outline" : "solid";
         var color = String(node, "color");
         var size = String(node, "size");
         button.Style = variant == "solid" ? Style("AccentButtonStyle") : null;
@@ -619,23 +647,6 @@ internal static class NativeUiTheme
 
     // ---------------------------------------------------------------- icons (lucide name → Segoe Fluent Icons)
 
-    private static readonly Dictionary<string, string> Glyphs = new(StringComparer.Ordinal)
-    {
-        ["plus"] = "\uE710", ["minus"] = "\uE738", ["x"] = "\uE711", ["close"] = "\uE711", ["check"] = "\uE73E", ["check-circle"] = "\uE930", ["circle-check"] = "\uE930",
-        ["send"] = "\uE724", ["calculator"] = "\uE8EF", ["arrow-up-right"] = "\uE8A7", ["external-link"] = "\uE8A7", ["clock"] = "\uE823", ["timer"] = "\uE916",
-        ["rotate-ccw"] = "\uE7A7", ["undo"] = "\uE7A7", ["rotate-cw"] = "\uE7A6", ["redo"] = "\uE7A6", ["refresh-cw"] = "\uE72C", ["refresh"] = "\uE72C",
-        ["copy"] = "\uE8C8", ["trash"] = "\uE74D", ["trash-2"] = "\uE74D", ["download"] = "\uE896", ["upload"] = "\uE898", ["search"] = "\uE721",
-        ["settings"] = "\uE713", ["info"] = "\uE946", ["alert-triangle"] = "\uE7BA", ["triangle-alert"] = "\uE7BA", ["alert-circle"] = "\uEA39", ["circle-alert"] = "\uEA39",
-        ["help-circle"] = "\uE9CE", ["chevron-right"] = "\uE76C", ["chevron-left"] = "\uE76B", ["chevron-down"] = "\uE70D", ["chevron-up"] = "\uE70E",
-        ["arrow-right"] = "\uE72A", ["arrow-left"] = "\uE72B", ["arrow-up"] = "\uE74A", ["arrow-down"] = "\uE74B", ["star"] = "\uE734", ["heart"] = "\uEB51",
-        ["calendar"] = "\uE787", ["edit"] = "\uE70F", ["pencil"] = "\uE70F", ["save"] = "\uE74E", ["share"] = "\uE72D", ["link"] = "\uE71B", ["mail"] = "\uE715",
-        ["user"] = "\uE77B", ["users"] = "\uE716", ["home"] = "\uE80F", ["play"] = "\uE768", ["pause"] = "\uE769", ["square"] = "\uE71A", ["stop"] = "\uE71A",
-        ["filter"] = "\uE71C", ["sparkles"] = "\uE9F5", ["zap"] = "\uE945", ["lock"] = "\uE72E", ["unlock"] = "\uE785", ["eye"] = "\uE7B3", ["bell"] = "\uEA8F",
-        ["file"] = "\uE8A5", ["file-text"] = "\uE8A5", ["folder"] = "\uE8B7", ["image"] = "\uEB9F", ["map-pin"] = "\uE707", ["globe"] = "\uE774",
-        ["code"] = "\uE943", ["terminal"] = "\uE756", ["git-branch"] = "\uE8AD", ["bar-chart"] = "\uE9D2", ["chart-bar"] = "\uE9D2", ["bar-chart-2"] = "\uE9D2",
-        ["dollar-sign"] = "\uE8C7", ["shopping-cart"] = "\uE7BF", ["thumbs-up"] = "\uE8E1", ["thumbs-down"] = "\uE8E0", ["more-horizontal"] = "\uE712", ["ellipsis"] = "\uE712",
-        ["list"] = "\uEA37", ["grid"] = "\uE80A", ["layout-grid"] = "\uE80A", ["shuffle"] = "\uE8B1", ["volume-2"] = "\uE767", ["mic"] = "\uE720", ["camera"] = "\uE722",
-    };
     internal static FontIcon? Icon(string name)
-        => name.Length > 0 && Glyphs.TryGetValue(name.Trim().ToLowerInvariant(), out var glyph) ? new FontIcon { Glyph = glyph, FontSize = 16 } : null;
+        => NativeUiStyleMath.Glyph(name) is { } glyph ? new FontIcon { Glyph = glyph, FontSize = 16 } : null;
 }

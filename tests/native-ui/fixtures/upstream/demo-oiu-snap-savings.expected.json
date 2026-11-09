@@ -1,0 +1,2182 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "6ae6bd37bca82abb0c018cea6e0352ab735a87459d3b96f313f055bd8d49710c",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "Retirement savings",
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Turn today's contributions into a picture of tomorrow.",
+                          "size": "sm",
+                          "color": "muted"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Spacer",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Reset",
+                    "action": null,
+                    "variant": "ghost",
+                    "color": null,
+                    "size": "sm",
+                    "icon": "rotate-ccw"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 3,
+              "align": "start"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Balance in 30 years"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "$460,807",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": "soft",
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "k1"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "You put in"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "$190,000",
+                          "size": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": "soft",
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "k2"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Card",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Growth"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "$270,807",
+                          "size": "xl",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "variant": "soft",
+                    "padding": 3,
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "k3"
+                }
+              ],
+              "columns": 3,
+              "minChildWidth": 150,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "kpis"
+          },
+          {
+            "type": "element",
+            "typeName": "Chart",
+            "props": {
+              "type": "area",
+              "data": [
+                {
+                  "year": "Year 0",
+                  "Contributions": 10000,
+                  "Balance": 10000
+                },
+                {
+                  "year": "Year 1",
+                  "Contributions": 16000,
+                  "Balance": 16651.046724625347
+                },
+                {
+                  "year": "Year 2",
+                  "Contributions": 22000,
+                  "Balance": 23642.373622582607
+                },
+                {
+                  "year": "Year 3",
+                  "Contributions": 28000,
+                  "Balance": 30991.390073350958
+                },
+                {
+                  "year": "Year 4",
+                  "Contributions": 34000,
+                  "Balance": 38716.39615330472
+                },
+                {
+                  "year": "Year 5",
+                  "Contributions": 40000,
+                  "Balance": 46836.62820545683
+                },
+                {
+                  "year": "Year 6",
+                  "Contributions": 46000,
+                  "Balance": 55372.30674063713
+                },
+                {
+                  "year": "Year 7",
+                  "Contributions": 52000,
+                  "Balance": 64344.68678938563
+                },
+                {
+                  "year": "Year 8",
+                  "Contributions": 58000,
+                  "Balance": 73776.1108299443
+                },
+                {
+                  "year": "Year 9",
+                  "Contributions": 64000,
+                  "Balance": 83690.06442414536
+                },
+                {
+                  "year": "Year 10",
+                  "Contributions": 70000,
+                  "Balance": 94111.2346997372
+                },
+                {
+                  "year": "Year 11",
+                  "Contributions": 76000,
+                  "Balance": 105065.57182477697
+                },
+                {
+                  "year": "Year 12",
+                  "Contributions": 82000,
+                  "Balance": 116580.35362717016
+                },
+                {
+                  "year": "Year 13",
+                  "Contributions": 88000,
+                  "Balance": 128684.25352026781
+                },
+                {
+                  "year": "Year 14",
+                  "Contributions": 94000,
+                  "Balance": 141407.41190366686
+                },
+                {
+                  "year": "Year 15",
+                  "Contributions": 100000,
+                  "Balance": 154781.5112170105
+                },
+                {
+                  "year": "Year 16",
+                  "Contributions": 106000,
+                  "Balance": 168839.85483368352
+                },
+                {
+                  "year": "Year 17",
+                  "Contributions": 112000,
+                  "Balance": 183617.4499908591
+                },
+                {
+                  "year": "Year 18",
+                  "Contributions": 118000,
+                  "Balance": 199151.09496240382
+                },
+                {
+                  "year": "Year 19",
+                  "Contributions": 124000,
+                  "Balance": 215479.47069171365
+                },
+                {
+                  "year": "Year 20",
+                  "Contributions": 130000,
+                  "Balance": 232643.23711266107
+                },
+                {
+                  "year": "Year 21",
+                  "Contributions": 136000,
+                  "Balance": 250685.1343985029
+                },
+                {
+                  "year": "Year 22",
+                  "Contributions": 142000,
+                  "Balance": 269650.0893908757
+                },
+                {
+                  "year": "Year 23",
+                  "Contributions": 148000,
+                  "Balance": 289585.32747390005
+                },
+                {
+                  "year": "Year 24",
+                  "Contributions": 154000,
+                  "Balance": 310540.490171976
+                },
+                {
+                  "year": "Year 25",
+                  "Contributions": 160000,
+                  "Balance": 332567.7587641061
+                },
+                {
+                  "year": "Year 26",
+                  "Contributions": 166000,
+                  "Balance": 355721.9842225602
+                },
+                {
+                  "year": "Year 27",
+                  "Contributions": 172000,
+                  "Balance": 380060.8237994504
+                },
+                {
+                  "year": "Year 28",
+                  "Contributions": 178000,
+                  "Balance": 405644.88460133335
+                },
+                {
+                  "year": "Year 29",
+                  "Contributions": 184000,
+                  "Balance": 432537.8745093623
+                },
+                {
+                  "year": "Year 30",
+                  "Contributions": 190000,
+                  "Balance": 460806.76082080026
+                }
+              ],
+              "x": "year",
+              "series": [
+                "Contributions",
+                "Balance"
+              ],
+              "format": "currency"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "chart"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Icon",
+                  "props": {
+                    "name": "hourglass",
+                    "size": "sm",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "At this pace the balance stays under $1 million.",
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "milestone"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$initial"
+                    },
+                    "min": 0,
+                    "max": 200000,
+                    "step": 1000,
+                    "label": "Starting balance",
+                    "unit": "$"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$monthly"
+                    },
+                    "min": 0,
+                    "max": 5000,
+                    "step": 50,
+                    "label": "Monthly contribution",
+                    "unit": "$"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$years"
+                    },
+                    "min": 1,
+                    "max": 50,
+                    "step": 1,
+                    "label": "Years",
+                    "unit": " yrs"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$rate"
+                    },
+                    "min": 0,
+                    "max": 12,
+                    "step": 0.5,
+                    "label": "Annual return",
+                    "unit": "%"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 240,
+              "gap": 6
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "controls"
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "Assumes monthly compounding and contributions at the end of each month. Returns are not guaranteed; this is an illustration, not advice.",
+              "size": "xs",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          }
+        ],
+        "variant": null,
+        "padding": 5,
+        "gap": 4
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 13,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$initial": 10000,
+      "$monthly": 500,
+      "$rate": 5,
+      "$years": 30
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Retirement savings",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Turn today's contributions into a picture of tomorrow.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Spacer",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Reset",
+                  "action": null,
+                  "variant": "ghost",
+                  "color": null,
+                  "size": "sm",
+                  "icon": "rotate-ccw"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 3,
+            "align": "start"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Balance in 30 years"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "$460,807",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "k1"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "You put in"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "$190,000",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "k2"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Growth"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "$270,807",
+                        "size": "xl",
+                        "color": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "k3"
+              }
+            ],
+            "columns": 3,
+            "minChildWidth": 150,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "kpis"
+        },
+        {
+          "type": "element",
+          "typeName": "Chart",
+          "props": {
+            "type": "area",
+            "data": [
+              {
+                "year": "Year 0",
+                "Contributions": 10000,
+                "Balance": 10000
+              },
+              {
+                "year": "Year 1",
+                "Contributions": 16000,
+                "Balance": 16651.046724625347
+              },
+              {
+                "year": "Year 2",
+                "Contributions": 22000,
+                "Balance": 23642.373622582607
+              },
+              {
+                "year": "Year 3",
+                "Contributions": 28000,
+                "Balance": 30991.390073350958
+              },
+              {
+                "year": "Year 4",
+                "Contributions": 34000,
+                "Balance": 38716.39615330472
+              },
+              {
+                "year": "Year 5",
+                "Contributions": 40000,
+                "Balance": 46836.62820545683
+              },
+              {
+                "year": "Year 6",
+                "Contributions": 46000,
+                "Balance": 55372.30674063713
+              },
+              {
+                "year": "Year 7",
+                "Contributions": 52000,
+                "Balance": 64344.68678938563
+              },
+              {
+                "year": "Year 8",
+                "Contributions": 58000,
+                "Balance": 73776.1108299443
+              },
+              {
+                "year": "Year 9",
+                "Contributions": 64000,
+                "Balance": 83690.06442414536
+              },
+              {
+                "year": "Year 10",
+                "Contributions": 70000,
+                "Balance": 94111.2346997372
+              },
+              {
+                "year": "Year 11",
+                "Contributions": 76000,
+                "Balance": 105065.57182477697
+              },
+              {
+                "year": "Year 12",
+                "Contributions": 82000,
+                "Balance": 116580.35362717016
+              },
+              {
+                "year": "Year 13",
+                "Contributions": 88000,
+                "Balance": 128684.25352026781
+              },
+              {
+                "year": "Year 14",
+                "Contributions": 94000,
+                "Balance": 141407.41190366686
+              },
+              {
+                "year": "Year 15",
+                "Contributions": 100000,
+                "Balance": 154781.5112170105
+              },
+              {
+                "year": "Year 16",
+                "Contributions": 106000,
+                "Balance": 168839.85483368352
+              },
+              {
+                "year": "Year 17",
+                "Contributions": 112000,
+                "Balance": 183617.4499908591
+              },
+              {
+                "year": "Year 18",
+                "Contributions": 118000,
+                "Balance": 199151.09496240382
+              },
+              {
+                "year": "Year 19",
+                "Contributions": 124000,
+                "Balance": 215479.47069171365
+              },
+              {
+                "year": "Year 20",
+                "Contributions": 130000,
+                "Balance": 232643.23711266107
+              },
+              {
+                "year": "Year 21",
+                "Contributions": 136000,
+                "Balance": 250685.1343985029
+              },
+              {
+                "year": "Year 22",
+                "Contributions": 142000,
+                "Balance": 269650.0893908757
+              },
+              {
+                "year": "Year 23",
+                "Contributions": 148000,
+                "Balance": 289585.32747390005
+              },
+              {
+                "year": "Year 24",
+                "Contributions": 154000,
+                "Balance": 310540.490171976
+              },
+              {
+                "year": "Year 25",
+                "Contributions": 160000,
+                "Balance": 332567.7587641061
+              },
+              {
+                "year": "Year 26",
+                "Contributions": 166000,
+                "Balance": 355721.9842225602
+              },
+              {
+                "year": "Year 27",
+                "Contributions": 172000,
+                "Balance": 380060.8237994504
+              },
+              {
+                "year": "Year 28",
+                "Contributions": 178000,
+                "Balance": 405644.88460133335
+              },
+              {
+                "year": "Year 29",
+                "Contributions": 184000,
+                "Balance": 432537.8745093623
+              },
+              {
+                "year": "Year 30",
+                "Contributions": 190000,
+                "Balance": 460806.76082080026
+              }
+            ],
+            "x": "year",
+            "series": [
+              "Contributions",
+              "Balance"
+            ],
+            "format": "currency"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "chart"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Icon",
+                "props": {
+                  "name": "hourglass",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "At this pace the balance stays under $1 million.",
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "milestone"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$initial",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 200000,
+                  "step": 1000,
+                  "label": "Starting balance",
+                  "unit": "$"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$monthly",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 5000,
+                  "step": 50,
+                  "label": "Monthly contribution",
+                  "unit": "$"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$years",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 1,
+                  "max": 50,
+                  "step": 1,
+                  "label": "Years",
+                  "unit": " yrs"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$rate",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 12,
+                  "step": 0.5,
+                  "label": "Annual return",
+                  "unit": "%"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 240,
+            "gap": 6
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "controls"
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Assumes monthly compounding and contributions at the end of each month. Returns are not guaranteed; this is an illustration, not advice.",
+            "size": "xs",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        }
+      ],
+      "variant": null,
+      "padding": 5,
+      "gap": 4
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1117,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Retirement savings",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Turn today's contributions into a picture of tomorrow.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "start"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Balance in 30 years"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$460,807",
+                              "size": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "k1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "You put in"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$190,000",
+                              "size": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "k2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Growth"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$270,807",
+                              "size": "xl",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "k3"
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 150,
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "kpis"
+              },
+              {
+                "type": "element",
+                "typeName": "Chart",
+                "props": {
+                  "type": "area",
+                  "data": [
+                    {
+                      "year": "Year 0",
+                      "Contributions": 10000,
+                      "Balance": 10000
+                    },
+                    {
+                      "year": "Year 1",
+                      "Contributions": 16000,
+                      "Balance": 16651.046724625347
+                    },
+                    {
+                      "year": "Year 2",
+                      "Contributions": 22000,
+                      "Balance": 23642.373622582607
+                    },
+                    {
+                      "year": "Year 3",
+                      "Contributions": 28000,
+                      "Balance": 30991.390073350958
+                    },
+                    {
+                      "year": "Year 4",
+                      "Contributions": 34000,
+                      "Balance": 38716.39615330472
+                    },
+                    {
+                      "year": "Year 5",
+                      "Contributions": 40000,
+                      "Balan": null,
+                      "?": null
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "chart"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Assumes monthly compounding and contributions at the end of each month. Returns are not guaranteed; this is an illustration, not advice.",
+                  "size": "xs",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "milestone",
+            "controls"
+          ],
+          "orphaned": [],
+          "statementCount": 7,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2234,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Retirement savings",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Turn today's contributions into a picture of tomorrow.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "start"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Balance in 30 years"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$460,807",
+                              "size": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "k1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "You put in"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$190,000",
+                              "size": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "k2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Growth"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$270,807",
+                              "size": "xl",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "k3"
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 150,
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "kpis"
+              },
+              {
+                "type": "element",
+                "typeName": "Chart",
+                "props": {
+                  "type": "area",
+                  "data": [
+                    {
+                      "year": "Year 0",
+                      "Contributions": 10000,
+                      "Balance": 10000
+                    },
+                    {
+                      "year": "Year 1",
+                      "Contributions": 16000,
+                      "Balance": 16651.046724625347
+                    },
+                    {
+                      "year": "Year 2",
+                      "Contributions": 22000,
+                      "Balance": 23642.373622582607
+                    },
+                    {
+                      "year": "Year 3",
+                      "Contributions": 28000,
+                      "Balance": 30991.390073350958
+                    },
+                    {
+                      "year": "Year 4",
+                      "Contributions": 34000,
+                      "Balance": 38716.39615330472
+                    },
+                    {
+                      "year": "Year 5",
+                      "Contributions": 40000,
+                      "Balance": 46836.62820545683
+                    },
+                    {
+                      "year": "Year 6",
+                      "Contributions": 46000,
+                      "Balance": 55372.30674063713
+                    },
+                    {
+                      "year": "Year 7",
+                      "Contributions": 52000,
+                      "Balance": 64344.68678938563
+                    },
+                    {
+                      "year": "Year 8",
+                      "Contributions": 58000,
+                      "Balance": 73776.1108299443
+                    },
+                    {
+                      "year": "Year 9",
+                      "Contributions": 64000,
+                      "Balance": 83690.06442414536
+                    },
+                    {
+                      "year": "Year 10",
+                      "Contributions": 70000,
+                      "Balance": 94111.2346997372
+                    },
+                    {
+                      "year": "Year 11",
+                      "Contributions": 76000,
+                      "Balance": 105065.57182477697
+                    },
+                    {
+                      "year": "Year 12",
+                      "Contributions": 82000,
+                      "Balance": 116580.35362717016
+                    },
+                    {
+                      "year": "Year 13",
+                      "Contributions": 88000,
+                      "Balance": 128684.25352026781
+                    },
+                    {
+                      "year": "Year 14",
+                      "Contributions": 94000,
+                      "Balance": 141407.41190366686
+                    },
+                    {
+                      "year": "Year 15",
+                      "Contributions": 100000,
+                      "Balance": 154781.5112170105
+                    },
+                    {
+                      "year": "Year 16",
+                      "Contributions": 106000,
+                      "Balance": 168839.85483368352
+                    },
+                    {
+                      "year": "Year 17",
+                      "Contributions": 112000,
+                      "Balance": 183617.4499908591
+                    },
+                    {
+                      "year": "Year 18",
+                      "Contributions": 118000,
+                      "Balance": 199151.09496240382
+                    },
+                    {
+                      "year": "Year 19",
+                      "Contributions": 124000,
+                      "Balance": 215479.47069171365
+                    },
+                    {
+                      "year": "Year 20",
+                      "Contributions": 130000,
+                      "Balance": 232643.23711266107
+                    },
+                    {
+                      "year": "Year 21",
+                      "Contributions": 136000,
+                      "Balance": null,
+                      "?": null
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "chart"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Assumes monthly compounding and contributions at the end of each month. Returns are not guaranteed; this is an illustration, not advice.",
+                  "size": "xs",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "milestone",
+            "controls"
+          ],
+          "orphaned": [],
+          "statementCount": 7,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 3351,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Retirement savings",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Turn today's contributions into a picture of tomorrow.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "start"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Balance in 30 years"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$460,807",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "You put in"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$190,000",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Growth"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "$270,807",
+                              "size": "xl",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "k3"
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 150,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "kpis"
+              },
+              {
+                "type": "element",
+                "typeName": "Chart",
+                "props": {
+                  "type": "area",
+                  "data": [
+                    {
+                      "year": "Year 0",
+                      "Contributions": 10000,
+                      "Balance": 10000
+                    },
+                    {
+                      "year": "Year 1",
+                      "Contributions": 16000,
+                      "Balance": 16651.046724625347
+                    },
+                    {
+                      "year": "Year 2",
+                      "Contributions": 22000,
+                      "Balance": 23642.373622582607
+                    },
+                    {
+                      "year": "Year 3",
+                      "Contributions": 28000,
+                      "Balance": 30991.390073350958
+                    },
+                    {
+                      "year": "Year 4",
+                      "Contributions": 34000,
+                      "Balance": 38716.39615330472
+                    },
+                    {
+                      "year": "Year 5",
+                      "Contributions": 40000,
+                      "Balance": 46836.62820545683
+                    },
+                    {
+                      "year": "Year 6",
+                      "Contributions": 46000,
+                      "Balance": 55372.30674063713
+                    },
+                    {
+                      "year": "Year 7",
+                      "Contributions": 52000,
+                      "Balance": 64344.68678938563
+                    },
+                    {
+                      "year": "Year 8",
+                      "Contributions": 58000,
+                      "Balance": 73776.1108299443
+                    },
+                    {
+                      "year": "Year 9",
+                      "Contributions": 64000,
+                      "Balance": 83690.06442414536
+                    },
+                    {
+                      "year": "Year 10",
+                      "Contributions": 70000,
+                      "Balance": 94111.2346997372
+                    },
+                    {
+                      "year": "Year 11",
+                      "Contributions": 76000,
+                      "Balance": 105065.57182477697
+                    },
+                    {
+                      "year": "Year 12",
+                      "Contributions": 82000,
+                      "Balance": 116580.35362717016
+                    },
+                    {
+                      "year": "Year 13",
+                      "Contributions": 88000,
+                      "Balance": 128684.25352026781
+                    },
+                    {
+                      "year": "Year 14",
+                      "Contributions": 94000,
+                      "Balance": 141407.41190366686
+                    },
+                    {
+                      "year": "Year 15",
+                      "Contributions": 100000,
+                      "Balance": 154781.5112170105
+                    },
+                    {
+                      "year": "Year 16",
+                      "Contributions": 106000,
+                      "Balance": 168839.85483368352
+                    },
+                    {
+                      "year": "Year 17",
+                      "Contributions": 112000,
+                      "Balance": 183617.4499908591
+                    },
+                    {
+                      "year": "Year 18",
+                      "Contributions": 118000,
+                      "Balance": 199151.09496240382
+                    },
+                    {
+                      "year": "Year 19",
+                      "Contributions": 124000,
+                      "Balance": 215479.47069171365
+                    },
+                    {
+                      "year": "Year 20",
+                      "Contributions": 130000,
+                      "Balance": 232643.23711266107
+                    },
+                    {
+                      "year": "Year 21",
+                      "Contributions": 136000,
+                      "Balance": 250685.1343985029
+                    },
+                    {
+                      "year": "Year 22",
+                      "Contributions": 142000,
+                      "Balance": 269650.0893908757
+                    },
+                    {
+                      "year": "Year 23",
+                      "Contributions": 148000,
+                      "Balance": 289585.32747390005
+                    },
+                    {
+                      "year": "Year 24",
+                      "Contributions": 154000,
+                      "Balance": 310540.490171976
+                    },
+                    {
+                      "year": "Year 25",
+                      "Contributions": 160000,
+                      "Balance": 332567.7587641061
+                    },
+                    {
+                      "year": "Year 26",
+                      "Contributions": 166000,
+                      "Balance": 355721.9842225602
+                    },
+                    {
+                      "year": "Year 27",
+                      "Contributions": 172000,
+                      "Balance": 380060.8237994504
+                    },
+                    {
+                      "year": "Year 28",
+                      "Contributions": 178000,
+                      "Balance": 405644.88460133335
+                    },
+                    {
+                      "year": "Year 29",
+                      "Contributions": 184000,
+                      "Balance": 432537.8745093623
+                    },
+                    {
+                      "year": "Year 30",
+                      "Contributions": 190000,
+                      "Balance": 460806.76082080026
+                    }
+                  ],
+                  "x": "year",
+                  "series": [
+                    "Contributions",
+                    "Balance"
+                  ],
+                  "format": "currency"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "chart"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Icon",
+                      "props": {
+                        "name": "hourglass",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "At this pace the balance stays under $1 million.",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "milestone"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$initial"
+                        },
+                        "min": 0,
+                        "max": 200000,
+                        "step": 1000,
+                        "label": "Starting balance",
+                        "unit": "$"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$monthly"
+                        },
+                        "min": 0,
+                        "max": 5000,
+                        "step": 50,
+                        "label": "Monthly contribution",
+                        "unit": "$"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$years"
+                        },
+                        "min": 1,
+                        "max": 50,
+                        "step": 1,
+                        "label": "Years",
+                        "unit": " yrs"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$rate"
+                        },
+                        "min": 0,
+                        "max": 12,
+                        "step": 0.5,
+                        "label": "Annual return",
+                        "unit": "%"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 240,
+                  "gap": 6
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "controls"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Assumes monthly compounding and contributions at the end of each month. Returns are not guaranteed; this is an illustration, not advice.",
+                  "size": "xs",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 13,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$initial": 10000,
+          "$monthly": 500,
+          "$rate": 5,
+          "$years": 30
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

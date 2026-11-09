@@ -1,0 +1,4242 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "eea484fe74390c4b10dee06343e5660b8a5f0a50a0ad0623ba7baea95c0be7a2",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Find your living room color",
+                    "size": "xl"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Answer three questions and the matches update. Tap any color to paint the room.",
+                    "size": "md",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Svg",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 0,
+                          "y": 0,
+                          "width": 320,
+                          "height": 132,
+                          "fill": "#EFE6D3"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 0,
+                          "y": 132,
+                          "width": 320,
+                          "height": 48,
+                          "fill": "#B08D6A"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 0,
+                          "y": 128,
+                          "width": 320,
+                          "height": 6,
+                          "fill": "#E9E4DA"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 28,
+                          "y": 24,
+                          "width": 70,
+                          "height": 76,
+                          "fill": "#DCE9F5",
+                          "stroke": "#FFFFFF",
+                          "strokeWidth": 5
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Line",
+                        "props": {
+                          "x1": 63,
+                          "y1": 24,
+                          "x2": 63,
+                          "y2": 100,
+                          "stroke": "#FFFFFF",
+                          "strokeWidth": 4
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Line",
+                        "props": {
+                          "x1": 28,
+                          "y1": 62,
+                          "x2": 98,
+                          "y2": 62,
+                          "stroke": "#FFFFFF",
+                          "strokeWidth": 4
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 196,
+                          "y": 30,
+                          "width": 70,
+                          "height": 44,
+                          "fill": "#F4F1EA",
+                          "stroke": "#8A7A66",
+                          "strokeWidth": 3
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Circle",
+                        "props": {
+                          "cx": 214,
+                          "cy": 52,
+                          "r": 9,
+                          "fill": "#C9785A",
+                          "stroke": null,
+                          "strokeWidth": null,
+                          "opacity": 0.7
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Circle",
+                        "props": {
+                          "cx": 238,
+                          "cy": 48,
+                          "r": 12,
+                          "fill": "#9DB0BF",
+                          "stroke": null,
+                          "strokeWidth": null,
+                          "opacity": 0.7
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 150,
+                          "y": 98,
+                          "width": 150,
+                          "height": 40,
+                          "fill": "#8D9197",
+                          "stroke": null,
+                          "strokeWidth": null,
+                          "opacity": 1,
+                          "rx": 10
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 160,
+                          "y": 84,
+                          "width": 62,
+                          "height": 26,
+                          "fill": "#8D9197",
+                          "stroke": null,
+                          "strokeWidth": null,
+                          "opacity": 1,
+                          "rx": 8
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 228,
+                          "y": 84,
+                          "width": 62,
+                          "height": 26,
+                          "fill": "#8D9197",
+                          "stroke": null,
+                          "strokeWidth": null,
+                          "opacity": 1,
+                          "rx": 8
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 144,
+                          "y": 104,
+                          "width": 16,
+                          "height": 34,
+                          "fill": "#8D9197",
+                          "stroke": null,
+                          "strokeWidth": null,
+                          "opacity": 1,
+                          "rx": 6
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 290,
+                          "y": 104,
+                          "width": 16,
+                          "height": 34,
+                          "fill": "#8D9197",
+                          "stroke": null,
+                          "strokeWidth": null,
+                          "opacity": 1,
+                          "rx": 6
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Rect",
+                        "props": {
+                          "x": 0,
+                          "y": 0,
+                          "width": 320,
+                          "height": 180,
+                          "fill": "#9EC5FF",
+                          "stroke": null,
+                          "strokeWidth": null,
+                          "opacity": 0.14
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "viewBox": "0 0 320 180"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "room"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "#EFE6D3",
+                          "radius": "full",
+                          "border": true,
+                          "width": 18,
+                          "height": 18
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Warm ivory",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "North light is cool and flat: warm colors stay warm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2,
+                    "align": null,
+                    "justify": null,
+                    "wrap": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": null,
+              "padding": 3,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "preview"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Tell me about your room",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "RadioGroup",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$mood"
+                    },
+                    "options": [
+                      {
+                        "value": "calm",
+                        "label": "Calm and restful"
+                      },
+                      {
+                        "value": "cozy",
+                        "label": "Warm and cozy"
+                      },
+                      {
+                        "value": "bright",
+                        "label": "Light and airy"
+                      },
+                      {
+                        "value": "bold",
+                        "label": "A bold statement"
+                      }
+                    ],
+                    "label": "How should it feel?"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "RadioGroup",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$light"
+                    },
+                    "options": [
+                      {
+                        "value": "north",
+                        "label": "North facing, cool light"
+                      },
+                      {
+                        "value": "south",
+                        "label": "South facing, warm sun"
+                      },
+                      {
+                        "value": "east",
+                        "label": "East or west, changing"
+                      },
+                      {
+                        "value": "low",
+                        "label": "Little daylight"
+                      }
+                    ],
+                    "label": "What light does it get?"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "RadioGroup",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$sofa"
+                    },
+                    "options": [
+                      {
+                        "value": "grey",
+                        "label": "Grey"
+                      },
+                      {
+                        "value": "blue",
+                        "label": "Blue"
+                      },
+                      {
+                        "value": "green",
+                        "label": "Green"
+                      },
+                      {
+                        "value": "brown",
+                        "label": "Brown leather"
+                      },
+                      {
+                        "value": "white",
+                        "label": "White or cream"
+                      }
+                    ],
+                    "label": "Your sofa"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "columns": 3,
+              "minChildWidth": 200,
+              "gap": 4
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "quiz"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Your best matches",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "#EFE6D3",
+                          "radius": "md",
+                          "border": true,
+                          "width": "100%",
+                          "height": 64
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Warm ivory",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Soft and bright, never stark"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Great match",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": true,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "#CFC5B8",
+                          "radius": "md",
+                          "border": true,
+                          "width": "100%",
+                          "height": 64
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Greige",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "A warm neutral that goes with everything"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Great match",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "#B5BFA1",
+                          "radius": "md",
+                          "border": true,
+                          "width": "100%",
+                          "height": 64
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Sage green",
+                          "size": "sm",
+                          "color": null,
+                          "weight": "semibold"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Grounded and restful"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Good match",
+                          "color": "info"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 3,
+              "minChildWidth": 150,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "matches"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "All six colors",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [],
+                                "direction": null,
+                                "gap": null,
+                                "padding": null,
+                                "background": "#EFE6D3",
+                                "radius": "full",
+                                "border": true,
+                                "width": 40,
+                                "height": 40
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Warm ivory"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": true,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [],
+                                "direction": null,
+                                "gap": null,
+                                "padding": null,
+                                "background": "#B5BFA1",
+                                "radius": "full",
+                                "border": true,
+                                "width": 40,
+                                "height": 40
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Sage green"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [],
+                                "direction": null,
+                                "gap": null,
+                                "padding": null,
+                                "background": "#CFC5B8",
+                                "radius": "full",
+                                "border": true,
+                                "width": 40,
+                                "height": 40
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Greige"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [],
+                                "direction": null,
+                                "gap": null,
+                                "padding": null,
+                                "background": "#9DB0BF",
+                                "radius": "full",
+                                "border": true,
+                                "width": 40,
+                                "height": 40
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Dusty blue"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [],
+                                "direction": null,
+                                "gap": null,
+                                "padding": null,
+                                "background": "#C9785A",
+                                "radius": "full",
+                                "border": true,
+                                "width": 40,
+                                "height": 40
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Terracotta"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [],
+                                "direction": null,
+                                "gap": null,
+                                "padding": null,
+                                "background": "#2F3E55",
+                                "radius": "full",
+                                "border": true,
+                                "width": 40,
+                                "height": 40
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Deep navy"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "swatches"
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "Paint chips look different on the wall. Try a large sample on two walls and look at it in the morning and the evening before you commit.",
+              "size": "sm",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "tip"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 11,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$light": "north",
+      "$mood": "calm",
+      "$sofa": "grey"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Find your living room color",
+                  "size": "xl"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Answer three questions and the matches update. Tap any color to paint the room.",
+                  "size": "md",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Svg",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 320,
+                        "height": 132,
+                        "fill": "#EFE6D3"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 0,
+                        "y": 132,
+                        "width": 320,
+                        "height": 48,
+                        "fill": "#B08D6A"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 0,
+                        "y": 128,
+                        "width": 320,
+                        "height": 6,
+                        "fill": "#E9E4DA"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 28,
+                        "y": 24,
+                        "width": 70,
+                        "height": 76,
+                        "fill": "#DCE9F5",
+                        "stroke": "#FFFFFF",
+                        "strokeWidth": 5
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Line",
+                      "props": {
+                        "x1": 63,
+                        "y1": 24,
+                        "x2": 63,
+                        "y2": 100,
+                        "stroke": "#FFFFFF",
+                        "strokeWidth": 4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Line",
+                      "props": {
+                        "x1": 28,
+                        "y1": 62,
+                        "x2": 98,
+                        "y2": 62,
+                        "stroke": "#FFFFFF",
+                        "strokeWidth": 4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 196,
+                        "y": 30,
+                        "width": 70,
+                        "height": 44,
+                        "fill": "#F4F1EA",
+                        "stroke": "#8A7A66",
+                        "strokeWidth": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Circle",
+                      "props": {
+                        "cx": 214,
+                        "cy": 52,
+                        "r": 9,
+                        "fill": "#C9785A",
+                        "stroke": null,
+                        "strokeWidth": null,
+                        "opacity": 0.7
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Circle",
+                      "props": {
+                        "cx": 238,
+                        "cy": 48,
+                        "r": 12,
+                        "fill": "#9DB0BF",
+                        "stroke": null,
+                        "strokeWidth": null,
+                        "opacity": 0.7
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 150,
+                        "y": 98,
+                        "width": 150,
+                        "height": 40,
+                        "fill": "#8D9197",
+                        "stroke": null,
+                        "strokeWidth": null,
+                        "opacity": 1,
+                        "rx": 10
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 160,
+                        "y": 84,
+                        "width": 62,
+                        "height": 26,
+                        "fill": "#8D9197",
+                        "stroke": null,
+                        "strokeWidth": null,
+                        "opacity": 1,
+                        "rx": 8
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 228,
+                        "y": 84,
+                        "width": 62,
+                        "height": 26,
+                        "fill": "#8D9197",
+                        "stroke": null,
+                        "strokeWidth": null,
+                        "opacity": 1,
+                        "rx": 8
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 144,
+                        "y": 104,
+                        "width": 16,
+                        "height": 34,
+                        "fill": "#8D9197",
+                        "stroke": null,
+                        "strokeWidth": null,
+                        "opacity": 1,
+                        "rx": 6
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 290,
+                        "y": 104,
+                        "width": 16,
+                        "height": 34,
+                        "fill": "#8D9197",
+                        "stroke": null,
+                        "strokeWidth": null,
+                        "opacity": 1,
+                        "rx": 6
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Rect",
+                      "props": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 320,
+                        "height": 180,
+                        "fill": "#9EC5FF",
+                        "stroke": null,
+                        "strokeWidth": null,
+                        "opacity": 0.14
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "viewBox": "0 0 320 180"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "room"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "#EFE6D3",
+                        "radius": "full",
+                        "border": true,
+                        "width": 18,
+                        "height": 18
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Warm ivory",
+                        "size": "sm",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "North light is cool and flat: warm colors stay warm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 3,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "preview"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Tell me about your room",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "RadioGroup",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$mood",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    {
+                      "value": "calm",
+                      "label": "Calm and restful"
+                    },
+                    {
+                      "value": "cozy",
+                      "label": "Warm and cozy"
+                    },
+                    {
+                      "value": "bright",
+                      "label": "Light and airy"
+                    },
+                    {
+                      "value": "bold",
+                      "label": "A bold statement"
+                    }
+                  ],
+                  "label": "How should it feel?"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "RadioGroup",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$light",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    {
+                      "value": "north",
+                      "label": "North facing, cool light"
+                    },
+                    {
+                      "value": "south",
+                      "label": "South facing, warm sun"
+                    },
+                    {
+                      "value": "east",
+                      "label": "East or west, changing"
+                    },
+                    {
+                      "value": "low",
+                      "label": "Little daylight"
+                    }
+                  ],
+                  "label": "What light does it get?"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "RadioGroup",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$sofa",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    {
+                      "value": "grey",
+                      "label": "Grey"
+                    },
+                    {
+                      "value": "blue",
+                      "label": "Blue"
+                    },
+                    {
+                      "value": "green",
+                      "label": "Green"
+                    },
+                    {
+                      "value": "brown",
+                      "label": "Brown leather"
+                    },
+                    {
+                      "value": "white",
+                      "label": "White or cream"
+                    }
+                  ],
+                  "label": "Your sofa"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "columns": 3,
+            "minChildWidth": 200,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "quiz"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Your best matches",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "#EFE6D3",
+                        "radius": "md",
+                        "border": true,
+                        "width": "100%",
+                        "height": 64
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Warm ivory",
+                        "size": "sm",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Soft and bright, never stark"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Great match",
+                        "color": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": true,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "#CFC5B8",
+                        "radius": "md",
+                        "border": true,
+                        "width": "100%",
+                        "height": 64
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Greige",
+                        "size": "sm",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "A warm neutral that goes with everything"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Great match",
+                        "color": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "#B5BFA1",
+                        "radius": "md",
+                        "border": true,
+                        "width": "100%",
+                        "height": 64
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Sage green",
+                        "size": "sm",
+                        "color": null,
+                        "weight": "semibold"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Grounded and restful"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Good match",
+                        "color": "info"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 3,
+            "minChildWidth": 150,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "matches"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "All six colors",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#EFE6D3",
+                              "radius": "full",
+                              "border": true,
+                              "width": 40,
+                              "height": 40
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Warm ivory"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": true,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#B5BFA1",
+                              "radius": "full",
+                              "border": true,
+                              "width": 40,
+                              "height": 40
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Sage green"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#CFC5B8",
+                              "radius": "full",
+                              "border": true,
+                              "width": 40,
+                              "height": 40
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Greige"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#9DB0BF",
+                              "radius": "full",
+                              "border": true,
+                              "width": 40,
+                              "height": 40
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Dusty blue"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#C9785A",
+                              "radius": "full",
+                              "border": true,
+                              "width": 40,
+                              "height": 40
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Terracotta"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#2F3E55",
+                              "radius": "full",
+                              "border": true,
+                              "width": 40,
+                              "height": 40
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Deep navy"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "swatches"
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Paint chips look different on the wall. Try a large sample on two walls and look at it in the morning and the evening before you commit.",
+            "size": "sm",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "tip"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1222,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Find your living room color",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Answer three questions and the matches update. Tap any color to paint the room.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 0,
+                              "width": 320,
+                              "height": 132,
+                              "fill": "#EFE6D3"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 132,
+                              "width": 320,
+                              "height": 48,
+                              "fill": "#B08D6A"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 128,
+                              "width": 320,
+                              "height": 6,
+                              "fill": "#E9E4DA"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 28,
+                              "y": 24,
+                              "width": 70,
+                              "height": 76,
+                              "fill": "#DCE9F5",
+                              "stroke": "#FFFFFF",
+                              "strokeWidth": 5
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 63,
+                              "y1": 24,
+                              "x2": 63,
+                              "y2": 100,
+                              "stroke": "#FFFFFF",
+                              "strokeWidth": 4
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 28,
+                              "y1": 62,
+                              "x2": 98,
+                              "y2": 62,
+                              "stroke": "#FFFFFF",
+                              "strokeWidth": 4
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 196,
+                              "y": 30,
+                              "width": 70,
+                              "height": 44,
+                              "fill": "#F4F1EA",
+                              "stroke": "#8A7A66",
+                              "strokeWidth": 3
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 214,
+                              "cy": 52,
+                              "r": 9,
+                              "fill": "#C9785A",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.7
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 238,
+                              "cy": 48,
+                              "r": 12,
+                              "fill": "#9DB0BF",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.7
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 150,
+                              "y": 98,
+                              "width": 150,
+                              "height": 40,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 10
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 160,
+                              "y": 84,
+                              "width": 62,
+                              "height": 26,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 8
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 228,
+                              "y": 84,
+                              "width": 62,
+                              "height": 26,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 8
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 144,
+                              "y": 104,
+                              "width": 16,
+                              "height": 34,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 6
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 290,
+                              "y": 104,
+                              "width": 16,
+                              "height": 34,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 6
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 0,
+                              "width": 320,
+                              "height": 180,
+                              "fill": "#9EC5FF",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.14
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 320 180"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "room"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#EFE6D3",
+                              "radius": "full",
+                              "border": true,
+                              "width": 18,
+                              "height": 18
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Warm ivory",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "North light is cool and flat: warm co"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "preview"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Tell me about your room",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Your best matches",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "All six colors",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "quiz",
+            "matches",
+            "swatches",
+            "tip"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2444,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Find your living room color",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Answer three questions and the matches update. Tap any color to paint the room.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 0,
+                              "width": 320,
+                              "height": 132,
+                              "fill": "#EFE6D3"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 132,
+                              "width": 320,
+                              "height": 48,
+                              "fill": "#B08D6A"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 128,
+                              "width": 320,
+                              "height": 6,
+                              "fill": "#E9E4DA"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 28,
+                              "y": 24,
+                              "width": 70,
+                              "height": 76,
+                              "fill": "#DCE9F5",
+                              "stroke": "#FFFFFF",
+                              "strokeWidth": 5
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 63,
+                              "y1": 24,
+                              "x2": 63,
+                              "y2": 100,
+                              "stroke": "#FFFFFF",
+                              "strokeWidth": 4
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 28,
+                              "y1": 62,
+                              "x2": 98,
+                              "y2": 62,
+                              "stroke": "#FFFFFF",
+                              "strokeWidth": 4
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 196,
+                              "y": 30,
+                              "width": 70,
+                              "height": 44,
+                              "fill": "#F4F1EA",
+                              "stroke": "#8A7A66",
+                              "strokeWidth": 3
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 214,
+                              "cy": 52,
+                              "r": 9,
+                              "fill": "#C9785A",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.7
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 238,
+                              "cy": 48,
+                              "r": 12,
+                              "fill": "#9DB0BF",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.7
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 150,
+                              "y": 98,
+                              "width": 150,
+                              "height": 40,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 10
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 160,
+                              "y": 84,
+                              "width": 62,
+                              "height": 26,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 8
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 228,
+                              "y": 84,
+                              "width": 62,
+                              "height": 26,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 8
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 144,
+                              "y": 104,
+                              "width": 16,
+                              "height": 34,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 6
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 290,
+                              "y": 104,
+                              "width": 16,
+                              "height": 34,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 6
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 0,
+                              "width": 320,
+                              "height": 180,
+                              "fill": "#9EC5FF",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.14
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 320 180"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "room"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#EFE6D3",
+                              "radius": "full",
+                              "border": true,
+                              "width": 18,
+                              "height": 18
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Warm ivory",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "North light is cool and flat: warm colors stay warm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "preview"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Tell me about your room",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$mood"
+                        },
+                        "options": [
+                          {
+                            "value": "calm",
+                            "label": "Calm and restful"
+                          },
+                          {
+                            "value": "cozy",
+                            "label": "Warm and cozy"
+                          },
+                          {
+                            "value": "bright",
+                            "label": "Light and airy"
+                          },
+                          {
+                            "value": "bold",
+                            "label": "A bold statement"
+                          }
+                        ],
+                        "label": "How should it feel?"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$light"
+                        },
+                        "options": [
+                          {
+                            "value": "north",
+                            "label": "North facing, cool light"
+                          },
+                          {
+                            "value": "south",
+                            "label": "South facing, warm sun"
+                          },
+                          {
+                            "value": "east",
+                            "label": "East or west, changing"
+                          },
+                          {
+                            "value": "low",
+                            "label": "Little daylight"
+                          }
+                        ],
+                        "label": "What light does it get?"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$sofa"
+                        },
+                        "options": [
+                          {
+                            "value": "grey",
+                            "label": "Grey"
+                          },
+                          {
+                            "value": "blue",
+                            "label": "Blue"
+                          },
+                          {
+                            "value": "green",
+                            "label": "Green"
+                          },
+                          {
+                            "value": "brown",
+                            "label": "Brown leather"
+                          },
+                          {
+                            "value": "white",
+                            "label": "White or cream"
+                          }
+                        ],
+                        "label": "Your sofa"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 200,
+                  "gap": 4
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "quiz"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Your best matches",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#EFE6D3",
+                              "radius": "md",
+                              "border": true,
+                              "width": "100%",
+                              "height": 64
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Warm ivory",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Soft and bright, never stark"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Great match",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": true,
+                        "padding": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#CFC5B8",
+                              "radius": "md",
+                              "border": true,
+                              "width": "100%",
+                              "height": 64
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Greige",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "A warm neutral that goes with everything"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Great match",
+                              "color": "success"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "matches"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "All six colors",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "swatches",
+            "tip"
+          ],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$mood": null,
+          "$light": null,
+          "$sofa": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 3667,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Find your living room color",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Answer three questions and the matches update. Tap any color to paint the room.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 0,
+                              "width": 320,
+                              "height": 132,
+                              "fill": "#EFE6D3"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 132,
+                              "width": 320,
+                              "height": 48,
+                              "fill": "#B08D6A"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 128,
+                              "width": 320,
+                              "height": 6,
+                              "fill": "#E9E4DA"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 28,
+                              "y": 24,
+                              "width": 70,
+                              "height": 76,
+                              "fill": "#DCE9F5",
+                              "stroke": "#FFFFFF",
+                              "strokeWidth": 5
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 63,
+                              "y1": 24,
+                              "x2": 63,
+                              "y2": 100,
+                              "stroke": "#FFFFFF",
+                              "strokeWidth": 4
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 28,
+                              "y1": 62,
+                              "x2": 98,
+                              "y2": 62,
+                              "stroke": "#FFFFFF",
+                              "strokeWidth": 4
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 196,
+                              "y": 30,
+                              "width": 70,
+                              "height": 44,
+                              "fill": "#F4F1EA",
+                              "stroke": "#8A7A66",
+                              "strokeWidth": 3
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 214,
+                              "cy": 52,
+                              "r": 9,
+                              "fill": "#C9785A",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.7
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 238,
+                              "cy": 48,
+                              "r": 12,
+                              "fill": "#9DB0BF",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.7
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 150,
+                              "y": 98,
+                              "width": 150,
+                              "height": 40,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 10
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 160,
+                              "y": 84,
+                              "width": 62,
+                              "height": 26,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 8
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 228,
+                              "y": 84,
+                              "width": 62,
+                              "height": 26,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 8
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 144,
+                              "y": 104,
+                              "width": 16,
+                              "height": 34,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 6
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 290,
+                              "y": 104,
+                              "width": 16,
+                              "height": 34,
+                              "fill": "#8D9197",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 1,
+                              "rx": 6
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 0,
+                              "y": 0,
+                              "width": 320,
+                              "height": 180,
+                              "fill": "#9EC5FF",
+                              "stroke": null,
+                              "strokeWidth": null,
+                              "opacity": 0.14
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 320 180"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "room"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#EFE6D3",
+                              "radius": "full",
+                              "border": true,
+                              "width": 18,
+                              "height": 18
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Warm ivory",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "North light is cool and flat: warm colors stay warm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "preview"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Tell me about your room",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$mood"
+                        },
+                        "options": [
+                          {
+                            "value": "calm",
+                            "label": "Calm and restful"
+                          },
+                          {
+                            "value": "cozy",
+                            "label": "Warm and cozy"
+                          },
+                          {
+                            "value": "bright",
+                            "label": "Light and airy"
+                          },
+                          {
+                            "value": "bold",
+                            "label": "A bold statement"
+                          }
+                        ],
+                        "label": "How should it feel?"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$light"
+                        },
+                        "options": [
+                          {
+                            "value": "north",
+                            "label": "North facing, cool light"
+                          },
+                          {
+                            "value": "south",
+                            "label": "South facing, warm sun"
+                          },
+                          {
+                            "value": "east",
+                            "label": "East or west, changing"
+                          },
+                          {
+                            "value": "low",
+                            "label": "Little daylight"
+                          }
+                        ],
+                        "label": "What light does it get?"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$sofa"
+                        },
+                        "options": [
+                          {
+                            "value": "grey",
+                            "label": "Grey"
+                          },
+                          {
+                            "value": "blue",
+                            "label": "Blue"
+                          },
+                          {
+                            "value": "green",
+                            "label": "Green"
+                          },
+                          {
+                            "value": "brown",
+                            "label": "Brown leather"
+                          },
+                          {
+                            "value": "white",
+                            "label": "White or cream"
+                          }
+                        ],
+                        "label": "Your sofa"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 200,
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "quiz"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Your best matches",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#EFE6D3",
+                              "radius": "md",
+                              "border": true,
+                              "width": "100%",
+                              "height": 64
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Warm ivory",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Soft and bright, never stark"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Great match",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": true,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#CFC5B8",
+                              "radius": "md",
+                              "border": true,
+                              "width": "100%",
+                              "height": 64
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Greige",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "A warm neutral that goes with everything"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Great match",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "#B5BFA1",
+                              "radius": "md",
+                              "border": true,
+                              "width": "100%",
+                              "height": 64
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Sage green",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Grounded and restful"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Good match",
+                              "color": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 150,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "matches"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "All six colors",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": null,
+                                    "background": "#EFE6D3",
+                                    "radius": "full",
+                                    "border": true,
+                                    "width": 40,
+                                    "height": 40
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Warm ivory"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": true,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": null,
+                                    "background": "#B5BFA1",
+                                    "radius": "full",
+                                    "border": true,
+                                    "width": 40,
+                                    "height": 40
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Sage green"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": null,
+                                    "background": "#CFC5B8",
+                                    "radius": "full",
+                                    "border": true,
+                                    "width": 40,
+                                    "height": 40
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Greige"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": null,
+                                    "background": "#9DB0BF",
+                                    "radius": "full",
+                                    "border": true,
+                                    "width": 40,
+                                    "height": 40
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Dusty blue"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": null,
+                                    "background": "#C9785A",
+                                    "radius": "full",
+                                    "border": true,
+                                    "width": 40,
+                                    "height": 40
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Terracotta"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": null,
+                                    "background": "#2F3E55",
+                                    "radius": "full",
+                                    "border": true,
+                                    "width": 40,
+                                    "height": 40
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Deep navy"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "swatches"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Paint chips look different on the wall. Try a large sample on two walls and look at it in the morning and the evening before you commit.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "tip"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 11,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$light": "north",
+          "$mood": "calm",
+          "$sofa": "grey"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

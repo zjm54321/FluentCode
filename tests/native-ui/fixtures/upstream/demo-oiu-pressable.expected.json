@@ -1,0 +1,1710 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "184051ac8c3e17e0efccef9b6be286ec4802b4d2e7c4859fb80d1981045b310f",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Your 4 × 4 ft garden plan",
+              "size": "lg"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "Tap a planter to see what grows there.",
+              "size": "sm",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "leafy-green",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Lettuce + radishes",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "medium"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "24-inch planter"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": {
+                      "k": "Comp",
+                      "name": "Set",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$bed"
+                        },
+                        {
+                          "k": "Str",
+                          "v": "Lettuce + radishes"
+                        }
+                      ]
+                    },
+                    "selected": {
+                      "k": "BinOp",
+                      "op": "==",
+                      "left": {
+                        "k": "StateRef",
+                        "n": "$bed"
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": "Lettuce + radishes"
+                      }
+                    },
+                    "padding": 6,
+                    "background": "#d6e8cf",
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "p1"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "bean",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Snap peas",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "medium"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Pot + trellis"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": {
+                      "k": "Comp",
+                      "name": "Set",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$bed"
+                        },
+                        {
+                          "k": "Str",
+                          "v": "Snap peas"
+                        }
+                      ]
+                    },
+                    "selected": {
+                      "k": "BinOp",
+                      "op": "==",
+                      "left": {
+                        "k": "StateRef",
+                        "n": "$bed"
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": "Snap peas"
+                      }
+                    },
+                    "padding": 6,
+                    "background": "#d6e8cf",
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "p2"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "leaf",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Kale",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "medium"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "12-inch pot"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": {
+                      "k": "Comp",
+                      "name": "Set",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$bed"
+                        },
+                        {
+                          "k": "Str",
+                          "v": "Kale"
+                        }
+                      ]
+                    },
+                    "selected": {
+                      "k": "BinOp",
+                      "op": "==",
+                      "left": {
+                        "k": "StateRef",
+                        "n": "$bed"
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": "Kale"
+                      }
+                    },
+                    "padding": 6,
+                    "background": "#ecdfc3",
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "p3"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "sprout",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Herbs",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "medium"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "1 to 2 small pots"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": {
+                      "k": "Comp",
+                      "name": "Set",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$bed"
+                        },
+                        {
+                          "k": "Str",
+                          "v": "Herbs"
+                        }
+                      ]
+                    },
+                    "selected": {
+                      "k": "BinOp",
+                      "op": "==",
+                      "left": {
+                        "k": "StateRef",
+                        "n": "$bed"
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": "Herbs"
+                      }
+                    },
+                    "padding": 6,
+                    "background": "#ecdfc3",
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true,
+                  "statementId": "p4"
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": null,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "grid"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Icon",
+                  "props": {
+                    "name": "sun",
+                    "size": "sm",
+                    "color": "warning"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": {
+                      "k": "BinOp",
+                      "op": "+",
+                      "left": {
+                        "k": "BinOp",
+                        "op": "+",
+                        "left": {
+                          "k": "Str",
+                          "v": "Selected: **"
+                        },
+                        "right": {
+                          "k": "StateRef",
+                          "n": "$bed"
+                        }
+                      },
+                      "right": {
+                        "k": "Str",
+                        "v": "**. Give it 6+ hours of sunlight."
+                      }
+                    },
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "detail"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 8,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$bed": "Lettuce + radishes"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Your 4 × 4 ft garden plan",
+            "size": "lg"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Tap a planter to see what grows there.",
+            "size": "sm",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "leafy-green",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Lettuce + radishes",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "24-inch planter"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "set",
+                        "target": "$bed",
+                        "valueAST": {
+                          "k": "Str",
+                          "v": "Lettuce + radishes"
+                        }
+                      }
+                    ]
+                  },
+                  "selected": true,
+                  "padding": 6,
+                  "background": "#d6e8cf",
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "p1"
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "bean",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Snap peas",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Pot + trellis"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "set",
+                        "target": "$bed",
+                        "valueAST": {
+                          "k": "Str",
+                          "v": "Snap peas"
+                        }
+                      }
+                    ]
+                  },
+                  "selected": false,
+                  "padding": 6,
+                  "background": "#d6e8cf",
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "p2"
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "leaf",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Kale",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "12-inch pot"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "set",
+                        "target": "$bed",
+                        "valueAST": {
+                          "k": "Str",
+                          "v": "Kale"
+                        }
+                      }
+                    ]
+                  },
+                  "selected": false,
+                  "padding": 6,
+                  "background": "#ecdfc3",
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "p3"
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "sprout",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Herbs",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "1 to 2 small pots"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "set",
+                        "target": "$bed",
+                        "valueAST": {
+                          "k": "Str",
+                          "v": "Herbs"
+                        }
+                      }
+                    ]
+                  },
+                  "selected": false,
+                  "padding": 6,
+                  "background": "#ecdfc3",
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "p4"
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": null,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "grid"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Icon",
+                "props": {
+                  "name": "sun",
+                  "size": "sm",
+                  "color": "warning"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Selected: **Lettuce + radishes**. Give it 6+ hours of sunlight.",
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "detail"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 365,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Your 4 × 4 ft garden plan",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Tap a planter to see what grows there.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "leafy-green",
+                                    "size": "lg"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Lettuce + radishes",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "24-inch planter"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$bed"
+                            },
+                            {
+                              "k": "Str",
+                              "v": "Lettuce"
+                            }
+                          ]
+                        }
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true,
+                      "statementId": "p1"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": null,
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "grid"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "p2",
+            "p3",
+            "p4",
+            "detail"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$bed": "Lettuce + radishes"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 731,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Your 4 × 4 ft garden plan",
+                  "size": "lg"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Tap a planter to see what grows there.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "leafy-green",
+                                    "size": "lg"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Lettuce + radishes",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "24-inch planter"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$bed"
+                            },
+                            {
+                              "k": "Str",
+                              "v": "Lettuce + radishes"
+                            }
+                          ]
+                        },
+                        "selected": {
+                          "k": "BinOp",
+                          "op": "==",
+                          "left": {
+                            "k": "StateRef",
+                            "n": "$bed"
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "Lettuce + radishes"
+                          }
+                        },
+                        "padding": 6,
+                        "background": "#d6e8cf",
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true,
+                      "statementId": "p1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "bean",
+                                    "size": "lg"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Snap peas",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Pot + trellis"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$bed"
+                            },
+                            {
+                              "k": "Str",
+                              "v": "Snap peas"
+                            }
+                          ]
+                        },
+                        "selected": {
+                          "k": "BinOp",
+                          "op": "==",
+                          "left": {
+                            "k": "StateRef",
+                            "n": "$bed"
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "Snap peas"
+                          }
+                        },
+                        "padding": 6,
+                        "background": "#d6e8cf",
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true,
+                      "statementId": "p2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "leaf",
+                                    "size": "lg"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Kale",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "12-inch pot"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "p3"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": null,
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "grid"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "p4",
+            "detail"
+          ],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$bed": "Lettuce + radishes"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1097,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Your 4 × 4 ft garden plan",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Tap a planter to see what grows there.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "leafy-green",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Lettuce + radishes",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "24-inch planter"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$bed"
+                            },
+                            {
+                              "k": "Str",
+                              "v": "Lettuce + radishes"
+                            }
+                          ]
+                        },
+                        "selected": {
+                          "k": "BinOp",
+                          "op": "==",
+                          "left": {
+                            "k": "StateRef",
+                            "n": "$bed"
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "Lettuce + radishes"
+                          }
+                        },
+                        "padding": 6,
+                        "background": "#d6e8cf",
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "p1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "bean",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Snap peas",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Pot + trellis"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$bed"
+                            },
+                            {
+                              "k": "Str",
+                              "v": "Snap peas"
+                            }
+                          ]
+                        },
+                        "selected": {
+                          "k": "BinOp",
+                          "op": "==",
+                          "left": {
+                            "k": "StateRef",
+                            "n": "$bed"
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "Snap peas"
+                          }
+                        },
+                        "padding": 6,
+                        "background": "#d6e8cf",
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "p2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "leaf",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Kale",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "12-inch pot"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$bed"
+                            },
+                            {
+                              "k": "Str",
+                              "v": "Kale"
+                            }
+                          ]
+                        },
+                        "selected": {
+                          "k": "BinOp",
+                          "op": "==",
+                          "left": {
+                            "k": "StateRef",
+                            "n": "$bed"
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "Kale"
+                          }
+                        },
+                        "padding": 6,
+                        "background": "#ecdfc3",
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "p3"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "sprout",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Herbs",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "1 to 2 small pots"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$bed"
+                            },
+                            {
+                              "k": "Str",
+                              "v": "Herbs"
+                            }
+                          ]
+                        },
+                        "selected": {
+                          "k": "BinOp",
+                          "op": "==",
+                          "left": {
+                            "k": "StateRef",
+                            "n": "$bed"
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "Herbs"
+                          }
+                        },
+                        "padding": 6,
+                        "background": "#ecdfc3",
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true,
+                      "statementId": "p4"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": null,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "grid"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Icon",
+                      "props": {
+                        "name": "sun",
+                        "size": "sm",
+                        "color": "warning"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": {
+                          "k": "BinOp",
+                          "op": "+",
+                          "left": {
+                            "k": "BinOp",
+                            "op": "+",
+                            "left": {
+                              "k": "Str",
+                              "v": "Selected: **"
+                            },
+                            "right": {
+                              "k": "StateRef",
+                              "n": "$bed"
+                            }
+                          },
+                          "right": {
+                            "k": "Str",
+                            "v": "**. Give it 6+ hours of sunlight."
+                          }
+                        },
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "detail"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 8,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$bed": "Lettuce + radishes"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

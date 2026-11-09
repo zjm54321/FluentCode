@@ -1,0 +1,1403 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "4cc2758e75a0921d92b623afdff4df0d39f6cb3b4e125c8873f5d76db59d8145",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Should you switch doors?",
+                    "size": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "One car. Two goats. A surprisingly good reason to switch.",
+                    "size": "sm",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 1
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Door 1",
+                                "size": "sm",
+                                "color": "muted",
+                                "weight": "medium"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "🚪",
+                                "size": "3xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Closed",
+                                "size": "xs",
+                                "color": "muted",
+                                "weight": "medium"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 5,
+                    "background": "warning",
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Door 2",
+                                "size": "sm",
+                                "color": "muted",
+                                "weight": "medium"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "🚪",
+                                "size": "3xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Closed",
+                                "size": "xs",
+                                "color": "muted",
+                                "weight": "medium"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 5,
+                    "background": "warning",
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Door 3",
+                                "size": "sm",
+                                "color": "muted",
+                                "weight": "medium"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "🚪",
+                                "size": "3xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Closed",
+                                "size": "xs",
+                                "color": "muted",
+                                "weight": "medium"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1,
+                          "align": "center"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 5,
+                    "background": "warning",
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 3,
+              "minChildWidth": null,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "doors"
+          },
+          {
+            "type": "element",
+            "typeName": "Box",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Start by choosing a door.",
+                    "size": "md"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "The host knows where the car is and will open another door with a goat behind it.",
+                    "size": "sm",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "direction": null,
+              "gap": 1,
+              "padding": 4,
+              "background": "info",
+              "radius": "lg"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "status"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                null,
+                null,
+                null,
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Simulate 1,000 games",
+                    "action": null,
+                    "variant": "ghost",
+                    "color": null,
+                    "size": null,
+                    "icon": "dices"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "actions"
+          },
+          null,
+          null
+        ],
+        "variant": null,
+        "padding": 5,
+        "gap": 4
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 5,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Should you switch doors?",
+                  "size": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "One car. Two goats. A surprisingly good reason to switch.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 1
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Door 1",
+                              "size": "sm",
+                              "color": "muted",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "🚪",
+                              "size": "3xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Closed",
+                              "size": "xs",
+                              "color": "muted",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 5,
+                  "background": "warning",
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Door 2",
+                              "size": "sm",
+                              "color": "muted",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "🚪",
+                              "size": "3xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Closed",
+                              "size": "xs",
+                              "color": "muted",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 5,
+                  "background": "warning",
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Door 3",
+                              "size": "sm",
+                              "color": "muted",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "🚪",
+                              "size": "3xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Closed",
+                              "size": "xs",
+                              "color": "muted",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 5,
+                  "background": "warning",
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 3,
+            "minChildWidth": null,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "doors"
+        },
+        {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Start by choosing a door.",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "The host knows where the car is and will open another door with a goat behind it.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "direction": null,
+            "gap": 1,
+            "padding": 4,
+            "background": "info",
+            "radius": "lg"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "status"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              null,
+              null,
+              null,
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Simulate 1,000 games",
+                  "action": null,
+                  "variant": "ghost",
+                  "color": null,
+                  "size": null,
+                  "icon": "dices"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "actions"
+        },
+        null,
+        null
+      ],
+      "variant": null,
+      "padding": 5,
+      "gap": 4
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 350,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Should you switch doors?",
+                        "size": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "One car. Two goats. A surprisingly good reason to switch.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Door 1",
+                                    "size": "sm",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "🚪",
+                                    "size": "3xl"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Closed",
+                                    "size": "xs",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "doors"
+              },
+              null,
+              null
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "status",
+            "actions"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 700,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Should you switch doors?",
+                        "size": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "One car. Two goats. A surprisingly good reason to switch.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Door 1",
+                                    "size": "sm",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "🚪",
+                                    "size": "3xl"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Closed",
+                                    "size": "xs",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 5,
+                        "background": "warning",
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Door 2",
+                                    "size": "sm",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "🚪",
+                                    "size": "3xl"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Closed",
+                                    "size": "xs",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 5,
+                        "background": "warning",
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Door 3",
+                                    "size": "sm",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "🚪",
+                                    "size": "3xl"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Closed",
+                                    "size": "xs",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": null
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "doors"
+              },
+              null,
+              null
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "fal",
+            "status",
+            "actions"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1050,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Should you switch doors?",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "One car. Two goats. A surprisingly good reason to switch.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Door 1",
+                                    "size": "sm",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "🚪",
+                                    "size": "3xl"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Closed",
+                                    "size": "xs",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 5,
+                        "background": "warning",
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Door 2",
+                                    "size": "sm",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "🚪",
+                                    "size": "3xl"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Closed",
+                                    "size": "xs",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 5,
+                        "background": "warning",
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Door 3",
+                                    "size": "sm",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "🚪",
+                                    "size": "3xl"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Closed",
+                                    "size": "xs",
+                                    "color": "muted",
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1,
+                              "align": "center"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 5,
+                        "background": "warning",
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": null,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "doors"
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Start by choosing a door.",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "The host knows where the car is and will open another door with a goat behind it.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": 1,
+                  "padding": 4,
+                  "background": "info",
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "status"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    null,
+                    null,
+                    null,
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Simulate 1,000 games",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": null,
+                        "icon": "dices"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "actions"
+              },
+              null,
+              null
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

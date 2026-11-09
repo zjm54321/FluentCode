@@ -1,0 +1,4464 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "04b4e3545ab1017fb985919c5df34f45585184d58445f8dc7595960a9fc59582",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Inside a 7-speed bike",
+                    "size": "xl"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "One chainring at the front, seven sprockets at the back and a derailleur that moves the chain between them. Small sprockets make each pedal stroke go further; big ones make hills easier.",
+                    "size": "md",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "City bicycle",
+                    "aspectRatio": 1.3,
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "Derailleur",
+                    "aspectRatio": 1.3,
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "Bicycle shifter",
+                    "aspectRatio": 1.3,
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 3,
+              "minChildWidth": 150,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "photos"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "The main parts",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Table",
+            "props": {
+              "columns": [
+                "Part",
+                "What it does"
+              ],
+              "rows": [
+                [
+                  "Frame and fork",
+                  "Hold everything together, steer and set the riding position"
+                ],
+                [
+                  "Crankset and pedals",
+                  "Turn leg power into rotation"
+                ],
+                [
+                  "Chainring",
+                  "The single front gear, here 40 teeth"
+                ],
+                [
+                  "Chain",
+                  "Carries the power to the rear wheel"
+                ],
+                [
+                  "7 rear sprockets",
+                  "Seven sizes, so seven gear ratios"
+                ],
+                [
+                  "Rear derailleur",
+                  "Moves the chain from sprocket to sprocket"
+                ],
+                [
+                  "Shifter and cable",
+                  "Pull or release the cable to pick a gear"
+                ],
+                [
+                  "Brakes, wheels and tires",
+                  "Stop, roll and grip the road"
+                ]
+              ]
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "parts"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "How power reaches the wheel",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "Pedals",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "medium"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "direction": null,
+                                "gap": null,
+                                "padding": 2,
+                                "background": "surface",
+                                "radius": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "arrow-right",
+                                "size": "sm",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "Chainring",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "medium"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "direction": null,
+                                "gap": null,
+                                "padding": 2,
+                                "background": "surface",
+                                "radius": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "arrow-right",
+                                "size": "sm",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "Chain",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "medium"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "direction": null,
+                                "gap": null,
+                                "padding": 2,
+                                "background": "surface",
+                                "radius": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "arrow-right",
+                                "size": "sm",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "Rear sprocket",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "medium"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "direction": null,
+                                "gap": null,
+                                "padding": 2,
+                                "background": "surface",
+                                "radius": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "arrow-right",
+                                "size": "sm",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Box",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "Rear wheel",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "medium"
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "direction": null,
+                                "gap": null,
+                                "padding": 2,
+                                "background": "surface",
+                                "radius": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            null
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1,
+                    "align": "center",
+                    "justify": "center",
+                    "wrap": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "The shifter pulls a cable; the derailleur guides the chain onto the sprocket you choose."
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": "soft",
+              "padding": 3,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "flow"
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Label",
+                              "props": {
+                                "text": "Explore the seven gears"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "Gear 3 of 7",
+                                "size": "xl"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Moderate, for cruising",
+                          "color": "info"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 3,
+                    "align": null,
+                    "justify": null,
+                    "wrap": true
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "exHead"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Svg",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "G",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 26,
+                                "cy": 52,
+                                "r": 21.400000000000002,
+                                "fill": "surface",
+                                "stroke": "faint",
+                                "strokeWidth": 2,
+                                "opacity": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 26,
+                                "cy": 52,
+                                "r": 4,
+                                "fill": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "28T",
+                                "x": 26,
+                                "y": 104,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle",
+                                "weight": "normal"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "G",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 71,
+                                "cy": 52,
+                                "r": 19.200000000000003,
+                                "fill": "surface",
+                                "stroke": "faint",
+                                "strokeWidth": 2,
+                                "opacity": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 71,
+                                "cy": 52,
+                                "r": 4,
+                                "fill": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "24T",
+                                "x": 71,
+                                "y": 104,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle",
+                                "weight": "normal"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "G",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 116,
+                                "cy": 52,
+                                "r": 17.55,
+                                "fill": "info",
+                                "stroke": "info",
+                                "strokeWidth": 2,
+                                "opacity": 0.85
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 116,
+                                "cy": 52,
+                                "r": 4,
+                                "fill": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "21T",
+                                "x": 116,
+                                "y": 104,
+                                "size": 11,
+                                "fill": "info",
+                                "anchor": "middle",
+                                "weight": "semibold"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "G",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 161,
+                                "cy": 52,
+                                "r": 15.9,
+                                "fill": "surface",
+                                "stroke": "faint",
+                                "strokeWidth": 2,
+                                "opacity": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 161,
+                                "cy": 52,
+                                "r": 4,
+                                "fill": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "18T",
+                                "x": 161,
+                                "y": 104,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle",
+                                "weight": "normal"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "G",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 206,
+                                "cy": 52,
+                                "r": 14.8,
+                                "fill": "surface",
+                                "stroke": "faint",
+                                "strokeWidth": 2,
+                                "opacity": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 206,
+                                "cy": 52,
+                                "r": 4,
+                                "fill": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "16T",
+                                "x": 206,
+                                "y": 104,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle",
+                                "weight": "normal"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "G",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 251,
+                                "cy": 52,
+                                "r": 13.700000000000001,
+                                "fill": "surface",
+                                "stroke": "faint",
+                                "strokeWidth": 2,
+                                "opacity": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 251,
+                                "cy": 52,
+                                "r": 4,
+                                "fill": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "14T",
+                                "x": 251,
+                                "y": 104,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle",
+                                "weight": "normal"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "G",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 296,
+                                "cy": 52,
+                                "r": 12.600000000000001,
+                                "fill": "surface",
+                                "stroke": "faint",
+                                "strokeWidth": 2,
+                                "opacity": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 296,
+                                "cy": 52,
+                                "r": 4,
+                                "fill": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "12T",
+                                "x": 296,
+                                "y": 104,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle",
+                                "weight": "normal"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ]
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "viewBox": "0 0 320 112"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "cogs"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$gear"
+                    },
+                    "min": 1,
+                    "max": 7,
+                    "step": 1,
+                    "label": "Gear",
+                    "unit": null,
+                    "marks": [
+                      {
+                        "value": 1,
+                        "label": "1 · Easy"
+                      },
+                      {
+                        "value": 4,
+                        "label": "4"
+                      },
+                      {
+                        "value": 7,
+                        "label": "7 · Fast"
+                      }
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Rear sprocket"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "21 teeth",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false,
+                        "statementId": "s1"
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Gear ratio"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "1.9 : 1",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false,
+                        "statementId": "s2"
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Speed at 80 rpm"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "19.2 km/h",
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false,
+                        "statementId": "s3"
+                      }
+                    ],
+                    "columns": 3,
+                    "minChildWidth": 90,
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "stats"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$rpm"
+                    },
+                    "min": 50,
+                    "max": 110,
+                    "step": 5,
+                    "label": "Pedaling cadence",
+                    "unit": " rpm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Each turn of the pedals turns the rear wheel 1.9 times. Balanced effort for flat roads and everyday riding.",
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Caption",
+                  "props": {
+                    "text": "Assumes a 40-tooth chainring, a 12-28 freewheel and a 700c wheel (2.1 m around). Real bikes vary."
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": null,
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "explorer"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Freewheel or cassette?",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "SearchImage",
+                  "props": {
+                    "query": "Cassette (bicycle)",
+                    "aspectRatio": 2.4,
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Grid",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Freewheel",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "semibold"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "The ratchet sits inside the sprocket cluster, which screws onto the hub. Common on budget and youth bikes."
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false,
+                        "statementId": "h1"
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Card",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": "Cassette",
+                                "size": "sm",
+                                "color": null,
+                                "weight": "semibold"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "The sprockets slide onto a freehub that holds the ratchet. Better axle support and easy gear swaps."
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "variant": "soft",
+                          "padding": 3,
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false,
+                        "statementId": "h2"
+                      }
+                    ],
+                    "columns": 2,
+                    "minChildWidth": 220,
+                    "gap": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "hubs"
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "Seven speeds keep the drivetrain simple, light and cheap to maintain: one shifter, one derailleur and no front gear changes to think about.",
+              "size": "sm",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "closing"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 18,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$gear": 3,
+      "$rpm": 80
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Inside a 7-speed bike",
+                  "size": "xl"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "One chainring at the front, seven sprockets at the back and a derailleur that moves the chain between them. Small sprockets make each pedal stroke go further; big ones make hills easier.",
+                  "size": "md",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "City bicycle",
+                  "aspectRatio": 1.3,
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "Derailleur",
+                  "aspectRatio": 1.3,
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "Bicycle shifter",
+                  "aspectRatio": 1.3,
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 3,
+            "minChildWidth": 150,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "photos"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "The main parts",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Table",
+          "props": {
+            "columns": [
+              "Part",
+              "What it does"
+            ],
+            "rows": [
+              [
+                "Frame and fork",
+                "Hold everything together, steer and set the riding position"
+              ],
+              [
+                "Crankset and pedals",
+                "Turn leg power into rotation"
+              ],
+              [
+                "Chainring",
+                "The single front gear, here 40 teeth"
+              ],
+              [
+                "Chain",
+                "Carries the power to the rear wheel"
+              ],
+              [
+                "7 rear sprockets",
+                "Seven sizes, so seven gear ratios"
+              ],
+              [
+                "Rear derailleur",
+                "Moves the chain from sprocket to sprocket"
+              ],
+              [
+                "Shifter and cable",
+                "Pull or release the cable to pick a gear"
+              ],
+              [
+                "Brakes, wheels and tires",
+                "Stop, roll and grip the road"
+              ]
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "parts"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "How power reaches the wheel",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Pedals",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 2,
+                              "background": "surface",
+                              "radius": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "arrow-right",
+                              "size": "sm",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Chainring",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 2,
+                              "background": "surface",
+                              "radius": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "arrow-right",
+                              "size": "sm",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Chain",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 2,
+                              "background": "surface",
+                              "radius": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "arrow-right",
+                              "size": "sm",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Rear sprocket",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 2,
+                              "background": "surface",
+                              "radius": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "arrow-right",
+                              "size": "sm",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Rear wheel",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "medium"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 2,
+                              "background": "surface",
+                              "radius": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          null
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1,
+                  "align": "center",
+                  "justify": "center",
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "The shifter pulls a cable; the derailleur guides the chain onto the sprocket you choose."
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": "soft",
+            "padding": 3,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "flow"
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Label",
+                            "props": {
+                              "text": "Explore the seven gears"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Gear 3 of 7",
+                              "size": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Moderate, for cruising",
+                        "color": "info"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "exHead"
+              },
+              {
+                "type": "element",
+                "typeName": "Svg",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 26,
+                              "cy": 52,
+                              "r": 21.400000000000002,
+                              "fill": "surface",
+                              "stroke": "faint",
+                              "strokeWidth": 2,
+                              "opacity": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 26,
+                              "cy": 52,
+                              "r": 4,
+                              "fill": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "28T",
+                              "x": 26,
+                              "y": 104,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle",
+                              "weight": "normal"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 71,
+                              "cy": 52,
+                              "r": 19.200000000000003,
+                              "fill": "surface",
+                              "stroke": "faint",
+                              "strokeWidth": 2,
+                              "opacity": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 71,
+                              "cy": 52,
+                              "r": 4,
+                              "fill": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "24T",
+                              "x": 71,
+                              "y": 104,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle",
+                              "weight": "normal"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 116,
+                              "cy": 52,
+                              "r": 17.55,
+                              "fill": "info",
+                              "stroke": "info",
+                              "strokeWidth": 2,
+                              "opacity": 0.85
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 116,
+                              "cy": 52,
+                              "r": 4,
+                              "fill": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "21T",
+                              "x": 116,
+                              "y": 104,
+                              "size": 11,
+                              "fill": "info",
+                              "anchor": "middle",
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 161,
+                              "cy": 52,
+                              "r": 15.9,
+                              "fill": "surface",
+                              "stroke": "faint",
+                              "strokeWidth": 2,
+                              "opacity": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 161,
+                              "cy": 52,
+                              "r": 4,
+                              "fill": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "18T",
+                              "x": 161,
+                              "y": 104,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle",
+                              "weight": "normal"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 206,
+                              "cy": 52,
+                              "r": 14.8,
+                              "fill": "surface",
+                              "stroke": "faint",
+                              "strokeWidth": 2,
+                              "opacity": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 206,
+                              "cy": 52,
+                              "r": 4,
+                              "fill": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "16T",
+                              "x": 206,
+                              "y": 104,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle",
+                              "weight": "normal"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 251,
+                              "cy": 52,
+                              "r": 13.700000000000001,
+                              "fill": "surface",
+                              "stroke": "faint",
+                              "strokeWidth": 2,
+                              "opacity": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 251,
+                              "cy": 52,
+                              "r": 4,
+                              "fill": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "14T",
+                              "x": 251,
+                              "y": 104,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle",
+                              "weight": "normal"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "G",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 296,
+                              "cy": 52,
+                              "r": 12.600000000000001,
+                              "fill": "surface",
+                              "stroke": "faint",
+                              "strokeWidth": 2,
+                              "opacity": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 296,
+                              "cy": 52,
+                              "r": 4,
+                              "fill": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "12T",
+                              "x": 296,
+                              "y": 104,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle",
+                              "weight": "normal"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "viewBox": "0 0 320 112"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "cogs"
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$gear",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 1,
+                  "max": 7,
+                  "step": 1,
+                  "label": "Gear",
+                  "unit": null,
+                  "marks": [
+                    {
+                      "value": 1,
+                      "label": "1 · Easy"
+                    },
+                    {
+                      "value": 4,
+                      "label": "4"
+                    },
+                    {
+                      "value": 7,
+                      "label": "7 · Fast"
+                    }
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Rear sprocket"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "21 teeth",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "s1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Gear ratio"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "1.9 : 1",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "s2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Speed at 80 rpm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "19.2 km/h",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "s3"
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 90,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "stats"
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$rpm",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 50,
+                  "max": 110,
+                  "step": 5,
+                  "label": "Pedaling cadence",
+                  "unit": " rpm"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Each turn of the pedals turns the rear wheel 1.9 times. Balanced effort for flat roads and everyday riding.",
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Assumes a 40-tooth chainring, a 12-28 freewheel and a 700c wheel (2.1 m around). Real bikes vary."
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "explorer"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Freewheel or cassette?",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "SearchImage",
+                "props": {
+                  "query": "Cassette (bicycle)",
+                  "aspectRatio": 2.4,
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Freewheel",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "The ratchet sits inside the sprocket cluster, which screws onto the hub. Common on budget and youth bikes."
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "h1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Card",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Cassette",
+                              "size": "sm",
+                              "color": null,
+                              "weight": "semibold"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "The sprockets slide onto a freehub that holds the ratchet. Better axle support and easy gear swaps."
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "variant": "soft",
+                        "padding": 3,
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "h2"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 220,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "hubs"
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Seven speeds keep the drivetrain simple, light and cheap to maintain: one shifter, one derailleur and no front gear changes to think about.",
+            "size": "sm",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "closing"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1503,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Inside a 7-speed bike",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "One chainring at the front, seven sprockets at the back and a derailleur that moves the chain between them. Small sprockets make each pedal stroke go further; big ones make hills easier.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "City bicycle",
+                        "aspectRatio": 1.3,
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Derailleur",
+                        "aspectRatio": 1.3,
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Bicycle shifter",
+                        "aspectRatio": 1.3,
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 150,
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "photos"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "The main parts",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "Part",
+                    "What it does"
+                  ],
+                  "rows": [
+                    [
+                      "Frame and fork",
+                      "Hold everything together, steer and set the riding position"
+                    ],
+                    [
+                      "Crankset and pedals",
+                      "Turn leg power into rotation"
+                    ],
+                    [
+                      "Chainring",
+                      "The single front gear, here 40 teeth"
+                    ],
+                    [
+                      "Chain",
+                      "Carries the power to the rear wheel"
+                    ],
+                    [
+                      "7 rear sprockets",
+                      "Seven sizes, so seven gear ratios"
+                    ],
+                    [
+                      "Rear derailleur",
+                      "Moves the chain from sprocket to sprocket"
+                    ],
+                    [
+                      "Shifter and cable",
+                      "Pull or release the cable to pick a gear"
+                    ],
+                    [
+                      "Brakes, wheels and tires",
+                      "Stop, roll and grip the road"
+                    ]
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "parts"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "How power reaches the wheel",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Pedals",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "sm",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Chainring",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "sm",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Chain",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "s"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "flow"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Freewheel or cassette?",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "explorer",
+            "hubs",
+            "closing"
+          ],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 3006,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Inside a 7-speed bike",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "One chainring at the front, seven sprockets at the back and a derailleur that moves the chain between them. Small sprockets make each pedal stroke go further; big ones make hills easier.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "City bicycle",
+                        "aspectRatio": 1.3,
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Derailleur",
+                        "aspectRatio": 1.3,
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Bicycle shifter",
+                        "aspectRatio": 1.3,
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 150,
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "photos"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "The main parts",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "Part",
+                    "What it does"
+                  ],
+                  "rows": [
+                    [
+                      "Frame and fork",
+                      "Hold everything together, steer and set the riding position"
+                    ],
+                    [
+                      "Crankset and pedals",
+                      "Turn leg power into rotation"
+                    ],
+                    [
+                      "Chainring",
+                      "The single front gear, here 40 teeth"
+                    ],
+                    [
+                      "Chain",
+                      "Carries the power to the rear wheel"
+                    ],
+                    [
+                      "7 rear sprockets",
+                      "Seven sizes, so seven gear ratios"
+                    ],
+                    [
+                      "Rear derailleur",
+                      "Moves the chain from sprocket to sprocket"
+                    ],
+                    [
+                      "Shifter and cable",
+                      "Pull or release the cable to pick a gear"
+                    ],
+                    [
+                      "Brakes, wheels and tires",
+                      "Stop, roll and grip the road"
+                    ]
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "parts"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "How power reaches the wheel",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Pedals",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "sm",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Chainring",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "sm",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Chain",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "sm",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Rear sprocket",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "sm",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Rear wheel",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                null
+                              ],
+                              "gap": 1
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center",
+                        "justify": "center",
+                        "wrap": true
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "The shifter pulls a cable; the derailleur guides the chain onto the sprocket you choose."
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "flow"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Freewheel or cassette?",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "explorer",
+            "hubs",
+            "closing"
+          ],
+          "orphaned": [
+            "exHead",
+            "cogs"
+          ],
+          "statementCount": 7,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 4509,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Inside a 7-speed bike",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "One chainring at the front, seven sprockets at the back and a derailleur that moves the chain between them. Small sprockets make each pedal stroke go further; big ones make hills easier.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "City bicycle",
+                        "aspectRatio": 1.3,
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Derailleur",
+                        "aspectRatio": 1.3,
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Bicycle shifter",
+                        "aspectRatio": 1.3,
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 3,
+                  "minChildWidth": 150,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "photos"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "The main parts",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "Part",
+                    "What it does"
+                  ],
+                  "rows": [
+                    [
+                      "Frame and fork",
+                      "Hold everything together, steer and set the riding position"
+                    ],
+                    [
+                      "Crankset and pedals",
+                      "Turn leg power into rotation"
+                    ],
+                    [
+                      "Chainring",
+                      "The single front gear, here 40 teeth"
+                    ],
+                    [
+                      "Chain",
+                      "Carries the power to the rear wheel"
+                    ],
+                    [
+                      "7 rear sprockets",
+                      "Seven sizes, so seven gear ratios"
+                    ],
+                    [
+                      "Rear derailleur",
+                      "Moves the chain from sprocket to sprocket"
+                    ],
+                    [
+                      "Shifter and cable",
+                      "Pull or release the cable to pick a gear"
+                    ],
+                    [
+                      "Brakes, wheels and tires",
+                      "Stop, roll and grip the road"
+                    ]
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "parts"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "How power reaches the wheel",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Pedals",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "sm",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Chainring",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "sm",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Chain",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "sm",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Rear sprocket",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "arrow-right",
+                                    "size": "sm",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Box",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "Rear wheel",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "medium"
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "direction": null,
+                                    "gap": null,
+                                    "padding": 2,
+                                    "background": "surface",
+                                    "radius": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                null
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1,
+                        "align": "center",
+                        "justify": "center",
+                        "wrap": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "The shifter pulls a cable; the derailleur guides the chain onto the sprocket you choose."
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "flow"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Label",
+                                  "props": {
+                                    "text": "Explore the seven gears"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "Gear 3 of 7",
+                                    "size": "xl"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Moderate, for cruising",
+                              "color": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": null,
+                        "justify": null,
+                        "wrap": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "exHead"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "G",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 26,
+                                    "cy": 52,
+                                    "r": 21.400000000000002,
+                                    "fill": "surface",
+                                    "stroke": "faint",
+                                    "strokeWidth": 2,
+                                    "opacity": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 26,
+                                    "cy": 52,
+                                    "r": 4,
+                                    "fill": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "28T",
+                                    "x": 26,
+                                    "y": 104,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle",
+                                    "weight": "normal"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "G",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 71,
+                                    "cy": 52,
+                                    "r": 19.200000000000003,
+                                    "fill": "surface",
+                                    "stroke": "faint",
+                                    "strokeWidth": 2,
+                                    "opacity": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 71,
+                                    "cy": 52,
+                                    "r": 4,
+                                    "fill": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "24T",
+                                    "x": 71,
+                                    "y": 104,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle",
+                                    "weight": "normal"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "G",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 116,
+                                    "cy": 52,
+                                    "r": 17.55,
+                                    "fill": "info",
+                                    "stroke": "info",
+                                    "strokeWidth": 2,
+                                    "opacity": 0.85
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 116,
+                                    "cy": 52,
+                                    "r": 4,
+                                    "fill": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "21T",
+                                    "x": 116,
+                                    "y": 104,
+                                    "size": 11,
+                                    "fill": "info",
+                                    "anchor": "middle",
+                                    "weight": "semibold"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "G",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 161,
+                                    "cy": 52,
+                                    "r": 15.9,
+                                    "fill": "surface",
+                                    "stroke": "faint",
+                                    "strokeWidth": 2,
+                                    "opacity": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 161,
+                                    "cy": 52,
+                                    "r": 4,
+                                    "fill": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "18T",
+                                    "x": 161,
+                                    "y": 104,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle",
+                                    "weight": "normal"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "G",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 206,
+                                    "cy": 52,
+                                    "r": 14.8,
+                                    "fill": "surface",
+                                    "stroke": "faint",
+                                    "strokeWidth": 2,
+                                    "opacity": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 206,
+                                    "cy": 52,
+                                    "r": 4,
+                                    "fill": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "16T",
+                                    "x": 206,
+                                    "y": 104,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle",
+                                    "weight": "normal"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "G",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 251,
+                                    "cy": 52,
+                                    "r": 13.700000000000001,
+                                    "fill": "surface",
+                                    "stroke": "faint",
+                                    "strokeWidth": 2,
+                                    "opacity": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 251,
+                                    "cy": 52,
+                                    "r": 4,
+                                    "fill": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "14T",
+                                    "x": 251,
+                                    "y": 104,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle",
+                                    "weight": "normal"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "G",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 296,
+                                    "cy": 52,
+                                    "r": 12.600000000000001,
+                                    "fill": "surface",
+                                    "stroke": "faint",
+                                    "strokeWidth": 2,
+                                    "opacity": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 296,
+                                    "cy": 52,
+                                    "r": 4,
+                                    "fill": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "12T",
+                                    "x": 296,
+                                    "y": 104,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle",
+                                    "weight": "normal"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 320 112"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "cogs"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$gear"
+                        },
+                        "min": 1,
+                        "max": 7,
+                        "step": 1,
+                        "label": "Gear",
+                        "unit": null,
+                        "marks": [
+                          {
+                            "value": 1,
+                            "label": "1 · Easy"
+                          },
+                          {
+                            "value": 4,
+                            "label": "4"
+                          },
+                          {
+                            "value": 7,
+                            "label": "7 · Fast"
+                          }
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Rear sprocket"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "21 teeth",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false,
+                            "statementId": "s1"
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Gear ratio"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "1.9 : 1",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false,
+                            "statementId": "s2"
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Speed at 80 rpm"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "19.2 km/h",
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false,
+                            "statementId": "s3"
+                          }
+                        ],
+                        "columns": 3,
+                        "minChildWidth": 90,
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "stats"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$rpm"
+                        },
+                        "min": 50,
+                        "max": 110,
+                        "step": 5,
+                        "label": "Pedaling cadence",
+                        "unit": " rpm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Each turn of the pedals turns the rear wheel 1.9 times. Balanced effort for flat roads and everyday riding.",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Assumes a 40-tooth chainring, a 12-28 freewheel and a 700c wheel (2.1 m around). Real bikes vary."
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "explorer"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Freewheel or cassette?",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Cassette (bicycle)",
+                        "aspectRatio": 2.4,
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Grid",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Freewheel",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "The ratchet sits inside the sprocket cluster, which screws onto the hub. Common on budget and youth bikes."
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false,
+                            "statementId": "h1"
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Card",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "Cassette",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "The sprockets slide onto a freehub that holds the ratchet. Better axle support and easy gear swaps."
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "variant": "soft",
+                              "padding": 3,
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false,
+                            "statementId": "h2"
+                          }
+                        ],
+                        "columns": 2,
+                        "minChildWidth": 220,
+                        "gap": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "hubs"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Seven speeds keep the drivetrain simple, light and cheap to maintain: one shifter, one derailleur and no front gear changes to think about.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "closing"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 18,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$gear": 3,
+          "$rpm": 80
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,3792 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "2209b4b4e832a5adfbbe3fb9c9d8f217e5acf293471dc47b883407886f9c125f",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "iPhone 17 vs Pixel 11",
+              "size": "xl"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "title"
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "Two flagship phones at the same price. The iPhone is the safer all-rounder; the Pixel wins on photos and AI features."
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "intro"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "SearchImage",
+                              "props": {
+                                "query": "iPhone 17",
+                                "aspectRatio": 1,
+                                "radius": "xl",
+                                "fit": "contain"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "direction": null,
+                          "gap": null,
+                          "padding": 4,
+                          "background": "surface",
+                          "radius": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "iPhone 17",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Spacer",
+                              "props": {},
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "From $799"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "cpu",
+                                "size": "sm"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            " A19 · 6.3-inch 120 Hz"
+                          ],
+                          "size": "sm",
+                          "color": "muted"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "iphone"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "SearchImage",
+                              "props": {
+                                "query": "Pixel 11",
+                                "aspectRatio": 1,
+                                "radius": "xl",
+                                "fit": "contain"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "direction": null,
+                          "gap": null,
+                          "padding": 4,
+                          "background": "surface",
+                          "radius": "xl"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": "Pixel 11",
+                                "size": "md"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Spacer",
+                              "props": {},
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Badge",
+                              "props": {
+                                "text": "From $799"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 2
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "cpu",
+                                "size": "sm"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            " Tensor G6 · 6.3-inch 120 Hz"
+                          ],
+                          "size": "sm",
+                          "color": "muted"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "pixel"
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 240,
+              "gap": 4
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Side by side",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Table",
+            "props": {
+              "columns": [
+                "",
+                "iPhone 17",
+                "Pixel 11"
+              ],
+              "rows": {
+                "k": "Comp",
+                "name": "Each",
+                "args": [
+                  {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "f",
+                            {
+                              "k": "Str",
+                              "v": "Main camera"
+                            }
+                          ],
+                          [
+                            "a",
+                            {
+                              "k": "Str",
+                              "v": "48 MP"
+                            }
+                          ],
+                          [
+                            "b",
+                            {
+                              "k": "Str",
+                              "v": "50 MP"
+                            }
+                          ],
+                          [
+                            "win",
+                            {
+                              "k": "Str",
+                              "v": "b"
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "f",
+                            {
+                              "k": "Str",
+                              "v": "Battery life"
+                            }
+                          ],
+                          [
+                            "a",
+                            {
+                              "k": "Str",
+                              "v": "Up to 30 h video"
+                            }
+                          ],
+                          [
+                            "b",
+                            {
+                              "k": "Str",
+                              "v": "Up to 31 h video"
+                            }
+                          ],
+                          [
+                            "win",
+                            {
+                              "k": "Str",
+                              "v": "b"
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "f",
+                            {
+                              "k": "Str",
+                              "v": "Updates"
+                            }
+                          ],
+                          [
+                            "a",
+                            {
+                              "k": "Str",
+                              "v": "About 6 years"
+                            }
+                          ],
+                          [
+                            "b",
+                            {
+                              "k": "Str",
+                              "v": "7 years"
+                            }
+                          ],
+                          [
+                            "win",
+                            {
+                              "k": "Str",
+                              "v": "b"
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "f",
+                            {
+                              "k": "Str",
+                              "v": "Charging"
+                            }
+                          ],
+                          [
+                            "a",
+                            {
+                              "k": "Str",
+                              "v": "40 W wired · MagSafe"
+                            }
+                          ],
+                          [
+                            "b",
+                            {
+                              "k": "Str",
+                              "v": "30 W wired · Qi2"
+                            }
+                          ],
+                          [
+                            "win",
+                            {
+                              "k": "Str",
+                              "v": "a"
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "k": "Obj",
+                        "entries": [
+                          [
+                            "f",
+                            {
+                              "k": "Str",
+                              "v": "Ecosystem"
+                            }
+                          ],
+                          [
+                            "a",
+                            {
+                              "k": "Str",
+                              "v": "iMessage, Watch, Mac"
+                            }
+                          ],
+                          [
+                            "b",
+                            {
+                              "k": "Str",
+                              "v": "Gemini, Android"
+                            }
+                          ],
+                          [
+                            "win",
+                            {
+                              "k": "Str",
+                              "v": ""
+                            }
+                          ]
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "k": "Str",
+                    "v": "r"
+                  },
+                  {
+                    "k": "Arr",
+                    "els": [
+                      {
+                        "k": "Member",
+                        "obj": {
+                          "k": "Ref",
+                          "n": "r"
+                        },
+                        "field": "f"
+                      },
+                      {
+                        "k": "Comp",
+                        "name": "Text",
+                        "args": [
+                          {
+                            "k": "Arr",
+                            "els": [
+                              {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "BinOp",
+                                  "op": "==",
+                                  "left": {
+                                    "k": "Member",
+                                    "obj": {
+                                      "k": "Ref",
+                                      "n": "r"
+                                    },
+                                    "field": "win"
+                                  },
+                                  "right": {
+                                    "k": "Str",
+                                    "v": "a"
+                                  }
+                                },
+                                "then": {
+                                  "k": "Comp",
+                                  "name": "Icon",
+                                  "args": [
+                                    {
+                                      "k": "Str",
+                                      "v": "check-circle"
+                                    },
+                                    {
+                                      "k": "Str",
+                                      "v": "sm"
+                                    },
+                                    {
+                                      "k": "Str",
+                                      "v": "success"
+                                    }
+                                  ],
+                                  "mappedProps": {
+                                    "name": {
+                                      "k": "Str",
+                                      "v": "check-circle"
+                                    },
+                                    "size": {
+                                      "k": "Str",
+                                      "v": "sm"
+                                    },
+                                    "color": {
+                                      "k": "Str",
+                                      "v": "success"
+                                    }
+                                  }
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": ""
+                                }
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": " "
+                                },
+                                "right": {
+                                  "k": "Member",
+                                  "obj": {
+                                    "k": "Ref",
+                                    "n": "r"
+                                  },
+                                  "field": "a"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "k": "Str",
+                            "v": "sm"
+                          }
+                        ],
+                        "mappedProps": {
+                          "text": {
+                            "k": "Arr",
+                            "els": [
+                              {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "BinOp",
+                                  "op": "==",
+                                  "left": {
+                                    "k": "Member",
+                                    "obj": {
+                                      "k": "Ref",
+                                      "n": "r"
+                                    },
+                                    "field": "win"
+                                  },
+                                  "right": {
+                                    "k": "Str",
+                                    "v": "a"
+                                  }
+                                },
+                                "then": {
+                                  "k": "Comp",
+                                  "name": "Icon",
+                                  "args": [
+                                    {
+                                      "k": "Str",
+                                      "v": "check-circle"
+                                    },
+                                    {
+                                      "k": "Str",
+                                      "v": "sm"
+                                    },
+                                    {
+                                      "k": "Str",
+                                      "v": "success"
+                                    }
+                                  ],
+                                  "mappedProps": {
+                                    "name": {
+                                      "k": "Str",
+                                      "v": "check-circle"
+                                    },
+                                    "size": {
+                                      "k": "Str",
+                                      "v": "sm"
+                                    },
+                                    "color": {
+                                      "k": "Str",
+                                      "v": "success"
+                                    }
+                                  }
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": ""
+                                }
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": " "
+                                },
+                                "right": {
+                                  "k": "Member",
+                                  "obj": {
+                                    "k": "Ref",
+                                    "n": "r"
+                                  },
+                                  "field": "a"
+                                }
+                              }
+                            ]
+                          },
+                          "size": {
+                            "k": "Str",
+                            "v": "sm"
+                          }
+                        }
+                      },
+                      {
+                        "k": "Comp",
+                        "name": "Text",
+                        "args": [
+                          {
+                            "k": "Arr",
+                            "els": [
+                              {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "BinOp",
+                                  "op": "==",
+                                  "left": {
+                                    "k": "Member",
+                                    "obj": {
+                                      "k": "Ref",
+                                      "n": "r"
+                                    },
+                                    "field": "win"
+                                  },
+                                  "right": {
+                                    "k": "Str",
+                                    "v": "b"
+                                  }
+                                },
+                                "then": {
+                                  "k": "Comp",
+                                  "name": "Icon",
+                                  "args": [
+                                    {
+                                      "k": "Str",
+                                      "v": "check-circle"
+                                    },
+                                    {
+                                      "k": "Str",
+                                      "v": "sm"
+                                    },
+                                    {
+                                      "k": "Str",
+                                      "v": "success"
+                                    }
+                                  ],
+                                  "mappedProps": {
+                                    "name": {
+                                      "k": "Str",
+                                      "v": "check-circle"
+                                    },
+                                    "size": {
+                                      "k": "Str",
+                                      "v": "sm"
+                                    },
+                                    "color": {
+                                      "k": "Str",
+                                      "v": "success"
+                                    }
+                                  }
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": ""
+                                }
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": " "
+                                },
+                                "right": {
+                                  "k": "Member",
+                                  "obj": {
+                                    "k": "Ref",
+                                    "n": "r"
+                                  },
+                                  "field": "b"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "k": "Str",
+                            "v": "sm"
+                          }
+                        ],
+                        "mappedProps": {
+                          "text": {
+                            "k": "Arr",
+                            "els": [
+                              {
+                                "k": "Ternary",
+                                "cond": {
+                                  "k": "BinOp",
+                                  "op": "==",
+                                  "left": {
+                                    "k": "Member",
+                                    "obj": {
+                                      "k": "Ref",
+                                      "n": "r"
+                                    },
+                                    "field": "win"
+                                  },
+                                  "right": {
+                                    "k": "Str",
+                                    "v": "b"
+                                  }
+                                },
+                                "then": {
+                                  "k": "Comp",
+                                  "name": "Icon",
+                                  "args": [
+                                    {
+                                      "k": "Str",
+                                      "v": "check-circle"
+                                    },
+                                    {
+                                      "k": "Str",
+                                      "v": "sm"
+                                    },
+                                    {
+                                      "k": "Str",
+                                      "v": "success"
+                                    }
+                                  ],
+                                  "mappedProps": {
+                                    "name": {
+                                      "k": "Str",
+                                      "v": "check-circle"
+                                    },
+                                    "size": {
+                                      "k": "Str",
+                                      "v": "sm"
+                                    },
+                                    "color": {
+                                      "k": "Str",
+                                      "v": "success"
+                                    }
+                                  }
+                                },
+                                "else": {
+                                  "k": "Str",
+                                  "v": ""
+                                }
+                              },
+                              {
+                                "k": "BinOp",
+                                "op": "+",
+                                "left": {
+                                  "k": "Str",
+                                  "v": " "
+                                },
+                                "right": {
+                                  "k": "Member",
+                                  "obj": {
+                                    "k": "Ref",
+                                    "n": "r"
+                                  },
+                                  "field": "b"
+                                }
+                              }
+                            ]
+                          },
+                          "size": {
+                            "k": "Str",
+                            "v": "sm"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "specs"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Which suits you?",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "RadioGroup",
+            "props": {
+              "value": {
+                "k": "StateRef",
+                "n": "$care"
+              },
+              "options": [
+                {
+                  "value": "Camera",
+                  "label": "Photos",
+                  "description": "Low light, zoom, editing"
+                },
+                {
+                  "value": "Apps",
+                  "label": "My other devices",
+                  "description": "Mac, Watch, iMessage"
+                },
+                {
+                  "value": "Battery",
+                  "label": "Battery",
+                  "description": "A long day of use"
+                }
+              ],
+              "label": null,
+              "variant": "cards"
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "picker"
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "SearchImage",
+                              "props": {
+                                "query": {
+                                  "k": "Ternary",
+                                  "cond": {
+                                    "k": "BinOp",
+                                    "op": "==",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$care"
+                                    },
+                                    "right": {
+                                      "k": "Str",
+                                      "v": "Apps"
+                                    }
+                                  },
+                                  "then": {
+                                    "k": "Str",
+                                    "v": "iPhone 17"
+                                  },
+                                  "else": {
+                                    "k": "Str",
+                                    "v": "Pixel 11"
+                                  }
+                                },
+                                "aspectRatio": 1,
+                                "radius": "lg",
+                                "fit": "contain"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            }
+                          ],
+                          "direction": null,
+                          "gap": null,
+                          "padding": 2,
+                          "background": "canvas",
+                          "radius": "lg",
+                          "border": null,
+                          "width": 64,
+                          "height": 64
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Col",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Caption",
+                              "props": {
+                                "text": "Our pick for you"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Title",
+                              "props": {
+                                "text": {
+                                  "k": "Ternary",
+                                  "cond": {
+                                    "k": "BinOp",
+                                    "op": "==",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$care"
+                                    },
+                                    "right": {
+                                      "k": "Str",
+                                      "v": "Apps"
+                                    }
+                                  },
+                                  "then": {
+                                    "k": "Str",
+                                    "v": "iPhone 17"
+                                  },
+                                  "else": {
+                                    "k": "Str",
+                                    "v": "Pixel 11"
+                                  }
+                                },
+                                "size": "lg"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Text",
+                              "props": {
+                                "text": {
+                                  "k": "Ternary",
+                                  "cond": {
+                                    "k": "BinOp",
+                                    "op": "==",
+                                    "left": {
+                                      "k": "StateRef",
+                                      "n": "$care"
+                                    },
+                                    "right": {
+                                      "k": "Str",
+                                      "v": "Camera"
+                                    }
+                                  },
+                                  "then": {
+                                    "k": "Str",
+                                    "v": "Its 50 MP sensor and editing tools take the better low-light shots."
+                                  },
+                                  "else": {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "StateRef",
+                                        "n": "$care"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "Apps"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Str",
+                                      "v": "It works best with the Apple devices you already own."
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": "A little more screen-on time and slower battery wear."
+                                    }
+                                  }
+                                },
+                                "size": "sm",
+                                "color": "muted"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": true
+                            }
+                          ],
+                          "gap": 1
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      }
+                    ],
+                    "gap": 4
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "variant": "soft"
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "verdict"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 11,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$care": "Camera"
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "iPhone 17 vs Pixel 11",
+            "size": "xl"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "title"
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "Two flagship phones at the same price. The iPhone is the safer all-rounder; the Pixel wins on photos and AI features."
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "intro"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "iPhone 17",
+                              "aspectRatio": 1,
+                              "radius": "xl",
+                              "fit": "contain"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 4,
+                        "background": "surface",
+                        "radius": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "iPhone 17",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "From $799"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "cpu",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          " A19 · 6.3-inch 120 Hz"
+                        ],
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "iphone"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Pixel 11",
+                              "aspectRatio": 1,
+                              "radius": "xl",
+                              "fit": "contain"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 4,
+                        "background": "surface",
+                        "radius": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Pixel 11",
+                              "size": "md"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "From $799"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "cpu",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          " Tensor G6 · 6.3-inch 120 Hz"
+                        ],
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "pixel"
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 240,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Side by side",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Table",
+          "props": {
+            "columns": [
+              "",
+              "iPhone 17",
+              "Pixel 11"
+            ],
+            "rows": [
+              [
+                "Main camera",
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": [
+                      "",
+                      " 48 MP"
+                    ],
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": [
+                      {
+                        "type": "element",
+                        "typeName": "Icon",
+                        "props": {
+                          "name": "check-circle",
+                          "size": "sm",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      " 50 MP"
+                    ],
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              [
+                "Battery life",
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": [
+                      "",
+                      " Up to 30 h video"
+                    ],
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": [
+                      {
+                        "type": "element",
+                        "typeName": "Icon",
+                        "props": {
+                          "name": "check-circle",
+                          "size": "sm",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      " Up to 31 h video"
+                    ],
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              [
+                "Updates",
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": [
+                      "",
+                      " About 6 years"
+                    ],
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": [
+                      {
+                        "type": "element",
+                        "typeName": "Icon",
+                        "props": {
+                          "name": "check-circle",
+                          "size": "sm",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      " 7 years"
+                    ],
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              [
+                "Charging",
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": [
+                      {
+                        "type": "element",
+                        "typeName": "Icon",
+                        "props": {
+                          "name": "check-circle",
+                          "size": "sm",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": true
+                      },
+                      " 40 W wired · MagSafe"
+                    ],
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": [
+                      "",
+                      " 30 W wired · Qi2"
+                    ],
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              [
+                "Ecosystem",
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": [
+                      "",
+                      " iMessage, Watch, Mac"
+                    ],
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": [
+                      "",
+                      " Gemini, Android"
+                    ],
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ]
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "specs"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Which suits you?",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "RadioGroup",
+          "props": {
+            "value": {
+              "__reactive": "assign",
+              "target": "$care",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "options": [
+              {
+                "value": "Camera",
+                "label": "Photos",
+                "description": "Low light, zoom, editing"
+              },
+              {
+                "value": "Apps",
+                "label": "My other devices",
+                "description": "Mac, Watch, iMessage"
+              },
+              {
+                "value": "Battery",
+                "label": "Battery",
+                "description": "A long day of use"
+              }
+            ],
+            "label": null,
+            "variant": "cards"
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "picker"
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Pixel 11",
+                              "aspectRatio": 1,
+                              "radius": "lg",
+                              "fit": "contain"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 2,
+                        "background": "canvas",
+                        "radius": "lg",
+                        "border": null,
+                        "width": 64,
+                        "height": 64
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Our pick for you"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "Pixel 11",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Its 50 MP sensor and editing tools take the better low-light shots.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "variant": "soft"
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "verdict"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 721,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "iPhone 17 vs Pixel 11",
+                  "size": "xl"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "title"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Two flagship phones at the same price. The iPhone is the safer all-rounder; the Pixel wins on photos and AI features."
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "intro"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "SearchImage",
+                                  "props": {
+                                    "query": "iPhone 17",
+                                    "aspectRatio": 1,
+                                    "radius": "xl",
+                                    "fit": "contain"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 4,
+                              "background": "surface",
+                              "radius": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "iPhone 17",
+                                    "size": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "From $799"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "cpu",
+                                    "size": "sm"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                " A19 · 6.3-inch 120 Hz"
+                              ],
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "iphone"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "SearchImage",
+                                  "props": {
+                                    "query": "Pixel 11",
+                                    "aspectRatio": 1,
+                                    "radius": "xl",
+                                    "fit": "contain"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 4,
+                              "background": "surface",
+                              "radius": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "Pixel 11",
+                                    "size": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "pixel"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 240,
+                  "gap": 4
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Side by side",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Which suits you?",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "Badg",
+            "specs",
+            "picker",
+            "verdict"
+          ],
+          "orphaned": [],
+          "statementCount": 6,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$care": "Camera"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1442,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "iPhone 17 vs Pixel 11",
+                  "size": "xl"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "title"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Two flagship phones at the same price. The iPhone is the safer all-rounder; the Pixel wins on photos and AI features."
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "intro"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "SearchImage",
+                                  "props": {
+                                    "query": "iPhone 17",
+                                    "aspectRatio": 1,
+                                    "radius": "xl",
+                                    "fit": "contain"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 4,
+                              "background": "surface",
+                              "radius": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "iPhone 17",
+                                    "size": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "From $799"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "cpu",
+                                    "size": "sm"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                " A19 · 6.3-inch 120 Hz"
+                              ],
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "iphone"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "SearchImage",
+                                  "props": {
+                                    "query": "Pixel 11",
+                                    "aspectRatio": 1,
+                                    "radius": "xl",
+                                    "fit": "contain"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 4,
+                              "background": "surface",
+                              "radius": "xl"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "Pixel 11",
+                                    "size": "md"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "From $799"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "cpu",
+                                    "size": "sm"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                " Tensor G6 · 6.3-inch 120 Hz"
+                              ],
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false,
+                      "statementId": "pixel"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 240,
+                  "gap": 4
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Side by side",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "",
+                    "iPhone 17",
+                    "Pixel 11"
+                  ],
+                  "rows": {
+                    "k": "Comp",
+                    "name": "Each",
+                    "args": [
+                      {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "f",
+                                {
+                                  "k": "Str",
+                                  "v": "Main camera"
+                                }
+                              ],
+                              [
+                                "a",
+                                {
+                                  "k": "Str",
+                                  "v": "48 MP"
+                                }
+                              ],
+                              [
+                                "b",
+                                {
+                                  "k": "Str",
+                                  "v": "50 MP"
+                                }
+                              ],
+                              [
+                                "win",
+                                {
+                                  "k": "Str",
+                                  "v": "b"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "f",
+                                {
+                                  "k": "Str",
+                                  "v": "Battery life"
+                                }
+                              ],
+                              [
+                                "a",
+                                {
+                                  "k": "Str",
+                                  "v": "Up to 30 h video"
+                                }
+                              ],
+                              [
+                                "b",
+                                {
+                                  "k": "Str",
+                                  "v": "Up to 31 h video"
+                                }
+                              ],
+                              [
+                                "win",
+                                {
+                                  "k": "Str",
+                                  "v": "b"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "f",
+                                {
+                                  "k": "Str",
+                                  "v": "Updates"
+                                }
+                              ],
+                              [
+                                "a",
+                                {
+                                  "k": "Str",
+                                  "v": "About 6 years"
+                                }
+                              ],
+                              [
+                                "b",
+                                {
+                                  "k": "Str",
+                                  "v": "7 years"
+                                }
+                              ],
+                              [
+                                "win",
+                                {
+                                  "k": "Str",
+                                  "v": "b"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "f",
+                                {
+                                  "k": "Str",
+                                  "v": "Charging"
+                                }
+                              ],
+                              [
+                                "a",
+                                {
+                                  "k": "Str",
+                                  "v": "40 W wired · MagSafe"
+                                }
+                              ],
+                              [
+                                "b",
+                                {
+                                  "k": "Str",
+                                  "v": "30 W wired · Qi2"
+                                }
+                              ],
+                              [
+                                "win",
+                                {
+                                  "k": "Str",
+                                  "v": "a"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "f",
+                                {
+                                  "k": "Str",
+                                  "v": "Ecosystem"
+                                }
+                              ],
+                              [
+                                "a",
+                                {
+                                  "k": "Str",
+                                  "v": "iMessage, Watch, Mac"
+                                }
+                              ],
+                              [
+                                "b",
+                                {
+                                  "k": "Str",
+                                  "v": "Gemini, Android"
+                                }
+                              ],
+                              [
+                                "win",
+                                {
+                                  "k": "Str",
+                                  "v": ""
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "k": "Str",
+                        "v": "r"
+                      },
+                      {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Member",
+                            "obj": {
+                              "k": "Ref",
+                              "n": "r"
+                            },
+                            "field": "f"
+                          },
+                          {
+                            "k": "Comp",
+                            "name": "Text",
+                            "args": [
+                              {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "r"
+                                        },
+                                        "field": "win"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "a"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Comp",
+                                      "name": "Icon",
+                                      "args": [
+                                        {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      ],
+                                      "mappedProps": {
+                                        "name": {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        "size": {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        "color": {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": ""
+                                    }
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": " "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "r"
+                                      },
+                                      "field": "a"
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Str",
+                                "v": "sm"
+                              }
+                            ],
+                            "mappedProps": {
+                              "text": {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "r"
+                                        },
+                                        "field": "win"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "a"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Comp",
+                                      "name": "Icon",
+                                      "args": [
+                                        {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      ],
+                                      "mappedProps": {
+                                        "name": {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        "size": {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        "color": {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": ""
+                                    }
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": " "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "r"
+                                      },
+                                      "field": "a"
+                                    }
+                                  }
+                                ]
+                              },
+                              "size": {
+                                "k": "Str",
+                                "v": "sm"
+                              }
+                            }
+                          },
+                          {
+                            "k": "Comp",
+                            "name": "Text",
+                            "args": [
+                              {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "r"
+                                        },
+                                        "field": "win"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "b"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Comp",
+                                      "name": "Icon",
+                                      "args": [
+                                        {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      ],
+                                      "mappedProps": {
+                                        "name": {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        "size": {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        "color": {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": ""
+                                    }
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": " "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "r"
+                                      },
+                                      "field": "b"
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Str",
+                                "v": "sm"
+                              }
+                            ],
+                            "mappedProps": {
+                              "text": {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "r"
+                                        },
+                                        "field": "win"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "b"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Comp",
+                                      "name": "Icon",
+                                      "args": [
+                                        {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      ],
+                                      "mappedProps": {
+                                        "name": {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        "size": {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        "color": {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": ""
+                                    }
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": " "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "r"
+                                      },
+                                      "field": "b"
+                                    }
+                                  }
+                                ]
+                              },
+                              "size": {
+                                "k": "Str",
+                                "v": "sm"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "specs"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Which suits you?",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "RadioGroup",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$care"
+                  },
+                  "options": [
+                    {
+                      "val": null,
+                      "?": null
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "picker"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "verdict"
+          ],
+          "orphaned": [],
+          "statementCount": 9,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$care": "Camera"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2164,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "iPhone 17 vs Pixel 11",
+                  "size": "xl"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "title"
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Two flagship phones at the same price. The iPhone is the safer all-rounder; the Pixel wins on photos and AI features."
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "intro"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "SearchImage",
+                                  "props": {
+                                    "query": "iPhone 17",
+                                    "aspectRatio": 1,
+                                    "radius": "xl",
+                                    "fit": "contain"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 4,
+                              "background": "surface",
+                              "radius": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "iPhone 17",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "From $799"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "cpu",
+                                    "size": "sm"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                " A19 · 6.3-inch 120 Hz"
+                              ],
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "iphone"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "SearchImage",
+                                  "props": {
+                                    "query": "Pixel 11",
+                                    "aspectRatio": 1,
+                                    "radius": "xl",
+                                    "fit": "contain"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 4,
+                              "background": "surface",
+                              "radius": "xl"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": "Pixel 11",
+                                    "size": "md"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Spacer",
+                                  "props": {},
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Badge",
+                                  "props": {
+                                    "text": "From $799"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "cpu",
+                                    "size": "sm"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                " Tensor G6 · 6.3-inch 120 Hz"
+                              ],
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "pixel"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 240,
+                  "gap": 4
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Side by side",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Table",
+                "props": {
+                  "columns": [
+                    "",
+                    "iPhone 17",
+                    "Pixel 11"
+                  ],
+                  "rows": {
+                    "k": "Comp",
+                    "name": "Each",
+                    "args": [
+                      {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "f",
+                                {
+                                  "k": "Str",
+                                  "v": "Main camera"
+                                }
+                              ],
+                              [
+                                "a",
+                                {
+                                  "k": "Str",
+                                  "v": "48 MP"
+                                }
+                              ],
+                              [
+                                "b",
+                                {
+                                  "k": "Str",
+                                  "v": "50 MP"
+                                }
+                              ],
+                              [
+                                "win",
+                                {
+                                  "k": "Str",
+                                  "v": "b"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "f",
+                                {
+                                  "k": "Str",
+                                  "v": "Battery life"
+                                }
+                              ],
+                              [
+                                "a",
+                                {
+                                  "k": "Str",
+                                  "v": "Up to 30 h video"
+                                }
+                              ],
+                              [
+                                "b",
+                                {
+                                  "k": "Str",
+                                  "v": "Up to 31 h video"
+                                }
+                              ],
+                              [
+                                "win",
+                                {
+                                  "k": "Str",
+                                  "v": "b"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "f",
+                                {
+                                  "k": "Str",
+                                  "v": "Updates"
+                                }
+                              ],
+                              [
+                                "a",
+                                {
+                                  "k": "Str",
+                                  "v": "About 6 years"
+                                }
+                              ],
+                              [
+                                "b",
+                                {
+                                  "k": "Str",
+                                  "v": "7 years"
+                                }
+                              ],
+                              [
+                                "win",
+                                {
+                                  "k": "Str",
+                                  "v": "b"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "f",
+                                {
+                                  "k": "Str",
+                                  "v": "Charging"
+                                }
+                              ],
+                              [
+                                "a",
+                                {
+                                  "k": "Str",
+                                  "v": "40 W wired · MagSafe"
+                                }
+                              ],
+                              [
+                                "b",
+                                {
+                                  "k": "Str",
+                                  "v": "30 W wired · Qi2"
+                                }
+                              ],
+                              [
+                                "win",
+                                {
+                                  "k": "Str",
+                                  "v": "a"
+                                }
+                              ]
+                            ]
+                          },
+                          {
+                            "k": "Obj",
+                            "entries": [
+                              [
+                                "f",
+                                {
+                                  "k": "Str",
+                                  "v": "Ecosystem"
+                                }
+                              ],
+                              [
+                                "a",
+                                {
+                                  "k": "Str",
+                                  "v": "iMessage, Watch, Mac"
+                                }
+                              ],
+                              [
+                                "b",
+                                {
+                                  "k": "Str",
+                                  "v": "Gemini, Android"
+                                }
+                              ],
+                              [
+                                "win",
+                                {
+                                  "k": "Str",
+                                  "v": ""
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "k": "Str",
+                        "v": "r"
+                      },
+                      {
+                        "k": "Arr",
+                        "els": [
+                          {
+                            "k": "Member",
+                            "obj": {
+                              "k": "Ref",
+                              "n": "r"
+                            },
+                            "field": "f"
+                          },
+                          {
+                            "k": "Comp",
+                            "name": "Text",
+                            "args": [
+                              {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "r"
+                                        },
+                                        "field": "win"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "a"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Comp",
+                                      "name": "Icon",
+                                      "args": [
+                                        {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      ],
+                                      "mappedProps": {
+                                        "name": {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        "size": {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        "color": {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": ""
+                                    }
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": " "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "r"
+                                      },
+                                      "field": "a"
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Str",
+                                "v": "sm"
+                              }
+                            ],
+                            "mappedProps": {
+                              "text": {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "r"
+                                        },
+                                        "field": "win"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "a"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Comp",
+                                      "name": "Icon",
+                                      "args": [
+                                        {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      ],
+                                      "mappedProps": {
+                                        "name": {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        "size": {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        "color": {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": ""
+                                    }
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": " "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "r"
+                                      },
+                                      "field": "a"
+                                    }
+                                  }
+                                ]
+                              },
+                              "size": {
+                                "k": "Str",
+                                "v": "sm"
+                              }
+                            }
+                          },
+                          {
+                            "k": "Comp",
+                            "name": "Text",
+                            "args": [
+                              {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "r"
+                                        },
+                                        "field": "win"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "b"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Comp",
+                                      "name": "Icon",
+                                      "args": [
+                                        {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      ],
+                                      "mappedProps": {
+                                        "name": {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        "size": {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        "color": {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": ""
+                                    }
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": " "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "r"
+                                      },
+                                      "field": "b"
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "k": "Str",
+                                "v": "sm"
+                              }
+                            ],
+                            "mappedProps": {
+                              "text": {
+                                "k": "Arr",
+                                "els": [
+                                  {
+                                    "k": "Ternary",
+                                    "cond": {
+                                      "k": "BinOp",
+                                      "op": "==",
+                                      "left": {
+                                        "k": "Member",
+                                        "obj": {
+                                          "k": "Ref",
+                                          "n": "r"
+                                        },
+                                        "field": "win"
+                                      },
+                                      "right": {
+                                        "k": "Str",
+                                        "v": "b"
+                                      }
+                                    },
+                                    "then": {
+                                      "k": "Comp",
+                                      "name": "Icon",
+                                      "args": [
+                                        {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      ],
+                                      "mappedProps": {
+                                        "name": {
+                                          "k": "Str",
+                                          "v": "check-circle"
+                                        },
+                                        "size": {
+                                          "k": "Str",
+                                          "v": "sm"
+                                        },
+                                        "color": {
+                                          "k": "Str",
+                                          "v": "success"
+                                        }
+                                      }
+                                    },
+                                    "else": {
+                                      "k": "Str",
+                                      "v": ""
+                                    }
+                                  },
+                                  {
+                                    "k": "BinOp",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "Str",
+                                      "v": " "
+                                    },
+                                    "right": {
+                                      "k": "Member",
+                                      "obj": {
+                                        "k": "Ref",
+                                        "n": "r"
+                                      },
+                                      "field": "b"
+                                    }
+                                  }
+                                ]
+                              },
+                              "size": {
+                                "k": "Str",
+                                "v": "sm"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "specs"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Which suits you?",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "RadioGroup",
+                "props": {
+                  "value": {
+                    "k": "StateRef",
+                    "n": "$care"
+                  },
+                  "options": [
+                    {
+                      "value": "Camera",
+                      "label": "Photos",
+                      "description": "Low light, zoom, editing"
+                    },
+                    {
+                      "value": "Apps",
+                      "label": "My other devices",
+                      "description": "Mac, Watch, iMessage"
+                    },
+                    {
+                      "value": "Battery",
+                      "label": "Battery",
+                      "description": "A long day of use"
+                    }
+                  ],
+                  "label": null,
+                  "variant": "cards"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "picker"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "SearchImage",
+                                  "props": {
+                                    "query": {
+                                      "k": "Ternary",
+                                      "cond": {
+                                        "k": "BinOp",
+                                        "op": "==",
+                                        "left": {
+                                          "k": "StateRef",
+                                          "n": "$care"
+                                        },
+                                        "right": {
+                                          "k": "Str",
+                                          "v": "Apps"
+                                        }
+                                      },
+                                      "then": {
+                                        "k": "Str",
+                                        "v": "iPhone 17"
+                                      },
+                                      "else": {
+                                        "k": "Str",
+                                        "v": "Pixel 11"
+                                      }
+                                    },
+                                    "aspectRatio": 1,
+                                    "radius": "lg",
+                                    "fit": "contain"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": true
+                                }
+                              ],
+                              "direction": null,
+                              "gap": null,
+                              "padding": 2,
+                              "background": "canvas",
+                              "radius": "lg",
+                              "border": null,
+                              "width": 64,
+                              "height": 64
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Our pick for you"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Title",
+                                  "props": {
+                                    "text": {
+                                      "k": "Ternary",
+                                      "cond": {
+                                        "k": "BinOp",
+                                        "op": "==",
+                                        "left": {
+                                          "k": "StateRef",
+                                          "n": "$care"
+                                        },
+                                        "right": {
+                                          "k": "Str",
+                                          "v": "Apps"
+                                        }
+                                      },
+                                      "then": {
+                                        "k": "Str",
+                                        "v": "iPhone 17"
+                                      },
+                                      "else": {
+                                        "k": "Str",
+                                        "v": "Pixel 11"
+                                      }
+                                    },
+                                    "size": "lg"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": true
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": {
+                                      "k": "Ternary",
+                                      "cond": {
+                                        "k": "BinOp",
+                                        "op": "==",
+                                        "left": {
+                                          "k": "StateRef",
+                                          "n": "$care"
+                                        },
+                                        "right": {
+                                          "k": "Str",
+                                          "v": "Camera"
+                                        }
+                                      },
+                                      "then": {
+                                        "k": "Str",
+                                        "v": "Its 50 MP sensor and editing tools take the better low-light shots."
+                                      },
+                                      "else": {
+                                        "k": "Ternary",
+                                        "cond": {
+                                          "k": "BinOp",
+                                          "op": "==",
+                                          "left": {
+                                            "k": "StateRef",
+                                            "n": "$care"
+                                          },
+                                          "right": {
+                                            "k": "Str",
+                                            "v": "Apps"
+                                          }
+                                        },
+                                        "then": {
+                                          "k": "Str",
+                                          "v": "It works best with the Apple devices you already own."
+                                        },
+                                        "else": {
+                                          "k": "Str",
+                                          "v": "A little more screen-on time and slower battery wear."
+                                        }
+                                      }
+                                    },
+                                    "size": "sm",
+                                    "color": "muted"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": true
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": true
+                          }
+                        ],
+                        "gap": 4
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "variant": "soft"
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "verdict"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 11,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$care": "Camera"
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

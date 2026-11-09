@@ -1,0 +1,5 @@
+root = Card([head, doors, status, actions, null, null], null, 5, 4)
+head = Col([Title("Should you switch doors?", "lg"), Text("One car. Two goats. A surprisingly good reason to switch.", "sm", "muted")], 1)
+doors = Grid([Pressable([Col([Text("Door 1", "sm", "muted", "medium"), Title("🚪", "3xl"), Text("Closed", "xs", "muted", "medium")], 1, "center")], null, false, 5, "warning", "lg"), Pressable([Col([Text("Door 2", "sm", "muted", "medium"), Title("🚪", "3xl"), Text("Closed", "xs", "muted", "medium")], 1, "center")], null, false, 5, "warning", "lg"), Pressable([Col([Text("Door 3", "sm", "muted", "medium"), Title("🚪", "3xl"), Text("Closed", "xs", "muted", "medium")], 1, "center")], null, false, 5, "warning", "lg")], 3, null, 3)
+status = Box([Title("Start by choosing a door.", "md"), Text("The host knows where the car is and will open another door with a goat behind it.", "sm", "muted")], null, 1, 4, "info", "lg")
+actions = Row([null, null, null, Button("Simulate 1,000 games", null, "ghost", null, null, "dices")], 2, null, null, true)

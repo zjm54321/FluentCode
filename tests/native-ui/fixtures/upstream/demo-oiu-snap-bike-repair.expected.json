@@ -1,0 +1,4560 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "7047eb0b529855d67eb8c0636c07e51707c1caf390280f8fcd2e0cec81d543a3",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Assemble a youth bike",
+                    "size": "xl"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Most youth bikes arrive about 85% built. You fit the handlebars, front wheel, pedals and saddle, then set up the brakes. Tap each step as you finish it.",
+                    "size": "md",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "45 to 90 minutes",
+                    "color": "info"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Beginner friendly",
+                    "color": "success"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Adult job, kid helper",
+                    "color": "purple"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "meta"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Label",
+                  "props": {
+                    "text": "Brake type"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "SegmentedControl",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$brakes"
+                    },
+                    "options": [
+                      "Rim",
+                      "Disc",
+                      "Coaster"
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "gap": 3,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "setup"
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Label",
+                  "props": {
+                    "text": "You will need"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "List",
+                  "props": {
+                    "items": [
+                      "4, 5 and 6 mm Allen keys",
+                      "15 mm pedal wrench",
+                      "Phillips screwdriver",
+                      "Pump with a pressure gauge",
+                      "Scissors for the zip ties"
+                    ]
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": "soft",
+              "padding": 3,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "tools"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Assembly, step by step",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "0 of 8 steps done",
+                          "size": "sm",
+                          "color": "muted"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "Reset",
+                          "action": null,
+                          "variant": "ghost",
+                          "color": null,
+                          "size": "sm",
+                          "icon": "rotate-ccw"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "chart2",
+                          "radius": "full",
+                          "border": null,
+                          "width": "0%",
+                          "height": 6
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "border",
+                    "radius": "full",
+                    "border": null,
+                    "width": "100%",
+                    "height": 6
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "progress"
+          },
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "md",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Col",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "1. Unbox and check",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "semibold",
+                                      "italic": false,
+                                      "lineThrough": false
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "Cut the zip ties, remove the packaging and lay the parts out: front wheel, pedals marked L and R, saddle and reflectors."
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "gap": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 3,
+                          "align": "start"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "md",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Col",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "2. Fit the handlebars",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "semibold",
+                                      "italic": false,
+                                      "lineThrough": false
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "Seat the stem, line the bars up with the front wheel and tighten the bolts evenly, a little at a time."
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "gap": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 3,
+                          "align": "start"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "md",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Col",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "3. Install the front wheel",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "semibold",
+                                      "italic": false,
+                                      "lineThrough": false
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "Seat the axle fully in the fork, then close the quick release or tighten both axle nuts. Spin it: it should run straight."
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "gap": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 3,
+                          "align": "start"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "md",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Col",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "4. Attach the pedals",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "semibold",
+                                      "italic": false,
+                                      "lineThrough": false
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "The right pedal threads clockwise, the left anticlockwise. Start both by hand, then snug them with the 15 mm wrench."
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "gap": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 3,
+                          "align": "start"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "md",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Col",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "5. Set the saddle height",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "semibold",
+                                      "italic": false,
+                                      "lineThrough": false
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "Insert the seat post at least to its minimum insertion mark, set the height below and tighten the clamp."
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "gap": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 3,
+                          "align": "start"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "md",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Col",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "6. Set up the rim brakes",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "semibold",
+                                      "italic": false,
+                                      "lineThrough": false
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "Hook the cable noodle into the V-brake arms and center the pads on the rim, not the tire. The wheel should lock before the lever reaches the grip."
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "gap": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 3,
+                          "align": "start"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "md",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Col",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "7. Inflate the tires",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "semibold",
+                                      "italic": false,
+                                      "lineThrough": false
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "Pump to the pressure printed on the sidewall and check the bead sits evenly all round."
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "gap": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 3,
+                          "align": "start"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Row",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Icon",
+                              "props": {
+                                "name": "circle",
+                                "size": "md",
+                                "color": "faint"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Col",
+                              "props": {
+                                "children": [
+                                  {
+                                    "type": "element",
+                                    "typeName": "Text",
+                                    "props": {
+                                      "text": "8. Final safety check",
+                                      "size": "sm",
+                                      "color": null,
+                                      "weight": "semibold",
+                                      "italic": false,
+                                      "lineThrough": false
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  },
+                                  {
+                                    "type": "element",
+                                    "typeName": "Caption",
+                                    "props": {
+                                      "text": "Check every bolt, fit the reflectors and the bell, and test the brakes at walking pace."
+                                    },
+                                    "partial": false,
+                                    "hasDynamicProps": false
+                                  }
+                                ],
+                                "gap": 1
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "gap": 3,
+                          "align": "start"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 3
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 1
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "checklist"
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Visual references",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "SearchImage",
+                        "props": {
+                          "query": "Bicycle wheel quick release",
+                          "aspectRatio": 1.4,
+                          "radius": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Front wheel seated in the fork"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "r1"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "SearchImage",
+                        "props": {
+                          "query": "Bicycle pedal",
+                          "aspectRatio": 1.4,
+                          "radius": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Pedals: right clockwise, left anticlockwise"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "r2"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "SearchImage",
+                        "props": {
+                          "query": "V-brake",
+                          "aspectRatio": 1.4,
+                          "radius": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Brake pads meet the rim squarely"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "r3"
+                },
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "SearchImage",
+                        "props": {
+                          "query": "Seatpost",
+                          "aspectRatio": 1.4,
+                          "radius": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "Never above the minimum insertion mark"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false,
+                  "statementId": "r4"
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 160,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "refs"
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Saddle height",
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Input",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$inseam"
+                    },
+                    "label": "Your child's inseam, in cm",
+                    "type": "number"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Start with the top of the saddle about **54 cm** from the ground so both feet touch flat. Once your child rides confidently, raise it to about **59 cm**, where only the balls of the feet touch.",
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": "soft",
+              "padding": 4,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "fit"
+          },
+          {
+            "type": "element",
+            "typeName": "Box",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Icon",
+                        "props": {
+                          "name": "shield-check",
+                          "size": "md",
+                          "color": "success"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Before the first ride: the brakes stop the bike, both wheels are tight, the bars do not twist against the front wheel and the helmet fits snugly.",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2,
+                    "align": "start"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "direction": null,
+              "gap": null,
+              "padding": 3,
+              "background": "success",
+              "radius": "lg"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "safety"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 16,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$brakes": "Rim",
+      "$inseam": 56
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Assemble a youth bike",
+                  "size": "xl"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Most youth bikes arrive about 85% built. You fit the handlebars, front wheel, pedals and saddle, then set up the brakes. Tap each step as you finish it.",
+                  "size": "md",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "45 to 90 minutes",
+                  "color": "info"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "Beginner friendly",
+                  "color": "success"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "Adult job, kid helper",
+                  "color": "purple"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "meta"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Label",
+                "props": {
+                  "text": "Brake type"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "SegmentedControl",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$brakes",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    "Rim",
+                    "Disc",
+                    "Coaster"
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "gap": 3,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "setup"
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Label",
+                "props": {
+                  "text": "You will need"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "List",
+                "props": {
+                  "items": [
+                    "4, 5 and 6 mm Allen keys",
+                    "15 mm pedal wrench",
+                    "Phillips screwdriver",
+                    "Pump with a pressure gauge",
+                    "Scissors for the zip ties"
+                  ]
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": "soft",
+            "padding": 3,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "tools"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Assembly, step by step",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "0 of 8 steps done",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart2",
+                        "radius": "full",
+                        "border": null,
+                        "width": "0%",
+                        "height": 6
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "border",
+                  "radius": "full",
+                  "border": null,
+                  "width": "100%",
+                  "height": 6
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "progress"
+        },
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "md",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "1. Unbox and check",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Cut the zip ties, remove the packaging and lay the parts out: front wheel, pedals marked L and R, saddle and reflectors."
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "start"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "md",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "2. Fit the handlebars",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Seat the stem, line the bars up with the front wheel and tighten the bolts evenly, a little at a time."
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "start"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "md",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "3. Install the front wheel",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Seat the axle fully in the fork, then close the quick release or tighten both axle nuts. Spin it: it should run straight."
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "start"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "md",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "4. Attach the pedals",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "The right pedal threads clockwise, the left anticlockwise. Start both by hand, then snug them with the 15 mm wrench."
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "start"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "md",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "5. Set the saddle height",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Insert the seat post at least to its minimum insertion mark, set the height below and tighten the clamp."
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "start"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "md",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "6. Set up the rim brakes",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Hook the cable noodle into the V-brake arms and center the pads on the rim, not the tire. The wheel should lock before the lever reaches the grip."
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "start"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "md",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "7. Inflate the tires",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Pump to the pressure printed on the sidewall and check the bead sits evenly all round."
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "start"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "circle",
+                              "size": "md",
+                              "color": "faint"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Col",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Text",
+                                  "props": {
+                                    "text": "8. Final safety check",
+                                    "size": "sm",
+                                    "color": null,
+                                    "weight": "semibold",
+                                    "italic": false,
+                                    "lineThrough": false
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Caption",
+                                  "props": {
+                                    "text": "Check every bolt, fit the reflectors and the bell, and test the brakes at walking pace."
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 1
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 3,
+                        "align": "start"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 1
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "checklist"
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Visual references",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Bicycle wheel quick release",
+                        "aspectRatio": 1.4,
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Front wheel seated in the fork"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "r1"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Bicycle pedal",
+                        "aspectRatio": 1.4,
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Pedals: right clockwise, left anticlockwise"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "r2"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "V-brake",
+                        "aspectRatio": 1.4,
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Brake pads meet the rim squarely"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "r3"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "SearchImage",
+                      "props": {
+                        "query": "Seatpost",
+                        "aspectRatio": 1.4,
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "Never above the minimum insertion mark"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "r4"
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 160,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "refs"
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Saddle height",
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Input",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$inseam",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "label": "Your child's inseam, in cm",
+                  "type": "number"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Start with the top of the saddle about **54 cm** from the ground so both feet touch flat. Once your child rides confidently, raise it to about **59 cm**, where only the balls of the feet touch.",
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": "soft",
+            "padding": 4,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "fit"
+        },
+        {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Icon",
+                      "props": {
+                        "name": "shield-check",
+                        "size": "md",
+                        "color": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Before the first ride: the brakes stop the bike, both wheels are tight, the bars do not twist against the front wheel and the helmet fits snugly.",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": "start"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "direction": null,
+            "gap": null,
+            "padding": 3,
+            "background": "success",
+            "radius": "lg"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "safety"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1483,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Assemble a youth bike",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Most youth bikes arrive about 85% built. You fit the handlebars, front wheel, pedals and saddle, then set up the brakes. Tap each step as you finish it.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "45 to 90 minutes",
+                        "color": "info"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Beginner friendly",
+                        "color": "success"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Adult job, kid helper",
+                        "color": "purple"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "meta"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "Brake type"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$brakes"
+                        },
+                        "options": [
+                          "Rim",
+                          "Disc",
+                          "Coaster"
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "setup"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "You will need"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "List",
+                      "props": {
+                        "items": [
+                          "4, 5 and 6 mm Allen keys",
+                          "15 mm pedal wrench",
+                          "Phillips screwdriver",
+                          "Pump with a pressure gauge",
+                          "Scissors for the zip ties"
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "tools"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Assembly, step by step",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "0 of 8 steps done",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Reset",
+                              "action": null,
+                              "variant": "ghost",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "rotate-ccw"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart2",
+                              "radius": "full",
+                              "border": null,
+                              "width": "0%",
+                              "height": 6
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "border",
+                        "radius": "full",
+                        "border": null,
+                        "width": "100%",
+                        "height": 6
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "progress"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "1. Unbox and check",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Cut the zip ties, remove the packaging and lay the parts out: front wheel, pedals marked L and R, saddle and reflectors."
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "2. Fit the handlebars"
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ]
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "checklist"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Visual references",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "refs",
+            "fit",
+            "safety"
+          ],
+          "orphaned": [],
+          "statementCount": 7,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$brakes": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2967,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Assemble a youth bike",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Most youth bikes arrive about 85% built. You fit the handlebars, front wheel, pedals and saddle, then set up the brakes. Tap each step as you finish it.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "45 to 90 minutes",
+                        "color": "info"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Beginner friendly",
+                        "color": "success"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Adult job, kid helper",
+                        "color": "purple"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "meta"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "Brake type"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$brakes"
+                        },
+                        "options": [
+                          "Rim",
+                          "Disc",
+                          "Coaster"
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "setup"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "You will need"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "List",
+                      "props": {
+                        "items": [
+                          "4, 5 and 6 mm Allen keys",
+                          "15 mm pedal wrench",
+                          "Phillips screwdriver",
+                          "Pump with a pressure gauge",
+                          "Scissors for the zip ties"
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "tools"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Assembly, step by step",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "0 of 8 steps done",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Reset",
+                              "action": null,
+                              "variant": "ghost",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "rotate-ccw"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart2",
+                              "radius": "full",
+                              "border": null,
+                              "width": "0%",
+                              "height": 6
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "border",
+                        "radius": "full",
+                        "border": null,
+                        "width": "100%",
+                        "height": 6
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "progress"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "1. Unbox and check",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Cut the zip ties, remove the packaging and lay the parts out: front wheel, pedals marked L and R, saddle and reflectors."
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "2. Fit the handlebars",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Seat the stem, line the bars up with the front wheel and tighten the bolts evenly, a little at a time."
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "3. Install the front wheel",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Seat the axle fully in the fork, then close the quick release or tighten both axle nuts. Spin it: it should run straight."
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "4. Attach the pedals",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "The right pedal threads clockwise, the left anticlockwise. Start both by hand, then snug them with the 15 mm wrench."
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "5. Set the saddle height",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Insert the seat post at least to its minimum insertion mark, set the height below and tighten the clamp."
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "6. Set up the rim brakes",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Hook the cable noodle into the V-brake arms and center the pads on the rim, not the tire. The wheel should lock before the lever reaches the grip."
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "7. Inflate the tires",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false
+                                        },
+                                        "partial": true,
+                                        "hasDynamicProps": false
+                                      }
+                                    ]
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ]
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "checklist"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Visual references",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "refs",
+            "fit",
+            "safety"
+          ],
+          "orphaned": [],
+          "statementCount": 7,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$brakes": null
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 4451,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Assemble a youth bike",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Most youth bikes arrive about 85% built. You fit the handlebars, front wheel, pedals and saddle, then set up the brakes. Tap each step as you finish it.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "45 to 90 minutes",
+                        "color": "info"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Beginner friendly",
+                        "color": "success"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Adult job, kid helper",
+                        "color": "purple"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "meta"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "Brake type"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "SegmentedControl",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$brakes"
+                        },
+                        "options": [
+                          "Rim",
+                          "Disc",
+                          "Coaster"
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 3,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "setup"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Label",
+                      "props": {
+                        "text": "You will need"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "List",
+                      "props": {
+                        "items": [
+                          "4, 5 and 6 mm Allen keys",
+                          "15 mm pedal wrench",
+                          "Phillips screwdriver",
+                          "Pump with a pressure gauge",
+                          "Scissors for the zip ties"
+                        ]
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 3,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "tools"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Assembly, step by step",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "0 of 8 steps done",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Reset",
+                              "action": null,
+                              "variant": "ghost",
+                              "color": null,
+                              "size": "sm",
+                              "icon": "rotate-ccw"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart2",
+                              "radius": "full",
+                              "border": null,
+                              "width": "0%",
+                              "height": 6
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "border",
+                        "radius": "full",
+                        "border": null,
+                        "width": "100%",
+                        "height": 6
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "progress"
+              },
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "1. Unbox and check",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Cut the zip ties, remove the packaging and lay the parts out: front wheel, pedals marked L and R, saddle and reflectors."
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "2. Fit the handlebars",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Seat the stem, line the bars up with the front wheel and tighten the bolts evenly, a little at a time."
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "3. Install the front wheel",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Seat the axle fully in the fork, then close the quick release or tighten both axle nuts. Spin it: it should run straight."
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "4. Attach the pedals",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "The right pedal threads clockwise, the left anticlockwise. Start both by hand, then snug them with the 15 mm wrench."
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "5. Set the saddle height",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Insert the seat post at least to its minimum insertion mark, set the height below and tighten the clamp."
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "6. Set up the rim brakes",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Hook the cable noodle into the V-brake arms and center the pads on the rim, not the tire. The wheel should lock before the lever reaches the grip."
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "7. Inflate the tires",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Pump to the pressure printed on the sidewall and check the bead sits evenly all round."
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Row",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Icon",
+                                  "props": {
+                                    "name": "circle",
+                                    "size": "md",
+                                    "color": "faint"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Col",
+                                  "props": {
+                                    "children": [
+                                      {
+                                        "type": "element",
+                                        "typeName": "Text",
+                                        "props": {
+                                          "text": "8. Final safety check",
+                                          "size": "sm",
+                                          "color": null,
+                                          "weight": "semibold",
+                                          "italic": false,
+                                          "lineThrough": false
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      },
+                                      {
+                                        "type": "element",
+                                        "typeName": "Caption",
+                                        "props": {
+                                          "text": "Check every bolt, fit the reflectors and the bell, and test the brakes at walking pace."
+                                        },
+                                        "partial": false,
+                                        "hasDynamicProps": false
+                                      }
+                                    ],
+                                    "gap": 1
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "gap": 3,
+                              "align": "start"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 3
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "checklist"
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Visual references",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Bicycle wheel quick release",
+                              "aspectRatio": 1.4,
+                              "radius": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Front wheel seated in the fork"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "r1"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Bicycle pedal",
+                              "aspectRatio": 1.4,
+                              "radius": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Pedals: right clockwise, left anticlockwise"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "r2"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "V-brake",
+                              "aspectRatio": 1.4,
+                              "radius": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Brake pads meet the rim squarely"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "r3"
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "SearchImage",
+                            "props": {
+                              "query": "Seatpost",
+                              "aspectRatio": 1.4,
+                              "radius": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "Never above the minimum insertion mark"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false,
+                      "statementId": "r4"
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 160,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "refs"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Saddle height",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Input",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$inseam"
+                        },
+                        "label": "Your child's inseam, in cm",
+                        "type": "number"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Start with the top of the saddle about **54 cm** from the ground so both feet touch flat. Once your child rides confidently, raise it to about **59 cm**, where only the balls of the feet touch.",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": "soft",
+                  "padding": 4,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "fit"
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Icon",
+                            "props": {
+                              "name": "shield-check",
+                              "size": "md",
+                              "color": "success"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Before the first ride: the brakes stop the bike, both wheels are tight, the bars do not twist against the front wheel and the helmet fits snugly.",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2,
+                        "align": "start"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 3,
+                  "background": "success",
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "safety"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 16,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$brakes": "Rim",
+          "$inseam": 56
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

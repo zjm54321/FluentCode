@@ -1,0 +1,816 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "19becc171ebdfdbbae47038dbc29db08b3c2b3329b856fb2480431935c809abe",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "Steep your tea",
+              "size": "md"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Green · 2 min",
+                    "action": {
+                      "k": "Comp",
+                      "name": "Set",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$left"
+                        },
+                        {
+                          "k": "Num",
+                          "v": 120
+                        }
+                      ]
+                    },
+                    "variant": "outline",
+                    "color": null,
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Black · 4 min",
+                    "action": {
+                      "k": "Comp",
+                      "name": "Set",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$left"
+                        },
+                        {
+                          "k": "Num",
+                          "v": 240
+                        }
+                      ]
+                    },
+                    "variant": "outline",
+                    "color": null,
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Herbal · 6 min",
+                    "action": {
+                      "k": "Comp",
+                      "name": "Set",
+                      "args": [
+                        {
+                          "k": "StateRef",
+                          "n": "$left"
+                        },
+                        {
+                          "k": "Num",
+                          "v": 360
+                        }
+                      ]
+                    },
+                    "variant": "outline",
+                    "color": null,
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "gap": 2,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "presets"
+          },
+          {
+            "type": "element",
+            "typeName": "Timer",
+            "props": {
+              "seconds": {
+                "k": "StateRef",
+                "n": "$left"
+              },
+              "label": "Time left"
+            },
+            "partial": false,
+            "hasDynamicProps": true
+          },
+          {
+            "k": "Ternary",
+            "cond": {
+              "k": "BinOp",
+              "op": "==",
+              "left": {
+                "k": "StateRef",
+                "n": "$left"
+              },
+              "right": {
+                "k": "Num",
+                "v": 0
+              }
+            },
+            "then": {
+              "k": "Comp",
+              "name": "Text",
+              "args": [
+                {
+                  "k": "Str",
+                  "v": "**Ready.** Take the leaves out now."
+                },
+                {
+                  "k": "Str",
+                  "v": "sm"
+                },
+                {
+                  "k": "Str",
+                  "v": "success"
+                }
+              ],
+              "mappedProps": {
+                "text": {
+                  "k": "Str",
+                  "v": "**Ready.** Take the leaves out now."
+                },
+                "size": {
+                  "k": "Str",
+                  "v": "sm"
+                },
+                "color": {
+                  "k": "Str",
+                  "v": "success"
+                }
+              }
+            },
+            "else": {
+              "k": "Comp",
+              "name": "Caption",
+              "args": [
+                {
+                  "k": "Str",
+                  "v": "Start the timer when the water reaches the leaves."
+                }
+              ],
+              "mappedProps": {
+                "text": {
+                  "k": "Str",
+                  "v": "Start the timer when the water reaches the leaves."
+                }
+              }
+            }
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 4,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$left": 180
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "Steep your tea",
+            "size": "md"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Green · 2 min",
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "set",
+                        "target": "$left",
+                        "valueAST": {
+                          "k": "Num",
+                          "v": 120
+                        }
+                      }
+                    ]
+                  },
+                  "variant": "outline",
+                  "color": null,
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Black · 4 min",
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "set",
+                        "target": "$left",
+                        "valueAST": {
+                          "k": "Num",
+                          "v": 240
+                        }
+                      }
+                    ]
+                  },
+                  "variant": "outline",
+                  "color": null,
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Herbal · 6 min",
+                  "action": {
+                    "steps": [
+                      {
+                        "type": "set",
+                        "target": "$left",
+                        "valueAST": {
+                          "k": "Num",
+                          "v": 360
+                        }
+                      }
+                    ]
+                  },
+                  "variant": "outline",
+                  "color": null,
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "gap": 2,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "presets"
+        },
+        {
+          "type": "element",
+          "typeName": "Timer",
+          "props": {
+            "seconds": {
+              "__reactive": "assign",
+              "target": "$left",
+              "expr": {
+                "k": "StateRef",
+                "n": "$value"
+              }
+            },
+            "label": "Time left"
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        },
+        {
+          "type": "element",
+          "typeName": "Caption",
+          "props": {
+            "text": "Start the timer when the water reaches the leaves."
+          },
+          "partial": false,
+          "hasDynamicProps": true
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 160,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Steep your tea",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Green · 2 min",
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$left"
+                            },
+                            {
+                              "k": "Num",
+                              "v": 120
+                            }
+                          ]
+                        },
+                        "variant": "out"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "presets"
+              },
+              {
+                "type": "element",
+                "typeName": "Timer",
+                "props": {
+                  "seconds": {
+                    "k": "StateRef",
+                    "n": "$left"
+                  },
+                  "label": "Time left"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "done"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$left": 180
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 320,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Steep your tea",
+                  "size": "md"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Green · 2 min",
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$left"
+                            },
+                            {
+                              "k": "Num",
+                              "v": 120
+                            }
+                          ]
+                        },
+                        "variant": "outline",
+                        "color": null,
+                        "size": "sm"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Black · 4 min",
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$left"
+                            },
+                            {
+                              "k": "Num",
+                              "v": 240
+                            }
+                          ]
+                        },
+                        "variant": "outline",
+                        "color": null,
+                        "size": "sm"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Herbal · 6 min",
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$left"
+                            },
+                            {
+                              "k": "Num",
+                              "v": 360
+                            }
+                          ]
+                        },
+                        "variant": "outline",
+                        "color": null,
+                        "size": "sm"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null
+                },
+                "partial": true,
+                "hasDynamicProps": true,
+                "statementId": "presets"
+              },
+              {
+                "type": "element",
+                "typeName": "Timer",
+                "props": {
+                  "seconds": {
+                    "k": "StateRef",
+                    "n": "$left"
+                  },
+                  "label": "Time left"
+                },
+                "partial": true,
+                "hasDynamicProps": true
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "nul",
+            "done"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$left": 180
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 480,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Steep your tea",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Green · 2 min",
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$left"
+                            },
+                            {
+                              "k": "Num",
+                              "v": 120
+                            }
+                          ]
+                        },
+                        "variant": "outline",
+                        "color": null,
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Black · 4 min",
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$left"
+                            },
+                            {
+                              "k": "Num",
+                              "v": 240
+                            }
+                          ]
+                        },
+                        "variant": "outline",
+                        "color": null,
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Herbal · 6 min",
+                        "action": {
+                          "k": "Comp",
+                          "name": "Set",
+                          "args": [
+                            {
+                              "k": "StateRef",
+                              "n": "$left"
+                            },
+                            {
+                              "k": "Num",
+                              "v": 360
+                            }
+                          ]
+                        },
+                        "variant": "outline",
+                        "color": null,
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "presets"
+              },
+              {
+                "type": "element",
+                "typeName": "Timer",
+                "props": {
+                  "seconds": {
+                    "k": "StateRef",
+                    "n": "$left"
+                  },
+                  "label": "Time left"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "k": "Ternary",
+                "cond": {
+                  "k": "BinOp",
+                  "op": "==",
+                  "left": {
+                    "k": "StateRef",
+                    "n": "$left"
+                  },
+                  "right": {
+                    "k": "Num",
+                    "v": 0
+                  }
+                },
+                "then": {
+                  "k": "Comp",
+                  "name": "Text",
+                  "args": [
+                    {
+                      "k": "Str",
+                      "v": "**Ready.** Take the leaves out now."
+                    },
+                    {
+                      "k": "Str",
+                      "v": "sm"
+                    },
+                    {
+                      "k": "Str",
+                      "v": "success"
+                    }
+                  ],
+                  "mappedProps": {
+                    "text": {
+                      "k": "Str",
+                      "v": "**Ready.** Take the leaves out now."
+                    },
+                    "size": {
+                      "k": "Str",
+                      "v": "sm"
+                    },
+                    "color": {
+                      "k": "Str",
+                      "v": "success"
+                    }
+                  }
+                },
+                "else": {
+                  "k": "Comp",
+                  "name": "Caption",
+                  "args": [
+                    {
+                      "k": "Str",
+                      "v": "Start the timer when the water reaches the leaves."
+                    }
+                  ],
+                  "mappedProps": {
+                    "text": {
+                      "k": "Str",
+                      "v": "Start the timer when the water reaches the leaves."
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$left": 180
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

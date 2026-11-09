@@ -1,0 +1,4076 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "828eedc1a55d9786418534ad7c25a47e3393a89b0762a78f1fcf6afd1659af17",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Col",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Col",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Build a small bookcase",
+                    "size": "xl"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Four steps and about 30 minutes. You need the Allen key from the box and a hammer.",
+                    "size": "md",
+                    "color": "muted"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Badge",
+                        "props": {
+                          "text": "Step 1 of 4",
+                          "color": "info"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "25% done"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 16,
+                                "y": 20,
+                                "width": 22,
+                                "height": 120,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 48,
+                                "y": 20,
+                                "width": 22,
+                                "height": 120,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 100,
+                                "y": 28,
+                                "width": 120,
+                                "height": 16,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 100,
+                                "y": 68,
+                                "width": 120,
+                                "height": 16,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 100,
+                                "y": 108,
+                                "width": 120,
+                                "height": 16,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 27,
+                                "cy": 36,
+                                "r": 3,
+                                "fill": "chart1"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 27,
+                                "cy": 80,
+                                "r": 3,
+                                "fill": "chart1"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 27,
+                                "cy": 124,
+                                "r": 3,
+                                "fill": "chart1"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "Sides",
+                                "x": 43,
+                                "y": 154,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "Top",
+                                "x": 160,
+                                "y": 22,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "Shelf",
+                                "x": 160,
+                                "y": 62,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "Bottom",
+                                "x": 160,
+                                "y": 102,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 240 160"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": 3,
+                    "background": "surface",
+                    "radius": "lg"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Title",
+                  "props": {
+                    "text": "Lay out the parts",
+                    "size": "md"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Text",
+                  "props": {
+                    "text": "Two sides, the top, one shelf and the bottom. Tap the 12 wooden dowels into the holes on the sides.",
+                    "size": "sm"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "Back",
+                          "action": null,
+                          "variant": "outline",
+                          "color": null,
+                          "size": null,
+                          "icon": "arrow-left",
+                          "disabled": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Button",
+                        "props": {
+                          "label": "Next step",
+                          "action": null,
+                          "variant": "solid",
+                          "color": null,
+                          "size": null,
+                          "icon": "arrow-right",
+                          "disabled": false
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "variant": null,
+              "padding": 4,
+              "gap": 3
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "viewer"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 16,
+                                "y": 20,
+                                "width": 22,
+                                "height": 120,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 48,
+                                "y": 20,
+                                "width": 22,
+                                "height": 120,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 100,
+                                "y": 28,
+                                "width": 120,
+                                "height": 16,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 100,
+                                "y": 68,
+                                "width": 120,
+                                "height": 16,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 100,
+                                "y": 108,
+                                "width": 120,
+                                "height": 16,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 27,
+                                "cy": 36,
+                                "r": 3,
+                                "fill": "chart1"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 27,
+                                "cy": 80,
+                                "r": 3,
+                                "fill": "chart1"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 27,
+                                "cy": 124,
+                                "r": 3,
+                                "fill": "chart1"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "Sides",
+                                "x": 43,
+                                "y": 154,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "Top",
+                                "x": 160,
+                                "y": 22,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "Shelf",
+                                "x": 160,
+                                "y": 62,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "Bottom",
+                                "x": 160,
+                                "y": 102,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 240 160"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "1. Lay out the parts"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": true,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 40,
+                                "y": 16,
+                                "width": 18,
+                                "height": 128,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 58,
+                                "y": 16,
+                                "width": 130,
+                                "height": 14,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 58,
+                                "y": 72,
+                                "width": 130,
+                                "height": 14,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 58,
+                                "y": 130,
+                                "width": 130,
+                                "height": 14,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 68,
+                                "cy": 23,
+                                "r": 4,
+                                "fill": "info"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 68,
+                                "cy": 79,
+                                "r": 4,
+                                "fill": "info"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 68,
+                                "cy": 137,
+                                "r": 4,
+                                "fill": "info"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Line",
+                              "props": {
+                                "x1": 212,
+                                "y1": 79,
+                                "x2": 196,
+                                "y2": 79,
+                                "stroke": "info",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "192,79 200,74 200,84",
+                                "fill": "info"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "Cam lock",
+                                "x": 74,
+                                "y": 104,
+                                "size": 11,
+                                "fill": "info"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 240 160"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "2. Fix the boards to one side"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 40,
+                                "y": 16,
+                                "width": 18,
+                                "height": 128,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 58,
+                                "y": 16,
+                                "width": 130,
+                                "height": 14,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 58,
+                                "y": 72,
+                                "width": 130,
+                                "height": 14,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 58,
+                                "y": 130,
+                                "width": 130,
+                                "height": 14,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 196,
+                                "y": 16,
+                                "width": 18,
+                                "height": 128,
+                                "fill": "surface",
+                                "stroke": "info",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Line",
+                              "props": {
+                                "x1": 232,
+                                "y1": 80,
+                                "x2": 220,
+                                "y2": 80,
+                                "stroke": "info",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Polygon",
+                              "props": {
+                                "points": "216,80 224,75 224,85",
+                                "fill": "info"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 240 160"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "3. Add the other side"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Pressable",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Svg",
+                        "props": {
+                          "children": [
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 40,
+                                "y": 16,
+                                "width": 160,
+                                "height": 128,
+                                "fill": "#EFE9DF",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 40,
+                                "y": 16,
+                                "width": 160,
+                                "height": 14,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 40,
+                                "y": 72,
+                                "width": 160,
+                                "height": 14,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Rect",
+                              "props": {
+                                "x": 40,
+                                "y": 130,
+                                "width": 160,
+                                "height": 14,
+                                "fill": "surface",
+                                "stroke": "ink",
+                                "strokeWidth": 2
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 48,
+                                "cy": 50,
+                                "r": 2.5,
+                                "fill": "ink"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 192,
+                                "cy": 50,
+                                "r": 2.5,
+                                "fill": "ink"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 48,
+                                "cy": 108,
+                                "r": 2.5,
+                                "fill": "ink"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "Circle",
+                              "props": {
+                                "cx": 192,
+                                "cy": 108,
+                                "r": 2.5,
+                                "fill": "ink"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            },
+                            {
+                              "type": "element",
+                              "typeName": "SvgText",
+                              "props": {
+                                "text": "Back panel",
+                                "x": 120,
+                                "y": 56,
+                                "size": 11,
+                                "fill": "muted",
+                                "anchor": "middle"
+                              },
+                              "partial": false,
+                              "hasDynamicProps": false
+                            }
+                          ],
+                          "viewBox": "0 0 240 160"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Caption",
+                        "props": {
+                          "text": "4. Nail on the back"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "action": null,
+                    "selected": false,
+                    "padding": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 4,
+              "minChildWidth": 110,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "strip"
+          }
+        ]
+      },
+      "partial": false,
+      "hasDynamicProps": false,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 4,
+      "errors": []
+    },
+    "stateDeclarations": {},
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Col",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Build a small bookcase",
+                  "size": "xl"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Four steps and about 30 minutes. You need the Allen key from the box and a hammer.",
+                  "size": "md",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Step 1 of 4",
+                        "color": "info"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "25% done"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 16,
+                              "y": 20,
+                              "width": 22,
+                              "height": 120,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 48,
+                              "y": 20,
+                              "width": 22,
+                              "height": 120,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 100,
+                              "y": 28,
+                              "width": 120,
+                              "height": 16,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 100,
+                              "y": 68,
+                              "width": 120,
+                              "height": 16,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 100,
+                              "y": 108,
+                              "width": 120,
+                              "height": 16,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 27,
+                              "cy": 36,
+                              "r": 3,
+                              "fill": "chart1"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 27,
+                              "cy": 80,
+                              "r": 3,
+                              "fill": "chart1"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 27,
+                              "cy": 124,
+                              "r": 3,
+                              "fill": "chart1"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "Sides",
+                              "x": 43,
+                              "y": 154,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "Top",
+                              "x": 160,
+                              "y": 22,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "Shelf",
+                              "x": 160,
+                              "y": 62,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "Bottom",
+                              "x": 160,
+                              "y": 102,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 240 160"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": 3,
+                  "background": "surface",
+                  "radius": "lg"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "Lay out the parts",
+                  "size": "md"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "Two sides, the top, one shelf and the bottom. Tap the 12 wooden dowels into the holes on the sides.",
+                  "size": "sm"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Back",
+                        "action": null,
+                        "variant": "outline",
+                        "color": null,
+                        "size": null,
+                        "icon": "arrow-left",
+                        "disabled": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Next step",
+                        "action": null,
+                        "variant": "solid",
+                        "color": null,
+                        "size": null,
+                        "icon": "arrow-right",
+                        "disabled": false
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 4,
+            "gap": 3
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "viewer"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 16,
+                              "y": 20,
+                              "width": 22,
+                              "height": 120,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 48,
+                              "y": 20,
+                              "width": 22,
+                              "height": 120,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 100,
+                              "y": 28,
+                              "width": 120,
+                              "height": 16,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 100,
+                              "y": 68,
+                              "width": 120,
+                              "height": 16,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 100,
+                              "y": 108,
+                              "width": 120,
+                              "height": 16,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 27,
+                              "cy": 36,
+                              "r": 3,
+                              "fill": "chart1"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 27,
+                              "cy": 80,
+                              "r": 3,
+                              "fill": "chart1"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 27,
+                              "cy": 124,
+                              "r": 3,
+                              "fill": "chart1"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "Sides",
+                              "x": 43,
+                              "y": 154,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "Top",
+                              "x": 160,
+                              "y": 22,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "Shelf",
+                              "x": 160,
+                              "y": 62,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "Bottom",
+                              "x": 160,
+                              "y": 102,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 240 160"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "1. Lay out the parts"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": true,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 40,
+                              "y": 16,
+                              "width": 18,
+                              "height": 128,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 58,
+                              "y": 16,
+                              "width": 130,
+                              "height": 14,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 58,
+                              "y": 72,
+                              "width": 130,
+                              "height": 14,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 58,
+                              "y": 130,
+                              "width": 130,
+                              "height": 14,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 68,
+                              "cy": 23,
+                              "r": 4,
+                              "fill": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 68,
+                              "cy": 79,
+                              "r": 4,
+                              "fill": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 68,
+                              "cy": 137,
+                              "r": 4,
+                              "fill": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 212,
+                              "y1": 79,
+                              "x2": 196,
+                              "y2": 79,
+                              "stroke": "info",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "192,79 200,74 200,84",
+                              "fill": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "Cam lock",
+                              "x": 74,
+                              "y": 104,
+                              "size": 11,
+                              "fill": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 240 160"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "2. Fix the boards to one side"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 40,
+                              "y": 16,
+                              "width": 18,
+                              "height": 128,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 58,
+                              "y": 16,
+                              "width": 130,
+                              "height": 14,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 58,
+                              "y": 72,
+                              "width": 130,
+                              "height": 14,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 58,
+                              "y": 130,
+                              "width": 130,
+                              "height": 14,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 196,
+                              "y": 16,
+                              "width": 18,
+                              "height": 128,
+                              "fill": "surface",
+                              "stroke": "info",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Line",
+                            "props": {
+                              "x1": 232,
+                              "y1": 80,
+                              "x2": 220,
+                              "y2": 80,
+                              "stroke": "info",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Polygon",
+                            "props": {
+                              "points": "216,80 224,75 224,85",
+                              "fill": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 240 160"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "3. Add the other side"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Pressable",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Svg",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 40,
+                              "y": 16,
+                              "width": 160,
+                              "height": 128,
+                              "fill": "#EFE9DF",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 40,
+                              "y": 16,
+                              "width": 160,
+                              "height": 14,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 40,
+                              "y": 72,
+                              "width": 160,
+                              "height": 14,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Rect",
+                            "props": {
+                              "x": 40,
+                              "y": 130,
+                              "width": 160,
+                              "height": 14,
+                              "fill": "surface",
+                              "stroke": "ink",
+                              "strokeWidth": 2
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 48,
+                              "cy": 50,
+                              "r": 2.5,
+                              "fill": "ink"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 192,
+                              "cy": 50,
+                              "r": 2.5,
+                              "fill": "ink"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 48,
+                              "cy": 108,
+                              "r": 2.5,
+                              "fill": "ink"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Circle",
+                            "props": {
+                              "cx": 192,
+                              "cy": 108,
+                              "r": 2.5,
+                              "fill": "ink"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "SvgText",
+                            "props": {
+                              "text": "Back panel",
+                              "x": 120,
+                              "y": 56,
+                              "size": 11,
+                              "fill": "muted",
+                              "anchor": "middle"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "viewBox": "0 0 240 160"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Caption",
+                      "props": {
+                        "text": "4. Nail on the back"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "action": null,
+                  "selected": false,
+                  "padding": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 4,
+            "minChildWidth": 110,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "strip"
+        }
+      ]
+    },
+    "partial": false,
+    "hasDynamicProps": false,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1026,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Build a small bookcase",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Four steps and about 30 minutes. You need the Allen key from the box and a hammer.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Step 1 of 4",
+                              "color": "info"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "25% done"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 16,
+                                    "y": 20,
+                                    "width": 22,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 48,
+                                    "y": 20,
+                                    "width": 22,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 28,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 68,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 108,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 36,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 80,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 124,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Sides",
+                                    "x": 43,
+                                    "y": 154,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Top",
+                                    "x": 160,
+                                    "y": 22,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Shelf",
+                                    "x": 160,
+                                    "y": 62,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Bottom",
+                                    "x": 160,
+                                    "y": 102,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 240 160"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 3,
+                        "background": "surface",
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Lay out the parts",
+                        "size": "md"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Two sides, the top, one shelf and the bottom. Tap the 12 wooden dowels into the holes on the sides.",
+                        "size": "sm"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Back",
+                              "action": null
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "viewer"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "nu",
+            "strip"
+          ],
+          "orphaned": [],
+          "statementCount": 3,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2052,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Build a small bookcase",
+                        "size": "xl"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Four steps and about 30 minutes. You need the Allen key from the box and a hammer.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Step 1 of 4",
+                              "color": "info"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "25% done"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 16,
+                                    "y": 20,
+                                    "width": 22,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 48,
+                                    "y": 20,
+                                    "width": 22,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 28,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 68,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 108,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 36,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 80,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 124,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Sides",
+                                    "x": 43,
+                                    "y": 154,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Top",
+                                    "x": 160,
+                                    "y": 22,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Shelf",
+                                    "x": 160,
+                                    "y": 62,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Bottom",
+                                    "x": 160,
+                                    "y": 102,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 240 160"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 3,
+                        "background": "surface",
+                        "radius": "lg"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Lay out the parts",
+                        "size": "md"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Two sides, the top, one shelf and the bottom. Tap the 12 wooden dowels into the holes on the sides.",
+                        "size": "sm"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Back",
+                              "action": null,
+                              "variant": "outline",
+                              "color": null,
+                              "size": null,
+                              "icon": "arrow-left",
+                              "disabled": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Next step",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": null,
+                              "icon": "arrow-right",
+                              "disabled": false
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "viewer"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 16,
+                                    "y": 20,
+                                    "width": 22,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 48,
+                                    "y": 20,
+                                    "width": 22,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 28,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 68,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 108,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 36,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 80,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 124,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Sides",
+                                    "x": 43,
+                                    "y": 154,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Top",
+                                    "x": 160,
+                                    "y": 22,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Shelf",
+                                    "x": 160,
+                                    "y": 62,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Bottom",
+                                    "x": 160,
+                                    "y": 102,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": true,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 240 160"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "1. Lay out the parts"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": true,
+                        "padding": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": []
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "strip"
+              }
+            ]
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": [
+            {
+              "code": "missing-required",
+              "component": "Svg",
+              "path": "/viewBox",
+              "message": "missing required field \"/viewBox\" — signature: Svg(children*: array, viewBox*: string, width, height)",
+              "statementId": "strip"
+            }
+          ]
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 3079,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Col",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Build a small bookcase",
+                        "size": "xl"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Four steps and about 30 minutes. You need the Allen key from the box and a hammer.",
+                        "size": "md",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Badge",
+                            "props": {
+                              "text": "Step 1 of 4",
+                              "color": "info"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "25% done"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 16,
+                                    "y": 20,
+                                    "width": 22,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 48,
+                                    "y": 20,
+                                    "width": 22,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 28,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 68,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 108,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 36,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 80,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 124,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Sides",
+                                    "x": 43,
+                                    "y": 154,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Top",
+                                    "x": 160,
+                                    "y": 22,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Shelf",
+                                    "x": 160,
+                                    "y": 62,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Bottom",
+                                    "x": 160,
+                                    "y": 102,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 240 160"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": 3,
+                        "background": "surface",
+                        "radius": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "Lay out the parts",
+                        "size": "md"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Two sides, the top, one shelf and the bottom. Tap the 12 wooden dowels into the holes on the sides.",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Back",
+                              "action": null,
+                              "variant": "outline",
+                              "color": null,
+                              "size": null,
+                              "icon": "arrow-left",
+                              "disabled": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Button",
+                            "props": {
+                              "label": "Next step",
+                              "action": null,
+                              "variant": "solid",
+                              "color": null,
+                              "size": null,
+                              "icon": "arrow-right",
+                              "disabled": false
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "variant": null,
+                  "padding": 4,
+                  "gap": 3
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "viewer"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 16,
+                                    "y": 20,
+                                    "width": 22,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 48,
+                                    "y": 20,
+                                    "width": 22,
+                                    "height": 120,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 28,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 68,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 100,
+                                    "y": 108,
+                                    "width": 120,
+                                    "height": 16,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 36,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 80,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 27,
+                                    "cy": 124,
+                                    "r": 3,
+                                    "fill": "chart1"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Sides",
+                                    "x": 43,
+                                    "y": 154,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Top",
+                                    "x": 160,
+                                    "y": 22,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Shelf",
+                                    "x": 160,
+                                    "y": 62,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Bottom",
+                                    "x": 160,
+                                    "y": 102,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 240 160"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "1. Lay out the parts"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": true,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 40,
+                                    "y": 16,
+                                    "width": 18,
+                                    "height": 128,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 58,
+                                    "y": 16,
+                                    "width": 130,
+                                    "height": 14,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 58,
+                                    "y": 72,
+                                    "width": 130,
+                                    "height": 14,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 58,
+                                    "y": 130,
+                                    "width": 130,
+                                    "height": 14,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 68,
+                                    "cy": 23,
+                                    "r": 4,
+                                    "fill": "info"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 68,
+                                    "cy": 79,
+                                    "r": 4,
+                                    "fill": "info"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 68,
+                                    "cy": 137,
+                                    "r": 4,
+                                    "fill": "info"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 212,
+                                    "y1": 79,
+                                    "x2": 196,
+                                    "y2": 79,
+                                    "stroke": "info",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "192,79 200,74 200,84",
+                                    "fill": "info"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Cam lock",
+                                    "x": 74,
+                                    "y": 104,
+                                    "size": 11,
+                                    "fill": "info"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 240 160"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "2. Fix the boards to one side"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 40,
+                                    "y": 16,
+                                    "width": 18,
+                                    "height": 128,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 58,
+                                    "y": 16,
+                                    "width": 130,
+                                    "height": 14,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 58,
+                                    "y": 72,
+                                    "width": 130,
+                                    "height": 14,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 58,
+                                    "y": 130,
+                                    "width": 130,
+                                    "height": 14,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 196,
+                                    "y": 16,
+                                    "width": 18,
+                                    "height": 128,
+                                    "fill": "surface",
+                                    "stroke": "info",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Line",
+                                  "props": {
+                                    "x1": 232,
+                                    "y1": 80,
+                                    "x2": 220,
+                                    "y2": 80,
+                                    "stroke": "info",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Polygon",
+                                  "props": {
+                                    "points": "216,80 224,75 224,85",
+                                    "fill": "info"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 240 160"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "3. Add the other side"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Pressable",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Svg",
+                            "props": {
+                              "children": [
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 40,
+                                    "y": 16,
+                                    "width": 160,
+                                    "height": 128,
+                                    "fill": "#EFE9DF",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 40,
+                                    "y": 16,
+                                    "width": 160,
+                                    "height": 14,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 40,
+                                    "y": 72,
+                                    "width": 160,
+                                    "height": 14,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Rect",
+                                  "props": {
+                                    "x": 40,
+                                    "y": 130,
+                                    "width": 160,
+                                    "height": 14,
+                                    "fill": "surface",
+                                    "stroke": "ink",
+                                    "strokeWidth": 2
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 48,
+                                    "cy": 50,
+                                    "r": 2.5,
+                                    "fill": "ink"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 192,
+                                    "cy": 50,
+                                    "r": 2.5,
+                                    "fill": "ink"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 48,
+                                    "cy": 108,
+                                    "r": 2.5,
+                                    "fill": "ink"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "Circle",
+                                  "props": {
+                                    "cx": 192,
+                                    "cy": 108,
+                                    "r": 2.5,
+                                    "fill": "ink"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                },
+                                {
+                                  "type": "element",
+                                  "typeName": "SvgText",
+                                  "props": {
+                                    "text": "Back panel",
+                                    "x": 120,
+                                    "y": 56,
+                                    "size": 11,
+                                    "fill": "muted",
+                                    "anchor": "middle"
+                                  },
+                                  "partial": false,
+                                  "hasDynamicProps": false
+                                }
+                              ],
+                              "viewBox": "0 0 240 160"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Caption",
+                            "props": {
+                              "text": "4. Nail on the back"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "action": null,
+                        "selected": false,
+                        "padding": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 4,
+                  "minChildWidth": 110,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "strip"
+              }
+            ]
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}

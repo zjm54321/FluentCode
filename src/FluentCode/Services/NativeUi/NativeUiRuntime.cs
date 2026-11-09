@@ -278,6 +278,10 @@ internal sealed class NativeUiRuntime : IDisposable
     {
         if (_disposed) return;
         NativeUiSafety.Check(value, _catalog.Limits);
+        // Controls re-assert their current value while WinUI applies templates during measure
+        // (CommunityToolkit Segmented sets SelectedIndex in OnApplyTemplate). A no-op write must not
+        // re-render the card, or the render mutates panels inside that layout pass and WinUI fails fast.
+        if (_state.TryGetValue(name, out var current) && Same(current, value)) return;
         _state[name] = value; Changed?.Invoke();
     }
     internal object? Field(string name, object? value)
@@ -291,8 +295,9 @@ internal sealed class NativeUiRuntime : IDisposable
         if (_disposed) return;
         NativeUiSafety.Check(newValue, _catalog.Limits);
         if (bindingValue is NativeUiBinding binding) Set(binding.Target, Evaluator(new Dictionary<string, object?> { ["$value"] = newValue }).Evaluate(binding.Expression));
-        else { _fields[name] = newValue; Changed?.Invoke(); }
+        else { if (_fields.TryGetValue(name, out var current) && Same(current, newValue)) return; _fields[name] = newValue; Changed?.Invoke(); }
     }
+    private static bool Same(object? left, object? right) => ReferenceEquals(left, right) || NativeUiValues.ToJson(left) is { } a && NativeUiValues.ToJson(right) is { } b && a.ToJsonString() == b.ToJsonString();
     internal bool TrySetField(string name, object? bindingValue, object? newValue)
     {
         if (_disposed) return false;
@@ -351,9 +356,17 @@ internal static class NativeUiSafety
     private static bool UnsafeUrl(string value) => System.Text.RegularExpressions.Regex.Matches(value,
         "[a-z][a-z\\d+.-]*://[^\\s<>\"')\\]]*|\\b(?:file|javascript|data|vbscript|mailto|shell|ms-appx|ms-appdata):[^\\s<>\"')\\]]+",
         System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant).Any(match => !HttpUrl(match.Value));
+    // Counts like the official validator (opencode-qol native-ui validate.ts): a string, number, element,
+    // array or object is one node; element props and object entries are children; keys and the characters
+    // of a string are not nodes. Strings are still bounded by the character limit and URL safety.
     internal static void Check(object? value, NativeUiLimits limits)
     {
         var pending = new Stack<(object? Value, int Depth)>(); pending.Push((value, 0)); var nodes = 0;
+        void Text(string text)
+        {
+            if (text.Length > limits.StringLength) throw new NativeUiLimitException("Native UI string exceeds the character limit.");
+            if (UnsafeUrl(text)) throw new NativeUiLimitException("Native UI permits only absolute http(s) URLs.");
+        }
         while (pending.Count > 0)
         {
             var item = pending.Pop();
@@ -361,13 +374,12 @@ internal static class NativeUiSafety
             void Push(object? child) => pending.Push((child, item.Depth + 1));
             switch (item.Value)
             {
-                case string text when text.Length > limits.StringLength: throw new NativeUiLimitException("Native UI string exceeds the character limit.");
-                case string text when UnsafeUrl(text): throw new NativeUiLimitException("Native UI permits only absolute http(s) URLs.");
-                case NativeUiElement element: Push(element.Props); break;
+                case string text: Text(text); break;
+                case NativeUiElement element: foreach (var entry in element.Props) { Text(entry.Key); Push(entry.Value); } break;
                 case NativeUiAst ast: Push(ast.V); foreach (var child in ast.Children()) Push(child); if (ast.MappedProps is not null) foreach (var child in ast.MappedProps.Values) Push(child); break;
                 case NativeUiBinding binding: Push(binding.Expression); break;
                 case NativeUiActionPlan plan: foreach (var step in plan.Steps) { Push(step.ValueAst); Push(step.Context); Push(step.Message); Push(step.Url); } break;
-                case IReadOnlyDictionary<string, object?> dict: foreach (var entry in dict) { Push(entry.Key); Push(entry.Value); } break;
+                case IReadOnlyDictionary<string, object?> dict: foreach (var entry in dict) { Text(entry.Key); Push(entry.Value); } break;
                 case System.Collections.IEnumerable list: foreach (var child in list) Push(child); break;
             }
         }

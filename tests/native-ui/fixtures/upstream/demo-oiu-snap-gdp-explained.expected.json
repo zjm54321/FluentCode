@@ -1,0 +1,2830 @@
+{
+  "parserVersion": "1.1.0",
+  "sha256": "588570b11096c7b12f2de38b4be2b43d403c71860ae2a93e8dedf8ac00e63bb4",
+  "parse": {
+    "root": {
+      "type": "element",
+      "typeName": "Card",
+      "props": {
+        "children": [
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Col",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Title",
+                        "props": {
+                          "text": "What makes up GDP?",
+                          "size": "lg"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "An economy, in four parts.",
+                          "size": "sm",
+                          "color": "muted"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 1
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Spacer",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "Illustrative economy"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 3,
+              "align": "start"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "head"
+          },
+          {
+            "type": "element",
+            "typeName": "Caption",
+            "props": {
+              "text": "Total output"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Title",
+            "props": {
+              "text": "$1 trillion",
+              "size": "2xl"
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "total"
+          },
+          {
+            "type": "element",
+            "typeName": "Box",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "$600B",
+                          "size": "xs",
+                          "color": "#ffffff",
+                          "weight": "medium"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "chart1",
+                    "radius": 0,
+                    "border": null,
+                    "width": null,
+                    "height": "100%",
+                    "flex": 600,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "$200B",
+                          "size": "xs",
+                          "color": "#ffffff",
+                          "weight": "medium"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "chart2",
+                    "radius": 0,
+                    "border": null,
+                    "width": null,
+                    "height": "100%",
+                    "flex": 200,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "$170B",
+                          "size": "xs",
+                          "color": "#ffffff",
+                          "weight": "medium"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "chart4",
+                    "radius": 0,
+                    "border": null,
+                    "width": null,
+                    "height": "100%",
+                    "flex": 170,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Box",
+                  "props": {
+                    "children": [
+                      null
+                    ],
+                    "direction": null,
+                    "gap": null,
+                    "padding": null,
+                    "background": "chart3",
+                    "radius": 0,
+                    "border": null,
+                    "width": null,
+                    "height": "100%",
+                    "flex": 30,
+                    "align": "center",
+                    "justify": "center"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "direction": "row",
+              "gap": 0.5,
+              "padding": null,
+              "background": null,
+              "radius": "md",
+              "border": null,
+              "width": "100%",
+              "height": 38
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "bar"
+          },
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "chart1",
+                          "radius": "full",
+                          "border": null,
+                          "width": 10,
+                          "height": 10
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Consumer spending",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "$600B",
+                          "size": "sm",
+                          "color": "muted",
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "chart2",
+                          "radius": "full",
+                          "border": null,
+                          "width": 10,
+                          "height": 10
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Business investment",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "$200B",
+                          "size": "sm",
+                          "color": "muted",
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "chart4",
+                          "radius": "full",
+                          "border": null,
+                          "width": 10,
+                          "height": 10
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Government spending",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "$170B",
+                          "size": "sm",
+                          "color": "muted",
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Row",
+                  "props": {
+                    "children": [
+                      {
+                        "type": "element",
+                        "typeName": "Box",
+                        "props": {
+                          "children": [],
+                          "direction": null,
+                          "gap": null,
+                          "padding": null,
+                          "background": "chart3",
+                          "radius": "full",
+                          "border": null,
+                          "width": 10,
+                          "height": 10
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "Net exports",
+                          "size": "sm"
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Spacer",
+                        "props": {},
+                        "partial": false,
+                        "hasDynamicProps": false
+                      },
+                      {
+                        "type": "element",
+                        "typeName": "Text",
+                        "props": {
+                          "text": "$30B",
+                          "size": "sm",
+                          "color": "muted",
+                          "weight": "medium",
+                          "italic": false,
+                          "lineThrough": false,
+                          "tabularNums": true
+                        },
+                        "partial": false,
+                        "hasDynamicProps": false
+                      }
+                    ],
+                    "gap": 2
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 220,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": false,
+            "statementId": "legend"
+          },
+          null,
+          {
+            "type": "element",
+            "typeName": "Grid",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$c"
+                    },
+                    "min": 0,
+                    "max": 1200,
+                    "step": 10,
+                    "label": "Consumer spending, $ billions"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$i"
+                    },
+                    "min": 0,
+                    "max": 600,
+                    "step": 10,
+                    "label": "Business investment, $ billions"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$g"
+                    },
+                    "min": 0,
+                    "max": 500,
+                    "step": 10,
+                    "label": "Government spending, $ billions"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                {
+                  "type": "element",
+                  "typeName": "Slider",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$x"
+                    },
+                    "min": -200,
+                    "max": 300,
+                    "step": 10,
+                    "label": "Net exports, $ billions"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                }
+              ],
+              "columns": 2,
+              "minChildWidth": 240,
+              "gap": 6
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "sliders"
+          },
+          {
+            "type": "element",
+            "typeName": "Row",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "Button",
+                  "props": {
+                    "label": "Reset economy",
+                    "action": null,
+                    "variant": "ghost",
+                    "color": null,
+                    "size": "sm",
+                    "icon": "rotate-ccw"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Spacer",
+                  "props": {},
+                  "partial": false,
+                  "hasDynamicProps": false
+                },
+                {
+                  "type": "element",
+                  "typeName": "Badge",
+                  "props": {
+                    "text": "GDP = C + I + G + (X − M)",
+                    "color": "purple"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": false
+                }
+              ],
+              "gap": 2,
+              "align": null,
+              "justify": null,
+              "wrap": true
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Text",
+            "props": {
+              "text": "GDP counts the value of final goods and services produced within a country. Imports are subtracted because they were produced elsewhere.",
+              "size": "sm",
+              "color": "muted"
+            },
+            "partial": false,
+            "hasDynamicProps": false
+          },
+          {
+            "type": "element",
+            "typeName": "Card",
+            "props": {
+              "children": [
+                {
+                  "type": "element",
+                  "typeName": "RadioGroup",
+                  "props": {
+                    "value": {
+                      "k": "StateRef",
+                      "n": "$answer"
+                    },
+                    "options": [
+                      {
+                        "value": "a",
+                        "label": "Real GDP increases by 10%"
+                      },
+                      {
+                        "value": "b",
+                        "label": "Nominal GDP rises; real GDP is unchanged"
+                      },
+                      {
+                        "value": "c",
+                        "label": "Both measures stay the same"
+                      }
+                    ],
+                    "label": "The same goods cost 10% more this year. What changes?"
+                  },
+                  "partial": false,
+                  "hasDynamicProps": true
+                },
+                null
+              ],
+              "variant": "soft",
+              "padding": 4,
+              "gap": 2
+            },
+            "partial": false,
+            "hasDynamicProps": true,
+            "statementId": "quiz"
+          }
+        ],
+        "variant": null,
+        "padding": 5,
+        "gap": 4
+      },
+      "partial": false,
+      "hasDynamicProps": true,
+      "statementId": "root"
+    },
+    "meta": {
+      "incomplete": false,
+      "unresolved": [],
+      "orphaned": [],
+      "statementCount": 12,
+      "errors": []
+    },
+    "stateDeclarations": {
+      "$answer": "",
+      "$c": 600,
+      "$g": 170,
+      "$i": 200,
+      "$x": 30
+    },
+    "queryStatements": [],
+    "mutationStatements": []
+  },
+  "evaluated": {
+    "type": "element",
+    "typeName": "Card",
+    "props": {
+      "children": [
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Col",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Title",
+                      "props": {
+                        "text": "What makes up GDP?",
+                        "size": "lg"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "An economy, in four parts.",
+                        "size": "sm",
+                        "color": "muted"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 1
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Spacer",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "Illustrative economy"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 3,
+            "align": "start"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "head"
+        },
+        {
+          "type": "element",
+          "typeName": "Caption",
+          "props": {
+            "text": "Total output"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Title",
+          "props": {
+            "text": "$1 trillion",
+            "size": "2xl"
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "total"
+        },
+        {
+          "type": "element",
+          "typeName": "Box",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$600B",
+                        "size": "xs",
+                        "color": "#ffffff",
+                        "weight": "medium"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "chart1",
+                  "radius": 0,
+                  "border": null,
+                  "width": null,
+                  "height": "100%",
+                  "flex": 600,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$200B",
+                        "size": "xs",
+                        "color": "#ffffff",
+                        "weight": "medium"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "chart2",
+                  "radius": 0,
+                  "border": null,
+                  "width": null,
+                  "height": "100%",
+                  "flex": 200,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$170B",
+                        "size": "xs",
+                        "color": "#ffffff",
+                        "weight": "medium"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "chart4",
+                  "radius": 0,
+                  "border": null,
+                  "width": null,
+                  "height": "100%",
+                  "flex": 170,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    null
+                  ],
+                  "direction": null,
+                  "gap": null,
+                  "padding": null,
+                  "background": "chart3",
+                  "radius": 0,
+                  "border": null,
+                  "width": null,
+                  "height": "100%",
+                  "flex": 30,
+                  "align": "center",
+                  "justify": "center"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "direction": "row",
+            "gap": 0.5,
+            "padding": null,
+            "background": null,
+            "radius": "md",
+            "border": null,
+            "width": "100%",
+            "height": 38
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "bar"
+        },
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart1",
+                        "radius": "full",
+                        "border": null,
+                        "width": 10,
+                        "height": 10
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Consumer spending",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$600B",
+                        "size": "sm",
+                        "color": "muted",
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart2",
+                        "radius": "full",
+                        "border": null,
+                        "width": 10,
+                        "height": 10
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Business investment",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$200B",
+                        "size": "sm",
+                        "color": "muted",
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart4",
+                        "radius": "full",
+                        "border": null,
+                        "width": 10,
+                        "height": 10
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Government spending",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$170B",
+                        "size": "sm",
+                        "color": "muted",
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart3",
+                        "radius": "full",
+                        "border": null,
+                        "width": 10,
+                        "height": 10
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "Net exports",
+                        "size": "sm"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Text",
+                      "props": {
+                        "text": "$30B",
+                        "size": "sm",
+                        "color": "muted",
+                        "weight": "medium",
+                        "italic": false,
+                        "lineThrough": false,
+                        "tabularNums": true
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 220,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": false,
+          "statementId": "legend"
+        },
+        null,
+        {
+          "type": "element",
+          "typeName": "Grid",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$c",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 1200,
+                  "step": 10,
+                  "label": "Consumer spending, $ billions"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$i",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 600,
+                  "step": 10,
+                  "label": "Business investment, $ billions"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$g",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": 0,
+                  "max": 500,
+                  "step": 10,
+                  "label": "Government spending, $ billions"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              {
+                "type": "element",
+                "typeName": "Slider",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$x",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "min": -200,
+                  "max": 300,
+                  "step": 10,
+                  "label": "Net exports, $ billions"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              }
+            ],
+            "columns": 2,
+            "minChildWidth": 240,
+            "gap": 6
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "sliders"
+        },
+        {
+          "type": "element",
+          "typeName": "Row",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Button",
+                "props": {
+                  "label": "Reset economy",
+                  "action": null,
+                  "variant": "ghost",
+                  "color": null,
+                  "size": "sm",
+                  "icon": "rotate-ccw"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Spacer",
+                "props": {},
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Badge",
+                "props": {
+                  "text": "GDP = C + I + G + (X − M)",
+                  "color": "purple"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              }
+            ],
+            "gap": 2,
+            "align": null,
+            "justify": null,
+            "wrap": true
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Text",
+          "props": {
+            "text": "GDP counts the value of final goods and services produced within a country. Imports are subtracted because they were produced elsewhere.",
+            "size": "sm",
+            "color": "muted"
+          },
+          "partial": false,
+          "hasDynamicProps": false
+        },
+        {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "RadioGroup",
+                "props": {
+                  "value": {
+                    "__reactive": "assign",
+                    "target": "$answer",
+                    "expr": {
+                      "k": "StateRef",
+                      "n": "$value"
+                    }
+                  },
+                  "options": [
+                    {
+                      "value": "a",
+                      "label": "Real GDP increases by 10%"
+                    },
+                    {
+                      "value": "b",
+                      "label": "Nominal GDP rises; real GDP is unchanged"
+                    },
+                    {
+                      "value": "c",
+                      "label": "Both measures stay the same"
+                    }
+                  ],
+                  "label": "The same goods cost 10% more this year. What changes?"
+                },
+                "partial": false,
+                "hasDynamicProps": true
+              },
+              null
+            ],
+            "variant": "soft",
+            "padding": 4,
+            "gap": 2
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "quiz"
+        }
+      ],
+      "variant": null,
+      "padding": 5,
+      "gap": 4
+    },
+    "partial": false,
+    "hasDynamicProps": true,
+    "statementId": "root"
+  },
+  "streaming": [
+    {
+      "length": 0,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": true,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1,
+      "result": {
+        "root": null,
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 0,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 809,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "What makes up GDP?",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "An economy, in four parts.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Illustrative economy"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "start"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Total output"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "$1 trillion",
+                  "size": "2xl"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "total"
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$600B",
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart1",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": 600,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$200B",
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "bar"
+              },
+              null,
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset economy",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "GDP = C + I + G + (X − M)",
+                        "color": "purple"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "GDP counts the value of final goods and services produced within a country. Imports are subtracted because they were produced elsewhere.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "legend",
+            "sliders",
+            "quiz"
+          ],
+          "orphaned": [],
+          "statementCount": 4,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 1619,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "What makes up GDP?",
+                              "size": "lg"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "An economy, in four parts.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Illustrative economy"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "start"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Total output"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "$1 trillion",
+                  "size": "2xl"
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "total"
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$600B",
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart1",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": 600,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$200B",
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart2",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": 200,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$170B",
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart4",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": 170,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          null
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart3",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": 30,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": "row",
+                  "gap": 0.5,
+                  "padding": null,
+                  "background": null,
+                  "radius": "md",
+                  "border": null,
+                  "width": "100%",
+                  "height": 38
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "bar"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart1",
+                              "radius": "full",
+                              "border": null,
+                              "width": 10,
+                              "height": 10
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Consumer spending",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$600B",
+                              "size": "sm",
+                              "color": "muted",
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart2",
+                              "radius": "full",
+                              "border": null,
+                              "width": 10,
+                              "height": 10
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Business investment",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$200B",
+                              "size": "sm",
+                              "color": "muted",
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart4",
+                              "radius": "full",
+                              "border": null,
+                              "width": 10,
+                              "height": 10
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Government spending",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": true,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$170B",
+                              "size": "sm"
+                            },
+                            "partial": true,
+                            "hasDynamicProps": false
+                          }
+                        ]
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ]
+                },
+                "partial": true,
+                "hasDynamicProps": false,
+                "statementId": "legend"
+              },
+              null,
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset economy",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": true,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "GDP = C + I + G + (X − M)",
+                        "color": "purple"
+                      },
+                      "partial": true,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "GDP counts the value of final goods and services produced within a country. Imports are subtracted because they were produced elsewhere.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": true,
+                "hasDynamicProps": false
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": true,
+          "hasDynamicProps": false,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": true,
+          "unresolved": [
+            "sliders",
+            "quiz"
+          ],
+          "orphaned": [],
+          "statementCount": 5,
+          "errors": []
+        },
+        "stateDeclarations": {},
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    },
+    {
+      "length": 2429,
+      "result": {
+        "root": {
+          "type": "element",
+          "typeName": "Card",
+          "props": {
+            "children": [
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Col",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Title",
+                            "props": {
+                              "text": "What makes up GDP?",
+                              "size": "lg"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "An economy, in four parts.",
+                              "size": "sm",
+                              "color": "muted"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 1
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "Illustrative economy"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 3,
+                  "align": "start"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "head"
+              },
+              {
+                "type": "element",
+                "typeName": "Caption",
+                "props": {
+                  "text": "Total output"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Title",
+                "props": {
+                  "text": "$1 trillion",
+                  "size": "2xl"
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "total"
+              },
+              {
+                "type": "element",
+                "typeName": "Box",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$600B",
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart1",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": 600,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$200B",
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart2",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": 200,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$170B",
+                              "size": "xs",
+                              "color": "#ffffff",
+                              "weight": "medium"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart4",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": 170,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Box",
+                      "props": {
+                        "children": [
+                          null
+                        ],
+                        "direction": null,
+                        "gap": null,
+                        "padding": null,
+                        "background": "chart3",
+                        "radius": 0,
+                        "border": null,
+                        "width": null,
+                        "height": "100%",
+                        "flex": 30,
+                        "align": "center",
+                        "justify": "center"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "direction": "row",
+                  "gap": 0.5,
+                  "padding": null,
+                  "background": null,
+                  "radius": "md",
+                  "border": null,
+                  "width": "100%",
+                  "height": 38
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "bar"
+              },
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart1",
+                              "radius": "full",
+                              "border": null,
+                              "width": 10,
+                              "height": 10
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Consumer spending",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$600B",
+                              "size": "sm",
+                              "color": "muted",
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart2",
+                              "radius": "full",
+                              "border": null,
+                              "width": 10,
+                              "height": 10
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Business investment",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$200B",
+                              "size": "sm",
+                              "color": "muted",
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart4",
+                              "radius": "full",
+                              "border": null,
+                              "width": 10,
+                              "height": 10
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Government spending",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$170B",
+                              "size": "sm",
+                              "color": "muted",
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Row",
+                      "props": {
+                        "children": [
+                          {
+                            "type": "element",
+                            "typeName": "Box",
+                            "props": {
+                              "children": [],
+                              "direction": null,
+                              "gap": null,
+                              "padding": null,
+                              "background": "chart3",
+                              "radius": "full",
+                              "border": null,
+                              "width": 10,
+                              "height": 10
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "Net exports",
+                              "size": "sm"
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Spacer",
+                            "props": {},
+                            "partial": false,
+                            "hasDynamicProps": false
+                          },
+                          {
+                            "type": "element",
+                            "typeName": "Text",
+                            "props": {
+                              "text": "$30B",
+                              "size": "sm",
+                              "color": "muted",
+                              "weight": "medium",
+                              "italic": false,
+                              "lineThrough": false,
+                              "tabularNums": true
+                            },
+                            "partial": false,
+                            "hasDynamicProps": false
+                          }
+                        ],
+                        "gap": 2
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 220,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": false,
+                "statementId": "legend"
+              },
+              null,
+              {
+                "type": "element",
+                "typeName": "Grid",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$c"
+                        },
+                        "min": 0,
+                        "max": 1200,
+                        "step": 10,
+                        "label": "Consumer spending, $ billions"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$i"
+                        },
+                        "min": 0,
+                        "max": 600,
+                        "step": 10,
+                        "label": "Business investment, $ billions"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$g"
+                        },
+                        "min": 0,
+                        "max": 500,
+                        "step": 10,
+                        "label": "Government spending, $ billions"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Slider",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$x"
+                        },
+                        "min": -200,
+                        "max": 300,
+                        "step": 10,
+                        "label": "Net exports, $ billions"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    }
+                  ],
+                  "columns": 2,
+                  "minChildWidth": 240,
+                  "gap": 6
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "sliders"
+              },
+              {
+                "type": "element",
+                "typeName": "Row",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "Button",
+                      "props": {
+                        "label": "Reset economy",
+                        "action": null,
+                        "variant": "ghost",
+                        "color": null,
+                        "size": "sm",
+                        "icon": "rotate-ccw"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Spacer",
+                      "props": {},
+                      "partial": false,
+                      "hasDynamicProps": false
+                    },
+                    {
+                      "type": "element",
+                      "typeName": "Badge",
+                      "props": {
+                        "text": "GDP = C + I + G + (X − M)",
+                        "color": "purple"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": false
+                    }
+                  ],
+                  "gap": 2,
+                  "align": null,
+                  "justify": null,
+                  "wrap": true
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Text",
+                "props": {
+                  "text": "GDP counts the value of final goods and services produced within a country. Imports are subtracted because they were produced elsewhere.",
+                  "size": "sm",
+                  "color": "muted"
+                },
+                "partial": false,
+                "hasDynamicProps": false
+              },
+              {
+                "type": "element",
+                "typeName": "Card",
+                "props": {
+                  "children": [
+                    {
+                      "type": "element",
+                      "typeName": "RadioGroup",
+                      "props": {
+                        "value": {
+                          "k": "StateRef",
+                          "n": "$answer"
+                        },
+                        "options": [
+                          {
+                            "value": "a",
+                            "label": "Real GDP increases by 10%"
+                          },
+                          {
+                            "value": "b",
+                            "label": "Nominal GDP rises; real GDP is unchanged"
+                          },
+                          {
+                            "value": "c",
+                            "label": "Both measures stay the same"
+                          }
+                        ],
+                        "label": "The same goods cost 10% more this year. What changes?"
+                      },
+                      "partial": false,
+                      "hasDynamicProps": true
+                    },
+                    null
+                  ],
+                  "variant": "soft",
+                  "padding": 4,
+                  "gap": 2
+                },
+                "partial": false,
+                "hasDynamicProps": true,
+                "statementId": "quiz"
+              }
+            ],
+            "variant": null,
+            "padding": 5,
+            "gap": 4
+          },
+          "partial": false,
+          "hasDynamicProps": true,
+          "statementId": "root"
+        },
+        "meta": {
+          "incomplete": false,
+          "unresolved": [],
+          "orphaned": [],
+          "statementCount": 12,
+          "errors": []
+        },
+        "stateDeclarations": {
+          "$answer": "",
+          "$c": 600,
+          "$g": 170,
+          "$i": 200,
+          "$x": 30
+        },
+        "queryStatements": [],
+        "mutationStatements": []
+      }
+    }
+  ]
+}
