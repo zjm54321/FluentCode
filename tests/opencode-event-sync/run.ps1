@@ -93,7 +93,7 @@ $childAssembly = Join-Path $output 'ChildPermissionTests.dll'
 $childArguments = $arguments | Where-Object { !($_.StartsWith('/out:')) -and !($_.EndsWith('Program.cs"')) -and !($_.EndsWith('StreamingPerformanceTests.cs"')) -and !($_.EndsWith('TurnCountTests.cs"')) }
 $childArguments += '/out:"' + $childAssembly + '"'
 foreach ($file in @('OpenCodeInteractionsView.cs', 'OpenCodePermissionCard.cs', 'OpenCodePermissionOverlay.cs',
-    'OpenCodePermissionPresentation.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeInteractionPolicy.cs', 'OpenCodeSessionTracking.cs')) {
+    'OpenCodePermissionPresentation.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeInteractionPolicy.cs', 'OpenCodeDisplayText.cs', 'OpenCodeSessionTracking.cs')) {
     $childArguments += '"' + "$repo/src/FluentCode/Pages/OpenCode/$file" + '"'
 }
 foreach ($file in @('OpenCodePage.ChildInteractions.cs', 'OpenCodePage.QuestionOverlay.cs', 'OpenCodePage.SwitchPerformance.cs')) { $childArguments += '"' + "$repo/src/FluentCode/Pages/$file" + '"' }

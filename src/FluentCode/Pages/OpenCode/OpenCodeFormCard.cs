@@ -96,11 +96,20 @@ internal sealed class OpenCodeFormCard : StackPanel
         _actionsPanel.Children.Add(_answerButton);
         _actionsPanel.Children.Add(_cancelButton);
 
-        var headerRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        // Grid, not a horizontal StackPanel: a long title must wrap (≤ 2 lines) instead of pushing “回答” out of the card.
+        _titleText.TextWrapping = TextWrapping.Wrap;
+        _titleText.MaxLines = 2;
+        _titleText.TextTrimming = TextTrimming.CharacterEllipsis;
+        var headerRow = new Grid { ColumnSpacing = 8 };
+        headerRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        headerRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        headerRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var glyph = OpenCodeInteractionUi.StyledText("❓", OpenCodeInteractionUi.BodyStyleKey);
         glyph.VerticalAlignment = VerticalAlignment.Center;
         headerRow.Children.Add(glyph);
+        Grid.SetColumn(_titleText, 1);
         headerRow.Children.Add(_titleText);
+        Grid.SetColumn(_actionsPanel, 2);
         headerRow.Children.Add(_actionsPanel);
 
         _summaryText = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionSubtleStyleKey);
@@ -676,7 +685,8 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
 
         for (var i = 0; i < plan.Fields.Count; i++)
         {
-            var section = BuildField(plan.Fields[i], i > 0);
+            // A single question's label is already the overlay title (QuestionTitle): don't print it twice.
+            var section = BuildField(plan.Fields[i], i > 0, showLabel: plan.Fields.Count > 1);
             _sections.Add(section);
             Children.Add(section);
         }
@@ -854,7 +864,7 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
         ? "OpenCodeFormOption_" + _formId + "_" + key + "_" + value
         : FieldAutomationId(key) + "_" + value;
 
-    private UIElement BuildField(OpenCodeFormFieldPlan field, bool separated)
+    private UIElement BuildField(OpenCodeFormFieldPlan field, bool separated, bool showLabel)
     {
         var section = new StackPanel { Spacing = 8 };
         if (separated)
@@ -864,15 +874,19 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
         }
 
         var header = new StackPanel { Spacing = 2 };
-        header.Children.Add(OpenCodeInteractionUi.StyledText(
-            field.Label + (field.Required ? "（必答）" : string.Empty), OpenCodeInteractionUi.BodyStrongStyleKey, true));
+        if (showLabel || field.Required)
+        {
+            header.Children.Add(OpenCodeInteractionUi.StyledText(
+                showLabel ? field.Label + (field.Required ? "（必答）" : string.Empty) : "必答",
+                showLabel ? OpenCodeInteractionUi.BodyStrongStyleKey : OpenCodeInteractionUi.CaptionSubtleStyleKey, showLabel));
+        }
 
         if (!string.IsNullOrWhiteSpace(field.Description))
         {
             header.Children.Add(OpenCodeInteractionUi.StyledText(field.Description!, OpenCodeInteractionUi.BodyStyleKey, true));
         }
 
-        section.Children.Add(header);
+        if (header.Children.Count > 0) section.Children.Add(header);
 
         var error = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.QuestionErrorStyleKey, true);
         error.Visibility = Visibility.Collapsed;
@@ -1016,7 +1030,7 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
                         Padding = new Thickness(8, 2, 0, 2),
                     };
                     AutomationProperties.SetAutomationId(check, OptionAutomationId(field.Key, option.Value));
-                    AutomationProperties.SetName(check, option.Label);
+                    AutomationProperties.SetName(check, OptionAccessibleName(option.Label));
                     if (!string.IsNullOrWhiteSpace(option.Description))
                     {
                         AutomationProperties.SetHelpText(check, option.Description!);
@@ -1131,17 +1145,59 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
         };
     }
 
-    /// <summary>选项内容：标签（Body）+ 较小说明（Caption 次要色）。</summary>
+    /// <summary>
+    /// 选项内容：标签（Body）+ 较小说明（Caption 次要色）。模型写在标签末尾的 “(Recommended)” / “（推荐）”
+    /// 改为右侧的“推荐”小标签（与时间线提问详情一致）；提交的仍是原始选项 value，不受影响。
+    /// </summary>
     private static UIElement CreateOptionContent(string label, string? description)
     {
+        var shown = OpenCodeDisplayText.OptionLabel(label, out var recommended);
         var panel = new StackPanel { Spacing = 2 };
-        panel.Children.Add(OpenCodeInteractionUi.StyledText(label, OpenCodeInteractionUi.BodyStyleKey));
+        var labelText = OpenCodeInteractionUi.StyledText(shown, OpenCodeInteractionUi.BodyStyleKey);
+        if (recommended)
+        {
+            var row = new Grid { ColumnSpacing = 8 };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Children.Add(labelText);
+            var tag = RecommendedTag();
+            Grid.SetColumn(tag, 1);
+            row.Children.Add(tag);
+            panel.Children.Add(row);
+        }
+        else
+        {
+            panel.Children.Add(labelText);
+        }
+
         if (!string.IsNullOrWhiteSpace(description))
         {
             panel.Children.Add(OpenCodeInteractionUi.StyledText(description!, OpenCodeInteractionUi.CaptionSubtleStyleKey));
         }
 
         return panel;
+    }
+
+    private static FrameworkElement RecommendedTag()
+    {
+        var tag = OpenCodeThemedXaml.Load<Border>("Border",
+            "BorderBrush=\"{ThemeResource CardStrokeColorDefaultBrush}\" Background=\"{ThemeResource SubtleFillColorSecondaryBrush}\"" +
+            " BorderThickness=\"1\" CornerRadius=\"4\" Padding=\"6,1,6,2\" VerticalAlignment=\"Top\" Margin=\"0,1,0,0\"")
+            ?? new Border
+            {
+                BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(6, 1, 6, 2),
+                VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 1, 0, 0),
+            };
+        tag.Child = OpenCodeInteractionUi.StyledText("推荐", OpenCodeInteractionUi.CaptionStyleKey);
+        AutomationProperties.SetAccessibilityView(tag, AccessibilityView.Raw);
+        return tag;
+    }
+
+    /// <summary>选项的可访问名称：显示标签，推荐项读作“…（推荐）”。</summary>
+    private static string OptionAccessibleName(string label)
+    {
+        var shown = OpenCodeDisplayText.OptionLabel(label, out var recommended);
+        return recommended ? shown + "（推荐）" : shown;
     }
 
     private static RadioButton CreateRadioItem(string label, string? description)
@@ -1151,7 +1207,7 @@ internal sealed class OpenCodeFormAnswerEditor : StackPanel
             Content = CreateOptionContent(label, description),
             Padding = new Thickness(8, 2, 0, 2),
         };
-        AutomationProperties.SetName(item, label);
+        AutomationProperties.SetName(item, OptionAccessibleName(label));
         if (!string.IsNullOrWhiteSpace(description))
         {
             AutomationProperties.SetHelpText(item, description!);

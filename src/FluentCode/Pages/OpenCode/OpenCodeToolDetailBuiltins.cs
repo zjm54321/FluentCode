@@ -250,7 +250,7 @@ internal static partial class OpenCodeToolDetailBuiltins
 
             if (options.Children.Count > 0) block.Children.Add(options);
             var c = 0;
-            foreach (var custom in question.CustomAnswers()) block.Children.Add(CustomAnswer(custom, group + ".custom." + (c++).ToString(CultureInfo.InvariantCulture)));
+            foreach (var custom in question.CustomAnswers()) block.Children.Add(CustomAnswer(OpenCodeDisplayText.Block(custom), group + ".custom." + (c++).ToString(CultureInfo.InvariantCulture)));
             if (skipped > 0) AddMore(block, skipped, "个未选的选项");
 
             if (!answered)

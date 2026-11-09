@@ -59,5 +59,70 @@ internal static partial class Program
         Check(builtins.Contains("OpenCodeSessionInsightsView.TodoRow(items[index], index, \"OpenCodeToolDetailTodoItem.\")", StringComparison.Ordinal)
             && !generic.Contains("TodoDetailRow", StringComparison.Ordinal),
             "todowrite detail reuses the panel row (one checkbox/strikethrough/status vocabulary)");
+
+        // ---- question tool parts (real 2026-11-08 payload, three questions with bare CR everywhere) ----
+        var state = JsonSerializer.SerializeToElement(new
+        {
+            status = "completed",
+            input = new
+            {
+                questions = new object[]
+                {
+                    new
+                    {
+                        header = "你的手机",
+                        question = "你平时用什么设备\r？我会按它的尺寸\r \r+\r 字体大小\r 4\r \r+\r 显示大小\r 2\r 去重新设计。",
+                        options = new object[]
+                        {
+                            new { label = "常见\r 6\r.1\r~6\r.7\r 寸直屏", description = "我直接拿模拟器按这个尺寸复现" },
+                            new { label = "平板为主", description = "" },
+                        },
+                    },
+                    new
+                    {
+                        header = "设计稿形式",
+                        question = "新设计稿要什么形式\r？",
+                        options = new object[]
+                        {
+                            new { label = "可视化设计稿\r（推荐\r）\r \r(Recommended\r)", description = "沿用\r design\r/src\r 的生成方式\r，每屏出图" },
+                        },
+                    },
+                    new
+                    {
+                        header = "重做范围", multiple = true, question = "这次重新设计覆盖哪些\r？（可多选\r）",
+                        options = new object[] { new { label = "主\r agent\r 与\r subagent\r 的区分", description = "" } },
+                    },
+                },
+            },
+            metadata = new { answers = new[] { new[] { "常见\r 6\r.1\r~6\r.7\r 寸直屏" }, new[] { "可视化设计稿\r（推荐\r）\r \r(Recommended\r)" }, new[] { "主\r agent\r 与\r subagent\r 的区分" } } },
+        });
+        var questions = OpenCodeToolDetailBuiltinData.Questions(state);
+        Check(questions.Count == 3 && questions[0].Text == "你平时用什么设备？我会按它的尺寸 + 字体大小 4 + 显示大小 2 去重新设计。",
+            "question text drops bare CR");
+        Check(questions[0].Options[0].DisplayLabel == "常见 6.1~6.7 寸直屏" && questions[0].IsSelected(questions[0].Options[0]),
+            "option label is cleaned for display while the exact label still matches the recorded answer");
+        Check(questions[0].Options[1].Description is null, "empty option description stays hidden");
+        Check(questions[1].Options[0] is { Recommended: true, DisplayLabel: "可视化设计稿" }
+            && questions[1].Options[0].Description == "沿用 design/src 的生成方式，每屏出图",
+            "stacked （推荐）(Recommended) suffixes become one tag even when split by CR");
+        Check(!questions.SelectMany(q => q.CustomAnswers()).Any(), "cleaning never turns a picked option into a typed answer");
+        Check(questions[2] is { Multiple: true, Header: "重做范围" }, "multiple and header survive");
+        var multiline = OpenCodeToolDetailBuiltinData.Questions(JsonSerializer.SerializeToElement(new
+        {
+            input = new { questions = new[] { new { header = " 取 Dashboard\r 账号 ", question = "第一段\r\n\r\n\r\n第二段：\n1. 一\n  - 缩进  \n", options = Array.Empty<object>() } } },
+        }));
+        Check(multiline.Single() is { Header: "取 Dashboard 账号", Text: "第一段\n\n第二段：\n1. 一\n  - 缩进" },
+            "multi-line questions keep paragraphs and indentation, at most one blank line, no trailing spaces");
+
+        var rowModel = OpenCodeToolRowPresentation.Build(Tool("question", "completed", new
+        {
+            questions = new[] { new { header = "设计稿\r形式", question = "新设计稿要什么形式\r？", options = Array.Empty<object>() } },
+        }, null, new { answers = new[] { new[] { "可视化设计稿\r（推荐\r）\r \r(Recommended\r)" } } }));
+        Check(rowModel.Target == "设计稿形式" && rowModel.Summary == "已回答：可视化设计稿", "timeline question row title and answer summary are single clean lines");
+
+        // Question card (form) titles, labels and option content are covered by tests/notification-form OtherInputTests.
+        var overlay = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeQuestionOverlay.cs"));
+        Check(overlay.Contains("\"下一个问题（Ctrl+Enter）\"", StringComparison.Ordinal) && !overlay.Contains("\"下一题（Ctrl+Enter）\"", StringComparison.Ordinal),
+            "next-question tooltip names the visible button label plus its shortcut");
     }
 }

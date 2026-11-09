@@ -570,6 +570,8 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         }
 
         _titleText.Text = card.QuestionTitle;
+        // The title is clipped at two lines; hovering still shows all of it.
+        ToolTipService.SetToolTip(_titleText, card.QuestionTitle);
         _summaryText.Text = card.Summary;
         _summaryText.Visibility = _summaryText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -631,7 +633,8 @@ internal sealed class OpenCodeQuestionOverlay : Grid
         _pageText.Visibility = paged ? Visibility.Visible : Visibility.Collapsed;
         var last = editor is null || !editor.IsPaged || editor.PageIndex >= editor.PageCount - 1;
         _submitButton.Content = last ? "提交" : "下一个问题";
-        ToolTipService.SetToolTip(_submitButton, last ? "提交（Ctrl+Enter）" : "下一题（Ctrl+Enter）");
+        // Tooltip = visible label + shortcut (same pattern as “提交（Ctrl+Enter）”); f148a0f had shortened it to a different word.
+        ToolTipService.SetToolTip(_submitButton, last ? "提交（Ctrl+Enter）" : "下一个问题（Ctrl+Enter）");
         _previousButton.IsEnabled = CanNavigate && editor is { PageIndex: > 0 };
         if (!paged || editor is null)
         {

@@ -29,18 +29,25 @@ internal enum OpenCodeBuiltinToolView
 internal sealed record OpenCodeSubagentDetail(
     string? Agent, string? Description, string? Prompt, string? SessionId, string? RecordedStatus, string? Output);
 
-/// <param name="Label">The exact offered label (answers are matched against it).</param>
+/// <param name="Label">The exact offered label (answers are matched against it); never cleaned.</param>
+/// <param name="Description">Display text (already <see cref="OpenCodeDisplayText.Block"/>-cleaned by the reader).</param>
 internal sealed record OpenCodeQuestionOption(string Label, string? Description)
 {
-    private static readonly Regex RecommendedSuffix = new(@"\s*[(（]\s*(?:recommended|推荐)\s*[)）]\s*$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-
     /// <summary>The model's “(Recommended)” / “（推荐）” suffix, shown as a tag instead of raw label text.</summary>
-    internal bool Recommended => !string.Equals(DisplayLabel, Label, StringComparison.Ordinal);
+    internal bool Recommended
+    {
+        get
+        {
+            OpenCodeDisplayText.OptionLabel(Label, out var recommended);
+            return recommended;
+        }
+    }
 
-    internal string DisplayLabel => RecommendedSuffix.Replace(Label, string.Empty) is { Length: > 0 } plain ? plain : Label;
+    /// <summary>One display line: stray CR/controls removed, the recommended suffix stripped.</summary>
+    internal string DisplayLabel => OpenCodeDisplayText.OptionLabel(Label, out _);
 
-    /// <summary>Row-summary form of a recorded answer: the same suffix stripped.</summary>
-    internal static string Plain(string answer) => RecommendedSuffix.Replace(answer, string.Empty) is { Length: > 0 } plain ? plain : answer;
+    /// <summary>Row-summary form of a recorded answer: one line, the same suffix stripped.</summary>
+    internal static string Plain(string answer) => OpenCodeDisplayText.OptionLabel(answer, out _);
 }
 
 /// <param name="Answers">null = the server recorded no answer for this question (shown as “未回答”).</param>
@@ -267,13 +274,16 @@ internal static class OpenCodeToolDetailBuiltinData
         {
             var current = index++;
             if (question.ValueKind != JsonValueKind.Object) continue;
-            var text = Str(question, "question");
-            var header = Str(question, "header");
+            // Display copies only: stray CR / controls would otherwise break the text into one fragment per line.
+            var text = Str(question, "question") is { } rawText && OpenCodeDisplayText.Block(rawText) is { Length: > 0 } cleanText ? cleanText : null;
+            var header = Str(question, "header") is { } rawHeader && OpenCodeDisplayText.Line(rawHeader) is { Length: > 0 } cleanHeader ? cleanHeader : null;
             if (text is null && header is null) continue;
             var options = new List<OpenCodeQuestionOption>();
             if (question.TryGetProperty("options", out var list) && list.ValueKind == JsonValueKind.Array)
                 foreach (var option in list.EnumerateArray())
-                    if (Str(option, "label") is { } label) options.Add(new OpenCodeQuestionOption(label, Str(option, "description")));
+                    if (Str(option, "label") is { } label)
+                        options.Add(new OpenCodeQuestionOption(label,
+                            Str(option, "description") is { } description && OpenCodeDisplayText.Block(description) is { Length: > 0 } cleanDescription ? cleanDescription : null));
             List<string>? picked = null;
             if (answers is { } all && current < all.GetArrayLength() && all[current].ValueKind == JsonValueKind.Array)
             {
