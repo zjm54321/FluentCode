@@ -136,7 +136,7 @@ public sealed record AppSettings
     /// <summary>Native map provider preferences; API keys remain DPAPI credential references.</summary>
     public NativeUiMapSettings NativeUiMap { get; init; } = new();
 
-    /// <summary>链接与图片芯片：联网补全（站点图标）默认关闭；可改单色图标。</summary>
+    /// <summary>链接与图片芯片：联网补全（站点图标）默认关闭；可改单色图标；Issue/PR 状态默认开启。</summary>
     public LinkChipSettings LinkChips { get; init; } = new();
 
     /// <summary>每个稳定 Source/profile 的已添加目录；null 为旧版/默认，省略序列化。</summary>
@@ -150,6 +150,7 @@ public sealed record AppSettings
 /// <summary>
 /// Link / image chips. <see cref="OnlineMetadata"/> (off by default) lets generic public https sites show their own
 /// favicon instead of the globe; local / intranet hosts never go online. <see cref="MonochromeIcons"/> drops brand colours.
+/// <see cref="IssueStatus"/> (on by default) shows the live title and state of github.com / gitlab.com issues, PRs and MRs.
 /// </summary>
 public sealed record LinkChipSettings
 {
@@ -158,4 +159,10 @@ public sealed record LinkChipSettings
 
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool MonochromeIcons { get; init; }
+
+    /// <summary>
+    /// Anonymous, on-demand API lookups to api.github.com / gitlab.com only. Always serialized: the default is true, so an
+    /// omitted false would read back as on.
+    /// </summary>
+    public bool IssueStatus { get; init; } = true;
 }
