@@ -29,21 +29,21 @@ internal sealed record OpenCodeLinkChip(string Url, Uri Uri, OpenCodeLinkSite Si
     internal bool IsPrivate => Site == OpenCodeLinkSite.Local;
 
     /// <summary>Narrator name, e.g. “链接，GitHub issue，oh-my-opencode-slim 1591”.</summary>
-    internal string AccessibleName
+    internal string AccessibleName => AccessibleNameWith(null);
+
+    /// <summary>Narrator name with a live state, e.g. “链接，GitHub issue，oh-my-opencode-slim 1591，已关闭：Fix the build”.</summary>
+    internal string AccessibleNameWith(string? status)
     {
-        get
+        var site = OpenCodeLinkChipParser.SiteName(Site);
+        var kind = Kind switch
         {
-            var site = OpenCodeLinkChipParser.SiteName(Site);
-            var kind = Kind switch
-            {
-                OpenCodeLinkKind.Issue => " issue", OpenCodeLinkKind.PullRequest => " PR", OpenCodeLinkKind.MergeRequest => " MR",
-                OpenCodeLinkKind.Commit => " 提交", OpenCodeLinkKind.File => " 文件", OpenCodeLinkKind.Release => " 版本",
-                OpenCodeLinkKind.Repository => " 仓库", OpenCodeLinkKind.Owner => " 用户", _ => string.Empty,
-            };
-            var spoken = Label.Replace(" #", " ", StringComparison.Ordinal).Replace(" !", " ", StringComparison.Ordinal);
-            return "链接，" + site + kind + "，" + spoken + (IsConfusable ? "，警告：域名含易混淆字符" : string.Empty)
-                + (HasCredentials ? "，包含用户名或令牌" : string.Empty);
-        }
+            OpenCodeLinkKind.Issue => " issue", OpenCodeLinkKind.PullRequest => " PR", OpenCodeLinkKind.MergeRequest => " MR",
+            OpenCodeLinkKind.Commit => " 提交", OpenCodeLinkKind.File => " 文件", OpenCodeLinkKind.Release => " 版本",
+            OpenCodeLinkKind.Repository => " 仓库", OpenCodeLinkKind.Owner => " 用户", _ => string.Empty,
+        };
+        var spoken = Label.Replace(" #", " ", StringComparison.Ordinal).Replace(" !", " ", StringComparison.Ordinal);
+        return "链接，" + site + kind + "，" + spoken + (string.IsNullOrEmpty(status) ? string.Empty : "，" + status)
+            + (IsConfusable ? "，警告：域名含易混淆字符" : string.Empty) + (HasCredentials ? "，包含用户名或令牌" : string.Empty);
     }
 }
 
