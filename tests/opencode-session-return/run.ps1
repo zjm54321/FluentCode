@@ -84,7 +84,7 @@ $production = @()
     'OpenCodePage.ViewAcknowledgement.cs', 'OpenCodePage.ViewVisibility.cs', 'OpenCodePage.MarkdownImages.cs', 'OpenCodePage.MessageBinding.cs', 'OpenCodePage.MessagePagination.cs', 'OpenCodePage.SwitchPerformance.cs') | ForEach-Object {
     $production += Join-Path "$repo/src/FluentCode/Pages" $_
 }
-@('OpenCodeConversationView.cs', 'OpenCodeConversationWindow.cs', 'OpenCodeTurnOutline.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs', 'OpenCodeAgentIcons.cs',
+@('OpenCodeConversationView.cs', 'OpenCodeConversationWindow.cs', 'OpenCodeTurnOutline.cs', 'OpenCodeTurnEndProjection.cs', 'OpenCodeErrorRecoveryProjection.cs', 'OpenCodeSubagentPresentation.cs', 'OpenCodeSubagentTaskTitles.cs', 'OpenCodeAgentIcons.cs',
     'OpenCodeBrowserToolPresentation.cs', 'OpenCodeToolRowPresentation.cs', 'OpenCodeLineDiff.cs', 'OpenCodeStepRunPresentation.cs', 'OpenCodeToolDetailBuiltinData.cs', 'OpenCodeDisplayText.cs', 'OpenCodeSessionToolData.cs', 'OpenCodeExecuteInnerCatalog.cs', 'OpenCodeContextStatusParser.cs',
     'OpenCodeSessionTracking.cs', 'OpenCodeNotificationIntegration.cs', 'OpenCodeChildChatReadSession.cs', 'OpenCodeMarkdownImageScope.cs', 'OpenCodeInteractionUi.cs', 'OpenCodeWorkingClock.cs',
     'OpenCodeShellTerminalText.cs', 'OpenCodeShellTerminalPreview.cs', 'OpenCodeMessageRollbackPolicy.cs') | ForEach-Object {
@@ -109,6 +109,7 @@ $tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (J
 $tests += Join-Path $PSScriptRoot 'StreamingApplyTests.cs'
 $tests += Join-Path $PSScriptRoot 'SubagentUpdateTests.cs'
 $tests += Join-Path $PSScriptRoot 'SwitchPerformanceTests.cs'
+$tests += Join-Path $PSScriptRoot 'TurnEndProjectionTests.cs'
 $assembly = Join-Path $output 'OpenCodeSessionReturnTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $references = @(Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll'))
