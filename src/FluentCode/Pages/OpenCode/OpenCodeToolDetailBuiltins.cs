@@ -133,7 +133,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         AutomationProperties.SetAutomationId(list, "OpenCodeToolDetailTodoList");
         var shown = compact ? Math.Min(items.Length, OpenCodeToolDetailBuiltinData.CompactTodoRows) : items.Length;
         for (var index = 0; index < shown; index++)
-            list.Children.Add(TodoDetailRow(items[index].Content, items[index].Status, index));
+            list.Children.Add(OpenCodeSessionInsightsView.TodoRow(items[index], index, "OpenCodeToolDetailTodoItem."));
         panel.Children.Add(list);
         AddMore(panel, items.Length - shown, "项");
         return panel;

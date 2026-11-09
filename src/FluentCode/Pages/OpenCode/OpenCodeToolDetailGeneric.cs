@@ -105,23 +105,4 @@ internal static partial class OpenCodeToolDetailBuiltins
         Rebuild(limit);
         return host;
     }
-
-    private static FrameworkElement TodoDetailRow(string content, string status, int index)
-    {
-        var row = new Grid { ColumnSpacing = 8 };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var check = new CheckBox { IsThreeState = true, IsChecked = status == "in_progress" ? null : status == "completed", IsHitTestVisible = false, IsTabStop = false, MinWidth = 0, MinHeight = 0, Width = 20, Height = 20, Padding = new Thickness(0) };
-        var box = new Viewbox { Width = 16, Height = 16, Child = check, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
-        row.Children.Add(box);
-        var text = OpenCodeInteractionUi.StyledText(content, status is "completed" or "cancelled" ? OpenCodeInteractionUi.BodySubtleStyleKey : OpenCodeInteractionUi.BodyStyleKey);
-        text.FontSize = 14;
-        text.TextWrapping = TextWrapping.Wrap;
-        text.TextDecorations = status is "completed" or "cancelled" ? Windows.UI.Text.TextDecorations.Strikethrough : Windows.UI.Text.TextDecorations.None;
-        Grid.SetColumn(text, 1);
-        row.Children.Add(text);
-        AutomationProperties.SetAutomationId(row, "OpenCodeToolDetailTodoItem." + index);
-        AutomationProperties.SetName(check, (status switch { "completed" => "已完成", "in_progress" => "进行中", "cancelled" => "已取消", _ => "待处理" }) + "：" + content);
-        return row;
-    }
 }

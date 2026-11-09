@@ -165,6 +165,8 @@ public static class OpenCodeTodoReplay
     /// <summary>
     /// 官方规范化：input.todos 非数组时为空；丢弃非对象 / content 非字符串或为空的条目；
     /// 未知 status → "pending"。priority 等额外字段忽略（官方 v2.1.1 无此字段）。
+    /// content 原样保留（显示时再清理）；status 是枚举记号，先去掉模型偶尔夹带的控制 / 格式 / 空白字符
+    /// （真实记录中出现过 "in\r_progress"），否则进行中的条目会被当成未开始。
     /// </summary>
     internal static ImmutableArray<OpenCodeTodoItem> Normalize(JsonElement state)
     {
@@ -176,10 +178,19 @@ public static class OpenCodeTodoReplay
             if (todo.ValueKind != JsonValueKind.Object || !todo.TryGetProperty("content", out var content)
                 || content.ValueKind != JsonValueKind.String || content.GetString() is not { Length: > 0 } text) continue;
             var status = todo.TryGetProperty("status", out var value) && value.ValueKind == JsonValueKind.String
-                && value.GetString() is { } raw && ValidStatuses.Contains(raw) ? raw : "pending";
+                && StatusToken(value.GetString()) is { } raw && ValidStatuses.Contains(raw) ? raw : "pending";
             result.Add(new(text, status));
         }
         return result.ToImmutable();
+    }
+
+    private static string? StatusToken(string? raw)
+    {
+        if (raw is null) return null;
+        var builder = new System.Text.StringBuilder(raw.Length);
+        foreach (var c in raw)
+            if (!char.IsControl(c) && !char.IsWhiteSpace(c) && char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format) builder.Append(c);
+        return builder.ToString();
     }
 
     private static OpenCodeCapabilityState Available(string reason) => new(OpenCodeCapabilityAvailability.Available, reason);
