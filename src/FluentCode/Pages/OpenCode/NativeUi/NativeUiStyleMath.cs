@@ -37,6 +37,34 @@ internal static class NativeUiStyleMath
         var total = flex.Where(weight => weight > 0).Sum();
         return flex.Select(weight => weight > 0 && total > 0 ? Math.Max(0, free) * weight / total : 0).ToArray();
     }
+    [Flags] internal enum InlineStyle { None = 0, Bold = 1, Italic = 2, Strike = 4, Code = 8 }
+    internal sealed record InlineSpan(string Text, InlineStyle Style);
+    // OIU markdown.tsx `inline`: `code`, **bold**/__bold__, ~~strike~~, *italic*/_italic_ and [label](url).
+    // Links keep their label only; external opening stays with Link/@OpenUrl and its confirmation.
+    private static readonly System.Text.RegularExpressions.Regex InlinePattern = new(
+        @"(`[^`\n]+`)|(\*\*[^*\n]+?\*\*|__[^_\n]+?__)|(~~[^~\n]+?~~)|(\*[^*\s][^*\n]*?\*|_[^_\s][^_\n]*?_)|(\[[^\]\n]+\]\([^)\s]+\))",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    internal static IReadOnlyList<InlineSpan> Inline(string text, InlineStyle style = InlineStyle.None)
+    {
+        var spans = new List<InlineSpan>(); var rest = text;
+        while (rest.Length > 0)
+        {
+            var match = InlinePattern.Match(rest);
+            if (!match.Success) { spans.Add(new(rest, style)); break; }
+            if (match.Index > 0) spans.Add(new(rest[..match.Index], style));
+            var token = match.Value;
+            if (match.Groups[1].Success) spans.Add(new(token[1..^1], style | InlineStyle.Code));
+            else if (match.Groups[2].Success) spans.AddRange(Inline(token[2..^2], style | InlineStyle.Bold));
+            else if (match.Groups[3].Success) spans.AddRange(Inline(token[2..^2], style | InlineStyle.Strike));
+            else if (match.Groups[4].Success) spans.AddRange(Inline(token[1..^1], style | InlineStyle.Italic));
+            else spans.AddRange(Inline(token[1..token.IndexOf("](", StringComparison.Ordinal)], style));
+            rest = rest[(match.Index + match.Length)..];
+        }
+        return spans;
+    }
+    // CSS border-radius scales down when it exceeds the box (a "full" radius becomes a pill); before layout keep the request.
+    internal static double FitRadius(double radius, double width, double height)
+        => width > 0 && height > 0 ? Math.Min(Math.Max(0, radius), Math.Min(width, height) / 2) : Math.Max(0, radius);
     internal static string? Glyph(string name) => name.Length > 0 && Glyphs.TryGetValue(name.Trim().ToLowerInvariant(), out var glyph) ? glyph : null;
     // Lucide names (the OIU icon set) mapped to Segoe Fluent Icons; unknown names render nothing, as upstream.
     private static readonly Dictionary<string, string> Glyphs = new(StringComparer.Ordinal)

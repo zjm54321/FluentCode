@@ -127,7 +127,7 @@ internal sealed partial class NativeUiRenderer : IDisposable
                     {
                         if (value is NativeUiElement element) paragraph.Inlines.Add(new InlineUIContainer { Child = Node(element, path, childDepth + 1) });
                         else if (value is IReadOnlyList<object?> array) for (var i = 0; i < array.Count; i++) Inline(array[i], path + "/" + i, childDepth + 1);
-                        else { var run = new Run { Text = NativeUiValues.Text(value) }; NativeUiTheme.Inline(run, node); paragraph.Inlines.Add(run); }
+                        else foreach (var span in NativeUiStyleMath.Inline(NativeUiValues.Text(value))) { var run = new Run { Text = span.Text }; NativeUiTheme.Inline(run, node, span.Style); paragraph.Inlines.Add(run); }
                     }
                     Inline(NativeUiTheme.Prop(node, "text"), key + "/text", depth + 1);
                 };

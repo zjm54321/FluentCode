@@ -255,6 +255,20 @@ internal static class Program
             }
             var unmapped = upstreamIcons.Where(name => NativeUiStyleMath.Glyph(name) is null).Order().ToArray();
             Require(upstreamIcons.Count >= 20 && unmapped.All(name => name is "bike" or "no-such-icon"), "Upstream gallery icons map to Fluent glyphs (only bike has no counterpart): " + string.Join(",", unmapped));
+            // Capture-6 visual parity: inline Markdown in Text, pill radius, Pressable tile chrome, natural-width buttons.
+            var spans = NativeUiStyleMath.Inline("Selected: **Lettuce + radishes**. Use `npm`, *gently*, ~~not~~ [docs](https://openui.com) or __bold__.");
+            Require(string.Concat(spans.Select(span => span.Text)) == "Selected: Lettuce + radishes. Use npm, gently, not docs or bold."
+                && spans.Single(span => span.Text == "Lettuce + radishes").Style == NativeUiStyleMath.InlineStyle.Bold
+                && spans.Single(span => span.Text == "npm").Style == NativeUiStyleMath.InlineStyle.Code
+                && spans.Single(span => span.Text == "gently").Style == NativeUiStyleMath.InlineStyle.Italic
+                && spans.Single(span => span.Text == "not").Style == NativeUiStyleMath.InlineStyle.Strike
+                && spans.Single(span => span.Text == "bold").Style == NativeUiStyleMath.InlineStyle.Bold
+                && NativeUiStyleMath.Inline("2 * 3 * 4").Count == 1, "Text renders OIU inline Markdown instead of literal ** markers");
+            Require(NativeUiStyleMath.FitRadius(1000, 300, 6) == 3 && NativeUiStyleMath.FitRadius(8, 300, 40) == 8 && NativeUiStyleMath.FitRadius(1000, 0, 0) == 1000, "A full radius on a thin bar becomes a pill, not a distorted outline");
+            var tileSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Controls.cs"));
+            Require(tileSource.Contains("Template = NativeUiTheme.TileTemplate") && themeSource.Contains("Background=\\\"{TemplateBinding Background}\\\"")
+                && !themeSource.Contains("foreach (var button in panel.Children.OfType<Button>()) button.HorizontalAlignment = HorizontalAlignment.Stretch;")
+                && themeSource.Contains("node.TypeName == \"IconButton\" ? \"outline\" : \"solid\""), "Pressable paints its tile; Row buttons keep natural width unless block; IconButton defaults to outline");
             var flexSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiFlexPanel.cs"));
             Require(flexSource.Contains("internal sealed partial class NativeUiBoxHost : Panel") && flexSource.Contains("NativeUiStyleMath.FlexShares(")
                 && flexSource.Contains("!cell.FixedCross ? lineCross"), "Box percent lengths resolve against the parent and sized Boxes do not stretch");

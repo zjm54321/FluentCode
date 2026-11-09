@@ -228,7 +228,17 @@ internal static class NativeUiTheme
         text.TextTrimming = text.MaxLines > 0 ? TextTrimming.CharacterEllipsis : TextTrimming.None;
         Typography.SetNumeralAlignment(text, Flag(node, "tabularNums") ? FontNumeralAlignment.Tabular : FontNumeralAlignment.Normal);
     }
-    internal static void Inline(Run run, NativeUiElement node) => run.TextDecorations = Flag(node, "lineThrough") ? TextDecorations.Strikethrough : TextDecorations.None;
+    internal static ControlTemplate? TileTemplate => _tileTemplate ??= OpenCodeThemedXaml.Load<ControlTemplate>("ControlTemplate", "TargetType=\"ContentControl\"",
+        "<Border Background=\"{TemplateBinding Background}\" BorderBrush=\"{TemplateBinding BorderBrush}\" BorderThickness=\"{TemplateBinding BorderThickness}\" CornerRadius=\"{TemplateBinding CornerRadius}\" Padding=\"{TemplateBinding Padding}\">"
+        + "<ContentPresenter Content=\"{TemplateBinding Content}\" HorizontalContentAlignment=\"{TemplateBinding HorizontalContentAlignment}\" VerticalContentAlignment=\"Center\" /></Border>");
+    private static ControlTemplate? _tileTemplate;
+    internal static void Inline(Run run, NativeUiElement node, NativeUiStyleMath.InlineStyle style = NativeUiStyleMath.InlineStyle.None)
+    {
+        run.TextDecorations = Flag(node, "lineThrough") || style.HasFlag(NativeUiStyleMath.InlineStyle.Strike) ? TextDecorations.Strikethrough : TextDecorations.None;
+        if (style.HasFlag(NativeUiStyleMath.InlineStyle.Bold)) run.FontWeight = FontWeights.SemiBold;
+        if (style.HasFlag(NativeUiStyleMath.InlineStyle.Italic)) run.FontStyle = FontStyle.Italic;
+        if (style.HasFlag(NativeUiStyleMath.InlineStyle.Code)) run.FontFamily = new FontFamily("Cascadia Mono, Consolas");
+    }
 
     // ---------------------------------------------------------------- containers
 
@@ -258,9 +268,12 @@ internal static class NativeUiTheme
     {
         panel.ColumnSpacing = panel.RowSpacing = Gap(Prop(node, "gap"), 2);
         var count = panel.Children.Count;
-        if (count > 0 && panel.Children.All(child => child is Button))
-            foreach (var button in panel.Children.OfType<Button>()) button.HorizontalAlignment = HorizontalAlignment.Stretch;
-        var columns = Flag(node, "wrap") && panel.ActualWidth > 0 ? Math.Max(1, Math.Min(count, (int)(panel.ActualWidth / WrapCellWidth))) : Math.Max(1, count);
+        // Buttons keep their natural width unless they are block (OIU Row is a flex row). Wrapped cells are at least as
+        // wide as the widest child, so a long label wraps to the next line instead of being clipped by an equal column.
+        var cell = WrapCellWidth;
+        if (Flag(node, "wrap") && panel.ActualWidth > 0)
+            foreach (var child in panel.Children) { child.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity)); cell = Math.Max(cell, child.DesiredSize.Width + panel.ColumnSpacing); }
+        var columns = Flag(node, "wrap") && panel.ActualWidth > 0 ? Math.Max(1, Math.Min(count, (int)((panel.ActualWidth + panel.ColumnSpacing) / cell))) : Math.Max(1, count);
         panel.ColumnDefinitions.Clear(); panel.RowDefinitions.Clear();
         var block = panel.Children.OfType<Button>().Any(button => button.HorizontalAlignment == HorizontalAlignment.Stretch);
         var justify = String(node, "justify");
@@ -297,7 +310,8 @@ internal static class NativeUiTheme
     }
     internal static void Button(Button button, NativeUiElement node)
     {
-        var variant = String(node, "variant") is { Length: > 0 } named ? named : "solid";
+        // OIU: Button defaults to solid, IconButton to outline.
+        var variant = String(node, "variant") is { Length: > 0 } named ? named : node.TypeName == "IconButton" ? "outline" : "solid";
         var color = String(node, "color");
         var size = String(node, "size");
         button.Style = variant == "solid" ? Style("AccentButtonStyle") : null;

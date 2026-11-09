@@ -86,7 +86,9 @@ internal sealed partial class NativeUiRenderer
                 iconVisual.Apply = node => { iconButton.Content = NativeUiTheme.Icon(S(node, "icon")); AutomationProperties.SetName(iconButton, S(node, "label") is { Length: > 0 } label ? label : S(node, "icon")); ToolTipService.SetToolTip(iconButton, S(node, "label")); NativeUiTheme.Button(iconButton, node); iconButton.IsEnabled = !_runtime.IsExecuting; }; return iconVisual;
             case "Pressable":
                 var tileContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) };
-                var tile = new ContentControl { IsTabStop = true, Content = tileContent }; var pressable = new Visual(tile);
+                // ContentControl's default template draws no Background/Border, so the tile colour, selection ring and
+                // radius were invisible; this template paints them and stretches the content (Col align centres).
+                var tile = new ContentControl { IsTabStop = true, Content = tileContent, Template = NativeUiTheme.TileTemplate, HorizontalContentAlignment = HorizontalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Stretch }; var pressable = new Visual(tile);
                 async void Press() { if (!pressable.Disposed && P(pressable.Model, "action") is NativeUiActionPlan plan) await _runtime.ExecuteAsync(plan); }
                 tile.Tapped += (_, args) => { if (args.OriginalSource is DependencyObject source) { for (var parent = source; parent is not null && !ReferenceEquals(parent, tile); parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(parent)) if (parent is Button or TextBox or CheckBox or ComboBox or Slider or RadioButton or Segmented) return; } Press(); args.Handled = true; };
                 tile.KeyDown += (_, args) => { if (ReferenceEquals(args.OriginalSource, tile) && args.Key is VirtualKey.Enter or VirtualKey.Space) { Press(); args.Handled = true; } };
