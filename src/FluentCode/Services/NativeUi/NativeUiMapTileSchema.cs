@@ -35,6 +35,10 @@ internal static class NativeUiMapTileSchema
     {
         map.CRS = schema.Srs;
         if (schema.Srs == BaiduCrs)
+        {
             map.Navigator.OverrideZoomBounds = new MMinMax(schema.Resolutions.Values.Min(item => item.UnitsPerPixel), schema.Resolutions.Values.Max(item => item.UnitsPerPixel));
+            // Initialize at a supported resolution: Mapsui does not limit its first zero-resolution viewport.
+            map.Navigator.ZoomTo(schema.Resolutions.Values.Max(item => item.UnitsPerPixel));
+        }
     }
 }
