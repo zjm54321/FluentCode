@@ -46,6 +46,7 @@
     <PackageReference Include="Mapsui.WinUI" Version="5.1.0" />
     <PackageReference Include="WinUI.TableView" Version="1.5.1" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Segmented" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
     <ProjectReference Include="..\ThirdParty\WindowsTerminalControl\src\WindowsTerminalControl.WinUI\WindowsTerminalControl.WinUI.csproj" />
   </ItemGroup>
   <ItemGroup>
