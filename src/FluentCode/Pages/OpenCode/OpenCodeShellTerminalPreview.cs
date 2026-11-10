@@ -2,7 +2,6 @@ using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 
 namespace FluentCode.Pages.OpenCode;
 
@@ -10,10 +9,10 @@ namespace FluentCode.Pages.OpenCode;
 internal sealed class OpenCodeShellTerminalPreview : StackPanel
 {
     private readonly TextBlock _command = new() { MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis,
-        FontFamily = new FontFamily("Cascadia Mono"), FontSize = 12, Opacity = 0.75 };
+        FontSize = 12, Opacity = 0.75 };
     private readonly TextBlock _output = new() { MaxLines = OpenCodeShellTerminalText.PreviewLines,
         TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap,
-        IsTextSelectionEnabled = true, FontFamily = new FontFamily("Cascadia Mono"), FontSize = 12 };
+        IsTextSelectionEnabled = true, FontSize = 12 };
     private readonly Button _open = new() { Content = "在终端中打开", Padding = new Thickness(8, 3, 8, 3), MinHeight = 24,
         HorizontalAlignment = HorizontalAlignment.Left };
     private Action? _requested;
@@ -22,6 +21,9 @@ internal sealed class OpenCodeShellTerminalPreview : StackPanel
     internal OpenCodeShellTerminalPreview()
     {
         Spacing = 4;
+        _command.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey);
+        _command.IsTextSelectionEnabled = false; // The shared code style enables selection; only output was selectable here.
+        _output.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey);
         Children.Add(_command); Children.Add(_output); Children.Add(_open);
         AutomationProperties.SetAutomationId(this, "OpenCodeShellPreview");
         _open.Click += (_, _) => _requested?.Invoke();
