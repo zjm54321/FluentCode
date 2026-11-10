@@ -39,6 +39,17 @@ public sealed partial class SettingsView
     /// <summary>Puts the browser Save button mid-✓ (as after a successful save) for the evidence screenshot.</summary>
     internal void TestShowSaveFeedback() => FluentCode.Motion.ActionFeedback.Success(_browserSave, "已保存浏览器设置");
 
+    /// <summary>Shows one map provider's cards as a clean draft (events suppressed: not dirty, Save stays off, nothing saved).</summary>
+    internal void TestPreviewMapProvider(int provider)
+    {
+        var suppress = _suppressUiEvents; _suppressUiEvents = true;
+        try { _mapProvider.SelectedIndex = provider; MapDraftChanged(); }
+        finally { _suppressUiEvents = suppress; }
+    }
+
+    /// <summary>Puts the saved map settings back on screen after <see cref="TestPreviewMapProvider"/>.</summary>
+    internal void TestRestoreMapProvider() => ApplyNativeUiMapToUi();
+
     private static System.Collections.Generic.IEnumerable<Microsoft.UI.Xaml.DependencyObject> Descendants(Microsoft.UI.Xaml.DependencyObject root)
     {
         int count = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root);
