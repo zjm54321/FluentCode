@@ -2,3 +2,5 @@
 tests/native-ui/fixtures/*.oui text eol=lf
 # NuGet on Windows rewrites these generated files with CRLF; keep repository diffs canonical.
 **/packages.lock.json text eol=lf
+# Keep the integrity-verified upstream minified bundle byte-for-byte, without giant text diffs.
+src/FluentCode/Assets/OpenCode/Mermaid/mermaid.min.js binary
