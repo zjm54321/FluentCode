@@ -40,7 +40,7 @@ foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'Open
 }
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCode/OpenCodeSideQuestion.cs"
 $sources += Get-Item "$repo/src/FluentCode/Services/LinkChips/OpenCodeLinkStatusService.cs"
-foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'ImeComposition.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs', 'DraftSlots.cs', 'Splash.cs', 'SideQuestions.cs', 'CharTriggers.cs', 'LinkChips.cs', 'LinkStatus.cs')) {
+foreach ($name in @('Program.cs', 'SyncProtocol.cs', 'ImeComposition.cs', 'BuiltinFoundation.cs', 'ContinuationAdapter.cs', 'DraftSlots.cs', 'Splash.cs', 'PresentationResources.cs', 'SideQuestions.cs', 'CharTriggers.cs', 'LinkChips.cs', 'LinkStatus.cs')) {
     $sources += Get-Item (Join-Path "$repo/tests/opencode-composer" $name)
 }
 $arguments += $sources | ForEach-Object { '"' + $_.FullName + '"' }

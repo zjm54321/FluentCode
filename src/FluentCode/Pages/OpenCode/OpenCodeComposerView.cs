@@ -72,7 +72,6 @@ public sealed class OpenCodeComposerTextEditedEventArgs(OpenCodeComposerToken to
 /// </remarks>
 internal sealed partial class OpenCodeComposerView : StackPanel
 {
-    private static FontFamily MonoFont => AppFonts.Monospace;
     private readonly Func<OpenCodeComposerSnapshot> _source;
     private readonly DispatcherQueue _dispatcher;
     private readonly OpenCodeComposerViewLifetime _lifetime;
@@ -881,7 +880,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             (_limitIcon.Glyph, _limitIcon.Style) = level switch
             {
                 OpenCodeComposerAttachmentLimitLevel.Over => ("\uEB90", ThemedForeground("FontIcon", "SystemFillColorCriticalBrush")),
-                OpenCodeComposerAttachmentLimitLevel.Full => ("\uE7BA", ThemedForeground("FontIcon", "SystemFillColorCautionBrush")),
+                OpenCodeComposerAttachmentLimitLevel.Full => ("\uE7BA", OpenCodeInteractionUi.TryStyle("OpenCodeCautionIconStyle")),
                 _ => ("\uEC61", ThemedForeground("FontIcon", "SystemFillColorSuccessBrush")),
             };
         }
@@ -1250,12 +1249,12 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         var title = new TextBlock { Text = "上下文", FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
         _mentionQueryText = new TextBlock
         {
-            FontFamily = MonoFont,
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
             MaxWidth = 260,
             Opacity = 0.8,
         };
+        AppFonts.Apply(_mentionQueryText, AppFontSlot.Monospace);
         _mentionRing = new ProgressRing { Width = 14, Height = 14, IsActive = false, Visibility = Visibility.Collapsed };
         _mentionStatus = Caption(string.Empty, 0.7);
         _mentionStatus.VerticalAlignment = VerticalAlignment.Center;
@@ -1456,12 +1455,12 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         var title = new TextBlock
         {
             Text = "@" + OpenCodeComposerInputPolicy.Bound(name, 64),
-            FontFamily = MonoFont,
             FontWeight = FontWeights.SemiBold,
             MaxWidth = 260, // Bound the Auto column so long IDs trim and the context kind stays visible.
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
+        AppFonts.Apply(title, AppFontSlot.Monospace);
         var row = new Grid { ColumnSpacing = 8, Padding = new Thickness(0, 4, 0, 4), Tag = candidate };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -1471,7 +1470,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         if (parent.Length > 0)
         {
             var where = Caption(OpenCodeComposerInputPolicy.Bound(parent, 96), 0.6);
-            where.FontFamily = MonoFont;
+            AppFonts.Apply(where, AppFontSlot.Monospace);
             where.TextWrapping = TextWrapping.NoWrap;
             where.TextTrimming = TextTrimming.CharacterEllipsis;
             where.VerticalAlignment = VerticalAlignment.Center;
@@ -1628,12 +1627,12 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         var name = new TextBlock
         {
             Text = "/" + OpenCodeComposerInputPolicy.Bound(row.Name, 48),
-            FontFamily = MonoFont,
             FontWeight = FontWeights.SemiBold,
             MaxWidth = 280, // Horizontal stacks measure unbounded; cap so long names trim instead of clipping hints.
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
+        AppFonts.Apply(name, AppFontSlot.Monospace);
         var head = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         head.Children.Add(name);
         // Groups already say where a row comes from; the badge only disambiguates same-named rows across origins.
@@ -1643,7 +1642,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         if (hints is not null)
         {
             var h = Caption(hints, 0.7);
-            h.FontFamily = MonoFont;
+            AppFonts.Apply(h, AppFontSlot.Monospace);
             h.TextWrapping = TextWrapping.NoWrap;
             h.VerticalAlignment = VerticalAlignment.Center;
             head.Children.Add(h);
@@ -1676,7 +1675,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             var r = Caption("暂不可用：" + reason, 1);
             r.TextWrapping = TextWrapping.NoWrap;
             r.TextTrimming = TextTrimming.CharacterEllipsis;
-            r.Style = ThemedCaption("SystemFillColorCautionBrush");
+            r.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.QuestionCautionStyleKey);
             stack.Children.Add(r);
             name.Opacity = 0.55;
         }
@@ -2106,9 +2105,9 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         _statusRing.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         _statusIcon.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
         _statusIcon.Glyph = glyph;
-        _statusIcon.Style = ThemedForeground("FontIcon", tone == "caution" ? "SystemFillColorCautionBrush" : "TextFillColorSecondaryBrush");
-        _statusBar.Style = OpenCodeThemedXaml.BrushStyle("Border",
-            ("Background", tone == "caution" ? "SystemFillColorCautionBackgroundBrush" : "SubtleFillColorSecondaryBrush"));
+        _statusIcon.Style = tone == "caution" ? OpenCodeInteractionUi.TryStyle("OpenCodeCautionIconStyle")
+            : ThemedForeground("FontIcon", "TextFillColorSecondaryBrush");
+        _statusBar.Style = OpenCodeInteractionUi.TryStyle(tone == "caution" ? "OpenCodeCautionBadgeStyle" : "OpenCodeSubtleSurfaceStyle");
         AutomationProperties.SetName(_statusBar, text);
     }
 
@@ -2158,19 +2157,6 @@ internal sealed partial class OpenCodeComposerView : StackPanel
 
     private static Style? ThemedForeground(string targetType, string foreground)
         => OpenCodeThemedXaml.BrushStyle(targetType, ("Foreground", foreground));
-
-    /// <summary>Caption 字号 + 指定主题前景色（基于内置 CaptionTextBlockStyle）。</summary>
-    private static Style? ThemedCaption(string foreground)
-    {
-        var style = ThemedForeground("TextBlock", foreground);
-        if (style is not null && style.BasedOn is null && !style.IsSealed
-            && OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey) is { } caption)
-        {
-            style.BasedOn = caption;
-        }
-
-        return style;
-    }
 
     private static void Place(Grid grid, FrameworkElement element, int column)
     {

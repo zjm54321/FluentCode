@@ -136,6 +136,7 @@ internal static partial class Program
         await DraftSlots();
         var slotChecks = checks - originalChecks - syncChecks - legacyChecks - builtinChecks - continuationChecks;
         Splash();
+        PresentationResources();
         await SideQuestions();
         await CharTriggers();
         var beforeChips = checks;

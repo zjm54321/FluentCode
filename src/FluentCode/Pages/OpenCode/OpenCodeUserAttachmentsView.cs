@@ -64,9 +64,9 @@ internal sealed class OpenCodeUserAttachmentsView : IDisposable
             else
             {
                 var chip = new Border { CornerRadius = new CornerRadius(4), Padding = new Thickness(8, 4, 8, 4),
+                    Style = OpenCodeInteractionUi.TryStyle("OpenCodeSubtleSurfaceStyle"),
                     Child = new TextBlock { Text = "附件 · " + attachment.Name, TextWrapping = TextWrapping.Wrap } };
                 AutomationProperties.SetAutomationId(chip, "OpenCodeUserAttachment");
-                OpenCodeToolTheme.Apply(chip, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
                 _root.Children.Add(chip);
             }
         }

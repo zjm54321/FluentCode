@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using FluentCode.Services.OpenCode;
 
 // Public-API tests of the linked production store/records. No private reflection, copied state
@@ -19,7 +21,8 @@ internal static class Program
         IndependentQuestionEvidence();
         IndependentBackgroundEvidence();
         ViewedSessionAttention();
-        Console.WriteLine($"PASS: 6 session-ui-state scenario groups, {_assertions} assertions; public production APIs, fixed caller clock, offline only.");
+        SessionPresentationResources();
+        Console.WriteLine($"PASS: 6 session-ui-state scenario groups and shell font source contracts, {_assertions} assertions; public production APIs, fixed caller clock, offline only.");
     }
 
     private static void Check(bool condition, string label)
@@ -29,6 +32,23 @@ internal static class Program
     }
 
     private static DateTimeOffset At(double seconds) => Epoch.AddSeconds(seconds);
+    private static void SessionPresentationResources()
+    {
+        var repo = Environment.GetEnvironmentVariable("FC_SESSION_UI_REPO")
+            ?? throw new InvalidOperationException("Session presentation source root is required.");
+        var blank = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.BlankConversation.cs"));
+        Check(blank.Contains("AppFonts.Apply(path, AppFontSlot.Monospace);", StringComparison.Ordinal)
+            && !blank.Contains("Cascadia Mono", StringComparison.Ordinal), "blank.project-path-follows-monospace-slot");
+        Check(blank.Contains("Style = OpenCodeInteractionUi.TryStyle(\"CaptionTextBlockStyle\"), TextTrimming = TextTrimming.CharacterEllipsis", StringComparison.Ordinal)
+            && !blank.Contains("OpenCodeCodeTextBlockStyle", StringComparison.Ordinal),
+            "blank.project-path-keeps-caption-trimming-and-no-new-text-selection");
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        var page = XDocument.Load(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.xaml"));
+        var home = page.Descendants(xaml + "FontIcon").Single(icon => (string?)icon.Attribute("Glyph") == "\uE80F");
+        Check(home.Attribute("FontFamily") is null && (string?)home.Attribute("FontSize") == "16",
+            "shell.home-icon-keeps-glyph-size-with-native-symbol-font-default");
+    }
+
     private static OpenCodeSessionUiStateStore Store() => new(Endpoint, Revision);
     private static OpenCodeSessionUiObservation Observation(string id = "ses_a") => new(Endpoint, Revision, id);
     private static OpenCodeSessionUiFact Fact(bool? value, double seconds,

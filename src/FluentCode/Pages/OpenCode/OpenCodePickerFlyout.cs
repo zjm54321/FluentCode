@@ -44,7 +44,7 @@ internal static class OpenCodePickerFlyout
         var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         var flyout = new Flyout { Content = content, Placement = FlyoutPlacementMode.TopEdgeAlignedLeft,
             LightDismissOverlayMode = LightDismissOverlayMode.Off };
-        var presenter = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"FlyoutPresenter\"><Setter Property=\"CornerRadius\" Value=\"{ThemeResource OverlayCornerRadius}\"/></Style>");
+        var presenter = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"FlyoutPresenter\"><Setter Property=\"CornerRadius\" Value=\"{ThemeResource OverlayCornerRadius}\"/><Setter Property=\"FontFamily\" Value=\"{ThemeResource AppBodyFontFamily}\"/></Style>");
         presenter.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4)));
         presenter.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 0d));
         presenter.Setters.Add(new Setter(FrameworkElement.MaxWidthProperty, Math.Max(1, anchor.XamlRoot.Size.Width - 24)));

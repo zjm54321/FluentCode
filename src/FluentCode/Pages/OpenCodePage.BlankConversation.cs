@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FluentCode.Pages.OpenCode;
+using FluentCode.Services.Appearance;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -267,8 +268,10 @@ public sealed partial class OpenCodePage
                 row.Children.Add(new TextBlock { Text = project.DisplayName == project.Key.Directory
                     ? OpenCodeDirectoryPresentation.Split(project.Key.Directory).Name : project.DisplayName,
                     TextTrimming = TextTrimming.CharacterEllipsis });
-                row.Children.Add(new TextBlock { Text = project.Key.Directory, FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Consolas"),
-                    Style = OpenCodeInteractionUi.TryStyle("CaptionTextBlockStyle"), TextTrimming = TextTrimming.CharacterEllipsis });
+                var path = new TextBlock { Text = project.Key.Directory,
+                    Style = OpenCodeInteractionUi.TryStyle("CaptionTextBlockStyle"), TextTrimming = TextTrimming.CharacterEllipsis };
+                AppFonts.Apply(path, AppFontSlot.Monospace);
+                row.Children.Add(path);
                 var item = new ListViewItem { Content = row, Tag = project.Key.Directory };
                 ToolTipService.SetToolTip(item, project.Key.Directory);
                 list.Items.Add(item);
