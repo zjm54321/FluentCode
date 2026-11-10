@@ -10,6 +10,14 @@ $forbidden = $scriptAst.FindAll({ param($node)
     $node.GetCommandName() -in @('Import-Certificate', 'Add-AppxPackage', 'Add-AppPackage', 'Start-Process', 'Restart-Service')
 }, $true)
 if ($forbidden.Count) { throw 'Packaging must not install/trust/launch/elevate/restart anything.' }
+[xml]$appXaml = Get-Content -Raw (Join-Path $repo 'src/FluentCode/App.xaml')
+$sources = @($appXaml.SelectNodes('//*[local-name()="ResourceDictionary.MergedDictionaries"]/*') | ForEach-Object { $_.GetAttribute('Source') })
+$devIndex = [array]::IndexOf($sources, 'ms-appx:///DevWinUI/Themes/Generic.xaml')
+$toolkitIndex = [array]::IndexOf($sources, 'ms-appx:///CommunityToolkit.WinUI.Controls.SettingsControls/Themes/Generic.xaml')
+$appIndex = [array]::IndexOf($sources, 'ms-appx:///Styles/AppTokens.xaml')
+if ($devIndex -lt 0 -or $toolkitIndex -le $devIndex -or $appIndex -le $toolkitIndex) {
+    throw 'Merge DevWinUI before Toolkit SettingsControls, then app overrides, to preserve shared Toolkit resources.'
+}
 $manifestPath = if ($UnpackedDirectory) { Join-Path $UnpackedDirectory 'AppxManifest.xml' } else { Join-Path $repo 'packaging/FluentCode.Package/Package.appxmanifest' }
 [xml]$manifest = Get-Content -Raw -LiteralPath $manifestPath
 $ns = [Xml.XmlNamespaceManager]::new($manifest.NameTable)
@@ -34,12 +42,20 @@ Assert ($toast.ToastActivatorCLSID -eq '77E0A389-0925-45DF-A8D1-7B7552DAB83D' -a
 Assert ($manifest.SelectNodes('//rescap:Capability[@Name="runFullTrust"]', $ns).Count -eq 1) 'Missing runFullTrust capability.'
 Assert ($manifest.OuterXml -notmatch 'startupTask|appinstaller') 'No startup task or update endpoint is authorized.'
 $checked = 0
+$win2DClasses = @()
 if ($UnpackedDirectory) {
     $resourceEvidence = if ($EvidenceRoot) { $EvidenceRoot } else { Join-Path ([IO.Path]::GetTempPath()) ('fc-msix-pri-' + [guid]::NewGuid().ToString('N')) }
     $sourcePri = if ($ExpectedPayloadDirectory) { Join-Path $ExpectedPayloadDirectory 'FluentCode.pri' } else { '' }
     & (Join-Path $PSScriptRoot 'verify-resource-index.ps1') -PriPath (Join-Path $UnpackedDirectory 'resources.pri') -SourcePriPath $sourcePri -EvidenceRoot $resourceEvidence
     foreach ($relative in @('FluentCode.exe', 'FluentCode.dll', 'resources.pri', 'Microsoft.Terminal.Control.dll', 'Microsoft.UI.Xaml.dll', 'coreclr.dll', 'hostfxr.dll', 'System.Private.CoreLib.dll', 'BrowserRuntime/node.exe', 'BrowserRuntime/sidecar.mjs', 'BrowserRuntime/node_modules/lighthouse/package.json', 'BrowserRuntime/runtime-manifest.json', 'LICENSE', 'licenses/fluentui-system-icons-LICENSE.txt', 'ThirdPartyNotices/WindowsTerminalControl-LICENSE.txt', 'ThirdPartyNotices/OpenCode.txt', 'Assets/AppIcon/app.ico', 'Assets/Square44x44Logo.png', 'Assets/Square150x150Logo.png', 'Assets/StoreLogo.png')) {
         Assert (Test-Path -LiteralPath (Join-Path $UnpackedDirectory $relative) -PathType Leaf) "Missing packaged payload: $relative"
+    }
+    foreach ($relative in @('DevWinUI.dll', 'DevWinUI.Base.dll', 'Microsoft.Graphics.Canvas.dll', 'Microsoft.Graphics.Canvas.Interop.dll', 'Microsoft.Graphics.Canvas.winmd', 'ThirdPartyNotices/DevWinUI.txt')) {
+        Assert (Test-Path -LiteralPath (Join-Path $UnpackedDirectory $relative) -PathType Leaf) "Missing DevWinUI/Win2D payload: $relative"
+    }
+    $win2DClasses = @($manifest.SelectNodes('//f:Extension[@Category="windows.activatableClass.inProcessServer"]/f:InProcessServer[f:Path="Microsoft.Graphics.Canvas.dll"]/f:ActivatableClass', $ns))
+    foreach ($class in @('Microsoft.Graphics.Canvas.CanvasDevice', 'Microsoft.Graphics.Canvas.CanvasBitmap', 'Microsoft.Graphics.Canvas.UI.Xaml.CanvasControl')) {
+        Assert ($class -in $win2DClasses.ActivatableClassId) "Missing Win2D activatable-class registration: $class"
     }
     $runtimeConfig = Get-Content -Raw (Join-Path $UnpackedDirectory 'FluentCode.runtimeconfig.json') | ConvertFrom-Json
     Assert (!$runtimeConfig.runtimeOptions.framework -and !$runtimeConfig.runtimeOptions.frameworks -and $runtimeConfig.runtimeOptions.includedFrameworks) '.NET publish is not self-contained.'
@@ -64,7 +80,7 @@ if ($UnpackedDirectory) {
         }
     }
 }
-$result = @{ Passed = $true; Manifest = $manifestPath; Identity = $identity.Name; Publisher = $identity.Publisher; Version = $identity.Version; PayloadFilesCompared = $checked; InstalledOrLaunched = $false }
+$result = @{ Passed = $true; Manifest = $manifestPath; Identity = $identity.Name; Publisher = $identity.Publisher; Version = $identity.Version; PayloadFilesCompared = $checked; DevWinUIResourceOrderChecked = $true; Win2DActivatableClassCount = $win2DClasses.Count; InstalledOrLaunched = $false }
 if ($EvidenceRoot) {
     New-Item -ItemType Directory -Path $EvidenceRoot -Force | Out-Null
     $result | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $EvidenceRoot 'package-validation.json')

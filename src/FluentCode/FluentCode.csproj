@@ -57,6 +57,7 @@
     <PackageReference Include="WinUI.TableView" Version="1.5.1" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Segmented" Version="8.2.251219" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
+    <PackageReference Include="DevWinUI" Version="10.9.1" />
     <ProjectReference Include="..\ThirdParty\WindowsTerminalControl\src\WindowsTerminalControl.WinUI\WindowsTerminalControl.WinUI.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -78,6 +79,7 @@
     <Content Include="ThirdPartyNotices\OpenUI.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="ThirdPartyNotices\NativeUiComponents.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="ThirdPartyNotices\NativeUiGraphics.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="ThirdPartyNotices\DevWinUI.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\AppIcon\app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

@@ -21,7 +21,9 @@ $required = @(
     'Files/Styles/AppTokens.xbf',
     'Files/Microsoft.UI.Xaml/Themes/themeresources.xbf',
     'Files/Microsoft.UI.Xaml/Themes/generic.xbf',
-    'Files/WinUIEx/Themes/Generic.xbf'
+    'Files/WinUIEx/Themes/Generic.xbf',
+    'Files/DevWinUI/Themes/Generic.xbf',
+    'Files/CommunityToolkit.WinUI.Controls.SettingsControls/Themes/Generic.xbf'
 )
 foreach ($relative in $required) {
     $uri = 'ms-resource://mingz.SST.OpenCodeDesktop.Fluent/' + $relative
