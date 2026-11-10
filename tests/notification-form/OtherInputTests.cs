@@ -60,6 +60,11 @@ internal static class OtherInputTests
         var card = new OpenCodeFormCard(form, (_, answer) => submitted.Add(answer), _ => { }, _ => { }, (_, _) => { });
         var overlay = new OpenCodeQuestionOverlay();
         Check(overlay.Sync([card]) == 1 && card.Editor is { PageCount: 2 }, "CR-laden question form is answerable");
+        // Closed InfoBars must leave layout: WinUI keeps a closed bar Visible at zero height, and the
+        // layout StackPanel (Spacing 12) then opened a ~60 px gap above the first question (1.2611.15 capture).
+        var bars = Descendants(overlay).OfType<InfoBar>().ToList();
+        Check(bars.Count == 5 && bars.All(bar => !bar.IsOpen && bar.Visibility == Visibility.Collapsed),
+            "closed status bars are collapsed so the first question follows the header at normal spacing");
         Check(card.QuestionTitle == "你的手机 等 2 个问题", "multi-question title replaces the generic “Questions”");
         var texts = Texts(card.Editor!).ToList();
         Check(!texts.Any(t => t.Contains('\r')), "no rendered question text keeps a bare CR");
@@ -69,6 +74,22 @@ internal static class OtherInputTests
         Check(!texts.Any(t => t.Contains("Recommended", StringComparison.Ordinal)), "the raw (Recommended) suffix is not shown");
         var radios = Descendants(card.Editor!).OfType<RadioButtons>().Single();
         Check(((UIElement)radios.Items[1]).AutomationName == "可视化设计稿（推荐）", "recommended option reads as one name");
+        var tagRow = Deep(card.Editor!).OfType<OpenCodeOptionLabelPanel>().Single();
+        Check(tagRow.Children.Count == 2 && tagRow.Children[0] is TextBlock { Text: "可视化设计稿" }
+            && tagRow.Children[1] is Border { Content: TextBlock { Text: "推荐" } } && tagRow.HorizontalAlignment == HorizontalAlignment.Left,
+            "推荐 tag sits in the label's own row, not stretched to the description width");
+        // Short label: tag right after the text, centred on the 20 px first line.
+        var shortPlace = OpenCodeOptionLabelLayout.Place(98, 20, 20, 34, 18);
+        Check(shortPlace.TagLeft == 98 + OpenCodeOptionLabelLayout.Gap && shortPlace.TagTop == 1 && shortPlace.LabelTop == 0
+            && shortPlace.Width == 98 + OpenCodeOptionLabelLayout.Gap + 34 && shortPlace.Height == 20, "short label: tag follows the text on its first line");
+        // Long label: wraps inside the width left after the tag, tag stays on the first line beside it.
+        var wrapWidth = OpenCodeOptionLabelLayout.LabelWidth(400, 34);
+        var longPlace = OpenCodeOptionLabelLayout.Place(wrapWidth, 60, 20, 34, 18);
+        Check(wrapWidth == 400 - 34 - OpenCodeOptionLabelLayout.Gap && longPlace.TagLeft >= wrapWidth && longPlace.Width <= 400
+            && longPlace.TagTop == 1 && longPlace.Height == 60, "long label wraps without the tag overlapping it");
+        var tallTag = OpenCodeOptionLabelLayout.Place(50, 16, 16, 34, 22);
+        Check(tallTag.TagTop == 0 && tallTag.LabelTop == 3 && tallTag.Height == 22, "a tag taller than the line nudges the text down instead of clipping");
+        Check(OpenCodeOptionLabelLayout.FirstLineHeight(0, 14) == 20 && OpenCodeOptionLabelLayout.FirstLineHeight(20, 14) == 20, "first line height");
         radios.SelectedIndex = 1;
         var submit = Descendants(overlay).OfType<Button>().Single(b => b.AutomationId == "OpenCodeFormSubmit_frm_cr");
         submit.ClickForTest();
@@ -77,6 +98,8 @@ internal static class OtherInputTests
         Check(submitted.Count == 1 && submitted[0]["q0"].GetString() == "可视化设计稿\r（推荐\r）\r \r(Recommended\r)"
             && submitted[0]["q1"].EnumerateArray().Single().GetString() == "主\r agent\r 与\r subagent\r 的区分",
             "answers still submit the exact server option values");
+        Check(bars.All(bar => bar.Visibility == (bar.IsOpen ? Visibility.Visible : Visibility.Collapsed)),
+            "status bar visibility follows IsOpen after submit");
 
         // Single question: the overlay title already names it, so the editor does not repeat the label.
         var single = JsonSerializer.Deserialize<OpenCodeFormInfo>("""
@@ -85,6 +108,8 @@ internal static class OtherInputTests
             """)!;
         var one = new OpenCodeFormCard(single, (_, _) => { }, _ => { }, _ => { }, (_, _) => { });
         overlay.Sync([one]);
+        Check(Descendants(overlay).OfType<InfoBar>().All(bar => bar.Visibility == Visibility.Collapsed),
+            "single-question overlay has no reserved status-bar space");
         Check(one.QuestionTitle == "性能修复是否先开工" && !Texts(one.Editor!).Contains("性能修复是否先开工")
             && Texts(one.Editor!).Contains("要现在先开始改吗？"), "single-question card shows header once (title) and the question body");
         var required = single with { Fields = [single.Fields![0] with { Required = true }] };

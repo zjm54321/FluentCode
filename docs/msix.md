@@ -1,6 +1,6 @@
 # Windows MSIX 安装包
 
-FluentCode 提供 x64 MSIX，最低 Windows 10 21H2（19044），使用 Windows SDK 26100 构建。包标识为 `mingz.SST.OpenCodeDesktop.Fluent`，发布者为 `CN=mingz`，显示名称为 FluentCode，版本为 `1.2611.14.0`，采用 GPL-3.0-or-later。
+FluentCode 提供 x64 MSIX，最低 Windows 10 21H2（19044），使用 Windows SDK 26100 构建。包标识为 `mingz.SST.OpenCodeDesktop.Fluent`，发布者为 `CN=mingz`，显示名称为 FluentCode，版本为 `1.2611.15.0`，采用 GPL-3.0-or-later。
 
 MSIX 自带 .NET 10、Windows App SDK、原生 Terminal 控件及完整离线 BrowserRuntime；目标机不需要 Visual Studio、Node.js 或单独的 .NET Runtime。仍需安装 [Microsoft Edge WebView2 Evergreen Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)。原有 `build-debug.ps1`、`publish-release.ps1` 继续生成依赖 .NET Desktop Runtime 的非打包版本。
 
@@ -37,19 +37,19 @@ WAP 项目是 `packaging/FluentCode.Package/FluentCode.Package.wapproj`。它打
 给已经完成的签名包补上安装脚本，无需重新发布或修改包：
 
 ```powershell
-.\scripts\write-install-scripts.ps1 -PackagePath '<包目录>\FluentCode_1.2611.14.0_x64.msix' -CertificatePath '<包目录>\FluentCode-signing.cer'
+.\scripts\write-install-scripts.ps1 -PackagePath '<包目录>\FluentCode_1.2611.15.0_x64.msix' -CertificatePath '<包目录>\FluentCode-signing.cer'
 ```
 
 自签名包在没有显式信任时不能安装。以下手动步骤仅供故障排查；先核对 SHA256、主题 `CN=mingz` 和证书指纹，并确认来源：
 
 ```powershell
 # 只读检查：
-Get-FileHash .\FluentCode_1.2611.14.0_x64.msix -Algorithm SHA256
+Get-FileHash .\FluentCode_1.2611.15.0_x64.msix -Algorithm SHA256
 certutil -dump .\FluentCode-signing.cer
 # 在管理员 PowerShell 中，显式允许此发布者（不要导入 Trusted Root）：
 Import-Certificate -FilePath .\FluentCode-signing.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 # 然后在普通用户 PowerShell 中安装：
-Add-AppxPackage -Path .\FluentCode_1.2611.14.0_x64.msix
+Add-AppxPackage -Path .\FluentCode_1.2611.15.0_x64.msix
 ```
 
 也可以在完成证书信任后双击 MSIX，使用 Windows App Installer。CI 未配置签名证书，PR 和标签产物均未签名，不能直接安装；需要用匹配发布者的证书签名，而不能仅对未签名包导入一个无关证书。
