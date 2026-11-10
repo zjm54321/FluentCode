@@ -26,7 +26,7 @@ Write-Output 'PASS completion Toast body-logo source contract; application ident
 $args = @('/nologo', '/langversion:latest', '/nullable:enable', '/warnaserror+', '/nowarn:1701,1702', '/target:exe', ('/out:"' + $assembly + '"'))
 $args += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $packages = Join-Path $env:USERPROFILE '.nuget/packages'
-$foundation = Get-ChildItem "$packages/microsoft.windowsappsdk.foundation" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+$foundation = Get-Item "$packages/microsoft.windowsappsdk.foundation/2.6.5"
 $windows = Join-Path $packages 'microsoft.windows.sdk.net.ref/10.0.28000.87'
 & $dotnet restore (Join-Path $repo 'tests/opencode-persistent-pty/Dependencies.proj') --nologo --verbosity minimal "-p:BaseIntermediateOutputPath=$output/sdk-restore/"
 if ($LASTEXITCODE -ne 0) { throw 'Compile-only Windows SDK reference restore failed.' }

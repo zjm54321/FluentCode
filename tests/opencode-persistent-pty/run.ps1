@@ -27,9 +27,9 @@ $nuget = Join-Path $env:USERPROFILE '.nuget/packages'
 & $dotnet restore (Join-Path $PSScriptRoot 'Dependencies.proj') --nologo --verbosity minimal "-p:BaseIntermediateOutputPath=$EvidenceRoot/sdk-restore/"
 if ($LASTEXITCODE -ne 0) { throw 'Compile-only Windows SDK reference restore failed.' }
 $native = @(Get-Item "$nuget/microsoft.windows.sdk.net.ref/10.0.28000.87/lib/net9.0/Microsoft.Windows.SDK.NET.dll", "$nuget/microsoft.windows.sdk.net.ref/10.0.28000.87/lib/net9.0/WinRT.Runtime.dll")
-$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.winui/1.8.260803003/lib/net6.0-windows10.0.17763.0/*.dll"
-$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.foundation/1.8.260803002/lib/net6.0-windows10.0.17763.0/*.dll"
-$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.interactiveexperiences/1.8.260708001/lib/net6.0-windows10.0.18362.0/*.dll"
+$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.winui/2.6.5/lib/net6.0-windows10.0.17763.0/*.dll"
+$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.foundation/2.6.5/lib/net6.0-windows10.0.17763.0/*.dll"
+$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.interactiveexperiences/2.6.5/lib/net6.0-windows10.0.18362.0/*.dll"
 $library = Join-Path $EvidenceRoot 'native-library'
 & (Join-Path $PSScriptRoot 'BuildNativeTerminal.ps1') -EvidenceRoot $library
 if ($LASTEXITCODE -ne 0) { throw 'Native terminal dependency build failed' }

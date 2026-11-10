@@ -37,7 +37,8 @@
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
+    <!-- Charts, Mapsui and Toolkit still request the umbrella: pin 2.x to avoid mixing legacy MSBuild targets. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.261102100" PrivateAssets="all" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
