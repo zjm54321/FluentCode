@@ -9,7 +9,10 @@ $referencePack = Get-ChildItem (Join-Path $dotnetRoot 'packs/Microsoft.NETCore.A
 if (!$sdk -or !$referencePack) { throw '.NET 10 SDK/reference pack required.' }
 $output = Join-Path ([IO.Path]::GetTempPath()) ('fluent-motion-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $output | Out-Null
-$production = @(Join-Path $repo 'src/FluentCode/Motion/FluentMotionPolicy.cs')
+$production = @(
+    (Join-Path $repo 'src/FluentCode/Motion/FluentMotionPolicy.cs')
+    (Join-Path $repo 'src/FluentCode/Motion/FluentMotionBindings.cs')
+)
 $testSource = Join-Path $PSScriptRoot 'Program.cs'
 Write-Output "Evidence directory: $output"
 

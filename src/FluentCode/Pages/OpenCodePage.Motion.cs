@@ -112,7 +112,13 @@ public sealed partial class OpenCodePage
         var timer = DispatcherQueue.CreateTimer();
         timer.Interval = TimeSpan.FromMilliseconds(1200);
         timer.IsRepeating = false;
-        timer.Tick += (_, _) => { timer.Stop(); if (generation == _transcriptRevealGeneration) RevealTranscript(); };
+        void OnTick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
+        {
+            timer.Stop();
+            timer.Tick -= OnTick;
+            if (generation == _transcriptRevealGeneration) RevealTranscript();
+        }
+        timer.Tick += OnTick;
         timer.Start();
     }
 

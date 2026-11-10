@@ -108,7 +108,13 @@ internal sealed class OverlayCardMotion
         var watchdog = _card.DispatcherQueue.CreateTimer();
         watchdog.Interval = FluentMotion.Duration(FluentMotion.Fast) + TimeSpan.FromMilliseconds(400);
         watchdog.IsRepeating = false;
-        watchdog.Tick += (_, _) => { watchdog.Stop(); Done(); };
+        void OnTick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
+        {
+            watchdog.Stop();
+            watchdog.Tick -= OnTick;
+            Done();
+        }
+        watchdog.Tick += OnTick;
         watchdog.Start();
     }
 

@@ -1,10 +1,11 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using FluentCode.Motion;
 
-// Offline tests for the Fluent motion tokens, the reduce-motion policy and the generation gate
-// (src/FluentCode/Motion/FluentMotionPolicy.cs), plus static guards over the WinUI execution layer.
+// Offline tests for Fluent motion tokens, reduce-motion policy, generation gates and binding lifetimes,
+// plus static guards over the WinUI execution layer.
 internal static class Program
 {
     private static int _checks;
@@ -25,13 +26,14 @@ internal static class Program
         Policy();
         ShortCircuit();
         Generations();
+        Bindings();
         if (args.Length > 0) Static(args[0]);
         if (_failures > 0)
         {
             Console.Error.WriteLine($"{_failures} of {_checks} fluent-motion checks failed");
             return 1;
         }
-        Console.WriteLine($"PASS {_checks} fluent-motion token, reduce-motion short-circuit, generation and static checks");
+        Console.WriteLine($"PASS {_checks} fluent-motion token, reduce-motion short-circuit, generation, binding lifetime and static checks");
         return 0;
     }
 
@@ -109,11 +111,83 @@ internal static class Program
         Check(tokens.Count(burst.IsCurrent) == 1 && burst.IsCurrent(tokens[^1]), "burst of 10: last call wins");
     }
 
+    private sealed class BindingOwner(FluentMotionBindings.Token token)
+    {
+        internal FluentMotionBindings.Token Token { get; } = token;
+        internal int Calls;
+    }
+
+    private sealed class BindingCapture(BindingOwner owner)
+    {
+        internal void Apply(bool enabled) => owner.Calls++;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference AddCollectibleOwner(FluentMotionBindings bindings)
+    {
+        var owner = new BindingOwner(bindings.CreateToken());
+        var capture = new BindingCapture(owner);
+        owner.Token.Add(enabled => capture.Apply(enabled));
+        return new WeakReference(owner);
+    }
+
+    private static void Collect()
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+    }
+
+    private static void Bindings()
+    {
+        var bindings = new FluentMotionBindings();
+        var dropped = AddCollectibleOwner(bindings);
+        Collect();
+        Check(!dropped.IsAlive, "binding callback -> capture -> owner cycle is collected while registry lives");
+        bindings.Apply(false);
+        Check(bindings.EntryCount == 0, "Apply prunes collected binding tokens");
+
+        var first = new BindingOwner(bindings.CreateToken());
+        var second = new BindingOwner(bindings.CreateToken());
+        int firstCalls = 0, secondCalls = 0, otherOwnerCalls = 0, throws = 0;
+        first.Token.Add(enabled => firstCalls += enabled ? 1 : 10);
+        first.Token.Add(_ => { throws++; throw new InvalidOperationException("binding failure"); });
+        first.Token.Add(enabled => secondCalls += enabled ? 1 : 10);
+        second.Token.Add(enabled => otherOwnerCalls += enabled ? 1 : 10);
+        bindings.Apply(true);
+        bindings.Apply(false);
+        Check(firstCalls == 11 && secondCalls == 11 && otherOwnerCalls == 11 && throws == 2,
+            "Apply reaches every live binding and both values, including after a throwing callback on the same owner");
+        GC.KeepAlive(first);
+        GC.KeepAlive(second);
+
+        var churn = new FluentMotionBindings();
+        var bounded = true;
+        for (var batch = 0; batch < 32; batch++)
+        {
+            for (var i = 0; i < 32; i++) AddCollectibleOwner(churn);
+            Collect();
+            bounded &= churn.EntryCount <= 64;
+        }
+        Check(bounded, "adding and dropping 1024 owners keeps weak entry count bounded without Apply");
+        GC.KeepAlive(churn);
+        GC.KeepAlive(bindings);
+    }
+
     // Static guards over the WinUI layer: one UISettings owner, no layout (dependent) animations, terminal HWND gating.
     private static void Static(string repo)
     {
         string Read(string relative) => File.ReadAllText(Path.Combine(repo, "src/FluentCode", relative));
         var motion = Read("Motion/FluentMotion.cs");
+        Check(!motion.Contains("List<(WeakReference<DependencyObject> Owner, Action<bool> Apply)>"),
+            "STATIC motion registry no longer strongly owns callbacks");
+        Check(motion.Contains("DependencyProperty.RegisterAttached(") && motion.Contains("owner.SetValue(BindingTokenProperty, token)"),
+            "STATIC binding token is owned by an attached property on the native element");
+        Check(Read("Pages/OpenCode/OpenCodeModelLogo.cs").Contains("RasterizePixelWidth"), "STATIC model SVGs have explicit raster sizes");
+        var toolGroup = Read("Pages/OpenCode/OpenCodeToolGroupView.cs").Split("internal sealed class OpenCodeToolGroupVisual", StringSplitOptions.None)[1];
+        var toolGroupDispose = toolGroup.Substring(toolGroup.IndexOf("internal void Dispose()", StringComparison.Ordinal));
+        Check(toolGroupDispose.Contains("_timer.Tick -= Timer_Tick;") && toolGroupDispose.Contains("_working.VisibilityChanged -= UpdateTimer;"),
+            "STATIC tool group Dispose detaches timer and visibility handlers");
         Check(motion.Contains("FluentMotionPolicy.Run(Enabled, Instant,"), "STATIC Animate routes through the reduce-motion short-circuit");
         Check(motion.Contains("FluentMotionPolicy.Resolve(_systemEnabled, _userReduce)"), "STATIC Enabled = system AND NOT in-app reduce");
         Check(!motion.Contains("ElementCompositionPreview.") && motion.Contains("element.StartAnimation(animation)"),
