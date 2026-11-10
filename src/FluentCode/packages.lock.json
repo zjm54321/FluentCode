@@ -463,10 +463,10 @@
       },
       "WinUIEx": {
         "type": "Transitive",
-        "resolved": "2.5.1",
-        "contentHash": "ihW4bA2quKbwWBOl5Uu80jBZagc4cT4E6CdExmvSZ05Qwz0jgoGyZuSTKcU9Uz7lZlQij3KxNor0dGXNUyIV9Q==",
+        "resolved": "2.9.3",
+        "contentHash": "IZDzY13RDMMGB4cUqVDMfrNsGotWYypfGFEgtYWDI3SRDNg5r+AQepKso6fsZ55Df4EB+kbnmBuV25LhkROCew==",
         "dependencies": {
-          "Microsoft.WindowsAppSDK": "1.6.240829007"
+          "Microsoft.WindowsAppSDK.WinUI": "1.8.250906003"
         }
       },
       "windowsterminalcontrol.core": {
@@ -479,7 +479,7 @@
           "Microsoft.Windows.CsWinRT": "[2.3.1, )",
           "Microsoft.Windows.SDK.BuildTools": "[10.0.28000.2957, )",
           "Microsoft.WindowsAppSDK": "[1.8.260921001, )",
-          "WinUIEx": "[2.5.1, )",
+          "WinUIEx": "[2.9.3, )",
           "WindowsTerminalControl.Core": "[0.1.0, )"
         }
       }

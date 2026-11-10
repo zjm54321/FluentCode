@@ -35,7 +35,7 @@ $library = Join-Path $EvidenceRoot 'native-library'
 if ($LASTEXITCODE -ne 0) { throw 'Native terminal dependency build failed' }
 $native += Get-Item "$library/bin/WindowsTerminalControl.WinUI.dll", "$library/bin/WindowsTerminalControl.Core.dll"
 $native += Get-Item "$nuget/ci.microsoft.terminal.winui3.unofficial/1.0.20-beta.1/lib/net8.0-windows10.0.19041/Microsoft.Terminal.WinUI3.dll"
-$native += Get-ChildItem "$nuget/winuiex/2.5.1/lib" -Filter WinUIEx.dll -Recurse | Select-Object -First 1
+$native += Get-ChildItem "$nuget/winuiex/2.9.3/lib" -Filter WinUIEx.dll -Recurse | Select-Object -First 1
 $native = @($native | Where-Object Name -NE 'WinRT.Runtime.dll')
 $native += Get-Item "$nuget/microsoft.windows.cswinrt/2.3.1/lib/net9.0/WinRT.Runtime.dll"
 $rendererSources = @("$folder/OpenCodePersistentPtySession.cs", "$folder/OpenCodePersistentPtyVtStream.cs", "$folder/OpenCodePersistentPtyAirspace.cs")
