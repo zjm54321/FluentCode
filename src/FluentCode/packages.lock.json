@@ -2,6 +2,21 @@
   "version": 1,
   "dependencies": {
     "net10.0-windows10.0.26100": {
+      "AngleSharp": {
+        "type": "Direct",
+        "requested": "[1.10.1, )",
+        "resolved": "1.10.1",
+        "contentHash": "yWQuJAaxcvKmhzl77SYfiIbSMloqsHWrzJaqgY5QOoIfEFk0HQZbQQv3gKyIuQBxMwmglcqzXfykGZ4JrkWK5Q=="
+      },
+      "AngleSharp.Css": {
+        "type": "Direct",
+        "requested": "[1.4.1, )",
+        "resolved": "1.4.1",
+        "contentHash": "ZQ8g7jNFeTMSucR7GcqtXH2bzYAI4E2r6TM8kqnb61Yv3ROfbDc1lQG2+p5oCVBe2gQQxSHuJl499R1mmko0wA==",
+        "dependencies": {
+          "AngleSharp": "[1.10.0, 2.0.0)"
+        }
+      },
       "CommunityToolkit.WinUI.Controls.Segmented": {
         "type": "Direct",
         "requested": "[8.2.251219, )",
@@ -22,14 +37,20 @@
           "Microsoft.WindowsAppSDK": "1.6.250108002"
         }
       },
+      "ExCSS": {
+        "type": "Direct",
+        "requested": "[4.3.2, )",
+        "resolved": "4.3.2",
+        "contentHash": "KY0fc/ho0FMUbHxjGdcwtJbtXTxqNnfOihuz9Pkd4uzsOSsAYmU7q6IpFSpW+ORZHH71SkUtcTmVmp2ujVVA1g=="
+      },
       "HtmlSanitizer": {
         "type": "Direct",
-        "requested": "[9.2.1039, )",
-        "resolved": "9.2.1039",
-        "contentHash": "PKxy1hYknAij8YlHCC2a9GSqzUd4bh3IvY+abJBvOH1FKcZpbyafEHtdFcXQBt12Y7hNPkNEOP6Qa7uKNSs/yA==",
+        "requested": "[11.0.26, )",
+        "resolved": "11.0.26",
+        "contentHash": "ZGjvcmVumFkxxT1JSvENjoTscgJPgpEMMxSdgdfEzWo7HgbYdxohxWtLB0v9+vXb9kTi++ZQok/AvJo6W1otXw==",
         "dependencies": {
-          "AngleSharp": "1.7.2",
-          "AngleSharp.Css": "1.0.2"
+          "AngleSharp": "1.10.0",
+          "AngleSharp.Css": "1.4.0"
         }
       },
       "LiveChartsCore.SkiaSharpView.WinUI": {
@@ -117,19 +138,6 @@
           "Microsoft.WindowsAppSDK.WinUI": "1.8.260528001"
         }
       },
-      "AngleSharp": {
-        "type": "Transitive",
-        "resolved": "1.7.2",
-        "contentHash": "r1rb5Qo/0KPzmP0nbSiXPDVfh4Ctu0B+y1RyyUq73g4sgAmEW7q10RDyTq2ZsILwtO9O2LAvMrUles7eD4zz1g=="
-      },
-      "AngleSharp.Css": {
-        "type": "Transitive",
-        "resolved": "1.0.2",
-        "contentHash": "XeBxh0h/73+MWFsGfeMwiK7xbzAK3YeHFdUIrMH1P90amIrDFD/vUDIrPlF3CixqaMH5MRIUvT6Ux+2zvhJ3SA==",
-        "dependencies": {
-          "AngleSharp": "[1.5.0, 2.0.0)"
-        }
-      },
       "BruTile": {
         "type": "Transitive",
         "resolved": "6.0.0",
@@ -176,11 +184,6 @@
           "CommunityToolkit.WinUI.Helpers": "8.2.251219",
           "Microsoft.WindowsAppSDK": "1.6.250108002"
         }
-      },
-      "ExCSS": {
-        "type": "Transitive",
-        "resolved": "4.3.1",
-        "contentHash": "A8UtcghHQlWxPJhJF5bsfEYO7068JHGTuJ7tzyyMjd5fE/N/xY1cVOUhzuLLFwMOCJVnM4mqSQc93W9fGfZ1kA=="
       },
       "HarfBuzzSharp": {
         "type": "Transitive",
