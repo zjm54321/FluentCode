@@ -167,7 +167,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         var summaryPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
         _rowTag = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionSubtleStyleKey);
         _rowTagBorder = new Border { Child = _rowTag, CornerRadius = new CornerRadius(4), Padding = new Thickness(5, 1, 5, 1), Visibility = Visibility.Collapsed };
-        OpenCodeToolTheme.Apply(_rowTagBorder, OpenCodeToolTheme.Border("SubtleFillColorSecondaryBrush"));
+        OpenCodeToolTheme.Apply(_rowTagBorder, OpenCodeInteractionUi.TryStyle("OpenCodeSubtleSurfaceStyle"));
         summaryPanel.Children.Add(_rowTagBorder);
         summaryPanel.Children.Add(_additionsText);
         summaryPanel.Children.Add(_deletionsText);
@@ -525,11 +525,18 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         OpenCodeToolTheme.Apply(_summaryText, summaryStyle);
         // Failure text keeps critical chrome; successful processed tool names/targets recede with their group.
-        var textStyle = (chrome.TextKey ?? OpenCodeProcessedSummaryStyle.RowLabelKey(model.Status)) is { } textKey
+        var textKey = chrome.TextKey ?? OpenCodeProcessedSummaryStyle.RowLabelKey(model.Status);
+        var textStyle = textKey is not null
             ? OpenCodeToolTheme.Text(textKey, OpenCodeInteractionUi.CaptionStyleKey)
             : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionStyleKey);
         OpenCodeToolTheme.Apply(_nameText, textStyle);
-        OpenCodeToolTheme.Apply(_targetText, textStyle);
+        // The target's font role can change as streamed input resolves. Select the existing
+        // resource-backed style rather than registering another font tracker on every update.
+        var targetStyleKey = model.Kind is OpenCodeToolKind.Subagent or OpenCodeToolKind.Question or OpenCodeToolKind.Other
+            ? OpenCodeInteractionUi.CaptionStyleKey : OpenCodeInteractionUi.CodeStyleKey;
+        OpenCodeToolTheme.Apply(_targetText, textKey is null
+            ? OpenCodeInteractionUi.TryStyle(targetStyleKey)
+            : OpenCodeToolTheme.Text(textKey, targetStyleKey));
         // B16: a completed row's kind glyph recedes; failure chrome (critical) and running rows are unchanged.
         OpenCodeToolTheme.Apply(_kindIcon, OpenCodeToolTheme.Icon(OpenCodeProcessedSummaryStyle.RowIconKey(model.Status, chrome)));
         ApplyAgentColor(model);
@@ -566,10 +573,6 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         _root.Margin = new Thickness(0, gap, 0, gap);
         foreach (var text in new[] { _nameText, _targetText, _summaryText, _additionsText, _deletionsText })
             text.FontSize = OpenCodeProcessedRowMetrics.FontSize(model.Status);
-        if (model.Kind is not (OpenCodeToolKind.Subagent or OpenCodeToolKind.Question or OpenCodeToolKind.Other))
-            _targetText.FontFamily = new FontFamily("Cascadia Mono, Consolas");
-        else _targetText.ClearValue(TextBlock.FontFamilyProperty);
-
         var id = string.IsNullOrEmpty(model.PartId) ? string.Empty : model.PartId;
         AutomationProperties.SetAutomationId(_row, "OpenCodeToolRow." + id);
         AutomationProperties.SetName(_row, model.AccessibleName);

@@ -136,7 +136,7 @@ internal sealed class OpenCodeToolGroupVisual
         _currentStepText.FontSize = 12;
         _currentStepText.TextTrimming = TextTrimming.CharacterEllipsis;
         _currentStepText.Visibility = Visibility.Collapsed;
-        OpenCodeToolTheme.Apply(_currentStepText, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.CaptionStyleKey));
+        OpenCodeToolTheme.Apply(_currentStepText, OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey));
         AutomationProperties.SetAutomationId(_currentStepText, "OpenCodeToolGroup.CurrentStep." + groupId);
         var titleStack = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
         titleStack.Children.Add(title);
@@ -165,7 +165,7 @@ internal sealed class OpenCodeToolGroupVisual
             Padding = new Thickness(OpenCodeTimelineRowMetrics.Padding, 0, OpenCodeTimelineRowMetrics.Padding, 0),
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        OpenCodeToolTheme.Apply(_headerSurface, OpenCodeToolTheme.Border("SubtleFillColorTransparentBrush"));
+        OpenCodeToolTheme.Apply(_headerSurface, OpenCodeInteractionUi.TryStyle("OpenCodeTransparentSurfaceStyle"));
         _itemsBorder = new Border
         {
             Child = _items,
@@ -283,8 +283,8 @@ internal sealed class OpenCodeToolGroupVisual
         var highlighted = _headerPointerOver || _headerFocusVisible;
         _chevron.Opacity = highlighted ? 1 : 0;
         // Brush ThemeResource handles Light/Dark/High Contrast; no outline in any state.
-        OpenCodeToolTheme.Apply(_headerSurface, OpenCodeToolTheme.Border(
-            highlighted ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush"));
+        OpenCodeToolTheme.Apply(_headerSurface, OpenCodeInteractionUi.TryStyle(
+            highlighted ? "OpenCodeSubtleSurfaceStyle" : "OpenCodeTransparentSurfaceStyle"));
     }
 
     internal FrameworkElement Element => _root;

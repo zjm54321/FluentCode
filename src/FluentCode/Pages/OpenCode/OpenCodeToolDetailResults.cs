@@ -67,7 +67,7 @@ internal static partial class OpenCodeToolDetailContent
                 catch (RegexMatchTimeoutException) { }
             var button = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(8, 4, 8, 4),
-                Style = OpenCodeInteractionUi.TryStyle("SubtleButtonStyle") };
+                Style = (Style)Application.Current.Resources["SubtleButtonStyle"] };
             if (!options.Compact && options.OpenFile is { } open) button.Click += async (_, _) =>
             {
                 if (options.OpenPathWithFeedback is { } launch) await launch(file.Path, false, false, match.Line, button);

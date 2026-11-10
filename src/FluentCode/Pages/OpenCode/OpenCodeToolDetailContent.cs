@@ -806,7 +806,7 @@ internal static partial class OpenCodeToolDetailContent
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 var left = SideCell(row.Left);
                 var divider = new Border { Width = 1 };
-                OpenCodeToolTheme.Apply(divider, OpenCodeToolTheme.Border(OpenCodeToolTheme.Divider));
+                OpenCodeToolTheme.Apply(divider, OpenCodeInteractionUi.TryStyle("OpenCodeDividerSurfaceStyle"));
                 var right = SideCell(row.Right);
                 Grid.SetColumn(left, 0);
                 Grid.SetColumn(divider, 1);
@@ -1048,7 +1048,7 @@ internal static partial class OpenCodeToolDetailContent
             CornerRadius = ControlCornerRadius(),
             HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        OpenCodeToolTheme.Apply(border, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+        OpenCodeToolTheme.Apply(border, OpenCodeInteractionUi.TryStyle("OpenCodeSubtleSurfaceStyle"));
         OpenCodeCodePalette.BindSurface(border);
         return border;
     }

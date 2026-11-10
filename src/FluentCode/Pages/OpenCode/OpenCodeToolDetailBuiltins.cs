@@ -291,7 +291,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         var text = new StackPanel { Spacing = 1 };
         var label = OpenCodeInteractionUi.StyledText(option.DisplayLabel, selected ? OpenCodeInteractionUi.BodyStrongStyleKey : OpenCodeInteractionUi.BodyStyleKey, true);
         label.TextWrapping = TextWrapping.Wrap;
-        if (answered && !selected) OpenCodeToolTheme.Apply(label, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.BodyStyleKey));
+        if (answered && !selected) OpenCodeToolTheme.Apply(label, OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.BodySubtleStyleKey));
         text.Children.Add(label);
         if (option.Description is { } description)
         {
@@ -310,13 +310,13 @@ internal static partial class OpenCodeToolDetailBuiltins
                 Padding = new Thickness(6, 1, 6, 2), CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1),
                 VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 1, 0, 0),
             };
-            OpenCodeToolTheme.Apply(tag, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary, OpenCodeToolTheme.CardStroke));
+            OpenCodeToolTheme.Apply(tag, OpenCodeInteractionUi.TryStyle("OpenCodeSubtleCardChromeStyle"));
             Grid.SetColumn(tag, 2);
             grid.Children.Add(tag);
         }
 
         var row = new Border { Child = grid, Padding = new Thickness(10, 6, 10, 7), CornerRadius = new CornerRadius(6) };
-        if (selected) OpenCodeToolTheme.Apply(row, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+        if (selected) OpenCodeToolTheme.Apply(row, OpenCodeInteractionUi.TryStyle("OpenCodeSubtleSurfaceStyle"));
         AutomationProperties.SetAutomationId(row, automationId);
         AutomationProperties.SetName(row, (selected ? "已选：" : "未选：") + option.DisplayLabel + (option.Recommended ? "（推荐）" : ""));
         return row;
@@ -339,7 +339,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         Grid.SetColumn(text, 1);
         grid.Children.Add(text);
         var card = new Border { Child = grid, Padding = new Thickness(10, 6, 10, 8), CornerRadius = new CornerRadius(6) };
-        OpenCodeToolTheme.Apply(card, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+        OpenCodeToolTheme.Apply(card, OpenCodeInteractionUi.TryStyle("OpenCodeSubtleSurfaceStyle"));
         AutomationProperties.SetAutomationId(card, automationId);
         AutomationProperties.SetName(card, "自行输入的回答：" + answer);
         return card;
@@ -599,7 +599,7 @@ internal static partial class OpenCodeToolDetailBuiltins
             Width = 32, Height = 32, CornerRadius = new CornerRadius(6), VerticalAlignment = VerticalAlignment.Top,
             Child = new FontIcon { Glyph = glyph, FontSize = 16 },
         };
-        OpenCodeToolTheme.Apply(tile, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+        OpenCodeToolTheme.Apply(tile, OpenCodeInteractionUi.TryStyle("OpenCodeSubtleSurfaceStyle"));
         grid.Children.Add(tile);
         var text = new StackPanel { Spacing = 0, VerticalAlignment = VerticalAlignment.Center };
         var heading = OpenCodeInteractionUi.StyledText(title, OpenCodeInteractionUi.BodyStrongStyleKey, true);

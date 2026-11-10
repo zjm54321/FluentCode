@@ -66,7 +66,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         OpenCodeToolTheme.Apply(caption, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, OpenCodeInteractionUi.CaptionStyleKey));
         rule.Children.Add(caption);
         var line = new Border { Height = 1, VerticalAlignment = VerticalAlignment.Center };
-        OpenCodeToolTheme.Apply(line, OpenCodeToolTheme.Border(OpenCodeToolTheme.Divider));
+        OpenCodeToolTheme.Apply(line, OpenCodeInteractionUi.TryStyle("OpenCodeDividerSurfaceStyle"));
         Grid.SetColumn(line, 1);
         rule.Children.Add(line);
         panel.Children.Add(rule);
@@ -80,7 +80,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         var speaker = OpenCodeSessionToolData.SpeakerLabel(message.Speaker);
         AutomationProperties.SetName(body, speaker);
         var who = OpenCodeInteractionUi.StyledText(speaker, OpenCodeInteractionUi.CaptionStyleKey);
-        OpenCodeToolTheme.Apply(who, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.CaptionStyleKey));
+        OpenCodeToolTheme.Apply(who, OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey));
         body.Children.Add(who);
 
         var tools = new List<OpenCodeSessionToolCall>();
@@ -107,7 +107,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         if (message.Speaker != OpenCodeSessionSpeaker.User) return body;
         // The prompt reads as a bubble, the same soft fill the conversation uses for user turns.
         var bubble = new Border { Child = body, Padding = new Thickness(12, 8, 12, 10), CornerRadius = new CornerRadius(8) };
-        OpenCodeToolTheme.Apply(bubble, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary));
+        OpenCodeToolTheme.Apply(bubble, OpenCodeInteractionUi.TryStyle("OpenCodeSubtleSurfaceStyle"));
         return bubble;
     }
 
@@ -282,7 +282,7 @@ internal static partial class OpenCodeToolDetailBuiltins
         Grid.SetColumn(text, 1);
         grid.Children.Add(text);
         var card = new Border { Child = grid, Padding = new Thickness(12, 10, 12, 10), CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1) };
-        OpenCodeToolTheme.Apply(card, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary, OpenCodeToolTheme.CardStroke));
+        OpenCodeToolTheme.Apply(card, OpenCodeInteractionUi.TryStyle("OpenCodeSubtleCardChromeStyle"));
         AutomationProperties.SetAutomationId(card, "OpenCodeToolDetailNotice");
         AutomationProperties.SetName(card, title + (caption is null ? "" : "。" + caption));
         return card;
