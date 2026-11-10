@@ -24,7 +24,9 @@ Compile 'PtyPresentationTests' 'exe' $refs ($models + @("$folder/OpenCodePersist
 & $dotnet (Join-Path $EvidenceRoot 'PtyPresentationTests.dll') $repo | Tee-Object (Join-Path $EvidenceRoot 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Presentation tests failed: $LASTEXITCODE" }
 $nuget = Join-Path $env:USERPROFILE '.nuget/packages'
-$native = @(Get-Item "$nuget/microsoft.windows.sdk.net.ref/10.0.26100.57/lib/net8.0/Microsoft.Windows.SDK.NET.dll", "$nuget/microsoft.windows.sdk.net.ref/10.0.26100.57/lib/net8.0/WinRT.Runtime.dll")
+& $dotnet restore (Join-Path $PSScriptRoot 'Dependencies.proj') --nologo --verbosity minimal "-p:BaseIntermediateOutputPath=$EvidenceRoot/sdk-restore/"
+if ($LASTEXITCODE -ne 0) { throw 'Compile-only Windows SDK reference restore failed.' }
+$native = @(Get-Item "$nuget/microsoft.windows.sdk.net.ref/10.0.28000.87/lib/net9.0/Microsoft.Windows.SDK.NET.dll", "$nuget/microsoft.windows.sdk.net.ref/10.0.28000.87/lib/net9.0/WinRT.Runtime.dll")
 $native += Get-ChildItem "$nuget/microsoft.windowsappsdk.winui/1.8.260803003/lib/net6.0-windows10.0.17763.0/*.dll"
 $native += Get-ChildItem "$nuget/microsoft.windowsappsdk.foundation/1.8.260803002/lib/net6.0-windows10.0.17763.0/*.dll"
 $native += Get-ChildItem "$nuget/microsoft.windowsappsdk.interactiveexperiences/1.8.260708001/lib/net6.0-windows10.0.18362.0/*.dll"
@@ -38,7 +40,7 @@ $native = @($native | Where-Object Name -NE 'WinRT.Runtime.dll')
 $native += Get-Item "$nuget/microsoft.windows.cswinrt/2.3.1/lib/net9.0/WinRT.Runtime.dll"
 $rendererSources = @("$folder/OpenCodePersistentPtySession.cs", "$folder/OpenCodePersistentPtyVtStream.cs", "$folder/OpenCodePersistentPtyAirspace.cs")
 # Shared Fluent motion layer used by the card / ☰ list / chips (production files, compiled as-is).
-$rendererSources += @("$repo/src/FluentCode/Motion/FluentMotion.cs", "$repo/src/FluentCode/Motion/FluentMotionPolicy.cs", "$repo/src/FluentCode/Motion/ActionFeedback.cs", "$repo/src/FluentCode/Motion/OverlayCardMotion.cs", "$repo/src/FluentCode/Services/Appearance/ThemeResources.cs")
+$rendererSources += @("$repo/src/FluentCode/Motion/FluentMotion.cs", "$repo/src/FluentCode/Motion/FluentMotionBindings.cs", "$repo/src/FluentCode/Motion/FluentMotionPolicy.cs", "$repo/src/FluentCode/Motion/ActionFeedback.cs", "$repo/src/FluentCode/Motion/OverlayCardMotion.cs", "$repo/src/FluentCode/Services/Appearance/ThemeResources.cs")
 Compile 'PtyNativeViewCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
     "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
     "$repo/src/FluentCode/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)

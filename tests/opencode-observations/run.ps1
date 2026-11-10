@@ -22,15 +22,17 @@ if (!$registration.Contains('RegistrationIcon => NotificationInteractionXml.AppL
     throw 'Packaged/unpackaged application notification identity registration must remain intact.'
 }
 Write-Output 'PASS completion Toast body-logo source contract; application identity registration retained.'
-# WinAppSDK ships net6 projections and the SDK net8 references; the host is net10 (standard unification).
+# WinAppSDK ships net6 projections and the SDK net9 references; the host is net10 (standard unification).
 $args = @('/nologo', '/langversion:latest', '/nullable:enable', '/warnaserror+', '/nowarn:1701,1702', '/target:exe', ('/out:"' + $assembly + '"'))
 $args += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $packages = Join-Path $env:USERPROFILE '.nuget/packages'
 $foundation = Get-ChildItem "$packages/microsoft.windowsappsdk.foundation" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-$windows = Get-ChildItem "$packages/microsoft.windows.sdk.net.ref" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+$windows = Join-Path $packages 'microsoft.windows.sdk.net.ref/10.0.28000.87'
+& $dotnet restore (Join-Path $repo 'tests/opencode-persistent-pty/Dependencies.proj') --nologo --verbosity minimal "-p:BaseIntermediateOutputPath=$output/sdk-restore/"
+if ($LASTEXITCODE -ne 0) { throw 'Compile-only Windows SDK reference restore failed.' }
 $refs = @("$($foundation.FullName)/lib/net6.0-windows10.0.17763.0/Microsoft.Windows.AppNotifications.Projection.dll",
     "$($foundation.FullName)/lib/net6.0-windows10.0.17763.0/Microsoft.Windows.AppNotifications.Builder.Projection.dll",
-    "$($windows.FullName)/lib/net8.0/Microsoft.Windows.SDK.NET.dll", "$($windows.FullName)/lib/net8.0/WinRT.Runtime.dll")
+    "$windows/lib/net9.0/Microsoft.Windows.SDK.NET.dll", "$windows/lib/net9.0/WinRT.Runtime.dll")
 foreach ($ref in $refs) { $args += '/reference:"' + $ref + '"'; Copy-Item $ref $output }
 foreach ($area in @('Notifications', 'OpenCode')) {
     $args += Get-ChildItem "$repo/src/FluentCode/Services/$area/*.cs" | Where-Object Name -NE 'OpenCodePairingService.cs' | ForEach-Object { '"' + $_.FullName + '"' }
