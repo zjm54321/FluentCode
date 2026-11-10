@@ -1,40 +1,27 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CommunityToolkit.WinUI.Controls;
 using FluentCode.Services.Appearance;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Markup;
-using Microsoft.UI.Xaml.Media;
 
 namespace FluentCode.Pages.Settings;
 
 /// <summary>
-/// Windows 11 设置页式的轻量卡片（与 CommunityToolkit SettingsCard / SettingsExpander 同一版式，未引入额外依赖）：
-/// 图标 · 标题 · 可选的一行说明 · 右对齐控件；组标题 BodyStrong；行间距 4，组间距 28。
-/// 画刷全部经样式里的 ThemeResource 设置，运行时切换主题会重新着色。
+/// Windows 11 设置页卡片：CommunityToolkit <see cref="SettingsCard"/> / <see cref="SettingsExpander"/>
+/// （图标 · 标题 · 可选的一行说明 · 右对齐控件；窄宽度时控件自动换到标题下方）。组标题 BodyStrong；行间距 4，组间距 28。
+/// 画刷、悬停 / 禁用态与高对比度均来自工具包模板的 ThemeResource，运行时切换主题会重新着色。
 /// </summary>
 internal static class SettingsCards
 {
     internal const double RowSpacing = 4;
     internal const double GroupSpacing = 28;
     internal const double ControlWidth = 280;
-    internal const double RowMinHeight = 68;
 
-    private static Style? s_cardStyle, s_dividerStyle;
-
-    private static Style CardStyle => s_cardStyle ??= (Style)XamlReader.Load(
-        "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Border\">" +
-        "<Setter Property=\"Background\" Value=\"{ThemeResource CardBackgroundFillColorDefaultBrush}\"/>" +
-        "<Setter Property=\"BorderBrush\" Value=\"{ThemeResource CardStrokeColorDefaultBrush}\"/>" +
-        "<Setter Property=\"BorderThickness\" Value=\"1\"/>" +
-        "<Setter Property=\"CornerRadius\" Value=\"{ThemeResource ControlCornerRadius}\"/></Style>");
-
-    private static Style DividerStyle => s_dividerStyle ??= (Style)XamlReader.Load(
-        "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Border\">" +
-        "<Setter Property=\"Background\" Value=\"{ThemeResource CardStrokeColorDefaultBrush}\"/>" +
-        "<Setter Property=\"Height\" Value=\"1\"/></Style>");
+    /// <summary>卡片外附加内容的左缩进：与卡片标题文字对齐（边距 16 + 图标 20 + 间距 22，同工具包 SettingsExpanderItemPadding 左 58）。</summary>
+    private const double TextIndent = 58;
 
     internal static T Styled<T>(T element, string styleKey) where T : FrameworkElement
     {
@@ -55,27 +42,23 @@ internal static class SettingsCards
     }
 
     /// <summary>一张设置卡片：图标 · 标题 / 说明 · 右侧控件。</summary>
-    internal static Border Card(string glyph, string header, string? description, FrameworkElement? control, string? automationId = null)
+    internal static SettingsCard Card(string glyph, string header, string? description, FrameworkElement? control, string? automationId = null)
     {
-        var card = new Border { Style = CardStyle, Child = Row(glyph, header, description, control, new Thickness(16, 10, 16, 10)) };
+        var card = new SettingsCard { Header = header, HeaderIcon = Icon(glyph), Content = control };
+        if (!string.IsNullOrEmpty(description)) card.Description = description;
+        AutomationProperties.SetName(card, header);
         if (automationId is not null) AutomationProperties.SetAutomationId(card, automationId);
         return card;
     }
 
     /// <summary>任意内容的卡片外框（如整块表单）。</summary>
-    internal static Border Panel(Border content)
-    {
-        content.Style = CardStyle;
-        return content;
-    }
+    internal static Border Panel(Border content) => Styled(content, "AppSettingsCardStyle");
 
     /// <summary>说明文字随状态变化的卡片：<paramref name="note"/> 为空时折叠。</summary>
-    internal static Border Card(string glyph, string header, out TextBlock note, FrameworkElement? control)
+    internal static SettingsCard Card(string glyph, string header, out TextBlock note, FrameworkElement? control)
     {
-        var card = Card(glyph, header, " ", control);
-        note = (TextBlock)((StackPanel)((Grid)card.Child).Children[1]).Children[1];
-        note.Text = string.Empty;
-        note.Visibility = Visibility.Collapsed;
+        var card = Card(glyph, header, null, control);
+        card.Description = note = Note();
         return card;
     }
 
@@ -85,69 +68,34 @@ internal static class SettingsCards
         note.Visibility = string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    /// <summary>卡片内容：供 <see cref="Card"/> 与 <see cref="Expander"/> 的标题共用。</summary>
-    internal static Grid Row(string? glyph, string header, string? description, FrameworkElement? control, Thickness padding)
+    /// <summary>可展开卡片：标题行与卡片一致，子项为卡片内以分隔线隔开的行（由工具包模板绘制）。</summary>
+    internal static SettingsExpander Expander(string glyph, string header, string? description, FrameworkElement? headerControl, params UIElement[] rows)
     {
-        var grid = new Grid { MinHeight = glyph is null ? 48 : RowMinHeight - 2, Padding = padding, ColumnSpacing = 16 };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 120 });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        if (glyph is not null)
-            grid.Children.Add(new FontIcon { Glyph = glyph, FontSize = 20, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 4, 0) });
-        var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Spacing = 1 };
-        text.Children.Add(Styled(new TextBlock { Text = header, TextWrapping = TextWrapping.Wrap }, "BodyTextBlockStyle"));
-        if (!string.IsNullOrEmpty(description))
-            text.Children.Add(Styled(new TextBlock { Text = description, TextWrapping = TextWrapping.Wrap }, "CaptionSubtleTextBlockStyle"));
-        Grid.SetColumn(text, 1);
-        grid.Children.Add(text);
-        if (control is not null)
-        {
-            control.VerticalAlignment = VerticalAlignment.Center;
-            control.HorizontalAlignment = HorizontalAlignment.Right;
-            Grid.SetColumn(control, 2);
-            grid.Children.Add(control);
-        }
-        AutomationProperties.SetName(grid, header);
-        return grid;
-    }
-
-    /// <summary>可展开卡片（SettingsExpander 式）：标题行与卡片一致，子选项为卡片内以分隔线隔开的行。</summary>
-    internal static Expander Expander(string glyph, string header, string? description, FrameworkElement? headerControl, params UIElement[] rows)
-    {
-        var expander = new Expander
-        {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Header = Row(glyph, header, description, headerControl, new Thickness(0, 8, 0, 8)),
-        };
-        var body = new StackPanel();
-        bool first = true;
-        foreach (var row in rows)
-        {
-            if (!first) body.Children.Add(new Border { Style = DividerStyle, Margin = new Thickness(-16, 0, -16, 0) });
-            first = false;
-            body.Children.Add(row);
-        }
-        expander.Content = body;
+        var expander = new SettingsExpander { Header = header, HeaderIcon = Icon(glyph) };
+        if (!string.IsNullOrEmpty(description)) expander.Description = description;
+        if (headerControl is not null) expander.Content = headerControl;
+        foreach (var row in rows) expander.Items.Add(row);
         return expander;
     }
 
     /// <summary>标题行说明随状态变化的可展开卡片（<paramref name="note"/> 为空时折叠，展开前也能看到）。</summary>
-    internal static Expander Expander(string glyph, string header, out TextBlock note, FrameworkElement? headerControl, params UIElement[] rows)
+    internal static SettingsExpander Expander(string glyph, string header, out TextBlock note, FrameworkElement? headerControl, params UIElement[] rows)
     {
-        var expander = Expander(glyph, header, " ", headerControl, rows);
-        note = (TextBlock)((StackPanel)((Grid)expander.Header).Children[1]).Children[1];
-        note.Text = string.Empty;
-        note.Visibility = Visibility.Collapsed;
+        var expander = Expander(glyph, header, null, headerControl, rows);
+        expander.Description = note = Note();
         return expander;
     }
 
-    /// <summary>可展开卡片内的一行（无图标，左侧缩进与标题文字对齐）。</summary>
-    internal static Grid SubRow(string header, string? description, FrameworkElement? control)
-        => Row(null, header, description, control, new Thickness(42, 8, 0, 8));
+    /// <summary>可展开卡片内的整行内容（如预览、多行说明），左缘与标题文字对齐、横向铺满。</summary>
+    internal static SettingsCard SubContent(UIElement content) => new()
+    {
+        ContentAlignment = ContentAlignment.Vertical,
+        HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        Content = content,
+    };
 
-    /// <summary>可展开卡片内的整行内容（如预览、多行说明）。</summary>
-    internal static Border SubContent(UIElement content) => new() { Padding = new Thickness(42, 12, 0, 12), Child = content };
+    /// <summary>卡片下方、不在卡片内的附加内容（如密钥状态与清除选项），与上方卡片的标题文字对齐。</summary>
+    internal static Border Indented(UIElement content) => new() { Padding = new Thickness(TextIndent, 8, 0, 8), Child = content };
 
     internal static T Sized<T>(T control, double width = ControlWidth) where T : FrameworkElement
     {
@@ -155,7 +103,10 @@ internal static class SettingsCards
         return control;
     }
 
-    internal static TextBlock Subtle(string text) => Styled(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap }, "CaptionSubtleTextBlockStyle");
+    private static FontIcon Icon(string glyph) => new() { Glyph = glyph };
+
+    /// <summary>说明行占位：作为 Description 常驻（模板只按 null 折叠说明区），文字为空时自身折叠、不占高度。</summary>
+    private static TextBlock Note() => new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
 }
 
 /// <summary>

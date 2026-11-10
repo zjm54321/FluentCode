@@ -1,4 +1,4 @@
-Native UI component dependencies
+Native UI and Settings page component dependencies
 
 LiveChartsCore / LiveChartsCore.SkiaSharpView / LiveChartsCore.SkiaSharpView.WinUI 2.0.5
 https://github.com/beto-rodriguez/LiveCharts2
@@ -11,6 +11,7 @@ Copyright (c) [2024] [w-ahmad https://github.com/w-ahmad]
 MIT License
 
 CommunityToolkit.WinUI.Controls.Segmented / CommunityToolkit.WinUI.Extensions 8.2.251219
+CommunityToolkit.WinUI.Controls.SettingsControls / CommunityToolkit.WinUI.Triggers / CommunityToolkit.WinUI.Helpers 8.2.251219
 CommunityToolkit.Common 8.2.1
 https://github.com/CommunityToolkit/Windows
 Copyright (c) .NET Foundation and Contributors. All rights reserved.

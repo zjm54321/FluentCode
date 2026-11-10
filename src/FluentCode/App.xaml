@@ -121,16 +121,12 @@
                 <Setter Property="CornerRadius" Value="8" />
             </Style>
 
-            <!-- 设置卡片（SettingsCard 式布局，原生画刷 + 内置圆角；设置页字体卡片使用）。 -->
+            <!-- 设置页整块表单的卡片外框（与 CommunityToolkit SettingsCard 同一画刷与圆角；SettingsCards.Panel 使用）。 -->
             <Style x:Key="AppSettingsCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
                 <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
-            </Style>
-            <Style x:Key="AppSettingsCardDividerStyle" TargetType="Border">
-                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
-                <Setter Property="BorderThickness" Value="0,1,0,0" />
             </Style>
 
             <!-- WinUI provides the body style and secondary brush separately. -->

@@ -1,5 +1,5 @@
 using System.Linq;
-using Microsoft.UI.Xaml.Controls;
+using CommunityToolkit.WinUI.Controls;
 
 namespace FluentCode.Pages.Settings;
 
@@ -33,11 +33,22 @@ public sealed partial class SettingsView
     internal void TestExpandAll(bool expanded)
     {
         if (_categoryContentHost.Content is not Microsoft.UI.Xaml.DependencyObject root) return;
-        foreach (var expander in Descendants(root).OfType<Expander>()) expander.IsExpanded = expanded;
+        foreach (var expander in Descendants(root).OfType<SettingsExpander>()) expander.IsExpanded = expanded;
     }
 
     /// <summary>Puts the browser Save button mid-✓ (as after a successful save) for the evidence screenshot.</summary>
     internal void TestShowSaveFeedback() => FluentCode.Motion.ActionFeedback.Success(_browserSave, "已保存浏览器设置");
+
+    /// <summary>Shows one map provider's cards as a clean draft (events suppressed: not dirty, Save stays off, nothing saved).</summary>
+    internal void TestPreviewMapProvider(int provider)
+    {
+        var suppress = _suppressUiEvents; _suppressUiEvents = true;
+        try { _mapProvider.SelectedIndex = provider; MapDraftChanged(); }
+        finally { _suppressUiEvents = suppress; }
+    }
+
+    /// <summary>Puts the saved map settings back on screen after <see cref="TestPreviewMapProvider"/>.</summary>
+    internal void TestRestoreMapProvider() => ApplyNativeUiMapToUi();
 
     private static System.Collections.Generic.IEnumerable<Microsoft.UI.Xaml.DependencyObject> Descendants(Microsoft.UI.Xaml.DependencyObject root)
     {

@@ -12,6 +12,16 @@
           "Microsoft.WindowsAppSDK": "1.6.250108002"
         }
       },
+      "CommunityToolkit.WinUI.Controls.SettingsControls": {
+        "type": "Direct",
+        "requested": "[8.2.251219, )",
+        "resolved": "8.2.251219",
+        "contentHash": "BAuRi34AOBCYXK/obT9Fwzt9KtxhPrO67yNINXF6+Dit4sAiwtVgehN9y/dJHco96/zZiTX3yF85mBjRyw6AXQ==",
+        "dependencies": {
+          "CommunityToolkit.WinUI.Triggers": "8.2.251219",
+          "Microsoft.WindowsAppSDK": "1.6.250108002"
+        }
+      },
       "HtmlSanitizer": {
         "type": "Direct",
         "requested": "[9.2.1039, )",
@@ -140,6 +150,24 @@
         "contentHash": "7ydxHF7jRl889qymGihhng4Yy5hFCxTxw+iKFM4XBo27bBAJxzr45Iu7GIZrydY5lhEgsG+xE4ZCA6HccNFxNA==",
         "dependencies": {
           "CommunityToolkit.Common": "8.2.1",
+          "Microsoft.WindowsAppSDK": "1.6.250108002"
+        }
+      },
+      "CommunityToolkit.WinUI.Helpers": {
+        "type": "Transitive",
+        "resolved": "8.2.251219",
+        "contentHash": "Ksyd6yoItNnZSae3901n04pwM81h34kHPrR+pGYd5OxBAR7NVksFJBi1r2xcJV1Rg/bg+40blHJsZk85KgF/cw==",
+        "dependencies": {
+          "CommunityToolkit.WinUI.Extensions": "8.2.251219",
+          "Microsoft.WindowsAppSDK": "1.6.250108002"
+        }
+      },
+      "CommunityToolkit.WinUI.Triggers": {
+        "type": "Transitive",
+        "resolved": "8.2.251219",
+        "contentHash": "E1D5jZ93hI2VkDJjHFvVPdwWBYG7gubx/zw9mS3aOL60rhroGuy9Jq/WqzL+VNaKFzsXZ4CZ0ivjOP7/SLGxIg==",
+        "dependencies": {
+          "CommunityToolkit.WinUI.Helpers": "8.2.251219",
           "Microsoft.WindowsAppSDK": "1.6.250108002"
         }
       },

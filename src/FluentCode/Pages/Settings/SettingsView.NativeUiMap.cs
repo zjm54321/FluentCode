@@ -31,7 +31,7 @@ public sealed partial class SettingsView
         AutomationProperties.SetName(_mapProvider, "原生卡片地图提供方"); AutomationProperties.SetAutomationId(_mapProvider, "SettingsNativeUiMapProvider");
         AutomationProperties.SetName(_mapKey, "天地图用户密钥"); AutomationProperties.SetName(_mapTemplate, "自定义 XYZ HTTPS 瓦片模板"); AutomationProperties.SetName(_mapAttribution, "自定义地图署名");
         _mapTianDiTu.Children.Add(SettingsCards.Card("\uE72E", "天地图用户密钥", "免费用户密钥在 Windows DPAPI 中加密保存；界面不会回显已有密钥", _mapKey));
-        _mapTianDiTu.Children.Add(SettingsCards.SubContent(new StackPanel { Spacing = 8, Children = { _mapKeyNote, _mapClearKey } }));
+        _mapTianDiTu.Children.Add(SettingsCards.Indented(new StackPanel { Spacing = 8, Children = { _mapKeyNote, _mapClearKey } }));
         _mapBaidu.Children.Add(SettingsCards.Card("\uE946", "百度地图", "百度地图服务条款适用。", new HyperlinkButton { Content = "服务条款", NavigateUri = new Uri("https://lbsyun.baidu.com/docs/pcsa?title=law/open/law") }));
         _mapCustom.Children.Add(SettingsCards.Expander("\uE774", "XYZ 瓦片地址", "必须为 HTTPS，并包含 {z}、{x}、{y}", null, SettingsCards.SubContent(_mapTemplate)));
         _mapCustom.Children.Add(SettingsCards.Expander("\uE946", "提供方署名", "按提供方要求填写；会显示在地图上", null, SettingsCards.SubContent(_mapAttribution)));
