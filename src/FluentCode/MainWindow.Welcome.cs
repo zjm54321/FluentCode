@@ -76,13 +76,17 @@ public sealed partial class MainWindow
         var timer = DispatcherQueue.CreateTimer();
         timer.Interval = WelcomeSuccessHold;
         timer.IsRepeating = false;
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            if (_welcome is { IsBusy: true }) { timer.Start(); return; }
-            if (AppServices.Settings.Current is { } latest && IsConfigured(latest.OpenCode)) HideWelcome();
-        };
+        timer.Tick += WelcomeExitTimer_Tick;
         return timer;
+    }
+
+    private void WelcomeExitTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer timer, object args)
+    {
+        timer.Stop();
+        if (_welcome is { IsBusy: true }) { timer.Start(); return; }
+        timer.Tick -= WelcomeExitTimer_Tick;
+        _welcomeExitTimer = null;
+        if (AppServices.Settings.Current is { } latest && IsConfigured(latest.OpenCode)) HideWelcome();
     }
 
     private void HideWelcome()
@@ -109,7 +113,12 @@ public sealed partial class MainWindow
             AppServices.Settings.Changed -= Settings_ChangedForWelcome;
             _welcomeSubscribed = false;
         }
-        _welcomeExitTimer?.Stop();
+        if (_welcomeExitTimer is not null)
+        {
+            _welcomeExitTimer.Stop();
+            _welcomeExitTimer.Tick -= WelcomeExitTimer_Tick;
+            _welcomeExitTimer = null;
+        }
         _welcome?.Close();
         _welcome = null;
     }

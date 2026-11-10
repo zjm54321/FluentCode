@@ -30,7 +30,9 @@ internal static class FluentMotion
     private static readonly ConditionalWeakTable<UIElement, MotionGeneration> Generations = new();
     private static readonly ConditionalWeakTable<Compositor, Dictionary<MotionCurve, CompositionEasingFunction>> Easings = new();
     private static readonly ConditionalWeakTable<UIElement, Dictionary<string, CompositionAnimation>> Animations = new();
-    private static readonly List<(WeakReference<DependencyObject> Owner, Action<bool> Apply)> Bindings = new();
+    private static readonly FluentMotionBindings Bindings = new();
+    private static readonly DependencyProperty BindingTokenProperty = DependencyProperty.RegisterAttached(
+        "BindingToken", typeof(object), typeof(FluentMotion), new PropertyMetadata(null));
 
     private static UISettings? _uiSettings;
     private static DispatcherQueue? _dispatcher;
@@ -109,24 +111,24 @@ internal static class FluentMotion
     {
         bool now = FluentMotionPolicy.Resolve(_systemEnabled, _userReduce);
         if (before == now) return;
-        for (int i = Bindings.Count - 1; i >= 0; i--)
-        {
-            if (!Bindings[i].Owner.TryGetTarget(out _)) { Bindings.RemoveAt(i); continue; }
-            try { Bindings[i].Apply(now); }
-            catch { }
-        }
+        Bindings.Apply(now);
         try { EnabledChanged?.Invoke(null, EventArgs.Empty); }
         catch { }
     }
 
     /// <summary>
     /// 让某个对象的动效配置（ThemeTransition 集合、隐式 Transition 等）跟随 <see cref="Enabled"/>：
-    /// 立即按当前值应用一次，之后每次变化重新应用；对象被回收后自动解除（弱引用）。
+    /// 立即按当前值应用一次，之后每次变化重新应用；绑定由对象的附加属性持有，静态注册表只弱引用其令牌。
     /// </summary>
     public static void Bind(DependencyObject owner, Action<bool> apply)
     {
         apply(Enabled);
-        Bindings.Add((new WeakReference<DependencyObject>(owner), apply));
+        if (owner.GetValue(BindingTokenProperty) is not FluentMotionBindings.Token token)
+        {
+            token = Bindings.CreateToken();
+            owner.SetValue(BindingTokenProperty, token);
+        }
+        token.Add(apply);
     }
 
     /// <summary>按慢放倍数换算后的时长。</summary>

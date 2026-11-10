@@ -428,11 +428,13 @@ internal sealed class OpenCodeToolGroupVisual
             _timer = queue.CreateTimer();
             _timer.Interval = TimeSpan.FromSeconds(1);
             _timer.IsRepeating = true;
-            _timer.Tick += (_, _) => { _phrases.Tick(NowMs()); RefreshWorkingText(); };
+            _timer.Tick += Timer_Tick;
         }
         if (_timer is { IsRunning: false }) _timer.Start();
     }
 
+    private void Timer_Tick(DispatcherQueueTimer sender, object args)
+    { _phrases.Tick(NowMs()); RefreshWorkingText(); }
     private void StopTimer() => _timer?.Stop();
     private void HostVisibilityChanged(bool visible)
     {
@@ -440,7 +442,19 @@ internal sealed class OpenCodeToolGroupVisual
         if (visible) RefreshWorkingText();
     }
     internal void Dispose()
-    { _disposed = true; OpenCodeWorkingClock.Shared.HostVisibilityChanged -= HostVisibilityChanged; StopTimer(); _phrases.Stop(); _working.Dispose(); }
+    {
+        _disposed = true;
+        OpenCodeWorkingClock.Shared.HostVisibilityChanged -= HostVisibilityChanged;
+        _working.VisibilityChanged -= UpdateTimer;
+        if (_timer is not null)
+        {
+            _timer.Stop();
+            _timer.Tick -= Timer_Tick;
+            _timer = null;
+        }
+        _phrases.Stop();
+        _working.Dispose();
+    }
 
     private static (StackPanel Panel, TextBlock Text) CreateTally(string glyph, string brushKey, string automationId)
     {

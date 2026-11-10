@@ -12,6 +12,7 @@ internal static class ThemeResources
 {
     private static readonly ConditionalWeakTable<FrameworkElement, List<Action>> Observers = new();
     private static readonly List<WeakReference<FrameworkElement>> Hosts = new();
+    private static int _pruneHostsAt = 16;
 
     // Images without theme-resource properties can be skipped by WinUI's theme walk even though
     // ActualTheme subsequently reports the new value. Reconcile those hosts after the root changes.
@@ -20,6 +21,11 @@ internal static class ThemeResources
         if (!Observers.TryGetValue(host, out var callbacks))
         {
             Observers.Add(host, callbacks = new());
+            if (Hosts.Count >= _pruneHostsAt)
+            {
+                Hosts.RemoveAll(static entry => !entry.TryGetTarget(out _));
+                _pruneHostsAt = Math.Max(16, Hosts.Count * 2);
+            }
             Hosts.Add(new(host));
         }
         callbacks.Add(refresh);
@@ -37,6 +43,7 @@ internal static class ThemeResources
                 if (host.XamlRoot is not null && host.XamlRoot == root.XamlRoot && Observers.TryGetValue(host, out var callbacks))
                     foreach (var refresh in callbacks) refresh();
             }
+            _pruneHostsAt = Math.Max(16, Hosts.Count * 2);
         });
 
     /// <summary>Resolve in the element's theme, not Application.RequestedTheme (which may differ).</summary>
