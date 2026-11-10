@@ -114,6 +114,7 @@ internal static class Program
     {
         string Read(string relative) => File.ReadAllText(Path.Combine(repo, "src/FluentCode", relative));
         var motion = Read("Motion/FluentMotion.cs");
+        Check(Read("Pages/OpenCode/OpenCodeModelLogo.cs").Contains("RasterizePixelWidth"), "STATIC model SVGs have explicit raster sizes");
         Check(motion.Contains("FluentMotionPolicy.Run(Enabled, Instant,"), "STATIC Animate routes through the reduce-motion short-circuit");
         Check(motion.Contains("FluentMotionPolicy.Resolve(_systemEnabled, _userReduce)"), "STATIC Enabled = system AND NOT in-app reduce");
         Check(!motion.Contains("ElementCompositionPreview.") && motion.Contains("element.StartAnimation(animation)"),
