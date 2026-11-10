@@ -1,5 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -10,6 +14,9 @@ namespace FluentCode.Pages.OpenCode;
 
 internal static class OpenCodeModelLogo
 {
+    // Accessed only on the UI thread, including continuations; sources are shared across all hosts.
+    private static readonly Dictionary<(string Asset, int Pixels), Task<ImageSource>> Sources = new();
+
     internal static FrameworkElement Create(string? modelId, string? name)
     {
         var brand = OpenCodeModelPresentation.Brand(modelId, name);
@@ -30,12 +37,8 @@ internal static class OpenCodeModelLogo
             try
             {
                 var asset = OpenCodeModelPresentation.Asset(brand, host.ActualTheme == ElementTheme.Dark)!;
-                var file = await StorageFile.GetFileFromPathAsync(Path.Combine(AppContext.BaseDirectory, "Assets", "Brands", asset));
-                using var stream = await file.OpenReadAsync();
-                ImageSource source;
-                if (asset.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
-                { var svg = new SvgImageSource(); await svg.SetSourceAsync(stream); source = svg; }
-                else { var bitmap = new BitmapImage(); await bitmap.SetSourceAsync(stream); source = bitmap; }
+                var pixels = host.XamlRoot is { } root ? (int)Math.Ceiling(20 * root.RasterizationScale) : 40;
+                var source = await SourceAsync(asset, pixels);
                 if (ticket != revision) return;
                 image.Source = source;
                 fallback.Visibility = Visibility.Collapsed;
@@ -47,6 +50,44 @@ internal static class OpenCodeModelLogo
         // reparenting can deliver Unloaded after Loaded, with no subsequent load to retry it.
         // Only a newer load/theme request supersedes the source, via revision above.
         return host;
+    }
+
+    private static async Task<ImageSource> SourceAsync(string asset, int pixels)
+    {
+        var key = (asset, pixels);
+        if (!Sources.TryGetValue(key, out var pending))
+        {
+            pending = LoadAsync(asset, pixels);
+            Sources.Add(key, pending);
+        }
+        try { return await pending; }
+        catch
+        {
+            if (Sources.TryGetValue(key, out var current) && ReferenceEquals(current, pending)) Sources.Remove(key);
+            throw;
+        }
+    }
+
+    private static async Task<ImageSource> LoadAsync(string asset, int pixels)
+    {
+        var file = await StorageFile.GetFileFromPathAsync(Path.Combine(AppContext.BaseDirectory, "Assets", "Brands", asset));
+        using var stream = await file.OpenReadAsync();
+        if (asset.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+        {
+            // Non-square marks (DeepSeek, GLM) retain their viewBox ratio, not a square raster's ratio.
+            using var input = stream.AsStreamForRead();
+            var viewBox = XDocument.Load(input).Root!.Attribute("viewBox")!.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            var width = double.Parse(viewBox[2], CultureInfo.InvariantCulture);
+            var height = double.Parse(viewBox[3], CultureInfo.InvariantCulture);
+            stream.Seek(0);
+            var svg = new SvgImageSource { RasterizePixelWidth = pixels, RasterizePixelHeight = pixels * height / width };
+            var status = await svg.SetSourceAsync(stream);
+            if (status != SvgImageSourceLoadStatus.Success) throw new InvalidOperationException($"Cannot load brand asset {asset}: {status}");
+            return svg;
+        }
+        var bitmap = new BitmapImage { DecodePixelWidth = pixels };
+        await bitmap.SetSourceAsync(stream);
+        return bitmap;
     }
 
     internal static Grid Label(string? modelId, string? name)

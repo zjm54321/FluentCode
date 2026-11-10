@@ -98,10 +98,11 @@ internal sealed partial class NativeUiRenderer
                 timerButtons.Children.Add(toggle); timerButtons.Children.Add(reset); timerPanel.Children.Add(timerRead); timerPanel.Children.Add(timerButtons); var timerVisual = new Visual(timerPanel);
                 var timer = timerPanel.DispatcherQueue.CreateTimer(); timer.Interval = TimeSpan.FromSeconds(1); double initial = 0;
                 double Left() { var value = NativeUiValues.Number(Field(timerVisual, key, "seconds", S(timerVisual.Model, "label"))); return double.IsFinite(value) ? Math.Max(0, Math.Floor(value)) : 0; }
-                timer.Tick += (_, _) => { if (timerVisual.Disposed || Left() <= 0) { timer.Stop(); return; } SetField(timerVisual, key, "seconds", S(timerVisual.Model, "label"), Math.Max(0, Left() - 1)); if (Left() <= 0) timer.Stop(); toggle.Content = timer.IsRunning ? "暂停" : "开始"; };
+                void OnTimerTick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args) { if (timerVisual.Disposed || Left() <= 0) { timer.Stop(); return; } SetField(timerVisual, key, "seconds", S(timerVisual.Model, "label"), Math.Max(0, Left() - 1)); if (Left() <= 0) timer.Stop(); toggle.Content = timer.IsRunning ? "暂停" : "开始"; }
+                timer.Tick += OnTimerTick;
                 toggle.Click += (_, _) => { if (timer.IsRunning) timer.Stop(); else if (Left() > 0) timer.Start(); toggle.Content = timer.IsRunning ? "暂停" : "继续"; };
                 reset.Click += (_, _) => { timer.Stop(); SetField(timerVisual, key, "seconds", S(timerVisual.Model, "label"), initial); toggle.Content = "开始"; };
-                timerPanel.Unloaded += (_, _) => { timer.Stop(); toggle.Content = "继续"; }; timerVisual.Cleanup = timer.Stop;
+                timerPanel.Unloaded += (_, _) => { timer.Stop(); toggle.Content = "继续"; }; timerVisual.Cleanup = () => { timer.Stop(); timer.Tick -= OnTimerTick; };
                 timerVisual.Apply = node => { var left = Left(); initial = NativeUiValues.Number(_runtime.Field("$ui:" + key + ":timerInitial", left)); timerRead.Text = S(node, "label") + "  " + TimeSpan.FromSeconds(Math.Min(left, 35999999)).ToString(left >= 3600 ? @"h\:mm\:ss" : @"m\:ss", CultureInfo.InvariantCulture); toggle.IsEnabled = left > 0 && !_runtime.IsExecuting; reset.IsEnabled = left != initial; AutomationProperties.SetName(timerPanel, S(node, "label")); }; return timerVisual;
             default: return null;
         }
