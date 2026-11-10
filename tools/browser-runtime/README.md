@@ -23,7 +23,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\browser-runtime\
 ```
 
 ### What Preparation Does
-1. **Download & Checksum Verification**: Downloads the official Node **24.22.1** Windows x64 distribution archive and verifies its SHA-256 hash against the official `SHASUMS256.txt`.
+1. **Download & Checksum Verification**: Downloads the official Node **26.13.0** Windows x64 distribution archive and verifies its SHA-256 hash against the official `SHASUMS256.txt`.
 2. **Deterministic Dependency Installation**: Uses the extracted Node executable and locked `package-lock.json` to execute `npm ci` with:
    - Production dependencies only (`--omit=dev`).
    - Lifecycle scripts disabled (`--ignore-scripts`).

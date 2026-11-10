@@ -6,9 +6,9 @@
   "description": "Workspace-local dependencies for the FluentCode browser sidecar.",
   "license": "GPL-3.0-or-later",
   "engines": {
-    "node": "24.22.1"
+    "node": "26.13.0"
   },
   "dependencies": {
-    "lighthouse": "13.4.1"
+    "lighthouse": "13.6.0"
   }
 }
