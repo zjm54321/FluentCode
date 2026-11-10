@@ -17,6 +17,12 @@
           "AngleSharp": "[1.10.0, 2.0.0)"
         }
       },
+      "CommunityToolkit.Common": {
+        "type": "Direct",
+        "requested": "[8.4.2, )",
+        "resolved": "8.4.2",
+        "contentHash": "SedQf214RzGA4Jwdl/auRM6h/8838DAbP0XvCxRWfeRTEnVqtl+6vn/XGYW2aXt8J5cWTh7rPdHWLZmly2qyIg=="
+      },
       "CommunityToolkit.WinUI.Controls.Segmented": {
         "type": "Direct",
         "requested": "[8.2.251219, )",
@@ -94,6 +100,12 @@
         "resolved": "1.6.0",
         "contentHash": "rJEpDfPM8wrfXUgkNejjg2bJN9bciy44uVyRwKUI+92CnSmbaLeJTLPYcCdvgM4RFsKrhs8d2H2hO78yZpMl3g=="
       },
+      "Microsoft.Web.WebView2": {
+        "type": "Direct",
+        "requested": "[1.0.4314.35, )",
+        "resolved": "1.0.4314.35",
+        "contentHash": "x5MFf2W03xueU1mMNvivXfHSsQ+ODo7vJ36qw/dLtU5Gs+8d7+7N7zzmNNDoT3ffosmcvZNBtUnlzyiDUuBkSQ=="
+      },
       "Microsoft.Windows.SDK.BuildTools": {
         "type": "Direct",
         "requested": "[10.0.28000.2957, )",
@@ -122,6 +134,21 @@
           "Microsoft.WindowsAppSDK.Widgets": "[1.8.251231004]",
           "Microsoft.WindowsAppSDK.WinUI": "[1.8.260803003]"
         }
+      },
+      "NetTopologySuite.Features": {
+        "type": "Direct",
+        "requested": "[2.2.0, )",
+        "resolved": "2.2.0",
+        "contentHash": "Uk0Sun2RtpDLMcPhPO8UFZYDtESpZmHSfqa/eskJkdOjmK2rVbo2Zm3YiT3zdtjgosypgDT/eQLiFbsPKMOgbg==",
+        "dependencies": {
+          "NetTopologySuite": "[2.0.0, 3.0.0-A)"
+        }
+      },
+      "System.Numerics.Tensors": {
+        "type": "Direct",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "88DUO9lZZ/PfBwO51YKTd5TdVb+Cl31kd6imLKHUZxNXjnPU2V4mHIVT4f8rVK3T+sXXfDbHInzclnOHrK4azw=="
       },
       "System.Security.Cryptography.ProtectedData": {
         "type": "Direct",
@@ -152,11 +179,6 @@
           "Microsoft.WindowsAppSDK": "1.7.250310001",
           "WinUIEx": "2.5.1"
         }
-      },
-      "CommunityToolkit.Common": {
-        "type": "Transitive",
-        "resolved": "8.2.1",
-        "contentHash": "LWuhy8cQKJ/MYcy3XafJ916U3gPH/YDvYoNGWyQWN11aiEKCZszzPOTJAOvBjP9yG8vHmIcCyPUt4L82OK47Iw=="
       },
       "CommunityToolkit.WinUI.Extensions": {
         "type": "Transitive",
@@ -262,11 +284,6 @@
           "Mapsui": "5.1.0"
         }
       },
-      "Microsoft.Web.WebView2": {
-        "type": "Transitive",
-        "resolved": "1.0.3179.45",
-        "contentHash": "3pokSH5CnN0G6rGhGFo1y87inxYhNxBQ2Vdf0wlvBj99KHxQJormjDACmqRnFeUsmuNFIhWwfAL1ztq7wD5qRA=="
-      },
       "Microsoft.Windows.CsWinRT": {
         "type": "Transitive",
         "resolved": "2.3.1",
@@ -357,14 +374,6 @@
         "resolved": "2.6.0",
         "contentHash": "1B1OTacTd4QtFyBeuIOcThwSSLUdRZU3bSFIwM8vk36XiZlBMi3K36u74e4OqwwHRHUuJC1PhbDx4hyI266X1Q=="
       },
-      "NetTopologySuite.Features": {
-        "type": "Transitive",
-        "resolved": "2.1.0",
-        "contentHash": "Iq+Ie9WZJj8Pyu3asHZ/UwZLim786QzWC0DmLEzFK2u3BeLHDK7iWfsYBLDb/RCBUql8VBmW6LMlsJ+LKUHduA==",
-        "dependencies": {
-          "NetTopologySuite": "[2.0.0, 3.0.0-A)"
-        }
-      },
       "NetTopologySuite.IO.GeoJSON4STJ": {
         "type": "Transitive",
         "resolved": "4.0.0",
@@ -448,11 +457,6 @@
           "Svg.Model": "3.2.1"
         }
       },
-      "System.Numerics.Tensors": {
-        "type": "Transitive",
-        "resolved": "9.0.0",
-        "contentHash": "hyJB4UlpAi19Xr9AXzu2NuagKC4lPfHObNMEAA0HmqFz2rX7wKgzeYzO/jM/eBHDhnUGFFEjk5cOoJaxqg5J4A=="
-      },
       "Topten.RichTextKit": {
         "type": "Transitive",
         "resolved": "0.4.167",
@@ -488,6 +492,12 @@
       }
     },
     "net10.0-windows10.0.26100/win-x64": {
+      "Microsoft.Web.WebView2": {
+        "type": "Direct",
+        "requested": "[1.0.4314.35, )",
+        "resolved": "1.0.4314.35",
+        "contentHash": "x5MFf2W03xueU1mMNvivXfHSsQ+ODo7vJ36qw/dLtU5Gs+8d7+7N7zzmNNDoT3ffosmcvZNBtUnlzyiDUuBkSQ=="
+      },
       "CI.Microsoft.Terminal.WinUI3.Unofficial": {
         "type": "Transitive",
         "resolved": "1.0.20-beta.1",
@@ -510,11 +520,6 @@
         "type": "Transitive",
         "resolved": "8.3.1.3",
         "contentHash": "bx8CE8Js+XGX8PUxAHCBDEORt5aaBYtMN4Hr9QFs57Xithh6yjUyYqksizH6eRDhJkwsGI+SXWmPmMm8lZC9Pw=="
-      },
-      "Microsoft.Web.WebView2": {
-        "type": "Transitive",
-        "resolved": "1.0.3179.45",
-        "contentHash": "3pokSH5CnN0G6rGhGFo1y87inxYhNxBQ2Vdf0wlvBj99KHxQJormjDACmqRnFeUsmuNFIhWwfAL1ztq7wD5qRA=="
       },
       "Microsoft.WindowsAppSDK.Foundation": {
         "type": "Transitive",

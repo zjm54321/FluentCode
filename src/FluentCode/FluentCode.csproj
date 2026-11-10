@@ -46,6 +46,11 @@
     <PackageReference Include="AngleSharp" Version="1.10.1" />
     <PackageReference Include="AngleSharp.Css" Version="1.4.1" />
     <PackageReference Include="ExCSS" Version="4.3.2" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <!-- Raise otherwise minimum-version-only transitive dependencies to current stable releases. -->
+    <PackageReference Include="CommunityToolkit.Common" Version="8.4.2" />
+    <PackageReference Include="NetTopologySuite.Features" Version="2.2.0" />
+    <PackageReference Include="System.Numerics.Tensors" Version="10.0.14" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.5" />
     <PackageReference Include="Mapsui.WinUI" Version="5.1.0" />
     <PackageReference Include="WinUI.TableView" Version="1.5.1" />
