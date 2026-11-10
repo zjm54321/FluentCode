@@ -8,7 +8,7 @@ $pack = Get-ChildItem (Join-Path $dotnetRoot 'packs/Microsoft.NETCore.App.Ref') 
 if (!$sdk -or !$pack) { throw '.NET 10 SDK/reference pack required.' }
 New-Item -ItemType Directory -Path $EvidenceRoot | Out-Null
 $assembly = Join-Path $EvidenceRoot 'OpenCodeConnectionTests.dll'
-$dpapi = Join-Path $env:USERPROFILE '.nuget/packages/system.security.cryptography.protecteddata/10.0.12/lib/net10.0/System.Security.Cryptography.ProtectedData.dll'
+$dpapi = Join-Path $env:USERPROFILE '.nuget/packages/system.security.cryptography.protecteddata/10.0.14/lib/net10.0/System.Security.Cryptography.ProtectedData.dll'
 if (!(Test-Path $dpapi)) { throw 'Prepare tools/browser-runtime/prepare.ps1, then restore project dependencies with scripts/build-debug.ps1 first.' }
 $sources = @(Get-ChildItem (Join-Path $repo 'src/FluentCode/Models/*.cs') | ForEach-Object FullName)
 $sources += Get-ChildItem (Join-Path $repo 'src/FluentCode/Services/OpenCode/*.cs') | ForEach-Object FullName

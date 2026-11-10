@@ -19,8 +19,9 @@
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.9169" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.5" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.261102100" PrivateAssets="all" />
     <ApplicationDefinition Include="App.xaml" />
     <Compile Include="../../src/FluentCode/Pages/OpenCode/OpenCodeComposerDocument.cs" Link="Production/OpenCodeComposerDocument.cs" />
     <Compile Include="../../src/FluentCode/Pages/OpenCode/OpenCodeComposerEditor.cs" Link="Production/OpenCodeComposerEditor.cs" />

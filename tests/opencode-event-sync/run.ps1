@@ -23,10 +23,11 @@ foreach ($name in @('OpenCodeSessionInsights.cs', 'OpenCodeContextHeader.cs', 'O
     $arguments += '"' + "$repo/src/FluentCode/Pages/OpenCode/$name" + '"'
 }
 $arguments += '"' + "$repo/src/FluentCode/Services/Rendering/SafeContentRenderer.cs" + '"'
+$arguments += '"' + "$PSScriptRoot/SanitizerRegressionTests.cs" + '"'
 $arguments += Get-ChildItem "$repo/src/FluentCode/Services/Billion/*.cs" | ForEach-Object { '"' + $_.FullName + '"' }
 $nuget = Join-Path $env:USERPROFILE '.nuget/packages'
-foreach ($relative in @('markdig/1.4.0/lib/net10.0/Markdig.dll', 'htmlsanitizer/9.2.1039/lib/net8.0/HtmlSanitizer.dll',
-    'anglesharp/1.7.2/lib/net10.0/AngleSharp.dll', 'anglesharp.css/1.0.2/lib/net10.0/AngleSharp.Css.dll')) {
+foreach ($relative in @('markdig/1.6.0/lib/net10.0/Markdig.dll', 'htmlsanitizer/11.0.26/lib/net8.0/HtmlSanitizer.dll',
+    'anglesharp/1.10.1/lib/net10.0/AngleSharp.dll', 'anglesharp.css/1.4.1/lib/net10.0/AngleSharp.Css.dll')) {
     $reference = Join-Path $nuget $relative
     $arguments += '/reference:"' + $reference + '"'
     Copy-Item $reference $output

@@ -57,7 +57,7 @@ FluentCode 将独立的 Node.js 运行时打包在发布目录中，以支持会
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\browser-runtime\prepare.ps1
 ```
-> **说明**：该脚本会从官方源下载固定版本的 Node.js（Node 24.22.1 x64），严格比对 SHA-256 校验和，并在隔离缓存中运行 `npm ci` 安装锁定的生产依赖，最终生成 `artifacts/browser-runtime/`。此步骤需要网络连接；后续编译与启动均不再联网。
+> **说明**：该脚本会从官方源下载固定版本的 Node.js（Node 26.13.0 x64），严格比对 SHA-256 校验和，并在隔离缓存中运行 `npm ci` 安装锁定的生产依赖，最终生成 `artifacts/browser-runtime/`。此步骤需要网络连接；后续编译与启动均不再联网。
 
 ### 步骤 2：编译 Debug 版本
 ```powershell

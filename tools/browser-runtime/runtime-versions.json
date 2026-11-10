@@ -1,8 +1,8 @@
 {
-  "nodeVersion": "24.22.1",
-  "nodeArchive": "node-v24.22.1-win-x64.zip",
-  "nodeArchiveSha256": "d2046d28c2c3dcd211ac5145c0bf30e2047ef9dfb306693c8c6e2eccd8b95fa5",
-  "nodeExeSha256": "d702daa815eabbff763c7d3808e235cf031cf2ca70211b56847bc72f51e240e5",
-  "lighthouseVersion": "13.4.1",
-  "lighthouseIntegrity": "sha512-fDu8lt3QLK/lTqIxtp1HkzQNJ32rsFHhbadYOepcMZFLgA8oINhxutMbMv8XXnpTOvZ0TXCo4JCk1LDTWaRLnA=="
+  "nodeVersion": "26.13.0",
+  "nodeArchive": "node-v26.13.0-win-x64.zip",
+  "nodeArchiveSha256": "dcc60d59a0746999f99064a01c020445d54d84228c691cdbf25b49ac3b59150a",
+  "nodeExeSha256": "14319838b3f355e0398c13569a90270bce4fc68f25189f58c59b03dadae0e6d5",
+  "lighthouseVersion": "13.6.0",
+  "lighthouseIntegrity": "sha512-2/HUPUpQyGm01VEgYCUjSlNZY7Zkhk1v3QI4c7UTbnaoRB7HF0qYMPzzaiidNf5iqw5wnmtm9LpGawKKqCfLmg=="
 }

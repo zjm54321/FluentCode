@@ -26,6 +26,8 @@ MSIX 自带 .NET 10、Windows App SDK、原生 Terminal 控件及完整离线 Br
 
 WAP 项目是 `packaging/FluentCode.Package/FluentCode.Package.wapproj`。它打包完整 self-contained publish，而非只收集单个 EXE 的默认输出。应用已合并的 `FluentCode.pri` 必须参与生成包主索引 `resources.pri`，其中包含应用和 WinUI 的内嵌 XAML；仅携带旁置 PRI 文件会导致已安装包在启动时找不到 WinUI 主题资源。其余 SDK PRI 和 npm 文件保持普通载荷，避免重复索引。打包会补齐应用 PRI 索引到的 AppIcon/Taskbar 资源文件。图标仅机械复用现有 AppIcon PNG；重新生成可运行 `scripts/generate-msix-assets.ps1`。没有创建新图标设计。
 
+DevWinUI 10.9.1 引入 Win2D 1.4.0。WAP 不引用应用项目，单纯复制 publish 无法传递 Win2D 的 `WindowsMetadataReference`。脚本通过已还原项目的 `Win2DWinMDPath` 获取元数据，将 `Microsoft.Graphics.Canvas.winmd` 加入载荷；WAP 再把它传入 DesktopBridge 的现有 WinMD 清单收集器，生成 `Microsoft.Graphics.Canvas.dll` 的 activatable-class 注册。不要只复制 DLL，或手工维护某几个类的注册列表。
+
 ## 由用户决定信任和安装
 
 将 `Install.cmd`、`Install.ps1`、`.msix` 和 `.cer` 保留在同一文件夹（可整体复制到含空格或中文的目录），从普通桌面**双击 `Install.cmd`**。无需 PowerShell 7，使用系统自带 Windows PowerShell 5.1，不修改执行策略。窗口会显示中文包身份、SHA256、发布者、证书指纹和当前安装用户；校验全部通过后，输入 `INSTALL` 才继续。
@@ -67,6 +69,8 @@ Add-AppxPackage -Path .\FluentCode_1.2611.16.0_x64.msix
 `pwsh -NoProfile -File tests/msix/run.ps1` 可独立运行打包专项静态校验；它不加入现有 28 项运行时套件，不安装或启动应用。
 
 `tests/msix/run.ps1` 可离线校验源清单，打包脚本还会解包并校验身份、版本、最低系统、COM 激活、运行时/PRI/原生 DLL/图标/通知及每个载荷文件哈希，并通过 SDK `makepri dump` 确认包主资源索引包含应用和 WinUI 主题的内嵌 XAML（`resource-index-validation.json`）。签名校验分别记录密码学完整性与 Windows 信任链结果；开发证书未被信任是预期状态，不通过自动导入证书消除该结果。
+
+校验还要求 DevWinUI 与 Toolkit SettingsControls 的 Generic XBF、DevWinUI/Win2D DLL、WinMD 和许可通知在包内，并检查 CanvasDevice、CanvasBitmap、CanvasControl 的激活注册。源级检查固定 DevWinUI → Toolkit → 应用覆盖的字典顺序；资源顺序与后续人工视觉验证的界限见 `docs/dependencies.md`。
 
 解包校验不等于安装/运行验证。真正的已安装启动、单实例、托盘、通知冷/热激活、Terminal、BrowserRuntime 和只读安装目录检查，必须在用户批准证书信任及安装后进行。父仓库 `opencode-qol` 继续拥有 Windows CI；发布子仓库后还需更新父仓库 gitlink。
 

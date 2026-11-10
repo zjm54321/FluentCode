@@ -37,16 +37,27 @@
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.9169" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
-    <PackageReference Include="Markdig" Version="1.4.0" />
-    <PackageReference Include="HtmlSanitizer" Version="9.2.1039" />
+    <!-- Charts, Mapsui and Toolkit still request the umbrella: pin 2.x to avoid mixing legacy MSBuild targets. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.261102100" PrivateAssets="all" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
+    <PackageReference Include="Markdig" Version="1.6.0" />
+    <PackageReference Include="HtmlSanitizer" Version="11.0.26" />
+    <PackageReference Include="AngleSharp" Version="1.10.1" />
+    <PackageReference Include="AngleSharp.Css" Version="1.4.1" />
+    <PackageReference Include="ExCSS" Version="4.3.2" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <!-- Raise otherwise minimum-version-only transitive dependencies to current stable releases. -->
+    <PackageReference Include="CommunityToolkit.Common" Version="8.4.2" />
+    <PackageReference Include="NetTopologySuite.Features" Version="2.2.0" />
+    <PackageReference Include="System.Numerics.Tensors" Version="10.0.14" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.5" />
     <PackageReference Include="Mapsui.WinUI" Version="5.1.0" />
     <PackageReference Include="WinUI.TableView" Version="1.5.1" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Segmented" Version="8.2.251219" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
+    <PackageReference Include="DevWinUI" Version="10.9.1" />
     <ProjectReference Include="..\ThirdParty\WindowsTerminalControl\src\WindowsTerminalControl.WinUI\WindowsTerminalControl.WinUI.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -68,6 +79,7 @@
     <Content Include="ThirdPartyNotices\OpenUI.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="ThirdPartyNotices\NativeUiComponents.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="ThirdPartyNotices\NativeUiGraphics.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="ThirdPartyNotices\DevWinUI.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\AppIcon\app.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

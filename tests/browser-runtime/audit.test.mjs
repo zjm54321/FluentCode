@@ -13,7 +13,7 @@ import {JsonPeer} from '../../artifacts/browser-runtime/json-peer.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const chromePath = process.env.BROWSER_RUNTIME_TEST_CHROME ?? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
-test('real Lighthouse 13.4.1 snapshot through flattened CDP callbacks', {timeout: 60000, skip: !existsSync(chromePath)}, async () => {
+test('real Lighthouse 13.6.0 snapshot through flattened CDP callbacks', {timeout: 60000, skip: !existsSync(chromePath)}, async () => {
   const profile = path.join(root, 'artifacts', `browser-runtime-audit-${process.pid}`);
   await mkdir(profile, {recursive: true});
   const server = createServer((request, response) => {
@@ -108,7 +108,7 @@ test('real Lighthouse 13.4.1 snapshot through flattened CDP callbacks', {timeout
     assert.equal(result.reports.length, 2);
     for (const report of result.reports) assert.ok(Buffer.from(report.data, 'base64').length <= 5 * 1024 * 1024);
     const json = JSON.parse(Buffer.from(result.reports.find(report => report.name.endsWith('.json')).data, 'base64'));
-    assert.equal(json.lighthouseVersion, '13.4.1');
+    assert.equal(json.lighthouseVersion, '13.6.0');
     assert.equal(json.gatherMode, 'snapshot');
     assert.equal(json.configSettings.formFactor, 'desktop');
     assert.equal(json.configSettings.screenEmulation.disabled, true);

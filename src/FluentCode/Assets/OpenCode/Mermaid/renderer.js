@@ -4,7 +4,7 @@ window.renderDiagram = async (source, dark, token) => {
   try {
     if (source.length > 32768 || source.includes('%%{') || source.trimStart().startsWith('---')) throw new Error('unsupported configuration');
     mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'default',
-      htmlLabels: false, flowchart: { htmlLabels: false }, maxTextSize: 32768, maxEdges: 500,
+      htmlLabels: false, maxTextSize: 32768, maxEdges: 500,
       suppressErrorRendering: true, deterministicIds: true,
       secure: ['securityLevel', 'startOnLoad', 'maxTextSize', 'maxEdges', 'suppressErrorRendering'] });
     const result = await mermaid.render('diagramSvg', source);

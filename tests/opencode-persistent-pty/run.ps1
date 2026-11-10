@@ -24,16 +24,18 @@ Compile 'PtyPresentationTests' 'exe' $refs ($models + @("$folder/OpenCodePersist
 & $dotnet (Join-Path $EvidenceRoot 'PtyPresentationTests.dll') $repo | Tee-Object (Join-Path $EvidenceRoot 'results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Presentation tests failed: $LASTEXITCODE" }
 $nuget = Join-Path $env:USERPROFILE '.nuget/packages'
-$native = @(Get-Item "$nuget/microsoft.windows.sdk.net.ref/10.0.26100.57/lib/net8.0/Microsoft.Windows.SDK.NET.dll", "$nuget/microsoft.windows.sdk.net.ref/10.0.26100.57/lib/net8.0/WinRT.Runtime.dll")
-$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.winui/1.8.260803003/lib/net6.0-windows10.0.17763.0/*.dll"
-$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.foundation/1.8.260803002/lib/net6.0-windows10.0.17763.0/*.dll"
-$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.interactiveexperiences/1.8.260708001/lib/net6.0-windows10.0.18362.0/*.dll"
+& $dotnet restore (Join-Path $PSScriptRoot 'Dependencies.proj') --nologo --verbosity minimal "-p:BaseIntermediateOutputPath=$EvidenceRoot/sdk-restore/"
+if ($LASTEXITCODE -ne 0) { throw 'Compile-only Windows SDK reference restore failed.' }
+$native = @(Get-Item "$nuget/microsoft.windows.sdk.net.ref/10.0.28000.87/lib/net9.0/Microsoft.Windows.SDK.NET.dll", "$nuget/microsoft.windows.sdk.net.ref/10.0.28000.87/lib/net9.0/WinRT.Runtime.dll")
+$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.winui/2.6.5/lib/net6.0-windows10.0.17763.0/*.dll"
+$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.foundation/2.6.5/lib/net6.0-windows10.0.17763.0/*.dll"
+$native += Get-ChildItem "$nuget/microsoft.windowsappsdk.interactiveexperiences/2.6.5/lib/net6.0-windows10.0.18362.0/*.dll"
 $library = Join-Path $EvidenceRoot 'native-library'
 & (Join-Path $PSScriptRoot 'BuildNativeTerminal.ps1') -EvidenceRoot $library
 if ($LASTEXITCODE -ne 0) { throw 'Native terminal dependency build failed' }
 $native += Get-Item "$library/bin/WindowsTerminalControl.WinUI.dll", "$library/bin/WindowsTerminalControl.Core.dll"
 $native += Get-Item "$nuget/ci.microsoft.terminal.winui3.unofficial/1.0.20-beta.1/lib/net8.0-windows10.0.19041/Microsoft.Terminal.WinUI3.dll"
-$native += Get-ChildItem "$nuget/winuiex/2.5.1/lib" -Filter WinUIEx.dll -Recurse | Select-Object -First 1
+$native += Get-ChildItem "$nuget/winuiex/2.9.3/lib" -Filter WinUIEx.dll -Recurse | Select-Object -First 1
 $native = @($native | Where-Object Name -NE 'WinRT.Runtime.dll')
 $native += Get-Item "$nuget/microsoft.windows.cswinrt/2.3.1/lib/net9.0/WinRT.Runtime.dll"
 $rendererSources = @("$folder/OpenCodePersistentPtySession.cs", "$folder/OpenCodePersistentPtyVtStream.cs", "$folder/OpenCodePersistentPtyAirspace.cs")

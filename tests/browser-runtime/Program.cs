@@ -129,7 +129,7 @@ internal static class Program
         Check(result.Reports.Count == 2, "Expected raw JSON and HTML report bytes");
         foreach (var report in result.Reports) Check(report.Data.Length is > 0 and <= 5 * 1024 * 1024, "Report byte limit");
         var jsonReport = JsonNode.Parse(result.Reports.First(report => report.Mime == "application/json").Data)!.AsObject();
-        Check(jsonReport["lighthouseVersion"]!.GetValue<string>() == "13.4.1", "Real Lighthouse version");
+        Check(jsonReport["lighthouseVersion"]!.GetValue<string>() == "13.6.0", "Real Lighthouse version");
         Check(jsonReport["gatherMode"]!.GetValue<string>() == "snapshot", "Real snapshot mode");
         Check(result.Value["scores"]!.AsArray().Count == 3 && result.Value["failures"]!.AsArray().Count > 0, "Real scores and failures");
         Check(chrome.SubscriptionCount == 0 && chrome.OwnedCount == 0, "Snapshot sessions/subscription leaked");

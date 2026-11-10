@@ -28,6 +28,9 @@ for (const [location, entry] of Object.entries(lock.packages)) {
   assert.ok(!entry.dev, `Development package in production lock: ${location}`);
   assert.match(entry.resolved, /^https:\/\/registry\.npmjs\.org\//, `Unexpected registry: ${location}`);
   assert.match(entry.integrity, /^sha(256|384|512)-/, `Missing package integrity: ${location}`);
+  // Foreign optional native bindings remain integrity-pinned in the lock, not redistributed.
+  if (entry.optional && ((entry.os && !entry.os.includes(process.platform))
+      || (entry.cpu && !entry.cpu.includes(process.arch)))) continue;
   assert.equal((await json(`${location}/package.json`)).version, entry.version, `Version mismatch: ${location}`);
   packageCount++;
 }

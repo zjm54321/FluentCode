@@ -12,7 +12,7 @@ MIT License
 
 CommunityToolkit.WinUI.Controls.Segmented / CommunityToolkit.WinUI.Extensions 8.2.251219
 CommunityToolkit.WinUI.Controls.SettingsControls / CommunityToolkit.WinUI.Triggers / CommunityToolkit.WinUI.Helpers 8.2.251219
-CommunityToolkit.Common 8.2.1
+CommunityToolkit.Common 8.4.2
 https://github.com/CommunityToolkit/Windows
 Copyright (c) .NET Foundation and Contributors. All rights reserved.
 MIT License
@@ -38,3 +38,6 @@ THE SOFTWARE.
 LiveCharts uses the MIT SkiaSharp managed bindings and the native Skia/HarfBuzz
 graphics/text libraries. Their full distributed license notices accompany this
 file in NativeUiGraphics.txt.
+
+DevWinUI / DevWinUI.Base 10.9.1 and Microsoft.Graphics.Win2D 1.4.0
+Their attribution and license notices are in DevWinUI.txt.

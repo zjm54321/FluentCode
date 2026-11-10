@@ -55,6 +55,16 @@ if ($PublishedPayloadDirectory) {
     )
 }
 
+# The WAP project has no project reference, so Win2D's WindowsMetadataReference cannot flow
+# into its manifest generator. Resolve the restored package's own property, not a cache-version pin.
+Invoke-Native 'win2d-metadata' $msbuild @(
+    (Join-Path $repo 'src\FluentCode\FluentCode.csproj'), '/nologo', '/p:Configuration=Release',
+    '/p:Platform=x64', '/p:FluentCodePackaged=true', '/getProperty:Win2DWinMDPath'
+)
+$win2dWinmd = (Get-Content -LiteralPath (Join-Path $EvidenceRoot 'win2d-metadata.log') | Where-Object { $_.Trim() } | Select-Object -Last 1).Trim()
+if (!(Test-Path -LiteralPath $win2dWinmd -PathType Leaf)) { throw 'The restored Win2D activation metadata is missing.' }
+Copy-Item -LiteralPath $win2dWinmd -Destination (Join-Path $payload 'Microsoft.Graphics.Canvas.winmd')
+
 # The merged app PRI also indexes these project assets (including source variants/attribution).
 # WAP merges that PRI into the package index and must be able to include every referenced file.
 foreach ($relative in @('Assets\AppIcon', 'Assets\Taskbar')) {

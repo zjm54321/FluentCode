@@ -7,6 +7,9 @@ const lock = JSON.parse(await readFile(path.join(root, 'package-lock.json'), 'ut
 const packages = [];
 for (const [location, entry] of Object.entries(lock.packages)) {
   if (!location) continue;
+  // npm records every native variant, but installs only the optional win-x64 payload.
+  if (entry.optional && ((entry.os && !entry.os.includes(process.platform))
+      || (entry.cpu && !entry.cpu.includes(process.arch)))) continue;
   const directory = path.join(root, location);
   const metadata = JSON.parse(await readFile(path.join(directory, 'package.json'), 'utf8'));
   const files = (await readdir(directory)).filter(name => /^(licen[cs]e|copying|notice|copyright)([.-]|$)/i.test(name));

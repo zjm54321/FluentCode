@@ -6,6 +6,9 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <ResourceDictionary Source="ms-appx:///DevWinUI/Themes/Generic.xaml" />
+                <!-- Later merged dictionaries win: retain Toolkit SettingsControls' shared keys and styles. -->
+                <ResourceDictionary Source="ms-appx:///CommunityToolkit.WinUI.Controls.SettingsControls/Themes/Generic.xaml" />
                 <!-- 应用级布局常量（尺寸 / 等宽字体 / 状态圆点样式）；颜色只用内置主题资源。 -->
                 <ResourceDictionary Source="ms-appx:///Styles/AppTokens.xaml" />
             </ResourceDictionary.MergedDictionaries>

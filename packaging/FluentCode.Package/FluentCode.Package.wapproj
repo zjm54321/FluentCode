@@ -37,11 +37,18 @@
       <TargetPath>%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
       <ProjectName>$(ProjectName)</ProjectName>
     </AppxPackagePayload>
+    <!-- Forward the Win2D WinMD to DesktopBridge's existing manifest harvester, not just its file glob. -->
+    <_WinmdFilesFromReferences Include="$(FluentCodePayloadDirectory)\Microsoft.Graphics.Canvas.winmd">
+      <TargetPath>Microsoft.Graphics.Canvas.winmd</TargetPath>
+      <Implementation>Microsoft.Graphics.Canvas.dll</Implementation>
+      <ProjectName>$(ProjectName)</ProjectName>
+    </_WinmdFilesFromReferences>
   </ItemGroup>
   <Target Name="ValidateFluentCodePayload" BeforeTargets="PrepareForBuild">
     <Error Condition="'$(FluentCodePayloadDirectory)' == '' Or !Exists('$(FluentCodePayloadDirectory)\FluentCode.exe')"
            Text="Use scripts/package-msix.ps1 to prepare a complete self-contained payload before packaging." />
     <Error Condition="'$(Platform)' != 'x64'" Text="FluentCode MSIX supports x64 only." />
+    <Error Condition="!Exists('$(FluentCodePayloadDirectory)\Microsoft.Graphics.Canvas.winmd')" Text="Win2D activation metadata is required; package via scripts/package-msix.ps1." />
   </Target>
   <Import Project="$(DesktopBridgeTargetsPath)" />
 </Project>
