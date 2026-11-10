@@ -26,8 +26,8 @@ Write-Output 'PASS completion Toast body-logo source contract; application ident
 $args = @('/nologo', '/langversion:latest', '/nullable:enable', '/warnaserror+', '/nowarn:1701,1702', '/target:exe', ('/out:"' + $assembly + '"'))
 $args += Get-ChildItem "$($pack.FullName)/ref/net10.0/*.dll" | ForEach-Object { '/reference:"' + $_.FullName + '"' }
 $packages = Join-Path $env:USERPROFILE '.nuget/packages'
-$foundation = Get-ChildItem "$packages/microsoft.windowsappsdk.foundation" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-$windows = Get-ChildItem "$packages/microsoft.windows.sdk.net.ref" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+$foundation = Get-Item "$packages/microsoft.windowsappsdk.foundation/1.8.260803002"
+$windows = Get-Item "$packages/microsoft.windows.sdk.net.ref/10.0.26100.57"
 $refs = @("$($foundation.FullName)/lib/net6.0-windows10.0.17763.0/Microsoft.Windows.AppNotifications.Projection.dll",
     "$($foundation.FullName)/lib/net6.0-windows10.0.17763.0/Microsoft.Windows.AppNotifications.Builder.Projection.dll",
     "$($windows.FullName)/lib/net8.0/Microsoft.Windows.SDK.NET.dll", "$($windows.FullName)/lib/net8.0/WinRT.Runtime.dll")

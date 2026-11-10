@@ -21,6 +21,7 @@ internal sealed class ChromeCdpHost : IOpenCodeBrowserCdpConnection, IAsyncDispo
     private readonly ConcurrentDictionary<long, Action<OpenCodeBrowserCdpEvent>> subscribers = new();
     private readonly ConcurrentDictionary<string, byte> owned = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, string> parents = new(StringComparer.Ordinal);
+    private readonly object sessionGate = new();
     private readonly TcpListener origin = new(IPAddress.Loopback, 0);
     private readonly string profile;
     private readonly Process chrome;
@@ -118,7 +119,7 @@ internal sealed class ChromeCdpHost : IOpenCodeBrowserCdpConnection, IAsyncDispo
         var result = await SendAsync(method, parameters ?? new(), sessionId ?? baseSession, cancellationToken);
         if (method == "Target.attachToTarget")
         {
-            owned.TryAdd(result["sessionId"]!.GetValue<string>(), 0);
+            lock (sessionGate) owned.TryAdd(result["sessionId"]!.GetValue<string>(), 0);
             Interlocked.Increment(ref Attachments);
             if (Interlocked.CompareExchange(ref holdAttachment, 0, 1) == 1)
             {
@@ -132,9 +133,12 @@ internal sealed class ChromeCdpHost : IOpenCodeBrowserCdpConnection, IAsyncDispo
 
     private void RemoveSession(string id)
     {
-        owned.TryRemove(id, out _);
-        foreach (var pair in parents) if (pair.Value == id) RemoveSession(pair.Key);
-        parents.TryRemove(id, out _);
+        lock (sessionGate)
+        {
+            owned.TryRemove(id, out _);
+            foreach (var pair in parents) if (pair.Value == id) RemoveSession(pair.Key);
+            parents.TryRemove(id, out _);
+        }
         Interlocked.Increment(ref Detachments);
         Detached.TrySetResult();
     }
@@ -205,10 +209,18 @@ internal sealed class ChromeCdpHost : IOpenCodeBrowserCdpConnection, IAsyncDispo
                     var method = data["method"]!.GetValue<string>();
                     var parameters = data["params"]?.AsObject() ?? new();
                     var sessionId = data["sessionId"]?.GetValue<string>();
-                    if (sessionId is not null && owned.ContainsKey(sessionId) && method == "Target.attachedToTarget")
+                    if (method == "Target.attachedToTarget")
                     {
-                        var child = parameters["sessionId"]!.GetValue<string>();
-                        owned.TryAdd(child, 0); parents[child] = sessionId;
+                        // Child registration and recursive removal must be one ownership mutation.
+                        // A detach continuation can otherwise remove the parent between these writes.
+                        lock (sessionGate)
+                        {
+                            if (sessionId is not null && owned.ContainsKey(sessionId))
+                            {
+                                var child = parameters["sessionId"]!.GetValue<string>();
+                                owned.TryAdd(child, 0); parents[child] = sessionId;
+                            }
+                        }
                     }
                     var value = new OpenCodeBrowserCdpEvent(method, parameters, sessionId == baseSession ? null : sessionId);
                     foreach (var callback in subscribers.Values) callback(value);

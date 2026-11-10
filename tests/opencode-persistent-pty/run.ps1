@@ -38,7 +38,7 @@ $native = @($native | Where-Object Name -NE 'WinRT.Runtime.dll')
 $native += Get-Item "$nuget/microsoft.windows.cswinrt/2.3.1/lib/net9.0/WinRT.Runtime.dll"
 $rendererSources = @("$folder/OpenCodePersistentPtySession.cs", "$folder/OpenCodePersistentPtyVtStream.cs", "$folder/OpenCodePersistentPtyAirspace.cs")
 # Shared Fluent motion layer used by the card / ☰ list / chips (production files, compiled as-is).
-$rendererSources += @("$repo/src/FluentCode/Motion/FluentMotion.cs", "$repo/src/FluentCode/Motion/FluentMotionPolicy.cs", "$repo/src/FluentCode/Motion/ActionFeedback.cs", "$repo/src/FluentCode/Motion/OverlayCardMotion.cs", "$repo/src/FluentCode/Services/Appearance/ThemeResources.cs")
+$rendererSources += @("$repo/src/FluentCode/Motion/FluentMotion.cs", "$repo/src/FluentCode/Motion/FluentMotionBindings.cs", "$repo/src/FluentCode/Motion/FluentMotionPolicy.cs", "$repo/src/FluentCode/Motion/ActionFeedback.cs", "$repo/src/FluentCode/Motion/OverlayCardMotion.cs", "$repo/src/FluentCode/Services/Appearance/ThemeResources.cs")
 Compile 'PtyNativeViewCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
     "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
     "$repo/src/FluentCode/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
