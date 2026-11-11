@@ -133,12 +133,12 @@ public sealed partial class MainWindow
     // ---- 终态确认（原“任务状态”入口已随导航栏移除） ----
 
     /// <summary>
-    /// 窗口对用户可见时确认全部终态（已完成 / 失败 / 已取消）：任务栏状态叠加只用于提醒“窗口不在眼前时发生了什么”，
-    /// 用户回到窗口即视为已看到。等待处理 / 结果未知 / 进行中从不在此确认。
+    /// 窗口在屏且已激活时确认全部终态（已完成 / 失败 / 已取消）：用户回到窗口即视为已看到。
+    /// 在别的应用工作时保留提醒；等待处理 / 结果未知 / 进行中从不在此确认。
     /// </summary>
     private void AcknowledgeTerminalTasksWhenVisible()
     {
-        if (!_openCodeWindowVisible)
+        if (!_openCodeWindowVisible || !_openCodeWindowActivated)
         {
             return;
         }

@@ -280,7 +280,7 @@ public sealed partial class OpenCodePage : Page
         SubscribeAppSourceChanged();
         AttachConversationEvents();
         AttachViewAcknowledgementEvents();
-        UpdateViewAcknowledgementVisibility(_hostWindowVisible);
+        UpdateViewAcknowledgementVisibility(HostAttentionVisible);
 
         try
         {
@@ -1079,9 +1079,9 @@ public sealed partial class OpenCodePage : Page
             ObserveExecutionState(sessionId, projectedWindow);
 
             // 最新窗口已成功 Apply（真实渲染窗口，非历史 prepend）：向 view ACK 入口提交该窗口与宿主
-            // 窗口可见性；仅在页面/窗口真正可见时按 (来源, 会话, 水位) 去重尝试一次，绝不额外 GET 水位。
+            // 用户注意（在屏且已激活）；按 (来源, 会话, 水位) 去重尝试一次，绝不额外 GET 水位。
             if (!OwnsMessageRefresh(refreshOwner) || !IsCurrentMessageHistoryRead(historyRead)) return;
-            NotifyViewAcknowledgementRendered(projectedWindow, _hostWindowVisible);
+            NotifyViewAcknowledgementRendered(projectedWindow, HostAttentionVisible);
             UpdateEmptyState();
 
             if (followBottom)

@@ -170,7 +170,7 @@ public sealed partial class OpenCodePage
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         _conversationView.ApplyMessages(visibleHistory);
         RecordRetainedSwitchApply(started);
-        NotifyViewAcknowledgementRendered(visibleHistory, _hostWindowVisible);
+        NotifyViewAcknowledgementRendered(visibleHistory, HostAttentionVisible);
         UpdateLoadOlderMessagesUi();
         UpdateEmptyState();
     }

@@ -103,7 +103,7 @@ Invoke-Native 'wap' $msbuild @(
 )
 $packages = @(Get-ChildItem (Join-Path $stage 'packages') -Recurse -File -Filter '*.msix')
 if ($packages.Count -ne 1) { throw "Expected one x64 MSIX; found $($packages.Count)." }
-$package = Join-Path $output 'FluentCode_1.2611.16.0_x64.msix'
+$package = Join-Path $output 'FluentCode_1.2611.17.0_x64.msix'
 Copy-Item -LiteralPath $packages[0].FullName -Destination $package
 
 $certificate = $null

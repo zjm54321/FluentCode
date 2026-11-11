@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using FluentCode;
 using FluentCode.Pages;
+using FluentCode.Pages.OpenCode;
 using FluentCode.Services.Notifications;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml.Media;
@@ -14,10 +15,10 @@ internal static class Program
     private static OpenCodeMessage Idle(string id, double created) => new() { Id = id, Type = "idle", Outcome = "succeeded", Time = new() { Created = created } };
     private static List<OpenCodeMessage> Window(params OpenCodeMessage[] rows) => new(rows);
     private static OpenCodePageSource Source(string id, long revision = 1) => new(id, revision, () => throw new NotSupportedException());
-    private static (App App, OpenCodePage Page) Fixture(string id)
+    private static (App App, OpenCodePage Page) Fixture(string id, bool activated = true)
     {
         var app = new App(); Microsoft.UI.Xaml.Application.Current = app;
-        var page = new OpenCodePage(); page.TestActivate(Source(id), "ses_test"); return (app, page);
+        var page = new OpenCodePage(); page.TestActivate(Source(id), "ses_test", activated); return (app, page);
     }
     private static void Render(OpenCodePage page, double watermark)
     { page.Apply(Window(Idle("msg_" + watermark, watermark))); page.Layout(watermark); CompositionTarget.Frame(); }
@@ -28,10 +29,12 @@ internal static class Program
             foreach (var (name, run) in new (string, Func<Task>)[] {
                 ("selected idle history/layout acknowledges latest watermark without geometry", Viewport),
                 ("Home/blank/hidden/unknown history and non-UI block ACK", Visibility),
+                ("on-screen rendering stays live while attention alone gates ACK", Attention),
+                ("real shell visibility/activation and taskbar gates", ShellVisibility),
                 ("owner/frame/reflow fences and listener lifecycle", Fences),
                 ("uncertain/failed receipts use bounded backoff and fresh visibility/focus", Unknown),
                 ("512 attempt cap never evicts", Cap),
-                ("foreground notification publisher follows selected tab and host/page visibility", ForegroundPublisher),
+                ("foreground notification publisher follows selected tab and host attention", ForegroundPublisher),
                 ("background and settings tabs revoke ACK proof", BackgroundTabs),
                 ("stop interrupted watermark gets its own receipt exactly once", Interrupted),
                 ("known pre-POST failure is not an uncertain receipt retry", BeforePost),
@@ -50,11 +53,18 @@ internal static class Program
     private static Task ForegroundPublisher()
     {
         var (app, page) = Fixture("ep-front-publisher");
-        Check(app.ForegroundSession is null, "no confirmed active host means no foreground suppression");
+        Check(app.ForegroundSession is null, "no confirmed on-screen host means no foreground suppression");
+        page.NotifyHostWindowActivation(false);
         page.NotifyHostWindowVisibility(true);
+        Check(app.ForegroundSession is null, "on-screen but unfocused page suppresses no notification");
+        page.NotifyHostWindowActivation(true);
         Check(app.ForegroundSession == "ses_test", "active loaded page publishes its selected tab");
+        page.NotifyHostWindowActivation(false);
+        Check(app.ForegroundSession is null && page.TestHostOnScreen, "focus loss clears suppression without hiding the host");
+        page.NotifyHostWindowActivation(true);
+        Check(app.ForegroundSession == "ses_test", "attention restoration republishes the selected tab");
         page.NotifyHostWindowVisibility(false);
-        Check(app.ForegroundSession is null, "deactivation/minimization clears foreground immediately");
+        Check(app.ForegroundSession is null, "minimization/hiding clears foreground immediately");
         page.NotifyHostWindowVisibility(true);
         page.TestForegroundSelectTab("ses_other");
         Check(app.ForegroundSession == "ses_other", "actual tab selection replaces foreground owner before any REST/render");
@@ -152,10 +162,82 @@ internal static class Program
         page.Directory(null); Render(page, 700); Check(app.Calls == 6, "unknown real directory does not guess identity");
         page.Directory("/fixture"); CompositionTarget.Frame(); Check(app.Calls == 7, "confirmed directory permits same exact candidate");
         page.TestSetThreadAccess(false); page.NotifyViewAcknowledgementRendered(Window(Idle("msg_raw", 800)), true);
+        page.NotifyHostWindowActivation(false);
         page.UpdateViewAcknowledgementVisibility(false); page.InvalidateViewAcknowledgement();
         Check(app.Calls == 7 && app.LastFence!(), "non-UI entries neither enqueue nor touch existing proof");
         page.TestSetThreadAccess(true); page.TestRevokeSource(); Render(page, 800);
         Check(app.Calls == 7, "revoked source never ACKs");
+        page.Unload(); return Task.CompletedTask;
+    }
+    private static Task Attention()
+    {
+        var unconfirmed = new OpenCodePage();
+        Check(!unconfirmed.TestHostOnScreen && !unconfirmed.TestHostActivated && !unconfirmed.HostAttentionVisible, "production host signals default fail-closed before confirmation");
+        var (app, page) = Fixture("ep-attention", activated: false);
+        page.NotifyHostWindowVisibility(true);
+        Render(page, 100);
+        page.NotifyViewAcknowledgementRendered(Window(Idle("msg_raw", 900)), true);
+        page.UpdateViewAcknowledgementVisibility(true);
+        CompositionTarget.Frame();
+        Check(page.TestHostOnScreen && page.TestUiVisible && !page.HostAttentionVisible, "unfocused on-screen host still permits UI work");
+        Check(app.Calls == 0 && CompositionTarget.Count == 0, "bare on-screen render/visibility inputs cannot reopen an unfocused ACK");
+        Check(app.ForegroundSession is null, "unfocused on-screen session suppresses no notification");
+        var uiChanges = page.TestUiVisibilityChanges;
+        page.NotifyHostWindowActivation(true);
+        Check(page.TestUiVisibilityChanges == uiChanges && app.Calls == 0 && CompositionTarget.Count == 1, "activation requests current-layout proof without changing UI liveness or sending immediately");
+        CompositionTarget.Frame();
+        Check(app.Calls == 1 && app.LastSent == 100 && page.HostAttentionVisible, "attention restoration acknowledges the actual current layout, not the raw DTO watermark");
+        var fence = app.LastFence!;
+        page.NotifyHostWindowActivation(false);
+        Check(!fence() && page.TestHostOnScreen && page.TestUiVisible && page.TestUiVisibilityChanges == uiChanges, "focus loss revokes the ACK fence without stopping on-screen UI work");
+        Render(page, 200);
+        Check(app.Calls == 1 && CompositionTarget.Count == 0, "newly rendered unfocused messages cannot reopen ACK");
+        page.NotifyHostWindowActivation(true); CompositionTarget.Frame();
+        Check(app.Calls == 2 && app.LastSent == 200, "regaining attention proves and acknowledges the messages rendered while unfocused");
+        fence = app.LastFence!;
+        page.NotifyHostWindowVisibility(false);
+        page.NotifyViewAcknowledgementRendered(Window(Idle("msg_hidden", 1000)), true);
+        page.NotifyHostWindowActivation(true); CompositionTarget.Frame();
+        Check(!fence() && !page.TestUiVisible && !page.HostAttentionVisible && app.Calls == 2 && CompositionTarget.Count == 0, "minimized/hidden host stops UI work and revokes ACK even if activation/render inputs are true");
+        page.Unload(); return Task.CompletedTask;
+    }
+    private static Task ShellVisibility()
+    {
+        var (app, page) = Fixture("ep-shell-visibility", activated: false);
+        var shell = new MainWindow(page);
+        shell.TestTrack("done", terminal: true); shell.TestTrack("running", terminal: false);
+        shell.TestWindow(minimized: false, hiddenToTray: false, visible: true);
+        Check(shell.TestOnScreen && OpenCodeWorkingClock.Shared.HostVisible && page.TestUiVisible && !page.HostAttentionVisible, "real shell keeps clock/page inputs live on screen without focus");
+        Check(shell.TestAcknowledged == 0 && shell.TestTracked == 2, "unfocused on-screen shell does not acknowledge taskbar terminal states");
+        Render(page, 100);
+        Check(app.Calls == 0 && app.ForegroundSession is null, "unfocused shell cannot ACK rendered content or suppress notifications");
+        shell.TestActivation(true);
+        Check(app.Calls == 0 && CompositionTarget.Count == 1, "shell activation waits for a fresh native-frame review");
+        CompositionTarget.Frame();
+        Check(app.Calls == 1 && app.LastSent == 100 && app.ForegroundSession == "ses_test", "active on-screen shell authorizes the current view and foreground session");
+        Check(shell.TestAcknowledged == 1 && shell.TestTracked == 1, "taskbar activation acknowledges only terminal tasks");
+        var fence = app.LastFence!;
+        shell.TestActivation(false);
+        Check(shell.TestOnScreen && OpenCodeWorkingClock.Shared.HostVisible && page.TestUiVisible && !fence() && app.ForegroundSession is null, "real focus-loss handler keeps render/clock inputs live but revokes attention");
+        shell.TestTrack("later", terminal: true);
+        shell.TestWindow(minimized: false, hiddenToTray: false, visible: true);
+        Check(shell.TestAcknowledged == 1 && shell.TestTracked == 2, "later on-screen updates while unfocused retain taskbar completion reminders");
+        shell.TestWindow(minimized: true, hiddenToTray: false, visible: true);
+        shell.TestActivation(true);
+        Check(!shell.TestOnScreen && !OpenCodeWorkingClock.Shared.HostVisible && !page.TestUiVisible && !page.HostAttentionVisible && shell.TestAcknowledged == 1, "minimization stops clock/page inputs and all attention even with a true activation input");
+        shell.TestWindow(minimized: false, hiddenToTray: true, visible: true);
+        Check(!shell.TestOnScreen && !OpenCodeWorkingClock.Shared.HostVisible && !page.TestHostOnScreen, "tray hiding keeps the host stopped");
+        shell.TestWindow(minimized: false, hiddenToTray: false, visible: false);
+        Check(!shell.TestOnScreen && !page.HostAttentionVisible && !OpenCodeWorkingClock.Shared.HostVisible, "native AppWindow hiding keeps the host stopped");
+        foreach (var getter in new[] { "presenter", "visibility" })
+        {
+            shell.TestWindow(minimized: false, hiddenToTray: false, visible: true);
+            shell.TestActivation(true);
+            shell.TestWindowReadFailure(getter);
+            CompositionTarget.Frame();
+            Check(!shell.TestOnScreen && !shell.TestActivated && !page.TestHostOnScreen && !page.TestHostActivated && !OpenCodeWorkingClock.Shared.HostVisible, getter + " read failure closes both shell/page inputs");
+            Check(CompositionTarget.Count == 0 && app.Calls == 1 && app.ForegroundSession is null, getter + " read failure cancels layout proof and notification suppression");
+        }
         page.Unload(); return Task.CompletedTask;
     }
     private static Task Fences()

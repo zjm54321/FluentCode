@@ -333,6 +333,7 @@ namespace FluentCode.Pages
             Microsoft.UI.Xaml.Application.Current = _ackApp;
             _ackApp.BindBackgroundSource(_source);
             AttachViewAcknowledgementEvents();
+            NotifyHostWindowActivation(true);
             NotifyHostWindowVisibility(true);
         }
 

@@ -16,6 +16,7 @@ public sealed partial class OpenCodePage
     {
         Session = _selectedSessionId,
         HostVisible = _hostWindowVisible,
+        HostActivated = _hostActivated,
         AcknowledgementWindowVisible = _viewAcknowledgementWindowVisible,
         PageVisible = IsViewAcknowledgementPageVisible(),
         SelectedTab = IsViewAcknowledgementSessionTabSelected(),

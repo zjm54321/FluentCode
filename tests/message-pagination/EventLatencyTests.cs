@@ -187,6 +187,12 @@ internal static partial class Program
         Check(page.TestAppliedCount == applies, "hidden window reduces SSE state without projecting native transcript");
         page.NotifyHostWindowVisibility(true); page.TestDrain();
         Check(page.TestAppliedCount == applies + 1 && LiveText(page).EndsWith(" hidden"), "restore publishes accumulated SSE state once");
+        applies = page.TestAppliedCount;
+        page.NotifyHostWindowActivation(false);
+        page.TestReceive(stream, Wire("session.text.delta", """{"sessionID":"ses_test","assistantMessageID":"msg_live","ordinal":0,"delta":" unfocused"}"""));
+        Check(page.TestAppliedCount == applies + 1 && LiveText(page).EndsWith(" unfocused") && !page.HostAttentionVisible,
+            "unfocused on-screen window keeps SSE transcript projection live without restoring user attention");
+        page.NotifyHostWindowActivation(true);
         page.TestReceive(stream, Wire("session.tool.completed", """{"sessionID":"ses_test"}"""));
         Check(page.TestTurnActivity == true, "tool completion does not end the whole turn");
         var active = Signal<HttpResponseMessage>(); backend.ReadActive = () => active.Task;

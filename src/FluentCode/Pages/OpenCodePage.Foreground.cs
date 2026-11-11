@@ -36,7 +36,7 @@ public sealed partial class OpenCodePage
         }
         var selected = SessionTabs.SelectedItem as TabViewItem;
         var session = selected?.Tag as string;
-        var foreground = _hostWindowVisible && _pageActive && IsLoaded && Visibility == Visibility.Visible
+        var foreground = HostAttentionVisible && _pageActive && IsLoaded && Visibility == Visibility.Visible
             && XamlRoot is not null && ActualWidth > 0 && ActualHeight > 0 && !_draftRecoveryPending
             && _source is { IsRevoked: false } && session is not null
             && _sessionTabs.TryGetValue(session, out var entry) && ReferenceEquals(entry.Item, selected);
