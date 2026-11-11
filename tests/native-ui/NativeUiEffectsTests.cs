@@ -57,7 +57,11 @@ internal static class NativeUiEffectsTests
             "The burst has exactly one call site, the false→true edge guard");
         require(adapter.Contains("if (!FluentMotion.Enabled) return; // Reduced motion: no confetti.", StringComparison.Ordinal),
             "Reduced motion skips the burst before any instance exists");
-        require(adapter.Contains("Particles = 24", StringComparison.Ordinal), "The particle count stays bounded at the previous 24");
+        require(adapter.Contains("Particles = 24", StringComparison.Ordinal)
+            && adapter.Contains("private const int Columns = 4;", StringComparison.Ordinal)
+            && adapter.Contains("ParticleCount = Particles / Columns", StringComparison.Ordinal)
+            && adapter.Contains("for (var column = 0; column < Columns; column++)", StringComparison.Ordinal),
+            "The particle count stays bounded at the previous 24, split across the band rather than added to");
         require(adapter.Contains("private const double BandWidth = 640;", StringComparison.Ordinal)
             && adapter.Contains("private const double BandHeight = 100;", StringComparison.Ordinal)
             && adapter.Contains("Clip = new RectangleGeometry { Rect = new(0, 0, BandWidth, BandHeight) }", StringComparison.Ordinal),
@@ -69,7 +73,7 @@ internal static class NativeUiEffectsTests
         var presets = new[] { "FireBasic", "FireRandomDirection", "FireRealistic", "FireFireworks", "FireStars", "FireSnow", "FireSchoolPride" }
             .Where(preset => adapterCode.Contains(preset + "(", StringComparison.Ordinal)).ToArray();
         require(presets.Length == 0, "No long-running preset is called, so no preset timer can outlive the card (found: " + string.Join(", ", presets) + ")");
-        require(Regex.Matches(adapterCode, @"\.Fire\(").Count == 1, "The effect calls Fire exactly once per burst, with options rather than a preset");
+        require(Regex.Matches(adapterCode, @"\.Fire\(").Count == 1, "Fire has one call site, and it passes options rather than naming a preset");
         require(adapter.Contains("Ticks = BurstFrames", StringComparison.Ordinal) && adapter.Contains("BurstLimit = TimeSpan.FromSeconds(2.5)", StringComparison.Ordinal),
             "The burst length and its duration limit are both bounded");
 
@@ -215,8 +219,11 @@ internal static class NativeUiEffectsTests
             "The group label is the host header, so the group keeps its UIA name");
         require(radio.Contains("pills = new Segmented { SelectionMode = ListViewSelectionMode.Single };", StringComparison.Ordinal),
             "The pills variant stays the maintained toolkit segmented control");
-        require(radio.Contains("tile.MinWidth = host.ActualWidth;", StringComparison.Ordinal),
-            "A card tile keeps filling the group's width, as the StackPanel it replaces stretched its rows");
+        require(radio.Contains("var width = radioPanel.ActualWidth > 0 ? radioPanel.ActualWidth : radios.ActualWidth;", StringComparison.Ordinal)
+            && radio.Contains("radioPanel.SizeChanged += (_, _) => FitTiles();", StringComparison.Ordinal)
+            && radio.Contains("host.Loaded += (_, _) => FitTiles();", StringComparison.Ordinal)
+            && radio.Contains("radios = host; radioPanel.Children.Add(host); FitTiles();", StringComparison.Ordinal),
+            "A card tile keeps filling the group's width, and it follows a narrower card instead of only growing");
         require(radio.Contains("if (!radioVisual.Disposed) StyleCards();", StringComparison.Ordinal)
             && radio.Contains("foreach (var tile in radios.Items.OfType<RadioButton>()) NativeUiTheme.RadioCard(tile);", StringComparison.Ordinal),
             "The cards style is repainted on a real selection change, from the state the host owns");

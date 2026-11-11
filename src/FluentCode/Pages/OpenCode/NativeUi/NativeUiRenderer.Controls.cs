@@ -48,6 +48,17 @@ internal sealed partial class NativeUiRenderer
                     if (!cardStyle || radios is null) return;
                     foreach (var tile in radios.Items.OfType<RadioButton>()) NativeUiTheme.RadioCard(tile);
                 }
+                // The host lays each item out at its own desired width, while the StackPanel it replaces stretched every
+                // row, so a tile's minimum width follows the group. Reading the panel keeps this shrink-safe: a narrower
+                // card narrows the panel, and the tiles follow it down again.
+                void FitTiles()
+                {
+                    if (radioVisual.Disposed || radios is null) return;
+                    var width = radioPanel.ActualWidth > 0 ? radioPanel.ActualWidth : radios.ActualWidth;
+                    if (width <= 0) return;
+                    foreach (var tile in radios.Items.OfType<RadioButton>()) if (tile.MinWidth != width) tile.MinWidth = width;
+                }
+                radioPanel.SizeChanged += (_, _) => FitTiles();
                 radioVisual.Apply = node =>
                 {
                     var choices = Choices(node); var variant = S(node, "variant"); var label = S(node, "label");
@@ -78,13 +89,7 @@ internal sealed partial class NativeUiRenderer
                                 if (choice.Description.Length > 0) tileLabel.Children.Add(NativeUiComponentTheme.Text(choice.Description, true));
                                 host.Items.Add(new RadioButton { Content = tileLabel, Tag = choice.Value });
                             }
-                            // The host lays each item out at its own desired width, while the StackPanel it replaces
-                            // stretched every row, so a tile's minimum width follows the group.
-                            host.SizeChanged += (_, _) =>
-                            {
-                                if (radioVisual.Disposed || host.ActualWidth <= 0) return;
-                                foreach (var tile in host.Items.OfType<RadioButton>()) if (tile.MinWidth != host.ActualWidth) tile.MinWidth = host.ActualWidth;
-                            };
+                            host.Loaded += (_, _) => FitTiles();
                             // The commit point is unchanged: a new selection writes the field immediately. The host also
                             // re-asserts its own index while it loads, and that echo carries the value already applied
                             // above, so it is recognised and dropped instead of re-rendering the card inside a layout pass.
@@ -98,7 +103,7 @@ internal sealed partial class NativeUiRenderer
                                 SetField(radioVisual, key, "value", label, value);
                                 if (!radioVisual.Disposed) StyleCards();
                             };
-                            radios = host; radioPanel.Children.Add(host);
+                            radios = host; radioPanel.Children.Add(host); FitTiles();
                         }
                     }
                     var selected = NativeUiValues.Text(Field(radioVisual, key, "value", label));

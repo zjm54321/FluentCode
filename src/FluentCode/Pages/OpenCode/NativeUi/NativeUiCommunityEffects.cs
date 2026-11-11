@@ -48,6 +48,10 @@ internal static class NativeUiCommunityEffects
         private const double BandHeight = 100;
         // Bounded burst: the previous implementation drew 24 rectangles over 1.2–1.65s, so neither grows.
         private const int Particles = 24;
+        // The rectangles were spread across the whole band at (i*29)%600 and fell straight down; four origins of six
+        // particles keep the total at 24 while covering the same width.
+        private const int Columns = 4;
+        // ≈1.5s at 60fps, inside the 1.2–1.65s the previous burst used.
         private const int BurstFrames = 90;
         private static readonly TimeSpan BurstLimit = TimeSpan.FromSeconds(2.5);
         private readonly Canvas _band = new() { Height = 0, IsHitTestVisible = false, Clip = new RectangleGeometry { Rect = new(0, 0, BandWidth, BandHeight) } };
@@ -86,14 +90,16 @@ internal static class NativeUiCommunityEffects
                 cannon.AnimationCompleted += OnCompleted;
                 _cannon = cannon; _band.Children.Add(cannon); _band.Height = BandHeight;
                 // Fire(options), never a long-running preset: FireFireworks/FireSnow/FireSchoolPride run their own timers.
-                // Straight down from the top centre with a wide fan reproduces the previous gentle fall into the band.
-                // The engine advances one step per frame and ignores the frame time, so Ticks is the length in frames
-                // (90 ≈ 1.5s, inside the 1.2–1.65s the hand-rolled burst used); particle opacity fades over the same span.
-                cannon.Fire(new ConfettiCannonOptions
-                {
-                    ParticleCount = Particles, Angle = 270, Spread = 180, StartVelocity = .8, Decay = 1, Gravity = .1,
-                    Drift = 0, Ticks = BurstFrames, Origin = new(.5, 0), Scalar = .3, Shapes = new() { "square" }, Colors = Palette(),
-                });
+                // The engine advances one step per frame and adds gravity as a constant per-frame offset, so Ticks is the
+                // burst length in frames and these values reproduce the previous gentle fall (about 1.2px/frame, inside
+                // the band for its whole life, fading out as it goes) across the same width.
+                for (var column = 0; column < Columns; column++)
+                    cannon.Fire(new ConfettiCannonOptions
+                    {
+                        ParticleCount = Particles / Columns, Angle = 270, Spread = 180, StartVelocity = .65, Decay = 1, Gravity = .1,
+                        Drift = 0, Ticks = BurstFrames, Origin = new((column + .5) / Columns, 0), Scalar = .3,
+                        Shapes = new() { "square" }, Colors = Palette(),
+                    });
                 _limit = _queue?.CreateTimer();
                 if (_limit is not null) { _limit.Interval = BurstLimit; _limit.Tick += OnLimit; _limit.Start(); }
             }
