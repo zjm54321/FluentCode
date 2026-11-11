@@ -1,7 +1,8 @@
 <Application
     x:Class="FluentCode.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:dev="using:DevWinUI">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -113,7 +114,7 @@
                 <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}" />
                 <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
             </Style>
             <Style x:Key="DockCardFlyoutPresenterStyle" TargetType="FlyoutPresenter"
                    BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
@@ -121,7 +122,7 @@
                 <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}" />
                 <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
             </Style>
 
             <!-- 设置页整块表单的卡片外框（与 CommunityToolkit SettingsCard 同一画刷与圆角；SettingsCards.Panel 使用）。 -->
@@ -219,6 +220,219 @@
 
             <!-- 导航轨样式已改为原生 NavigationView/NavigationViewItem，
                  原自绘 ListView 的 StoreRailItemStyle 已移除（见 MainWindow.xaml） -->
+
+            <!--
+                纯文本徽标（A05 / B23 / C06，PLAN-v2 §3）：DevWinUI IssueLabel 承载文本与色调。
+                只在这里以键（Key）暴露；除本文件外任何位置都不得出现 DevWinUI 类型 —— 调用方一律经
+                Controls/CommunityTextBadge.cs 构造，或按 CONTRACT-F.md 直接引用这里的键。
+
+                几何取舍（见 CONTRACT-F.md「几何」）：
+                - 库模板自带 <Border x:Name="SeverityBorder"> 一圈 1 DIP 的严重度描边，且无法只靠 Setter 去掉。
+                  该描边承载色调：SystemFillColor*BackgroundBrush 的深色/浅色透明度很低（中性仅 #08FFFFFF），
+                  高对比度下更会退化成 SystemColorWindowColor（与页面同色）。因此两种几何都保留这 1 DIP 描边
+                  —— 这是相对旧 Border 徽标（无描边）唯一有意的差异，也是色调在高对比度下仍可辨识的前提。
+                - 字号/字重/换行/裁切在 AppBadgeTitleTemplate 中统一定义；这里只管盒子。
+                - 不设置 Foreground：库模板按「是否本地设置 Foreground」在两个标题呈现器之间二选一，
+                  设置它会绕过严重度配色（详见适配器注释）。
+            -->
+            <DataTemplate x:Key="AppBadgeTitleTemplate">
+                <TextBlock Text="{Binding}"
+                           FontFamily="{ThemeResource ContentControlThemeFontFamily}"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center" />
+            </DataTemplate>
+            <!-- 紧凑标签：行内小标签（状态 / 来源 / 推荐）。旧站点为 4 圆角、5~6 横向内边距、11~12px。 -->
+            <Style x:Key="AppCompactTextBadgeStyle" TargetType="dev:IssueLabel"
+                   BasedOn="{StaticResource DefaultIssueLabelStyle}">
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="Padding" Value="6,1,6,2" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <!-- 药丸标签：Native UI 的 20 DIP 高、圆角 10 标签（C06）。 -->
+            <Style x:Key="AppPillTextBadgeStyle" TargetType="dev:IssueLabel"
+                   BasedOn="{StaticResource DefaultIssueLabelStyle}">
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="Padding" Value="8,2,8,2" />
+                <Setter Property="MinHeight" Value="20" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+            <!--
+                流式骨架条（C20）：DevWinUI Shimmer 的盒子与圆角。库的扫光渐变颜色写死在 C#（深色加白 3~6% 透明，
+                浅色加黑 2.9~5.4% 透明）；底色是 ShimmerBackground → ControlAltFillColorTertiaryBrush，高对比度下
+                映射为 SystemColorWindowColor（= 页面底色）。所以**高对比度下整条会不可见**：调用方必须在
+                HighContrast（以及减少动效）时改设显式系统色背景，或直接回退静态 Border。
+                Shimmer 在 Unloaded 里释放合成资源、重新 Loaded 会重建，因此每次显示都要新建实例，不要长期缓存复用。
+            -->
+            <Style x:Key="AppStreamingShimmerStyle" TargetType="dev:Shimmer"
+                   BasedOn="{StaticResource DefaultShimmerStyle}">
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="Height" Value="12" />
+                <Setter Property="CornerRadius" Value="4" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="IsTabStop" Value="False" />
+                <Setter Property="IsHitTestVisible" Value="False" />
+            </Style>
+
+            <!-- ============================================================================================
+                 P1 共享契约（CONTRACT-F.md）—— 以下键由 F 发布，其它 lane 只消费，不得就地再定义一个同名变体。
+                 全部为「同值抽取」：定义与各消费点当前的 XamlReader 字符串逐项一致，不含运行时输入。
+                 圆角一律引用内置 OverlayCornerRadius(8)/ControlCornerRadius(4)，不再写死数字。
+                 ============================================================================================ -->
+
+            <!-- 右侧快捷入口的 ToggleButton 框（浏览器入口 + 终端入口同值：V 与 B 各自请求了一份相同定义，此处合并为一个键）。
+                 恢复态透明、悬停/按下用 subtle 填充；选中态由消费方在各自作用域内用 ThemeResources.Aliases 覆盖，
+                 绝不做应用级 ToggleButton 隐式样式。 -->
+            <Style x:Key="OpenCodeQuickAccessToggleButtonStyle" TargetType="ToggleButton"
+                   BasedOn="{StaticResource DefaultToggleButtonStyle}">
+                <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ButtonBorderBrush}" />
+                <Setter Property="BorderThickness" Value="{ThemeResource ButtonBorderThemeThickness}" />
+                <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+            </Style>
+
+            <!-- 浮层 FlyoutPresenter 模板内部 ScrollViewer 的视口对齐（终端浮层与浏览器浮层同值，合并为一个键）。
+                 只作为消费方作用域内的隐式 ScrollViewer 样式使用（presenter.Resources），不得并入应用级隐式样式。 -->
+            <Style x:Key="OpenCodeOverlayViewportScrollViewerStyle" TargetType="ScrollViewer"
+                   BasedOn="{StaticResource DefaultScrollViewerStyle}">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            </Style>
+
+            <!-- 浮层卡片表面（终端浮层与浏览器浮层同值）：不透明三级背景，避开 DockCard 的 Quarternary。
+                 几何（0 内边距、8 圆角、1 DIP 描边、阴影与 Z 位移）留在消费方。 -->
+            <Style x:Key="OpenCodeOverlayFlyoutPresenterStyle" TargetType="FlyoutPresenter"
+                   BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
+                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorTertiaryBrush}" />
+            </Style>
+
+            <!-- 模态遮罩（终端浮层、子对话窗、工具详情弹层、页面输入遮罩同值）。 -->
+            <Style x:Key="OpenCodeOverlaySmokeStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource SmokeFillColorDefaultBrush}" />
+            </Style>
+
+            <!-- 拾取器弹出层：圆角/字体来自主题，内边距与最小宽度为 0；MaxWidth 依赖锚点宽度，必须由消费方按实例派生。 -->
+            <Style x:Key="OpenCodePickerFlyoutPresenterStyle" TargetType="FlyoutPresenter">
+                <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                <Setter Property="Padding" Value="4" />
+                <Setter Property="MinWidth" Value="0" />
+            </Style>
+
+            <!-- 自绘上下文菜单表面：与原生 MenuFlyoutPresenter 的配色一致，使菜单看起来就是系统菜单。 -->
+            <Style x:Key="OpenCodeContextMenuFlyoutPresenterStyle" TargetType="FlyoutPresenter"
+                   BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="MaxWidth" Value="480" />
+                <Setter Property="Background" Value="{ThemeResource MenuFlyoutPresenterBackground}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource MenuFlyoutPresenterBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Disabled" />
+                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            </Style>
+
+            <!-- 上下文菜单里自绘按钮的色调（菜单项本身已用 MenuFlyoutItem 的 subtle 填充）。 -->
+            <Style x:Key="OpenCodeContextMenuDividerRectangleStyle" TargetType="Rectangle">
+                <Setter Property="Fill" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeAgentMenuItemStyle" TargetType="MenuFlyoutItem">
+                <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+            </Style>
+
+            <!-- 输入区各色芯片外框：只设背景与描边，内边距/圆角/尺寸留在调用点。 -->
+            <Style x:Key="OpenCodeComposerPopupChromeStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource LayerFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeComposerCommandChipChromeStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource SystemFillColorAttentionBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeComposerIntentChipChromeStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource SubtleFillColorSecondaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeComposerNativeOriginChromeStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource AccentFillColorSecondaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource AccentFillColorDefaultBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeComposerSecondaryChipChromeStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource ControlFillColorSecondaryBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorDefaultBrush}" />
+            </Style>
+
+            <!-- 单色前景：只为换色，**不设** BasedOn —— 任何文字样式的字号/换行/字重都会改变现有布局。 -->
+            <Style x:Key="OpenCodeAccentTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeSecondaryTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeDisabledTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorDisabledBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeTextOnAccentStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeAccentFontIconStyle" TargetType="FontIcon">
+                <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeSecondaryFontIconStyle" TargetType="FontIcon">
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeCriticalFontIconStyle" TargetType="FontIcon">
+                <Setter Property="Foreground" Value="{ThemeResource SystemFillColorCriticalBrush}" />
+            </Style>
+            <Style x:Key="OpenCodeSuccessFontIconStyle" TargetType="FontIcon">
+                <Setter Property="Foreground" Value="{ThemeResource SystemFillColorSuccessBrush}" />
+            </Style>
+
+            <!-- 浏览器浮层：悬浮药丸表面（浮层与选区工具栏同值）。药丸的圆角/内边距/阴影/位移留在调用点。 -->
+            <Style x:Key="OpenCodeBrowserFloatingPillChromeStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource AcrylicInAppFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource FlyoutBorderThemeBrush}" />
+            </Style>
+            <!-- 浏览器浮层工具条 ToggleButton：无边框的 36x32 图标按钮；悬停/按下/禁用别名留在各宿主作用域。 -->
+            <Style x:Key="OpenCodeBrowserToolToggleStyle" TargetType="ToggleButton"
+                   BasedOn="{StaticResource DefaultToggleButtonStyle}">
+                <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="Padding" Value="0" />
+            </Style>
+            <!-- 预览表格列头：可选中复制的正文模板；列头的原生模板与状态保持不变。 -->
+            <DataTemplate x:Key="OpenCodeBrowserPreviewTableHeaderTemplate">
+                <TextBlock Text="{Binding}" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                           FontFamily="{ThemeResource AppBodyFontFamily}" />
+            </DataTemplate>
+
+            <!-- 代理树：分组图标与 11px 说明文字（用户自选正文字体经 ContentControlThemeFontFamily 生效）。 -->
+            <Style x:Key="OpenCodeAgentTreeAccentIconStyle" TargetType="FontIcon">
+                <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                <Setter Property="FontSize" Value="14" />
+            </Style>
+            <Style x:Key="OpenCodeAgentTreeCaptionTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}" />
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                <Setter Property="TextWrapping" Value="NoWrap" />
+                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

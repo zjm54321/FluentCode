@@ -33,6 +33,10 @@ internal static class OpenCodeInteractionUi
     }
 
     /// <summary>安全取主题样式（如 AccentButtonStyle）：键不存在时返回 null。</summary>
+    /// <remarks>
+    /// 行 A10/B15：键缺失时仍然回退默认外观，但在 Debug 构建里写一行诊断，避免“静默回退”把
+    /// 拼错或未发布的键藏起来。Release 构建只保留取用逻辑。
+    /// </remarks>
     internal static Style? TryStyle(string key)
     {
         try
@@ -41,13 +45,22 @@ internal static class OpenCodeInteractionUi
             {
                 return resources[key] as Style;
             }
+
+            ReportMissing(key, "Application.Current.Resources is unavailable");
         }
         catch
         {
+            // 资源字典在极端时机（关闭中）可能不可用。
+            ReportMissing(key, "the resource lookup threw");
         }
 
         return null;
     }
+
+    /// <summary>Debug-only diagnostic for a missed theme-resource lookup; never throws in Release.</summary>
+    [System.Diagnostics.Conditional("DEBUG")]
+    private static void ReportMissing(string key, string reason)
+        => System.Diagnostics.Debug.WriteLine($"[OpenCodeInteractionUi] theme style key not found: \"{key}\" ({reason}); falling back to the default look.");
 
     // ---- 重设计 v3 §1：内置文字样式与主题画刷的键（全部来自 WinUI 内置资源，不定义颜色） ----
 
