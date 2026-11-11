@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using FluentCode.Controls;
 using FluentCode.Services.NativeUi;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -133,13 +134,33 @@ internal sealed partial class NativeUiRenderer : IDisposable
                 };
                 return textVisual;
             case "Badge":
-                var badgePanel = new StackPanel { Orientation = Orientation.Horizontal }; var badgeText = new TextBlock(); var badge = new Border { Child = badgePanel }; var badgeVisual = new Visual(badge);
+                // C06: a text-only badge is the shared CommunityTextBadge pill (DevWinUI IssueLabel behind
+                // CONTRACT-F §2). The library template has one text presenter and no icon slot, so a badge whose
+                // `icon` resolves to a glyph keeps the hand-built Border + FontIcon + TextBlock pill.
+                // One host per structural path: the pill is created once and updated in place (Update / SetTone /
+                // SetAccessibleName); only a text-only <-> glyph switch changes the host's single child.
+                var badgeHost = new Grid { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
+                FrameworkElement? badgePill = null; Border? badgeBox = null; var badgePanel = new StackPanel { Orientation = Orientation.Horizontal }; var badgeText = new TextBlock();
+                var badgeVisual = new Visual(badgeHost);
                 badgeVisual.Apply = node =>
                 {
-                    badgeText.Text = NativeUiTheme.String(node, "text"); NativeUiTheme.Text(badgeText, node);
+                    var label = NativeUiTheme.String(node, "text"); var tone = NativeUiTheme.BadgeAdapterTone(NativeUiTheme.String(node, "color"));
                     var icon = NativeUiTheme.Icon(NativeUiTheme.String(node, "icon"));
-                    Sync(badgePanel, icon is null ? new UIElement[] { badgeText } : new UIElement[] { icon, badgeText });
-                    NativeUiTheme.Badge(badge, node);
+                    if (icon is null)
+                    {
+                        // A Native UI badge is the only carrier of its text, so it stays in the content view with
+                        // its text as the name (the adapter's default would hide it from screen readers).
+                        var pill = badgePill;
+                        if (pill is null) { badgePill = pill = CommunityTextBadge.Create(label, tone, CommunityTextBadgeShape.Pill, label); }
+                        else { CommunityTextBadge.Update(pill, label); CommunityTextBadge.SetTone(pill, tone); CommunityTextBadge.SetAccessibleName(pill, label); }
+                        Sync(badgeHost, new UIElement[] { pill });
+                        return;
+                    }
+                    badgeBox ??= new Border { Child = badgePanel };
+                    badgeText.Text = label; NativeUiTheme.Text(badgeText, node);
+                    Sync(badgePanel, new UIElement[] { icon, badgeText });
+                    NativeUiTheme.Badge(badgeBox, node);
+                    Sync(badgeHost, new UIElement[] { badgeBox });
                 };
                 return badgeVisual;
             case "Divider":

@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using CommunityToolkit.WinUI.Controls;
+using FluentCode.Controls;
 using FluentCode.Motion;
 using FluentCode.Services.Appearance;
 using FluentCode.Services.NativeUi;
@@ -293,11 +294,51 @@ internal static class NativeUiTheme
 
     // ---------------------------------------------------------------- badge & button
 
+    // C06: the tone a badge hands to the shared adapter. The adapter speaks an app-level enum only
+    // (CONTRACT-F §2), so the tone vocabulary stays in one place: BadgeTone() normalizes anything it does not
+    // know to "muted" first, and the two categorical tones keep their own adapter members instead of collapsing
+    // into a status colour.
+    internal static CommunityTextBadgeTone BadgeAdapterTone(string color) => BadgeTone(color) switch
+    {
+        "success" => CommunityTextBadgeTone.Success,
+        "warning" => CommunityTextBadgeTone.Caution,
+        "danger" => CommunityTextBadgeTone.Critical,
+        "info" => CommunityTextBadgeTone.Attention,
+        "purple" => CommunityTextBadgeTone.Purple,
+        "pink" => CommunityTextBadgeTone.Pink,
+        _ => CommunityTextBadgeTone.Neutral,
+    };
+
+    /// <summary>True when the merged app resources resolve the key to a brush right now.</summary>
+    private static bool TryToneBrush(string key)
+    {
+        try { return Application.Current?.Resources is { } resources && resources.TryGetValue(key, out var value) && value is Brush; }
+        catch { return false; }
+    }
+
+    /// <summary>Styles the badge that carries a leading glyph; a glyph-less badge goes through CommunityTextBadge.</summary>
     internal static void Badge(Border border, NativeUiElement node)
     {
         var color = String(node, "color");
-        var background = Background(BadgeTone(color));
-        border.Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", background));
+        var tone = BadgeTone(color);
+        // C06: the icon badge mirrors the adapter pill so both forms read as one component — same box, same 1-DIP
+        // tone ring, same palette. The status tones already share their SystemFillColor* keys through Foreground();
+        // the categorical tones take the library's own IssueLabel* keys (NativeUiStyleMath.BadgeLibraryTone), so a
+        // badge looks the same whether or not it carries an icon.
+        var app = (Box: OpenCodeThemedXaml.BrushStyle("Border", ("Background", Background(tone)), ("BorderBrush", Foreground(tone))),
+            Glyph: OpenCodeThemedXaml.BrushStyle("FontIcon", ("Foreground", Foreground(tone))),
+            Label: TextStyle("TextBlock", "CaptionTextBlockStyle", Foreground(tone), 0d, 0d, "SemiBold"));
+        // Probe before parsing: the style helpers cache a failed parse for good, so a key that is missing (renamed
+        // by a later DevWinUI) or is not a brush must never reach them. Then the app tint is kept — silently; see
+        // the C06 notes.
+        var library = NativeUiStyleMath.BadgeLibraryTone(tone) is { } keys && TryToneBrush(keys.Background) && TryToneBrush(keys.Border) && TryToneBrush(keys.Foreground)
+            ? (Box: OpenCodeThemedXaml.BrushStyle("Border", ("Background", keys.Background), ("BorderBrush", keys.Border)),
+                Glyph: OpenCodeThemedXaml.BrushStyle("FontIcon", ("Foreground", keys.Foreground)),
+                Label: TextStyle("TextBlock", "CaptionTextBlockStyle", keys.Foreground, 0d, 0d, "SemiBold"))
+            : default;
+        var (box, glyph, label) = NativeUiStyleMath.PickBadgePalette(app, library);
+        border.Style = box;
+        border.BorderThickness = new Thickness(1);
         border.Padding = new Thickness(8, 2, 8, 2); border.MinHeight = 20; border.CornerRadius = new CornerRadius(10);
         border.HorizontalAlignment = HorizontalAlignment.Left; border.VerticalAlignment = VerticalAlignment.Center;
         if (border.Child is not StackPanel panel) return;
@@ -305,9 +346,10 @@ internal static class NativeUiTheme
         foreach (var icon in panel.Children.OfType<FontIcon>())
         {
             icon.FontSize = 12; icon.VerticalAlignment = VerticalAlignment.Center;
-            icon.Style = OpenCodeThemedXaml.BrushStyle("FontIcon", ("Foreground", Foreground(BadgeTone(color))));
+            icon.Style = glyph;
         }
-        foreach (var text in panel.Children.OfType<TextBlock>()) { text.VerticalAlignment = VerticalAlignment.Center; text.TextWrapping = TextWrapping.NoWrap; }
+        // The label keeps the ramp Text() gave it (Caption, SemiBold) and takes the badge's ink.
+        foreach (var text in panel.Children.OfType<TextBlock>()) { text.VerticalAlignment = VerticalAlignment.Center; text.TextWrapping = TextWrapping.NoWrap; text.Style = label; }
     }
     internal static void Button(Button button, NativeUiElement node)
     {

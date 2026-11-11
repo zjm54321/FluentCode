@@ -65,6 +65,24 @@ internal static class NativeUiStyleMath
     // CSS border-radius scales down when it exceeds the box (a "full" radius becomes a pill); before layout keep the request.
     internal static double FitRadius(double radius, double width, double height)
         => width > 0 && height > 0 ? Math.Min(Math.Max(0, radius), Math.Min(width, height) / 2) : Math.Max(0, radius);
+    // C06: the theme-resource keys DevWinUI's IssueLabel paints its categorical severity states from. The library
+    // defines twelve — four tones (Gray, Blue, Purple, Pink) by three roles (fill, ring, text) — and the shared
+    // badge adapter uses them for its Neutral, Attention, Purple and Pink tones, so a badge that carries an icon
+    // reads the same twelve and matches a text-only badge. Names verified in DevWinUI 10.9.1 Themes/Generic.xaml
+    // (each defined in its Default, Light and HighContrast dictionaries). The three status tones are absent on
+    // purpose: both badge forms already paint them from the same SystemFillColor* keys.
+    internal static (string Background, string Border, string Foreground)? BadgeLibraryTone(string tone) => tone switch
+    {
+        "muted" => ("IssueLabelGrayBackgroundBrush", "IssueLabelGrayBorderBrush", "IssueLabelGrayForegroundBrush"),
+        "info" => ("IssueLabelBlueBackgroundBrush", "IssueLabelBlueBorderBrush", "IssueLabelBlueForegroundBrush"),
+        "purple" => ("IssueLabelPurpleBackgroundBrush", "IssueLabelPurpleBorderBrush", "IssueLabelPurpleForegroundBrush"),
+        "pink" => ("IssueLabelPinkBackgroundBrush", "IssueLabelPinkBorderBrush", "IssueLabelPinkForegroundBrush"),
+        _ => null,
+    };
+    // A badge is painted from one palette as a whole: the library's box, glyph and label styles are used only when
+    // all three resolved; if any is missing the app's three are used together, so a badge is never half and half.
+    internal static (T? Box, T? Glyph, T? Label) PickBadgePalette<T>((T? Box, T? Glyph, T? Label) app, (T? Box, T? Glyph, T? Label) library) where T : class
+        => library.Box is not null && library.Glyph is not null && library.Label is not null ? library : app;
     internal static string? Glyph(string name) => name.Length > 0 && Glyphs.TryGetValue(name.Trim().ToLowerInvariant(), out var glyph) ? glyph : null;
     // Lucide names (the OIU icon set) mapped to Segoe Fluent Icons; unknown names render nothing, as upstream.
     private static readonly Dictionary<string, string> Glyphs = new(StringComparer.Ordinal)

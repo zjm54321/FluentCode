@@ -164,7 +164,7 @@ internal static class Program
             var noKey = false; try { NativeUiMapProviders.TileUrl(tdt, 2, 1, 3); } catch (InvalidOperationException) { noKey = true; }
             Require(noKey, "Missing TianDiTu user key fails locally");
             await BaiduMapTests.Run(repo, Require);
-            NativeUiCoreTests.Run(repo, Require);
+            NativeUiCoreTests.Run(repo, Require, args.Length > 1 ? args[1] : null);
             NativeUiEffectsTests.Run(repo, Require);
             await MediaAndMapChromeTests.Run(repo, Require);
             foreach (var source in new[] { "http://example.org/a.mp4", "file:///a.mp4", "https://user:secret@example.org/a.mp4", "javascript:alert(1)" }) Require(!NativeUiMediaPolicy.Https(source), "Media disallows non-HTTPS and credential URLs");

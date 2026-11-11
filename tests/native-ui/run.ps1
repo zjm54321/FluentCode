@@ -32,11 +32,17 @@ foreach ($package in @('BruTile', 'Mapsui')) {
     Copy-Item -LiteralPath $library -Destination $output
 }
 $testSources = Get-ChildItem (Join-Path $PSScriptRoot '*.cs') | ForEach-Object FullName
+# C06: the icon badge reads DevWinUI's own tone brush keys and falls back silently if one is missing. Hand the
+# locked package's theme dictionary to the tests so a DevWinUI upgrade that renames a key fails here instead.
+$devWinUi = $dependencies.DevWinUI.resolved
+$devWinUiTheme = Get-ChildItem (Join-Path $packages ('devwinui/' + $devWinUi + '/lib')) -Directory -ErrorAction SilentlyContinue |
+    ForEach-Object { Join-Path $_.FullName 'DevWinUI/Themes/Generic.xaml' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if (!$devWinUiTheme) { throw "Cached DevWinUI $devWinUi theme dictionary is required; restore the app before running focused tests." }
 $arguments += ($production + $testSources) | ForEach-Object { '"' + $_ + '"' }
 $response = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $response
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$response" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Native UI compilation failed: $LASTEXITCODE" }
 '{"runtimeOptions":{"tfm":"net10.0","framework":{"name":"Microsoft.NETCore.App","version":"10.0.0"}}}' | Set-Content -Encoding UTF8 (Join-Path $output 'NativeUiTests.runtimeconfig.json')
-& $dotnet $assembly $repo 2>&1 | Tee-Object -FilePath (Join-Path $output 'tests.log')
+& $dotnet $assembly $repo $devWinUiTheme 2>&1 | Tee-Object -FilePath (Join-Path $output 'tests.log')
 if ($LASTEXITCODE -ne 0) { throw "Native UI tests failed: $LASTEXITCODE" }
