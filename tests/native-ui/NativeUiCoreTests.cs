@@ -124,9 +124,12 @@ internal static class NativeUiCoreTests
         // ---- C19: the error card is the stock InfoBar, keeping the polite announcement and the three-line cap ----
         Check(theme.Contains("internal static FrameworkElement Notice(string title, string message, bool error = false)"),
             "The card notice returns a framework element so the stock bar can replace the hand-built Border");
-        Check(theme.Contains("Severity = InfoBarSeverity.Error, IsOpen = true, IsClosable = false, IsIconVisible = true,")
+        Check(theme.Contains("Severity = InfoBarSeverity.Error, IsClosable = false, IsIconVisible = true,")
             && theme.Contains("Title = title, Content = details,"),
-            "The card-level failure is a stock InfoBar at Error severity, open, not closable, with its icon");
+            "The card-level failure is a stock InfoBar at Error severity, not closable, with its icon");
+        Check(theme.Contains("bar.Loaded += (_, _) => bar.IsOpen = true;")
+            && theme.IndexOf("bar.Loaded += (_, _) => bar.IsOpen = true;", StringComparison.Ordinal) < theme.IndexOf("Fit(bar, wide: false); return bar;", StringComparison.Ordinal),
+            "The error bar opens once it is loaded, so the announcement happens with a live UIA peer, and the handler is attached before the bar reaches its host");
         Check(theme.Contains("details.MaxLines = 3; details.TextTrimming = TextTrimming.CharacterEllipsis;"),
             "A long card diagnostic still trims to three lines, as it did before the InfoBar");
         Check(theme.Contains("AutomationProperties.SetName(bar, title);")

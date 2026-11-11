@@ -611,11 +611,15 @@ internal static class NativeUiTheme
         details.MaxLines = 3; details.TextTrimming = TextTrimming.CharacterEllipsis;
         var bar = new InfoBar
         {
-            Severity = InfoBarSeverity.Error, IsOpen = true, IsClosable = false, IsIconVisible = true,
+            Severity = InfoBarSeverity.Error, IsClosable = false, IsIconVisible = true,
             Title = title, Content = details,
         };
         AutomationProperties.SetName(bar, title);
         AutomationProperties.SetLiveSetting(bar, AutomationLiveSetting.Polite);
+        // InfoBar announces when it opens, and it only has a UIA peer once it is in the tree, so the bar is
+        // opened on Loaded rather than in the initializer. Nothing is lost by starting closed: the notice is
+        // always its host's only child, so a collapsed bar adds no spacing gap before it opens.
+        bar.Loaded += (_, _) => bar.IsOpen = true;
         Fit(bar, wide: false); return bar;
     }
     /// <summary>Streaming state: the card surface with a progress ring, the tool title and a pulsing skeleton.</summary>
