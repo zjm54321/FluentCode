@@ -91,24 +91,10 @@ internal sealed partial class NativeUiRenderer
             case "Popover":
                 var triggerContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var popoverContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) };
                 var trigger = new Button { Content = triggerContent }; var flyout = new Flyout { Content = popoverContent }; var popover = new Visual(trigger); trigger.Flyout = flyout;
-                AttachAirspace(flyout); popover.Cleanup = flyout.Hide;
+                NativeUiAirspace.Track(flyout); popover.Cleanup = flyout.Hide;
                 popover.Apply = node => { Slot(triggerContent, P(node, "trigger"), key + "/trigger", depth); Slot(popoverContent, P(node, "content"), key + "/content", depth); }; return popover;
             default: return new(NativeUiTheme.Notice("未支持", type));
         }
-    }
-    private static void AttachAirspace(Flyout flyout)
-    {
-        var leases = new List<IDisposable>();
-        flyout.Opening += (_, _) =>
-        {
-            void Visit(DependencyObject root)
-            {
-                if (root is OpenCodePersistentPtyRenderer terminal) { leases.Add(terminal.SuppressAirspace(snapshot: true)); return; }
-                for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) Visit(VisualTreeHelper.GetChild(root, i));
-            }
-            if (flyout.Target?.XamlRoot?.Content is { } content) Visit(content);
-        };
-        flyout.Closed += (_, _) => { foreach (var lease in leases) lease.Dispose(); leases.Clear(); };
     }
     private async Task<NativeUiHostResult> ConfirmUrlAsync(string url)
     {
@@ -120,7 +106,7 @@ internal sealed partial class NativeUiRenderer
         content.Children.Add(new ScrollViewer { Content = NativeUiComponentTheme.Text(url), MaxHeight = 240, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = NativeUiTheme.Gap(2) }; var open = new Button { Content = "确认打开" }; var cancel = new Button { Content = "取消" };
         buttons.Children.Add(open); buttons.Children.Add(cancel); content.Children.Add(buttons);
-        var flyout = new Flyout { Content = content }; AttachAirspace(flyout);
+        var flyout = new Flyout { Content = content }; NativeUiAirspace.Track(flyout);
         open.Click += (_, _) => { completion.TrySetResult(true); flyout.Hide(); };
         cancel.Click += (_, _) => flyout.Hide(); flyout.Closed += (_, _) => completion.TrySetResult(false);
         _confirmation?.Hide(); _confirmation = flyout; flyout.ShowAt(_root);
