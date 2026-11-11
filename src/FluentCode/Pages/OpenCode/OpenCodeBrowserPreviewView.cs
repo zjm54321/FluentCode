@@ -10,11 +10,13 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Media.Core;
 using Windows.Media.Playback;
 using Windows.Storage.Streams;
+using WinUI.TableView;
 
 namespace FluentCode.Pages.OpenCode;
 
@@ -27,7 +29,7 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
     private readonly StackPanel _commands = new() { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
     private readonly SelectorBar _selector = new() { Padding = new(0), Margin = new(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly SelectorBarItem _render = SelectorItem("渲染"), _source = SelectorItem("源码");
-    private readonly ToggleButton _wrap = new() { Content = new FontIcon { Glyph = "\uE751", FontFamily = new("Segoe Fluent Icons"), FontSize = 16 }, MinWidth = 0, Visibility = Visibility.Collapsed };
+    private readonly ToggleButton _wrap = new() { Content = new FontIcon { Glyph = "\uE751", FontSize = 16 }, MinWidth = 0, Visibility = Visibility.Collapsed };
     private readonly Border _native = new();
     private readonly Button _editor = Action("\uE70F", "在编辑器中打开"), _explorer = Action("\uE838", "在文件资源管理器中显示");
     private bool _compactCommands;
@@ -300,29 +302,73 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
     }
     private static FrameworkElement Table(string text, char delimiter)
     {
-        var parsed = OpenCodeBrowserPreviewPolicy.ParseTable(text, delimiter); var stack = new StackPanel { Margin = new(16), Spacing = 8 };
-        if (parsed.Rows.Count == 0) { stack.Children.Add(Note("（空表格）")); return stack; }
-        var columns = parsed.Rows.Max(row => row.Length);
-        Grid Row(string[] values, bool header)
+        var parsed = OpenCodeBrowserPreviewPolicy.ParseTable(text, delimiter);
+        var host = new Grid { Margin = new(16), RowSpacing = 8 };
+        if (parsed.Rows.Count == 0) { host.Children.Add(Note("（空表格）")); return host; }
+        // Give TableView its own finite viewport so its rows remain virtualized.
+        host.RowDefinitions.Add(new() { Height = new(1, GridUnitType.Star) });
+        host.RowDefinitions.Add(new() { Height = GridLength.Auto });
+        var table = new TableView
         {
-            var row = new Grid();
-            for (var col = 0; col < columns; col++)
+            AutoGenerateColumns = false, IsReadOnly = true, CanResizeColumns = true, CanSortColumns = true, CanFilterColumns = false,
+            HeadersVisibility = TableViewHeadersVisibility.Columns, SelectionUnit = TableViewSelectionUnit.Cell,
+            GridLinesVisibility = TableViewGridLinesVisibility.All, HeaderGridLinesVisibility = TableViewGridLinesVisibility.All,
+            ShowExportOptions = false, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        AppFonts.Apply(table, AppFontSlot.Body);
+        AutomationProperties.SetName(table, "文件预览表格");
+        AutomationProperties.SetAutomationId(table, "OpenCodeBrowserPreviewTable");
+        var headerStyle = new Style(typeof(TableViewColumnHeader));
+        headerStyle.Setters.Add(new Setter(ContentControl.ContentTemplateProperty, Microsoft.UI.Xaml.Markup.XamlReader.Load(
+            "<DataTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><TextBlock Text=\"{Binding}\" TextWrapping=\"Wrap\" IsTextSelectionEnabled=\"True\" FontFamily=\"{ThemeResource AppBodyFontFamily}\"/></DataTemplate>")));
+        var columns = parsed.Rows.Max(row => row.Length);
+        for (var col = 0; col < columns; col++)
+        {
+            table.Columns.Add(new PreviewTableColumn(col)
             {
-                row.ColumnDefinitions.Add(new() { Width = new(180) });
-                var cell = new Border { Padding = new(8), BorderThickness = new(0, 0, 1, 1) };
-                Theme(cell, "BorderBrush", "ControlStrokeColorDefaultBrush");
-                var label = new TextBlock { Text = col < values.Length ? values[col] : "", TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
-                if (header) { label.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold; Theme(cell, "Background", "SubtleFillColorSecondaryBrush"); }
-                cell.Child = label; Grid.SetColumn(cell, col); row.Children.Add(cell);
-            }
-            return row;
+                Header = col < parsed.Rows[0].Length ? parsed.Rows[0][col] : "", HeaderStyle = headerStyle,
+                Width = new GridLength(180), CanSort = true, CanFilter = false, IsReadOnly = true,
+            });
         }
-        var list = new ListView { SelectionMode = ListViewSelectionMode.None, IsItemClickEnabled = false, Header = Row(parsed.Rows[0], true), HorizontalAlignment = HorizontalAlignment.Left };
-        foreach (var row in parsed.Rows.Skip(1)) list.Items.Add(Row(row, false));
-        stack.Children.Add(list);
-        if (parsed.RemainingRows > 0) stack.Children.Add(Note($"还有 {parsed.RemainingRows} 行（最多显示 500 行）"));
-        if (parsed.CellsTruncated) stack.Children.Add(Note("表格最多显示 64 列；每格最多 16 384 字符。完整内容请切换源码。"));
-        return Scroll(stack);
+        table.ItemsSource = parsed.Rows.Skip(1).ToArray();
+        table.CopyToClipboard += TableCopyToClipboard;
+        host.Children.Add(table);
+        var notes = new StackPanel { Spacing = 8 };
+        if (parsed.RemainingRows > 0) notes.Children.Add(Note($"还有 {parsed.RemainingRows} 行（最多显示 500 行）"));
+        if (parsed.CellsTruncated) notes.Children.Add(Note("表格最多显示 64 列；每格最多 16 384 字符。完整内容请切换源码。"));
+        Grid.SetRow(notes, 1); host.Children.Add(notes);
+        return host;
+    }
+    private sealed partial class PreviewTableColumn(int index) : TableViewColumn
+    {
+        private string CellText(object? dataItem) => dataItem is string[] values && index < values.Length ? values[index] : "";
+        public override FrameworkElement GenerateElement(TableViewCell cell, object? dataItem)
+        {
+            var label = new TextBlock { Text = CellText(dataItem), TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+            AppFonts.Apply(label, AppFontSlot.Body);
+            return label;
+        }
+        public override FrameworkElement GenerateEditingElement(TableViewCell cell, object? dataItem) => GenerateElement(cell, dataItem);
+        public override void RefreshElement(TableViewCell cell, object? dataItem)
+        {
+            // The library creates cells before assigning row content, then refreshes/recycles them.
+            if (cell.Content is TextBlock label) label.Text = CellText(dataItem);
+            else cell.Content = GenerateElement(cell, dataItem);
+        }
+        public override object? GetCellContent(object? dataItem) => CellText(dataItem);
+        public override object? GetClipboardContent(object? dataItem) => CellText(dataItem);
+    }
+    private static void TableCopyToClipboard(object? sender, TableViewCopyToClipboardEventArgs args)
+    {
+        // Native grid copy must not replace a selected substring with the whole cell.
+        if (sender is not TableView table || FocusManager.GetFocusedElement(table.XamlRoot) is not TextBlock label || label.SelectedText.Length == 0) return;
+        for (DependencyObject? owner = label; owner is not null; owner = VisualTreeHelper.GetParent(owner))
+        {
+            if (!ReferenceEquals(owner, table)) continue;
+            args.Handled = true;
+            OpenCodeMessageContextMenu.Copy(label.SelectedText);
+            return;
+        }
     }
     private static FrameworkElement Checkerboard()
     {
@@ -347,7 +393,7 @@ internal sealed class OpenCodeBrowserPreviewView : Grid
     {
         var button = new Button { Width = 36, Height = 32, MinWidth = 0, Padding = new(0), BorderThickness = new(0), VerticalAlignment = VerticalAlignment.Center,
             Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = {
-                new FontIcon { Glyph = glyph, FontFamily = new("Segoe Fluent Icons"), FontSize = 16 }, new TextBlock { Text = text, FontSize = 13, Visibility = Visibility.Collapsed } } } };
+                new FontIcon { Glyph = glyph, FontSize = 16 }, new TextBlock { Text = text, FontSize = 13, Visibility = Visibility.Collapsed } } } };
         if (Application.Current.Resources.TryGetValue("OpenCodeTransparentToolButtonStyle", out var style)) button.Style = (Style)style;
         AutomationProperties.SetName(button, text);
         return button;

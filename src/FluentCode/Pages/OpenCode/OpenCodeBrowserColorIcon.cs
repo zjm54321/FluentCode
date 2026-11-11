@@ -10,7 +10,7 @@ internal static class OpenCodeBrowserColorIcon
 {
     internal static FrameworkElement Create() => new FontIcon
     {
-        Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = 18,
+        Glyph = "\uE774", FontSize = 18,
         Width = 18, Height = 18, Visibility = Visibility.Collapsed,
         Foreground = new LinearGradientBrush
         {

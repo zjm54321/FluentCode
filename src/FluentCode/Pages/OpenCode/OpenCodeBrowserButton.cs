@@ -15,7 +15,7 @@ namespace FluentCode.Pages.OpenCode;
 internal sealed class OpenCodeBrowserButton : Grid
 {
     private readonly ToggleButton _toggle = new() { Width = 40, Height = 36, MinWidth = 0, Padding = new Thickness(0) };
-    private readonly FontIcon _globe = new() { Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = OpenCodeQuickAccessStyle.IconSize };
+    private readonly FontIcon _globe = new() { Glyph = "\uE774", FontSize = OpenCodeQuickAccessStyle.IconSize };
     private readonly Border _statusDot = new() { Width = 6, Height = 6, CornerRadius = new(3), IsHitTestVisible = false };
     private readonly FrameworkElement _coloredBrowser = OpenCodeBrowserColorIcon.Create();
     private readonly InfoBadge _count = new() { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
