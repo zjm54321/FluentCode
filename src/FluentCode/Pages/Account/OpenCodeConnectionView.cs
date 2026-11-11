@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentCode.Models;
 using FluentCode.Pages.OpenCode;
+using FluentCode.Pages.Settings;
+using FluentCode.Services.Appearance;
 using FluentCode.Services.Configuration;
 using FluentCode.Services.OpenCode;
 using FluentCode.Services.OpenCode.Connection;
@@ -55,7 +57,9 @@ public sealed class OpenCodeConnectionView : UserControl
     private Func<Task>? _statusActionHandler;
     private bool _busyVisual;
     private readonly TextBlock _pairHint = Hint("一次性链接只在点击连接时兑换；失败不自动重试。兑换成功后可在本窗口重试验证与保存，不再兑换。");
-    private readonly Border _pairPending = new() { CornerRadius = new CornerRadius(4), Padding = new Thickness(12, 8, 12, 8) };
+    // 待保存提示：原生 InfoBar Warning（语义色 + 图标 + 描边，Light / Dark / 高对比度由控件自身处理），
+    // 不再手工给 Border 涂注意色；关闭按钮不显示，避免用户误以为可以“忽略待保存结果”。
+    private readonly InfoBar _pairPending = new() { IsClosable = false, Severity = InfoBarSeverity.Warning, IsOpen = false, Visibility = Visibility.Collapsed };
     private readonly Button _connect = new() { Content = "连接 OpenCode", MinWidth = 120, Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle") };
     private readonly Button _discardPair = new() { Content = "放弃配对结果", Visibility = Visibility.Collapsed };
     private readonly Button _cancel = new() { Content = "取消操作", Visibility = Visibility.Collapsed };
@@ -117,11 +121,12 @@ public sealed class OpenCodeConnectionView : UserControl
         _remote.Children.Add(_password);
         _remote.Children.Add(Hint("密码仅以 Windows DPAPI 密文保存；推荐 HTTPS。HTTP 不加密网络传输。"));
 
-        // ③ 配对链接：提示平时为次要说明；“已兑换、待保存”时变为注意色卡片并显示“放弃配对结果”。
-        _pairPending.Child = _pairHint;
+        // ③ 配对链接：平时为次要说明（无底色）；“已兑换、待保存”时换成原生 InfoBar 警告条，
+        // 唯一操作“放弃配对结果”作为该提示条自己的 ActionButton，不再是孤立在下方的一个按钮。
+        _pairPending.ActionButton = _discardPair;
         _pairing.Children.Add(_pairLink);
+        _pairing.Children.Add(_pairHint);
         _pairing.Children.Add(_pairPending);
-        _pairing.Children.Add(_discardPair);
 
         // ④ SSH：沿用 WSL 的原生选择框 + 刷新行与同样的 12px 字段间距；不新增视觉样式。
         // 节奏：方式说明 → 12 → 主机行 → 12 → 路径（说明贴字段 4）→ 12 → 一组脚注（段间 4，读作同一块）。
@@ -141,12 +146,16 @@ public sealed class OpenCodeConnectionView : UserControl
         sshNotes.Children.Add(Hint("通过 SSH 获取的 OpenCode 服务密码仅在内存中使用，不会保存。"));
         _ssh.Children.Add(sshNotes);
 
-        // 当前连接：卡片中“当前配置”为强调正文，单账号规则为次要说明。
+        // 当前连接（B11）：本视图同时用于设置页与欢迎页，且已由宿主包在卡片中，这里若是工具包 SettingsCard
+        // 就会形成“卡片套卡片”。因此保留内层卡片形态，但圆角改用主题资源 ControlCornerRadius（原来写死 4），
+        // 画刷仍来自主题（高对比度正确）。
         var currentPanel = new StackPanel { Spacing = 4 };
         currentPanel.Children.Add(_summary);
         currentPanel.Children.Add(Hint("连接成功后会替换当前连接；失败时保留原连接。"));
-        var currentCard = new Border { Child = currentPanel, CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1), Padding = new Thickness(12, 10, 12, 10) };
+        var currentCard = new Border { Child = currentPanel, BorderThickness = new Thickness(1), Padding = new Thickness(12, 10, 12, 10) };
+        currentCard.CornerRadius = SettingsCards.ControlRadius;
         OpenCodeToolTheme.Apply(currentCard, OpenCodeToolTheme.Border("CardBackgroundFillColorDefaultBrush", OpenCodeToolTheme.CardStroke));
+        AutomationProperties.SetAutomationId(currentCard, "AccountOpenCodeCurrentConnection");
 
         // 唯一主操作（强调色）在左，取消跟随其后；进度环放在状态行里，与它描述的步骤文字同处一行。
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
@@ -346,23 +355,16 @@ public sealed class OpenCodeConnectionView : UserControl
     private void UpdatePairing()
     {
         _pairLink.IsEnabled = _pairingResult is null;
-        _discardPair.Visibility = _pairingResult is null ? Visibility.Collapsed : Visibility.Visible;
-        _pairHint.Text = _pairingResult is null
-            ? "一次性链接只在点击连接时兑换；不会自动重试。取消、超时或网络失败可能已耗码，需获取新链接。"
-            : "配对已兑换但尚未保存。点击“连接 OpenCode”仅重试验证与保存，不会再次兑换；关闭窗口将丢弃此结果。";
-        // 待保存：注意色卡片 + 正文字号；平时：无底色的次要说明。
-        if (_pairingResult is null)
-        {
-            _pairPending.ClearValue(Border.BackgroundProperty);
-            _pairPending.Padding = new Thickness(0);
-            if (OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey) is { } hint) _pairHint.Style = hint;
-        }
-        else
-        {
-            OpenCodeToolTheme.Apply(_pairPending, OpenCodeToolTheme.Border(OpenCodeToolTheme.CautionBackground));
-            _pairPending.Padding = new Thickness(12, 8, 12, 8);
-            if (OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.BodyStyleKey) is { } body) _pairHint.Style = body;
-        }
+        bool pending = _pairingResult is not null;
+        // 待保存：原生警告条（正文字号）+ 条内“放弃配对结果”；平时：无底色的次要说明。
+        _pairHint.Text = pending
+            ? string.Empty
+            : "一次性链接只在点击连接时兑换；不会自动重试。取消、超时或网络失败可能已耗码，需获取新链接。";
+        _pairHint.Visibility = pending ? Visibility.Collapsed : Visibility.Visible;
+        _pairPending.Message = "配对已兑换但尚未保存。点击“连接 OpenCode”仅重试验证与保存，不会再次兑换；关闭窗口将丢弃此结果。";
+        _pairPending.IsOpen = pending;
+        _pairPending.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
+        _discardPair.Visibility = pending ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async Task RunAsync(Func<CancellationToken, Task> action)
@@ -632,15 +634,18 @@ public sealed class OpenCodeConnectionView : UserControl
             string algorithm = fingerprint.Algorithm;
             string value = fingerprint.Sha256;
             // 卡片：左 12 与说明文字对齐；右 / 上下 8 让 32px 复制按钮贴边而不显得悬空。
-            var card = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(12, 8, 8, 8) };
+            // 圆角取主题资源 ControlCornerRadius（原来是字面量 4）。
+            var card = new Border { BorderThickness = new Thickness(1), CornerRadius = SettingsCards.ControlRadius, Padding = new Thickness(12, 8, 8, 8) };
             OpenCodeToolTheme.Apply(card, OpenCodeToolTheme.Border("CardBackgroundFillColorSecondaryBrush", OpenCodeToolTheme.CardStroke));
             var row = new Grid { ColumnSpacing = 8 };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var stack = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
             stack.Children.Add(Hint(algorithm));
-            var mono = new TextBlock { Text = value, FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 14,
-                IsTextSelectionEnabled = true, TextWrapping = TextWrapping.Wrap };
+            // 等宽字体走用户设置（外观 › 等宽字体），不再写死族名；字号沿用正文字阶（原来是字面量 14）。
+            var mono = new TextBlock { Text = value, IsTextSelectionEnabled = true, TextWrapping = TextWrapping.Wrap };
+            if (OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.BodyStyleKey) is { } valueStyle) mono.Style = valueStyle;
+            AppFonts.Apply(mono, AppFontSlot.Monospace);
             AutomationProperties.SetName(mono, algorithm + " 指纹：" + value);
             stack.Children.Add(mono);
             var copy = new Button { Content = new FontIcon { Glyph = "\uE8C8", FontSize = 16 }, Width = 32, Height = 32, Padding = new Thickness(0),
