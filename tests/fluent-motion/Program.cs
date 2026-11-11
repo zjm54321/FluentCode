@@ -315,8 +315,11 @@ internal static class Program
         Check(xamlVendor.SequenceEqual(new[] { "App.xaml" }), "STATIC only App.xaml declares the vendor XAML namespace (found: " + string.Join(", ", xamlVendor) + ")");
 
         // ---- compatibility keys keep their target type (CONTRACT-F.md §4) ----
-        foreach (var (key, target) in new[] { ("OpenCodeCautionBadgeStyle", "Border"), ("OpenCodeCriticalBadgeStyle", "Border"), ("OpenCodeNeutralBadgeStyle", "Border"), ("OpenCodeTransparentToolButtonStyle", "Button"), ("OpenCodeTransparentSurfaceStyle", "Border"), ("DockCard", "Border") })
+        foreach (var (key, target) in new[] { ("OpenCodeCautionBadgeStyle", "Border"), ("OpenCodeCriticalBadgeStyle", "Border"), ("OpenCodeNeutralBadgeStyle", "Border"), ("OpenCodeTransparentToolButtonStyle", "Button"), ("DockCard", "Border") })
             Check(app.Contains($"x:Key=\"{key}\" TargetType=\"{target}\""), $"STATIC compatibility key keeps its TargetType: {key} → {target}");
+        // B22: dead in the foundation pass — nothing in src/ or tests/ referenced it.
+        Check(!app.Contains("OpenCodeTransparentSurfaceStyle") && !sources.Any(path => File.ReadAllText(path).Contains("OpenCodeTransparentSurfaceStyle")),
+            "STATIC the dead OpenCodeTransparentSurfaceStyle is deleted and unreferenced");
         var tokens = Read("Styles/AppTokens.xaml");
         Check(tokens.Contains("x:Key=\"OpenCodeAttentionDotStyle\" TargetType=\"Ellipse\"") && tokens.Contains("x:Key=\"OpenCodeCautionDotStyle\" TargetType=\"Ellipse\""),
             "STATIC the dot styles stay Ellipse-targeted in AppTokens until TabStatus migrates");
