@@ -14,6 +14,7 @@ $sources+="$repo/src/FluentCode/Services/OpenCode/Connection/SshConnectionTarget
 $sources+="$PSScriptRoot/Program.cs"
 $sources+="$PSScriptRoot/PreviewResourceTests.cs"
 $sources+="$PSScriptRoot/ChromePresentationTests.cs"
+$sources+="$PSScriptRoot/PreviewTableTests.cs"
 $sources+="$repo/src/FluentCode/Pages/OpenCode/OpenCodeBrowserChromePresentation.cs"
 @('OpenCodeBrowserPreviewPolicy.cs','OpenCodeBrowserPreviewResources.cs')|ForEach-Object{$sources+="$repo/src/FluentCode/Services/OpenCode/Browser/$_"}
 $dll=Join-Path $EvidenceRoot 'BrowserSettingsTests.dll';$rsp=Join-Path $EvidenceRoot 'compile.rsp'

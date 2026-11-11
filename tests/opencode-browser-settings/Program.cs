@@ -57,6 +57,7 @@ internal static class Program
             && Read("Services/OpenCode/OpenCodeBrowserTransportErrors.cs").Contains("namespace FluentCode.Services.OpenCode;", StringComparison.Ordinal), "STATIC root-service globbing runners do not need the Browser subfolder for transport errors");
         _checks += await PreviewResourceTests.RunAsync();
         _checks += ChromePresentationTests.Run(Read);
+        _checks += PreviewTableTests.Run(Read);
         Console.WriteLine($"PASS {_checks} browser settings persistence/validation and explicitly static UI composition checks");
     }
 }

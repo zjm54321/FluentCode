@@ -79,12 +79,12 @@ internal sealed class OpenCodeBrowserSelectedList : Grid
             remove.Click += (_, _) => Removed?.Invoke(item.Id); SetColumn(remove, 2); header.Children.Add(remove); row.Children.Add(header);
             if (Details(item, title.Text) is { Length: > 0 } details)
             {
-                var meta = new TextBlock { Text = details, FontSize = 12, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(28, -6, 0, 0) };
-                Themed(meta, "Foreground", "TextFillColorSecondaryBrush"); ToolTipService.SetToolTip(meta, details); row.Children.Add(meta);
+                var meta = new TextBlock { Text = details, FontSize = 12, MaxLines = 1, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(28, -6, 0, 0),
+                    Style = OpenCodeInteractionUi.TryStyle("CaptionSubtleTextBlockStyle") };
+                ToolTipService.SetToolTip(meta, details); row.Children.Add(meta);
             }
             var thumbnail = Image(item.Image, 72); thumbnail.HorizontalAlignment = HorizontalAlignment.Center;
-            var frame = new Border { Child = thumbnail, Padding = new(8), CornerRadius = new(4), BorderThickness = new(1) };
-            Themed(frame, "Background", "SubtleFillColorSecondaryBrush"); Themed(frame, "BorderBrush", "CardStrokeColorDefaultBrush");
+            var frame = new Border { Child = thumbnail, Padding = new(8), CornerRadius = new(4), BorderThickness = new(1), Style = OpenCodeInteractionUi.TryStyle("OpenCodeSubtleCardChromeStyle") };
             row.Children.Add(frame);
             var note = new TextBox { PlaceholderText = "添加批注（可选）", Text = item.Note, MaxLength = 4000 };
             AutomationProperties.SetName(note, $"第 {item.Number} 项批注");
@@ -96,8 +96,8 @@ internal sealed class OpenCodeBrowserSelectedList : Grid
                 new("复制", "\uE8C8", () => CopyRequested?.Invoke(image)) { Row = true },
                 new("另存为图片", "\uE74E", () => SaveRequested?.Invoke(image)),
             });
-            var card = new Border { Padding = new(12, 10, 12, 12), CornerRadius = new(8), BorderThickness = new(1), Child = row, ContextFlyout = menu };
-            Themed(card, "Background", "CardBackgroundFillColorDefaultBrush"); Themed(card, "BorderBrush", "CardStrokeColorDefaultBrush");
+            var card = new Border { Padding = new(12, 10, 12, 12), CornerRadius = new(8), BorderThickness = new(1), Child = row, ContextFlyout = menu,
+                Style = OpenCodeInteractionUi.TryStyle("OpenCodeCardChromeStyle") };
             _items.Children.Add(card);
         }
     }
@@ -112,8 +112,7 @@ internal sealed class OpenCodeBrowserSelectedList : Grid
     private static Button QuietButton(string glyph, double size, double glyphSize)
     {
         var button = new Button { Content = new FontIcon { Glyph = glyph, FontSize = glyphSize }, Width = size, Height = size, MinWidth = 0, MinHeight = 0, Padding = new(0), BorderThickness = new(0) };
-        if (Application.Current.Resources.TryGetValue("DefaultButtonStyle", out var native)) button.Style = (Style)native;
-        Themed(button, "Background", "SubtleFillColorTransparentBrush");
+        button.Style = OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle");
         return button;
     }
     private static void Themed(FrameworkElement element, string property, string resource)

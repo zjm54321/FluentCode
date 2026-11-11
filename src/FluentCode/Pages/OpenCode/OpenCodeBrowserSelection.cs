@@ -24,7 +24,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
     private readonly Dictionary<OpenCodeBrowserSelectionTool, ToggleButton> _buttons = new();
     private readonly Border _pill;
     private readonly TextBlock _modeLabel = new();
-    private readonly FontIcon _modeIcon = new() { FontFamily = new("Segoe Fluent Icons"), FontSize = 14 };
+    private readonly FontIcon _modeIcon = new() { FontSize = 14 };
     private readonly StackPanel _annotationTools = new() { Orientation = Orientation.Horizontal, Spacing = 4 };
     private readonly TextBox _note = new() { PlaceholderText = "批注文字", Width = 220, MaxLength = 2000 };
     private readonly Dictionary<OpenCodeBrowserPage, PageState> _states = new();
@@ -54,7 +54,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         foreach (var entry in new[] { (OpenCodeBrowserSelectionTool.Element, "选择元素并批注", "\uE8B0"), (OpenCodeBrowserSelectionTool.Region, "框选并批注", "\uEF20") })
         {
             var tool = entry.Item1;
-            var button = new ToggleButton { Content = new FontIcon { Glyph = entry.Item3, FontFamily = new("Segoe Fluent Icons"), FontSize = 16 }, MinWidth = 0 };
+            var button = new ToggleButton { Content = new FontIcon { Glyph = entry.Item3, FontSize = 16 }, MinWidth = 0 };
             AutomationProperties.SetName(button, entry.Item2); ToolTipService.SetToolTip(button, entry.Item2);
             button.Click += (_, _) => Run(() => ActivateAsync(button.IsChecked == true ? tool : OpenCodeBrowserSelectionTool.None));
             _buttons.Add(tool, button); overlay.PageTools.Children.Add(button);

@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Numerics;
 using System.Threading.Tasks;
+using FluentCode.Services.Appearance;
 using FluentCode.Services.OpenCode.Browser;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -25,7 +26,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private readonly Grid _toolbar = new() { Padding = new(8, 0, 8, 0), BorderThickness = new(0, 0, 0, 1) };
     private readonly TextBox _address = new() { CornerRadius = new(16), MinWidth = 0, Height = 32, FontSize = 13, Padding = new(36, 4, 12, 4), VerticalAlignment = VerticalAlignment.Center };
     private readonly OpenCodeBrowserAddressLine _displayAddress = new() { Margin = new(11, 0, 0, 0) };
-    private readonly FontIcon _originIcon = new() { FontFamily = new("Segoe Fluent Icons"), FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
+    private readonly FontIcon _originIcon = new() { FontSize = 14, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _originLabel = new() { FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
     private readonly StackPanel _originChip = new() { Orientation = Orientation.Horizontal, Margin = new(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly Border _windowDivider = new() { Width = 1, Height = 20, Margin = new(6, 0, 6, 0) };
@@ -34,7 +35,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private readonly Border _agentOutline = new() { BorderThickness = new(3), IsHitTestVisible = false, Opacity = 0 };
     private readonly Border _agentPill;
     private readonly TextBlock _activity = new() { FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
-    private readonly FontIcon _agentIcon = new() { FontFamily = new("Segoe Fluent Icons"), FontSize = 14 };
+    private readonly FontIcon _agentIcon = new() { FontSize = 14 };
     private readonly Button _takeover;
     private readonly StackPanel _error;
     private readonly TextBlock _errorReason = new() { TextWrapping = TextWrapping.Wrap, MaxWidth = 620 };
@@ -69,7 +70,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         });
         _actions.Children.Add(_openExternal);
         var more = Button("\uE712", "更多", () => { }); more.Flyout = MoreMenu(); _actions.Children.Add(more);
-        Theme(_windowDivider, Border.BackgroundProperty, "DividerStrokeColorDefaultBrush"); _actions.Children.Add(_windowDivider);
+        _windowDivider.Style = OpenCodeInteractionUi.TryStyle("OpenCodeDividerSurfaceStyle"); _actions.Children.Add(_windowDivider);
         var close = Button("\uE8BB", "关闭浏览器浮窗", () => _workspace?.HideOverlay());
         ToolTipService.SetToolTip(close, "关闭（Esc）");
         _actions.Children.Add(close);
@@ -94,7 +95,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         OpenCodeToolTheme.Apply(_originIcon, OpenCodeToolTheme.Icon(OpenCodeToolTheme.TextSecondary)); addressDisplay.Children.Add(_originIcon);
         OpenCodeToolTheme.Apply(_originLabel, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary)); _originChip.Children.Add(_originLabel);
         var originDivider = new Border { Width = 1, Height = 16, Margin = new(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-        Theme(originDivider, Border.BackgroundProperty, "DividerStrokeColorDefaultBrush"); _originChip.Children.Add(originDivider);
+        originDivider.Style = OpenCodeInteractionUi.TryStyle("OpenCodeDividerSurfaceStyle"); _originChip.Children.Add(originDivider);
         Grid.SetColumn(_originChip, 1); addressDisplay.Children.Add(_originChip);
         Grid.SetColumn(_displayAddress, 2); addressDisplay.Children.Add(_displayAddress);
         addressHost.Children.Add(_address); addressHost.Children.Add(addressDisplay);
@@ -139,12 +140,12 @@ public sealed class OpenCodeBrowserOverlay : Grid
         _preview.Visibility = Visibility.Collapsed; _body.Children.Add(_preview);
         _external.Visibility = Visibility.Collapsed; _body.Children.Add(_external);
         _error = new StackPanel { Spacing = 16, MaxWidth = 620, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new(32) };
-        var errorIcon = new FontIcon { Glyph = "\uEB55", FontFamily = new("Segoe Fluent Icons"), FontSize = 52, HorizontalAlignment = HorizontalAlignment.Left };
+        var errorIcon = new FontIcon { Glyph = "\uEB55", FontSize = 52, HorizontalAlignment = HorizontalAlignment.Left };
         OpenCodeToolTheme.Apply(errorIcon, OpenCodeToolTheme.Icon("TextFillColorTertiaryBrush")); _error.Children.Add(errorIcon);
         _error.Children.Add(new TextBlock { Text = "无法访问此页面", FontSize = 28, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold }); _error.Children.Add(_errorReason);
-        _errorCode.FontFamily = new("Cascadia Mono"); _errorCode.FontSize = 12;
-        var codeSurface = new Border { Child = _errorCode, Padding = new(14, 10, 14, 10), CornerRadius = new(6) };
-        Theme(codeSurface, Border.BackgroundProperty, "SubtleFillColorSecondaryBrush"); _error.Children.Add(codeSurface);
+        AppFonts.Apply(_errorCode, AppFontSlot.Monospace); _errorCode.FontSize = 12;
+        var codeSurface = new Border { Child = _errorCode, Padding = new(14, 10, 14, 10), CornerRadius = new(6), Style = OpenCodeInteractionUi.TryStyle("OpenCodeSubtleSurfaceStyle") };
+        _error.Children.Add(codeSurface);
         var errorActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var retry = TextButton("重试", () => _page?.Reload(), "\uE72C"); retry.Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle"); errorActions.Children.Add(retry);
         errorActions.Children.Add(TextButton("把错误发给智能体", () => { if (_page is not null) SendErrorRequested?.Invoke(this, _page); }, "\uE724"));
@@ -162,7 +163,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
             Theme(edge, Border.BorderBrushProperty, "AccentFillColorDefaultBrush"); glow.Children.Add(edge);
         }
         _agentOutline.Child = glow; _body.Children.Add(_agentOutline);
-        var pointerIcon = new FontIcon { Glyph = "\uE8B0", FontFamily = new("Segoe Fluent Icons"), FontSize = 18, VerticalAlignment = VerticalAlignment.Top }; OpenCodeToolTheme.Apply(pointerIcon, OpenCodeToolTheme.Icon("AccentFillColorDefaultBrush"));
+        var pointerIcon = new FontIcon { Glyph = "\uE8B0", FontSize = 18, VerticalAlignment = VerticalAlignment.Top }; OpenCodeToolTheme.Apply(pointerIcon, OpenCodeToolTheme.Icon("AccentFillColorDefaultBrush"));
         _pointerName.FontSize = 11;
         OpenCodeToolTheme.Apply(_pointerName, OpenCodeToolTheme.Text("TextOnAccentFillColorPrimaryBrush"));
         var pointerLabel = new Border { Child = _pointerName, Padding = new(8, 1, 8, 1), CornerRadius = new(10), Margin = new(-4, 18, 0, 0) };
@@ -181,7 +182,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         stop.Style = OpenCodeInteractionUi.TryStyle("AccentButtonStyle"); stop.CornerRadius = new(16); Grid.SetColumn(stop, 4); pillContent.Children.Add(stop);
         _agentPill = new Border { Child = pillContent, Height = 44, Padding = new(14, 0, 6, 0), BorderThickness = new(1), CornerRadius = new(22), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top, Margin = new(14), MaxWidth = 900,
             Shadow = new ThemeShadow(), Translation = new Vector3(0, 0, 32) };
-        Theme(_agentPill, Border.BackgroundProperty, "AcrylicInAppFillColorDefaultBrush"); _body.Children.Add(_agentPill);
+        _body.Children.Add(_agentPill);
         RightPanelSlot = content.AnnotationSlot;
         Grid.SetRow(content, 1); layout.Children.Add(content);
         _presenter = OpenCodeToolDetailPopup.CreatePresenter(layout, new(0), 128);
@@ -407,7 +408,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
     }
     private static Button Button(string glyph, string name, Action click)
     {
-        var button = new Button { Content = new FontIcon { Glyph = glyph, FontFamily = new("Segoe Fluent Icons"), FontSize = 16 }, Width = 36, Height = 32, MinWidth = 0, Padding = new(0), BorderThickness = new(0) };
+        var button = new Button { Content = new FontIcon { Glyph = glyph, FontSize = 16 }, Width = 36, Height = 32, MinWidth = 0, Padding = new(0), BorderThickness = new(0) };
         if (Application.Current.Resources.TryGetValue("OpenCodeTransparentToolButtonStyle", out var style)) button.Style = (Style)style;
         AutomationProperties.SetName(button, name); ToolTipService.SetToolTip(button, name); button.Click += (_, _) => click(); return button;
     }
@@ -430,7 +431,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
     private static Button TextButton(string text, Action click, string glyph)
     {
         var button = new Button { Height = 32, FontSize = 13, Padding = new(14, 0, 14, 0), Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = {
-            new FontIcon { Glyph = glyph, FontFamily = new("Segoe Fluent Icons"), FontSize = 12 }, new TextBlock { Text = text } } } };
+            new FontIcon { Glyph = glyph, FontSize = 12 }, new TextBlock { Text = text } } } };
         AutomationProperties.SetName(button, text); button.Click += (_, _) => click(); return button;
     }
     private void Copy(string text, Button? button = null)

@@ -14,8 +14,8 @@ namespace FluentCode.Pages.OpenCode;
 /// <summary>Real external-window snapshot, never a second embedded browser.</summary>
 internal sealed class OpenCodeBrowserExternalView : Grid
 {
-    private readonly TextBlock _stamp = new() { FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 1 };
-    private readonly TextBlock _status = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _stamp = new() { FontSize = 12, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 1 };
+    private readonly TextBlock _status = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.None };
     private readonly Image _image = new() { Stretch = Stretch.Uniform, IsHitTestVisible = false };
     private readonly Button _refresh = Action("\uE72C", "刷新截图"), _focus = Action("\uE8A7", "在 Chrome 中显示"), _pick = Action("\uE8B0", "在 Chrome 中选取元素");
     private OpenCodeBrowserPage? _page;
@@ -36,9 +36,9 @@ internal sealed class OpenCodeBrowserExternalView : Grid
         header.RowDefinitions.Add(new() { Height = GridLength.Auto }); header.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var heading = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
         var title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        title.Children.Add(new FontIcon { Glyph = "\uE774", FontFamily = new("Segoe Fluent Icons"), FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
+        title.Children.Add(new FontIcon { Glyph = "\uE774", FontSize = 16, VerticalAlignment = VerticalAlignment.Center });
         title.Children.Add(new TextBlock { Text = "外部 Chrome · 独立窗口", FontSize = 20, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
-        heading.Children.Add(title); heading.Children.Add(_stamp); Theme(_stamp, "Foreground", "TextFillColorSecondaryBrush");
+        heading.Children.Add(title); heading.Children.Add(_stamp); _stamp.Style = OpenCodeInteractionUi.TryStyle("CaptionSubtleTextBlockStyle");
         header.Children.Add(heading);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
         foreach (var button in new[] { _refresh, _focus, _pick }) actions.Children.Add(button);
@@ -51,11 +51,11 @@ internal sealed class OpenCodeBrowserExternalView : Grid
             header.RowSpacing = narrow ? 12 : 0; actions.HorizontalAlignment = narrow ? HorizontalAlignment.Left : HorizontalAlignment.Right;
         };
         content.Children.Add(header);
-        Theme(_status, "Foreground", "TextFillColorSecondaryBrush"); content.Children.Add(_status);
+        _status.Style = OpenCodeInteractionUi.TryStyle("CaptionSubtleTextBlockStyle"); content.Children.Add(_status);
         _status.Visibility = Visibility.Collapsed;
         _status.RegisterPropertyChangedCallback(TextBlock.TextProperty, (_, _) => _status.Visibility = string.IsNullOrEmpty(_status.Text) ? Visibility.Collapsed : Visibility.Visible);
-        var card = new Border { Child = _image, CornerRadius = new(8), BorderThickness = new(1), Padding = new(6), MinHeight = 160, HorizontalAlignment = HorizontalAlignment.Stretch };
-        Theme(card, "Background", "CardBackgroundFillColorDefaultBrush"); Theme(card, "BorderBrush", "CardStrokeColorDefaultBrush");
+        var card = new Border { Child = _image, CornerRadius = new(8), BorderThickness = new(1), Padding = new(6), MinHeight = 160, HorizontalAlignment = HorizontalAlignment.Stretch,
+            Style = OpenCodeInteractionUi.TryStyle("OpenCodeCardChromeStyle") };
         content.Children.Add(card);
         Children.Add(new ScrollViewer { Content = content, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
         AutomationProperties.SetName(_image, "外部 Chrome 实际网页截图"); AutomationProperties.SetAutomationId(this, "OpenCodeExternalChromePreview");
@@ -138,7 +138,7 @@ internal sealed class OpenCodeBrowserExternalView : Grid
     private static Button Action(string glyph, string text)
     {
         var button = new Button { Height = 32, Padding = new(12, 0, 12, 0), Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = {
-            new FontIcon { Glyph = glyph, FontFamily = new("Segoe Fluent Icons"), FontSize = 14 }, new TextBlock { Text = text } } } };
+            new FontIcon { Glyph = glyph, FontSize = 14 }, new TextBlock { Text = text } } } };
         AutomationProperties.SetName(button, text);
         return button;
     }
