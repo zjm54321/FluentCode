@@ -298,6 +298,16 @@ internal static class Program
         var contract = System.Text.RegularExpressions.Regex.Match(badge, @"internal static class CommunityTextBadge[\s\S]*$").Value;
         Check(System.Text.RegularExpressions.Regex.Matches(contract, @"\.Title\s*=\s*([^;]+);").All(m => m.Groups[1].Value.Trim() == "text ?? string.Empty"),
             "STATIC adapter assigns Title as string data only, never an element");
+        // C06: the Native UI badge has seven tone inputs (badgeTone: muted/info/success/warning/danger/purple/pink),
+        // so the adapter must carry a tone for each of them.
+        var toneEnum = System.Text.RegularExpressions.Regex.Match(badge, @"internal enum CommunityTextBadgeTone\s*\{(?<body>[^}]*)\}").Groups["body"].Value;
+        var toneNames = System.Text.RegularExpressions.Regex.Matches(toneEnum, @"^\s*([A-Za-z]+),?\s*$", System.Text.RegularExpressions.RegexOptions.Multiline)
+            .Select(m => m.Groups[1].Value).ToArray();
+        Check(toneNames.SequenceEqual(new[] { "Neutral", "Caution", "Critical", "Success", "Attention", "Purple", "Pink" }),
+            "STATIC the tone enum is exactly the seven status/categorical tones (found: " + string.Join(", ", toneNames) + ")");
+        foreach (var pair in new[] { ("Neutral", "Gray"), ("Caution", "Warning"), ("Critical", "Error"), ("Success", "Success"), ("Attention", "Blue"), ("Purple", "Purple"), ("Pink", "Pink") })
+            Check(System.Text.RegularExpressions.Regex.IsMatch(contract, $@"CommunityTextBadgeTone\.{pair.Item1}\s*=>\s*IssueLabelSeverity\.{pair.Item2}"),
+                $"STATIC tone mapping {pair.Item1} → {pair.Item2} (CONTRACT-F.md §2)");
 
         // ---- the two library traps from PLAN-v2 §3 ----
         Check(contract.Contains("label.TitleTemplate = TryResource(TitleTemplateKey)")

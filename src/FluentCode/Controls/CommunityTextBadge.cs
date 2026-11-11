@@ -21,6 +21,10 @@ internal enum CommunityTextBadgeTone
     Success,
     /// <summary>强调或信息性（FluentCode 本机操作、焦点状态）。</summary>
     Attention,
+    /// <summary>分类用紫调（Native UI 分类徽章，不承载状态含义）。</summary>
+    Purple,
+    /// <summary>分类用粉调（Native UI 分类徽章，不承载状态含义）。</summary>
+    Pink,
 }
 
 /// <summary>几何：紧凑标签（行内小标签）与药丸标签（20 DIP 高、圆角 10）。</summary>
@@ -123,6 +127,8 @@ internal static class CommunityTextBadge
         CommunityTextBadgeTone.Critical => IssueLabelSeverity.Error,
         CommunityTextBadgeTone.Success => IssueLabelSeverity.Success,
         CommunityTextBadgeTone.Attention => IssueLabelSeverity.Blue,
+        CommunityTextBadgeTone.Purple => IssueLabelSeverity.Purple,
+        CommunityTextBadgeTone.Pink => IssueLabelSeverity.Pink,
         _ => IssueLabelSeverity.Gray,
     };
 
