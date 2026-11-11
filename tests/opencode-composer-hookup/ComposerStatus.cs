@@ -90,11 +90,24 @@ internal sealed partial class ComposerStatusHost
         inactive.RenderStatus(idle with { IsActive = false, IsBoundDraft = true }, true, true);
         Program.Check(inactive._statusBar.Visibility == Visibility.Visible && inactive._statusText.Text.Contains("返回原会话")
             && !inactive._statusText.Text.Contains("丢弃"), "inactive draft retains return-to-origin recovery without discard action");
-        Console.WriteLine("PASS: 16 production status-renderer checks; in-memory UI seams, no native UI.");
+        var tones = new ComposerStatusHost();
+        tones.RenderStatus(idle with { Note = "提交结果未知；禁止自动重试。" }, true, false);
+        Program.Check(Equals(tones._statusBar.Style, "OpenCodeCautionBadgeStyle")
+            && Equals(tones._statusIcon.Style, "OpenCodeCautionIconStyle"),
+            "unknown outcome uses the existing caution background resource and caution icon");
+        tones.RenderStatus(idle with { Note = "服务器未接纳提交；草稿已保留。" }, true, false);
+        Program.Check(Equals(tones._statusBar.Style, "OpenCodeSubtleSurfaceStyle")
+            && Equals(tones._statusIcon.Style, ("FontIcon", "TextFillColorSecondaryBrush")),
+            "same status row returns to the existing neutral surface and icon without stale caution styling");
+        tones._sync = new() { State = OpenCodeComposerInputState.HeldUnbound };
+        tones.RenderStatus(idle, true, false);
+        Program.Check(Equals(tones._statusBar.Style, "OpenCodeCautionBadgeStyle") && tones._recoveryClear.IsEnabled,
+            "held input restores caution chrome without changing the recovery action");
+        Console.WriteLine("PASS: 19 production status-renderer checks; in-memory UI seams, no native UI.");
     }
 }
 
-internal static class OpenCodeThemedXaml
+internal static class OpenCodeInteractionUi
 {
-    internal static object BrushStyle(string control, params (string Property, string Resource)[] resources) => resources;
+    internal static object TryStyle(string key) => key;
 }

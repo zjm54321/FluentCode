@@ -133,7 +133,7 @@
                              AutomationProperties.AutomationId="OpenCodeHomeTab"
                              AutomationProperties.Name="首页" ToolTipService.ToolTip="首页（/sessions）">
                     <TabViewItem.Header>
-                        <FontIcon Glyph="&#xE80F;" FontFamily="{ThemeResource SymbolThemeFontFamily}" FontSize="16"
+                        <FontIcon Glyph="&#xE80F;" FontSize="16"
                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </TabViewItem.Header>
                 </TabViewItem>

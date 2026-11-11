@@ -68,7 +68,7 @@ internal static class OpenCodeComposerBitmapCache
             var rgb = uint.Parse(color.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
             if (!key.HighContrast) foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
             icon = new FontIcon { Glyph = token.IsSkill ? "\uE8A5" : OpenCodeAgentIcons.Glyph(token.Value), FontSize = 14,
-                FontFamily = new FontFamily("Segoe Fluent Icons"), Foreground = foreground };
+                FontFamily = (FontFamily)Application.Current.Resources["SymbolThemeFontFamily"], Foreground = foreground };
         }
         content.Children.Add(new Viewbox { Child = icon, Width = iconSize, Height = iconSize, VerticalAlignment = VerticalAlignment.Center });
         var label = new TextBlock { Text = token.Label, FontFamily = new FontFamily(key.Font), FontSize = key.Size * key.TextScale,

@@ -206,6 +206,8 @@ internal static class OpenCodeModelPickerDialog
             Padding = new Thickness(0), BorderThickness = new Thickness(0), VerticalAlignment = VerticalAlignment.Center,
             HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
             Content = new FontIcon { Glyph = isFavorite ? "\uE735" : "\uE734", FontSize = 14 } };
+        // Keep the optional-style fallback, but diagnose a broken SDK resource contract in Debug.
+        System.Diagnostics.Debug.Assert(favorite.Style is not null, "WinUI SubtleButtonStyle must resolve for model favorites.");
         var favoriteName = isFavorite ? "取消收藏" : "收藏";
         ToolTipService.SetToolTip(favorite, favoriteName);
         AutomationProperties.SetAutomationId(favorite, "OpenCodeModelFavorite:" + row.ProviderId + "/" + row.ModelId);

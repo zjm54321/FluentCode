@@ -28,6 +28,7 @@ Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash |
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless compilation failed: $LASTEXITCODE" }
 Write-Output "Headless compilation passed (SDK $($sdk.Name); warnings treated as errors)."
+$env:FC_SESSION_UI_REPO = $repo # Source contracts only; this runner never initializes WinUI.
 & $dotnet $assembly 2>&1 | Tee-Object -FilePath (Join-Path $output 'test.log')
 if ($LASTEXITCODE -ne 0) { throw "Headless tests failed: $LASTEXITCODE" }
 Get-FileHash -LiteralPath $inputs -Algorithm SHA256 | Select-Object Path, Hash | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $output 'source-hashes.json')

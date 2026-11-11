@@ -202,7 +202,7 @@ internal static class OpenCodeContextMenu
     private static Border Separator() => new()
     {
         Height = 1, Margin = new Thickness(0, 4, 0, 4),
-        Style = Themed("Border", "Background", "DividerStrokeColorDefaultBrush"),
+        Style = OpenCodeInteractionUi.TryStyle("OpenCodeDividerSurfaceStyle"),
     };
 
     private static FontIcon Icon(OpenCodeContextCommand command)
