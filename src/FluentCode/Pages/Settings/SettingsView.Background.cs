@@ -10,7 +10,7 @@ public sealed partial class SettingsView
 
     private UIElement BuildGeneralSection()
     {
-        _runInBackgroundToggle = new ToggleSwitch { OnContent = "开", OffContent = "关", MinWidth = 0 };
+        _runInBackgroundToggle = new ToggleSwitch { OnContent = "开", OffContent = "关" };
         AutomationProperties.SetAutomationId(_runInBackgroundToggle, "SettingsRunInBackground");
         AutomationProperties.SetName(_runInBackgroundToggle, "关闭窗口后在后台运行");
         _runInBackgroundToggle.Toggled += OnRunInBackgroundToggled;

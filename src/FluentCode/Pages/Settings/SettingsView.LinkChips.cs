@@ -19,15 +19,15 @@ public sealed partial class SettingsView
     /// </summary>
     private UIElement BuildLinkChipsSection()
     {
-        _linkOnlineToggle = new ToggleSwitch { OnContent = "开", OffContent = "关", MinWidth = 0 };
+        _linkOnlineToggle = new ToggleSwitch { OnContent = "开", OffContent = "关" };
         AutomationProperties.SetAutomationId(_linkOnlineToggle, "SettingsLinkChipsOnline");
         AutomationProperties.SetName(_linkOnlineToggle, "联网补全");
         _linkOnlineToggle.Toggled += (_, _) => SaveLinkChips(_linkOnlineToggle, s => s with { OnlineMetadata = _linkOnlineToggle.IsOn });
-        _linkMonochromeToggle = new ToggleSwitch { OnContent = "开", OffContent = "关", MinWidth = 0 };
+        _linkMonochromeToggle = new ToggleSwitch { OnContent = "开", OffContent = "关" };
         AutomationProperties.SetAutomationId(_linkMonochromeToggle, "SettingsLinkChipsMonochrome");
         AutomationProperties.SetName(_linkMonochromeToggle, "单色图标");
         _linkMonochromeToggle.Toggled += (_, _) => SaveLinkChips(_linkMonochromeToggle, s => s with { MonochromeIcons = _linkMonochromeToggle.IsOn });
-        _linkIssueStatusToggle = new ToggleSwitch { OnContent = "开", OffContent = "关", MinWidth = 0 };
+        _linkIssueStatusToggle = new ToggleSwitch { OnContent = "开", OffContent = "关" };
         AutomationProperties.SetAutomationId(_linkIssueStatusToggle, "SettingsLinkChipsIssueStatus");
         AutomationProperties.SetName(_linkIssueStatusToggle, "Issue 与 PR 状态");
         _linkIssueStatusToggle.Toggled += (_, _) =>

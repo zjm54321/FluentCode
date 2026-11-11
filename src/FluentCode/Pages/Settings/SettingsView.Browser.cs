@@ -27,8 +27,10 @@ public sealed partial class SettingsView
         AutomationProperties.SetName(_browserConnection, "Chrome 连接方式");
         AutomationProperties.SetName(_chromeExecutable, "Chrome 程序路径");
         AutomationProperties.SetName(_chromeEndpoint, "本机调试端点");
-        var command = new TextBox { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true, FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Cascadia Mono, Consolas"),
+        var command = new TextBox { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, AcceptsReturn = true,
             Text = "chrome.exe --user-data-dir=\"C:\\Chrome-OpenCode-Private\" --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1 --enable-automation --disable-quic --force-webrtc-ip-handling-policy=disable_non_proxied_udp" };
+        // 等宽字体走用户设置（外观 › 等宽字体），不再写死族名；长驻元素随设置实时更新。
+        FluentCode.Services.Appearance.AppFonts.Apply(command, FluentCode.Services.Appearance.AppFontSlot.Monospace);
         AutomationProperties.SetName(command, "连接已有 Chrome 的必需启动参数");
 
         _chromeSettings.Children.Add(SettingsCards.Card("\uE71B", "Chrome 连接方式", null, _browserConnection));
