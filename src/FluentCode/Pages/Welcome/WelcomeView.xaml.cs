@@ -1,4 +1,6 @@
+using System;
 using FluentCode.Pages.Account;
+using FluentCode.Services.Appearance;
 using FluentCode.Services.Configuration;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -36,9 +38,17 @@ public sealed partial class WelcomeView : UserControl
     /// <summary>离开欢迎页：取消进行中的操作并清空表单中的秘密。</summary>
     internal void Close() => _form.Close();
 
+    /// <summary>
+    /// 卡片后面的强调色光晕。颜色取自系统强调色主题资源（<c>AccentFillColorDefaultBrush</c>：
+    /// 深色主题下是较亮的强调色、浅色主题下是较暗的强调色），因此跟随用户在 Windows 里选择的强调色，
+    /// 而不再是写死的蓝色。高对比度下整层关闭，让背景保持系统窗口色。
+    /// 解析失败（资源不可用的极端时机）时同样关闭光晕，不显示错误颜色。
+    /// </summary>
     private void ApplyBloom()
     {
         if (new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast) { Bloom.Background = null; return; }
+        if (AccentColor() is not { } accent) { Bloom.Background = null; return; }
+
         bool dark = ActualTheme == ElementTheme.Dark;
         var bloom = new RadialGradientBrush
         {
@@ -47,8 +57,21 @@ public sealed partial class WelcomeView : UserControl
             RadiusX = 0.6,
             RadiusY = 0.55,
         };
-        bloom.GradientStops.Add(new GradientStop { Color = dark ? Color.FromArgb(64, 0x1C, 0x86, 0xDE) : Color.FromArgb(56, 0x62, 0xCD, 0xFF), Offset = 0 });
-        bloom.GradientStops.Add(new GradientStop { Color = Color.FromArgb(0, 0x1C, 0x86, 0xDE), Offset = 1 });
+        // 与既有观感一致：深色主题稍强、浅色主题稍弱，向同色透明过渡。
+        bloom.GradientStops.Add(new GradientStop { Color = Color.FromArgb(dark ? (byte)64 : (byte)56, accent.R, accent.G, accent.B), Offset = 0 });
+        bloom.GradientStops.Add(new GradientStop { Color = Color.FromArgb(0, accent.R, accent.G, accent.B), Offset = 1 });
         Bloom.Background = bloom;
+    }
+
+    private Color? AccentColor()
+    {
+        try
+        {
+            return ThemeResources.Brush(this, "AccentFillColorDefaultBrush") is SolidColorBrush brush ? brush.Color : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 }

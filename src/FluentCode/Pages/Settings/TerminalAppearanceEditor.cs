@@ -15,7 +15,7 @@ internal sealed class TerminalAppearanceEditor : StackPanel
     private readonly NumberBox _size = new() { Minimum = 6, Maximum = 72, SmallChange = 1, SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline, Width = 140 };
     private readonly ComboBox _scheme = SettingsCards.Sized(new ComboBox());
     private readonly ComboBox _cursor = SettingsCards.Sized(new ComboBox());
-    private readonly ToggleSwitch _blink = new() { OnContent = "开", OffContent = "关", MinWidth = 0 };
+    private readonly ToggleSwitch _blink = new() { OnContent = "开", OffContent = "关" };
     private readonly TextBlock _fontNote;
     private readonly TextBlock _preview = new()
     {

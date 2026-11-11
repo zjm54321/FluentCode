@@ -27,11 +27,12 @@
                         HorizontalAlignment="Stretch" VerticalAlignment="Center">
                 <Image Source="ms-appx:///Assets/AppIcon/app-256.png" Width="64" Height="64"
                        HorizontalAlignment="Center" AutomationProperties.AccessibilityView="Raw" />
-                <TextBlock Text="FluentCode" FontSize="30" FontWeight="SemiBold" HorizontalAlignment="Center"
+                <TextBlock Text="FluentCode" Style="{ThemeResource TitleTextBlockStyle}" HorizontalAlignment="Center"
                            Margin="0,12,0,4" Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                 <TextBlock Text="连接你的 OpenCode，在 Windows 上继续编码。" HorizontalAlignment="Center" TextAlignment="Center"
                            TextWrapping="Wrap" Margin="0,0,0,20"
                            Style="{ThemeResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <!-- 卡片：Win11 没有“卡片”控件，这里仍是带主题画刷 / 圆角 / 阴影的普通 Border（阴影是本页特有的抬升，保持局部）。 -->
                 <Border Padding="24" CornerRadius="{ThemeResource OverlayCornerRadius}" BorderThickness="1"
                         Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -41,7 +42,7 @@
                     </Border.Shadow>
                     <StackPanel Spacing="18">
                         <StackPanel Spacing="4">
-                            <TextBlock Text="添加 OpenCode" Style="{ThemeResource SubtitleTextBlockStyle}" FontSize="18" />
+                            <TextBlock Text="添加 OpenCode" Style="{ThemeResource SubtitleTextBlockStyle}" />
                             <TextBlock Text="只保留一个 OpenCode 账号 / 实例；以后可在 设置 › 账号与连接 中切换或断开。"
                                        TextWrapping="Wrap" Style="{ThemeResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />

@@ -14,7 +14,7 @@ public sealed partial class SettingsView
     /// <summary>“减少动画”：只能在系统动画开启时进一步关闭；系统已关闭时开关锁定为开并说明原因。</summary>
     private UIElement BuildMotionSection()
     {
-        _reduceMotionToggle = new ToggleSwitch { OnContent = "开", OffContent = "关", MinWidth = 0 };
+        _reduceMotionToggle = new ToggleSwitch { OnContent = "开", OffContent = "关" };
         AutomationProperties.SetAutomationId(_reduceMotionToggle, "SettingsReduceMotion");
         AutomationProperties.SetName(_reduceMotionToggle, "减少动画");
         _reduceMotionToggle.Toggled += OnReduceMotionToggled;

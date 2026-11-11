@@ -22,7 +22,7 @@ public sealed partial class SettingsView
     internal void ShowAccountCategory()
     {
         int index = _categories.FindIndex(static c => c.Title == "账号与连接");
-        if (index >= 0) _categoryList.SelectedIndex = index;
+        if (index >= 0) SelectCategory(index);
     }
 
     private UIElement BuildAccountSection()
@@ -33,10 +33,12 @@ public sealed partial class SettingsView
         AutomationProperties.SetName(_disconnectButton, "断开 OpenCode 连接");
         _disconnectButton.Click += async (_, _) => await DisconnectOpenCodeAsync();
 
-        // 连接表单与欢迎页共用；在设置里放进一张卡片，与其余分类同一版式。
-        var form = SettingsCards.Panel(new Border { Padding = new Thickness(16, 14, 16, 16), Child = _connectionView });
+        // 连接表单与欢迎页共用；这里不再手工套一层 Border 卡片，改用与其余分类同一套 SettingsCard 行：
+        // 标题行 “OpenCode 连接” + 整行铺满的表单（保持表单始终可见，不做点击展开）。
+        var form = SettingsCards.Row("\uE77B", "OpenCode 连接", _connectionView);
+        AutomationProperties.SetAutomationId(form, "SettingsOpenCodeConnectionCard");
         var panel = new StackPanel { Spacing = SettingsCards.GroupSpacing };
-        panel.Children.Add(SettingsCards.Group("OpenCode 连接", form));
+        panel.Children.Add(SettingsCards.Group(null, form));
         panel.Children.Add(SettingsCards.Group(null,
             SettingsCards.Card("\uE8D8", "断开连接", "清除连接与已保存的凭据，不影响 OpenCode 服务本身", _disconnectButton)));
         UpdateDisconnectAvailability();
