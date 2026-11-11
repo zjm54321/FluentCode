@@ -661,17 +661,17 @@ public sealed class OpenCodeHomeView : UserControl
         var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var label = Label(GroupLabel(key), "BodyStrongTextBlockStyle");
         if (attention) OpenCodeToolTheme.Apply(label, OpenCodeToolTheme.Text(OpenCodeToolTheme.Caution, "BodyStrongTextBlockStyle"));
+        // 分组标题的无障碍角色：原生分组容器见 A49 说明（本列表按 key 就地复用容器，换成分组数据源会丢焦点/滚动/退场动画，
+        // 故保留现状）。这里退一步：把分组名标成二级标题（TextBlock 的 peer 会如实上报 HeadingLevel），
+        // 再加上下面 RefreshSessions 里设的“今天，3 个会话”名称——讲述人读到的是分组名与数量，而不是一个可点击的会话。
+        AutomationProperties.SetHeadingLevel(label, AutomationHeadingLevel.Level2);
         header.Children.Add(label);
         var count = Label(string.Empty, "CaptionTextBlockStyle");
         OpenCodeToolTheme.Apply(count, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
         header.Children.Add(count);
         _headerCounts[key] = count;
-        // 分组标题仍由列表里一个不可交互的 ListViewItem 承载（原生 GroupStyle 分组见 A49 说明）：
-        // 明确告诉无障碍这是一行“标题”（名称由 RefreshSessions 设为“今天，3 个会话”），
-        // 讲述人读到的是分组名与数量，而不是一个可点击的会话行。
         var item = new ListViewItem { Tag = key, Content = header, IsHitTestVisible = false, IsTabStop = false, Padding = new Thickness(12, 14, 12, 4) };
         AutomationProperties.SetAutomationId(item, attention ? "OpenCodeHomeAttentionHeader" : "OpenCodeHomeDateHeader");
-        AutomationProperties.SetAutomationControlType(item, AutomationControlType.Header);
         return item;
     }
 
