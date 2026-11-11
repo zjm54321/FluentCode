@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using FluentCode.Services.Appearance;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -82,7 +84,7 @@ public sealed class OpenCodeHomeView : UserControl
     private readonly Border _connectedDot = Dot(OpenCodeToolTheme.Success, 8);
     private readonly TextBlock _connectionText = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
     private readonly ScrollViewer _chipScroller = new() { Visibility = Visibility.Collapsed };
-    private readonly StackPanel _chips = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
+    private readonly SelectorBar _chips = new() { VerticalAlignment = VerticalAlignment.Center };
     private readonly Grid _chipRow = new() { ColumnSpacing = 8, Visibility = Visibility.Collapsed };
     private readonly Button _projectOverflow = new() { Content = "…", CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
     private readonly Dictionary<object, TextBlock> _headerCounts = new();
@@ -210,6 +212,8 @@ public sealed class OpenCodeHomeView : UserControl
         ScrollViewer.SetHorizontalScrollBarVisibility(_chipScroller, ScrollBarVisibility.Hidden);
         ScrollViewer.SetVerticalScrollMode(_chipScroller, ScrollMode.Disabled);
         ScrollViewer.SetVerticalScrollBarVisibility(_chipScroller, ScrollBarVisibility.Disabled);
+        AutomationProperties.SetName(_chips, "按项目筛选");
+        _chips.SelectionChanged += OnChipSelectionChanged;
         SetIdentity(_chipScroller, "OpenCodeHomeProjectChips", "按项目筛选");
         _chipRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _chipRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -424,7 +428,8 @@ public sealed class OpenCodeHomeView : UserControl
         if (directory is not null)
         {
             var path = Label(directory, "CaptionTextBlockStyle");
-            path.FontFamily = new FontFamily("Cascadia Mono, Consolas");
+            // 路径用用户选择的等宽字体（外观 › 等宽字体），不再写死族名；行随列表重建，取当前值即可。
+            AppFonts.Apply(path, AppFontSlot.Monospace);
             path.TextTrimming = TextTrimming.CharacterEllipsis;
             path.TextWrapping = TextWrapping.NoWrap;
             OpenCodeToolTheme.Apply(path, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
@@ -460,10 +465,15 @@ public sealed class OpenCodeHomeView : UserControl
         }
     }
 
+    /// <summary>
+    /// 窄宽度下的项目筛选：原生 <see cref="SelectorBar"/>（单选设计，自带选中胶囊、指针/键盘处理与
+    /// <c>SelectionItem</c> 无障碍模式），取代原来一组手工单选逻辑的 <c>ToggleButton</c> 药丸。
+    /// 仍然只放一行：放不下的项目继续由右侧“…”原生菜单（含“添加项目”）兜住，溢出行为不变。
+    /// </summary>
     private void RebuildChips()
     {
-        _chips.Children.Clear();
-        _chips.Children.Add(Chip("全部", null));
+        _chips.Items.Clear();
+        _chips.Items.Add(Chip("全部", null));
         var projects = DistinctProjects().ToArray();
         // Keep the narrow filter to one compact row. Every remaining project stays reachable in the native menu.
         var visible = projects.Take(5).ToList();
@@ -474,7 +484,12 @@ public sealed class OpenCodeHomeView : UserControl
             visible.Add(selected);
         }
         foreach (var project in visible)
-            _chips.Children.Add(Chip(ProjectName(project), project.Key));
+            _chips.Items.Add(Chip(ProjectName(project), project.Key));
+        // 程序化回填选中项：抑制 SelectionChanged，避免 SelectProject → RebuildChips → 选中 → 再通知 的回环。
+        var previous = _refreshing;
+        _refreshing = true;
+        try { _chips.SelectedItem = _chips.Items.OfType<SelectorBarItem>().FirstOrDefault(item => Equals(item.Tag, SelectedProject)); }
+        finally { _refreshing = previous; }
         var overflow = new MenuFlyout();
         foreach (var project in projects.Except(visible))
         {
@@ -490,23 +505,32 @@ public sealed class OpenCodeHomeView : UserControl
         _projectOverflow.Flyout = overflow;
     }
 
-    private ToggleButton Chip(string text, OpenCodeHomeProjectKey? key)
+    private SelectorBarItem Chip(string text, OpenCodeHomeProjectKey? key)
     {
-        var chip = new ToggleButton { Content = text, Tag = key!, IsChecked = key == SelectedProject, CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
-        AutomationProperties.SetName(chip, (key is null ? "全部项目" : text) + (key == SelectedProject ? "，已选择" : string.Empty));
+        var chip = new SelectorBarItem { Text = text, Tag = key! };
+        AutomationProperties.SetName(chip, key is null ? "全部项目" : text);
         if (key is not null) ToolTipService.SetToolTip(chip, key.Directory);
-        chip.Click += (_, _) => SelectProject(key, notify: true);
         return chip;
     }
 
-    private void SelectProject(OpenCodeHomeProjectKey? key, bool notify)
+    /// <summary>原生 SelectorBar 的单选结果（程序化回填 SelectedItem 时不重复通知，避免回环）。</summary>
+    private void OnChipSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        if (_refreshing || sender.SelectedItem is not SelectorBarItem item) return;
+        // 药丸行本身就是被点中的那一个，选中胶囊由控件自己更新，无需在事件回调里重建 Items（SelectorBar 会重入）。
+        SelectProject(item.Tag as OpenCodeHomeProjectKey, notify: true, rebuildChips: false);
+    }
+
+    private void SelectProject(OpenCodeHomeProjectKey? key, bool notify) => SelectProject(key, notify, rebuildChips: true);
+
+    private void SelectProject(OpenCodeHomeProjectKey? key, bool notify, bool rebuildChips)
     {
         if (key is not null && !_snapshot.Projects.Any(project => project.Key == key)) return;
         SelectedProject = key;
         _refreshing = true;
         try { _projects.SelectedItem = SelectedItemFor(key); }
         finally { _refreshing = false; }
-        RebuildChips();
+        if (rebuildChips) RebuildChips();
         RefreshSessions();
         if (notify) ProjectSelected?.Invoke(this, Context());
     }
@@ -642,8 +666,12 @@ public sealed class OpenCodeHomeView : UserControl
         OpenCodeToolTheme.Apply(count, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
         header.Children.Add(count);
         _headerCounts[key] = count;
+        // 分组标题仍由列表里一个不可交互的 ListViewItem 承载（原生 GroupStyle 分组见 A49 说明）：
+        // 明确告诉无障碍这是一行“标题”（名称由 RefreshSessions 设为“今天，3 个会话”），
+        // 讲述人读到的是分组名与数量，而不是一个可点击的会话行。
         var item = new ListViewItem { Tag = key, Content = header, IsHitTestVisible = false, IsTabStop = false, Padding = new Thickness(12, 14, 12, 4) };
         AutomationProperties.SetAutomationId(item, attention ? "OpenCodeHomeAttentionHeader" : "OpenCodeHomeDateHeader");
+        AutomationProperties.SetAutomationControlType(item, AutomationControlType.Header);
         return item;
     }
 
