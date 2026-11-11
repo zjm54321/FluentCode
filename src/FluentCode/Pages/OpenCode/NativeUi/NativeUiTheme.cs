@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using CommunityToolkit.WinUI.Controls;
 using FluentCode.Motion;
+using FluentCode.Services.Appearance;
 using FluentCode.Services.NativeUi;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -237,7 +238,7 @@ internal static class NativeUiTheme
         run.TextDecorations = Flag(node, "lineThrough") || style.HasFlag(NativeUiStyleMath.InlineStyle.Strike) ? TextDecorations.Strikethrough : TextDecorations.None;
         if (style.HasFlag(NativeUiStyleMath.InlineStyle.Bold)) run.FontWeight = FontWeights.SemiBold;
         if (style.HasFlag(NativeUiStyleMath.InlineStyle.Italic)) run.FontStyle = FontStyle.Italic;
-        if (style.HasFlag(NativeUiStyleMath.InlineStyle.Code)) run.FontFamily = new FontFamily("Cascadia Mono, Consolas");
+        if (style.HasFlag(NativeUiStyleMath.InlineStyle.Code)) AppFonts.Apply(run, AppFontSlot.Monospace);
     }
 
     // ---------------------------------------------------------------- containers
@@ -587,7 +588,10 @@ internal static class NativeUiTheme
 
     // ---------------------------------------------------------------- notices & placeholder
 
-    internal static Border Notice(string title, string message, bool error = false)
+    /// <summary>
+    /// Non-error: the inline "未支持：Type" chip. Error: a stock <see cref="InfoBar"/> at <see cref="InfoBarSeverity.Error"/>.
+    /// </summary>
+    internal static FrameworkElement Notice(string title, string message, bool error = false)
     {
         if (!error)
         {
@@ -599,19 +603,20 @@ internal static class NativeUiTheme
                 Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SubtleFillColorSecondaryBrush")),
             };
         }
-        var heading = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center }; Text(heading, new("Title", new Dictionary<string, object?> { ["size"] = "sm" }));
-        var glyph = new FontIcon { Glyph = "\uEB90", FontSize = 16, VerticalAlignment = VerticalAlignment.Center, Style = OpenCodeThemedXaml.BrushStyle("FontIcon", ("Foreground", "SystemFillColorCriticalBrush")) };
-        AutomationProperties.SetAccessibilityView(glyph, AccessibilityView.Raw);
+        // Card-level failure. The stock severity control draws the icon, the critical surface and the high-contrast
+        // colours, so no chrome is rebuilt here. The diagnostic can be 1,200 characters and must stay capped at three
+        // lines, which InfoBar.Message cannot express: the text goes in Content, where it trims like the card message
+        // did, while Title, the accessible name and the polite live setting stay on the bar itself.
         var details = new TextBlock { Text = message }; Text(details, new("Caption", new Dictionary<string, object?>()));
-        details.Margin = new Thickness(24, 0, 0, 0); details.MaxLines = 3; details.TextTrimming = TextTrimming.CharacterEllipsis;
-        var border = new Border
+        details.MaxLines = 3; details.TextTrimming = TextTrimming.CharacterEllipsis;
+        var bar = new InfoBar
         {
-            Child = new StackPanel { Spacing = 2, Children = { new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { glyph, heading } }, details } },
-            Padding = new Thickness(12, 10, 12, 10), BorderThickness = new Thickness(Number("CardBorderThemeThickness", 1)), CornerRadius = new CornerRadius(Number("OverlayCornerRadius", 8)),
-            Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SystemFillColorCriticalBackgroundBrush"), ("BorderBrush", "CardStrokeColorDefaultBrush")),
+            Severity = InfoBarSeverity.Error, IsOpen = true, IsClosable = false, IsIconVisible = true,
+            Title = title, Content = details,
         };
-        AutomationProperties.SetName(border, title); AutomationProperties.SetLiveSetting(border, AutomationLiveSetting.Polite);
-        Fit(border, wide: false); return border;
+        AutomationProperties.SetName(bar, title);
+        AutomationProperties.SetLiveSetting(bar, AutomationLiveSetting.Polite);
+        Fit(bar, wide: false); return bar;
     }
     /// <summary>Streaming state: the card surface with a progress ring, the tool title and a pulsing skeleton.</summary>
     internal static Border Placeholder(string? title)
