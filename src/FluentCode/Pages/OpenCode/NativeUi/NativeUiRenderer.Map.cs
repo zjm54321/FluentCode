@@ -11,17 +11,25 @@ using FluentCode.Models;
 using FluentCode.Services.Configuration;
 using FluentCode.Services.NativeUi;
 using Mapsui;
+// Mapsui.Extensions supplies Add/AddRange for the ConcurrentQueue that holds the map widgets.
+using Mapsui.Extensions;
 using Mapsui.Layers;
 using Mapsui.Nts;
 using Mapsui.Styles;
 using Mapsui.Tiling.Layers;
 using Mapsui.UI.WinUI;
+using Mapsui.Widgets.ButtonWidgets;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using NetTopologySuite.Geometries;
 using MapColor = Mapsui.Styles.Color;
 using MapControl = Mapsui.UI.WinUI.MapControl;
+// Mapsui's widget alignment/orientation enums clash with Microsoft.UI.Xaml's, so they are aliased here.
+using MapOrientation = Mapsui.Widgets.Orientation;
+using MapHorizontal = Mapsui.Widgets.HorizontalAlignment;
+using MapVertical = Mapsui.Widgets.VerticalAlignment;
 
 namespace FluentCode.Pages.OpenCode;
 
@@ -42,6 +50,16 @@ internal sealed partial class NativeUiRenderer
         var key = settings.TianDiTuCredentialId is { } id ? await AppServices.Secrets.GetAsync(id) : null;
         return new(settings, key, Path.Combine(AppServices.Settings.DataDirectory, "cache", "native-ui-tiles"));
     }
+    /// <summary>
+    /// Skia paints the markers, the polyline, the zoom widget and the label plates, and cannot read XAML theme
+    /// resources. Their colours therefore come from the shared theme tokens — the same accent/series palette and
+    /// canvas/ink/border tokens the charts and cards use — resolved on every re-render, so a light, dark or
+    /// high-contrast session keeps matching fills instead of fixed RGB values.
+    /// </summary>
+    private MapColor MapPaint(string token, bool background = false)
+        => ComponentBrush(token, background) is SolidColorBrush brush
+            ? new MapColor(brush.Color.R, brush.Color.G, brush.Color.B, brush.Color.A)
+            : new MapColor(128, 128, 128);
     private Visual CreateMap(string type, string key)
     {
         var panel = new StackPanel { Spacing = 8 }; var locations = new StackPanel { Spacing = 8 };
@@ -71,17 +89,23 @@ internal sealed partial class NativeUiRenderer
         {
             if (control is null || points is null || route is null) return;
             var projected = Projected(); var selected = NativeUiValues.Text(Field(visual, key, "selected", ""));
+            // Theme fills: the resting pin takes palette slot 1 — the accent, exactly as the charts' first series does —
+            // and the selected pin the next palette slot. The outline, label plate and label text reuse the canvas/ink
+            // tokens. All four come from registered theme brushes, so high contrast resolves them to the system
+            // highlight/window colours rather than to fixed RGB values.
+            var pinFill = MapPaint("chart1", true); var pinSelected = MapPaint("chart2", true);
+            var outline = new Pen(MapPaint("canvas", true), 2); var plate = MapPaint("canvas", true); var ink = MapPaint("ink");
             var features = new List<IFeature>();
             foreach (var item in projected)
             {
                 var label = S(item.Marker, "label"); var chosen = label == selected;
                 var feature = new PointFeature(item.Point); feature["label"] = label;
-                feature.Styles.Add(new SymbolStyle { SymbolScale = chosen ? 1.3 : 1, Fill = new Mapsui.Styles.Brush(chosen ? MapColor.OrangeRed : MapColor.DodgerBlue), Outline = new Pen(MapColor.White, 2) });
-                feature.Styles.Add(new LabelStyle { Text = label, Font = new Mapsui.Styles.Font { FontFamily = NativeUiTheme.MapLabelFont, Size = 14 }, ForeColor = MapColor.Black, BackColor = new Mapsui.Styles.Brush(MapColor.White), Offset = new Offset(0, 22), CollisionDetection = false }); features.Add(feature);
+                feature.Styles.Add(new SymbolStyle { SymbolScale = chosen ? 1.3 : 1, Fill = new Mapsui.Styles.Brush(chosen ? pinSelected : pinFill), Outline = outline });
+                feature.Styles.Add(new LabelStyle { Text = label, Font = new Mapsui.Styles.Font { FontFamily = NativeUiTheme.MapLabelFont, Size = 14 }, ForeColor = ink, BackColor = new Mapsui.Styles.Brush(plate), Offset = new Offset(0, 22), CollisionDetection = false }); features.Add(feature);
             }
             points.Features = features; points.FeaturesWereModified();
             route.Features = B(visual.Model, "route") && projected.Length > 1
-                ? new IFeature[] { new GeometryFeature(new LineString(projected.Select(item => new Coordinate(item.Point.X, item.Point.Y)).ToArray())) { Styles = { new VectorStyle { Line = new Pen(MapColor.DodgerBlue, 3) } } } }
+                ? new IFeature[] { new GeometryFeature(new LineString(projected.Select(item => new Coordinate(item.Point.X, item.Point.Y)).ToArray())) { Styles = { new VectorStyle { Line = new Pen(pinFill, 3) } } } }
                 : Array.Empty<IFeature>();
             route.FeaturesWereModified(); control.RefreshGraphics();
         }
@@ -104,14 +128,24 @@ internal sealed partial class NativeUiRenderer
                 map.Layers.Add(new TileLayer(source) { Name = "底图" });
                 route = new MemoryLayer { Name = "地点顺序连线", Style = null }; points = new MemoryLayer { Name = "地点", Style = null };
                 map.Layers.Add(route); map.Layers.Add(points);
+                // The library's own +/- widget: it draws and handles taps inside the viewport, so it needs no XAML
+                // overlay and works without a wheel or a pinch. Colours come from the same theme tokens as the pins.
+                map.Widgets.Add(new ZoomInOutWidget
+                {
+                    Orientation = MapOrientation.Vertical, HorizontalAlignment = MapHorizontal.Right, VerticalAlignment = MapVertical.Top,
+                    Margin = new MRect(8), StrokeColor = MapPaint("border", true), TextColor = MapPaint("ink"), BackColor = MapPaint("canvas", true),
+                });
                 map.Tapped += (_, args) => { if (visual.Disposed || points is null) return; var feature = args.GetMapInfo(new ILayer[] { points }).Feature; if (feature?["label"] is string label) { SetField(visual, key, "selected", "", label); args.Handled = true; } };
                 control = new MapControl { Map = map, Height = Math.Clamp(N(visual.Model, "height", 320), 180, 640) };
-                AutomationProperties.SetName(control, "交互地图，可平移和缩放"); AutomationProperties.SetAutomationId(control, "NativeUiLoadedMap");
-                attribution.Text = NativeUiMapProviders.Attribution(context.Settings); attribution.Foreground = NativeUiTheme.Brush("ink", theme: ElementTheme.Light);
-                var credit = new Border { Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.White), Child = attribution, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Opacity = .95 };
+                AutomationProperties.SetName(control, "交互地图，可平移和缩放；右上角可放大和缩小"); AutomationProperties.SetAutomationId(control, "NativeUiLoadedMap");
+                attribution.Text = NativeUiMapProviders.Attribution(context.Settings);
+                // The chip follows the theme like every other card surface; Mapsui also draws the enabled layer's own
+                // attribution widget, so the credit stays visible even if this chip is covered.
+                var credit = new Border { Child = attribution, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Opacity = .95 };
+                credit.Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SolidBackgroundFillColorBaseBrush"));
                 host.Children.Add(control); host.Children.Add(credit); host.Visibility = fit.Visibility = Visibility.Visible;
                 Features(); control.Loaded += (_, _) => Fit();
-                status.Text = NativeUiMapProviders.Name(context.Settings.Provider) + " · 拖动平移，滚轮缩放；连线仅表示地点顺序。"; load.Content = "重新加载地图";
+                status.Text = NativeUiMapProviders.Name(context.Settings.Provider) + " · 拖动平移，右上角或滚轮缩放；连线仅表示地点顺序。"; load.Content = "重新加载地图";
             }
             catch (Exception error) when (error is not OutOfMemoryException)
             { if (!visual.Disposed && version == generation) { StopMap(); status.Text = error is NotSupportedException ? error.Message : "地图加载失败；仍可使用地点列表。请检查网络与地图设置。"; load.Content = "重试加载地图"; } }
