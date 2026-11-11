@@ -10,7 +10,7 @@ https://github.com/w-ahmad/WinUI.TableView
 Copyright (c) [2024] [w-ahmad https://github.com/w-ahmad]
 MIT License
 
-CommunityToolkit.WinUI.Controls.Segmented / CommunityToolkit.WinUI.Extensions 8.2.251219
+CommunityToolkit.WinUI.Animations / CommunityToolkit.WinUI.Controls.Segmented / CommunityToolkit.WinUI.Extensions 8.2.251219
 CommunityToolkit.WinUI.Controls.SettingsControls / CommunityToolkit.WinUI.Triggers / CommunityToolkit.WinUI.Helpers 8.2.251219
 CommunityToolkit.Common 8.4.2
 https://github.com/CommunityToolkit/Windows
