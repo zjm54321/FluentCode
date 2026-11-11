@@ -71,9 +71,10 @@ internal sealed partial class NativeUiRenderer
         panel.Children.Add(actions); panel.Children.Add(status); panel.Children.Add(host); panel.Children.Add(locations);
         var visual = new Visual(panel); var gate = new NativeUiLoadGate(); MapControl? control = null; NativeUiTileClient? tiles = null; NativeUiBaiduTileSource? baiduTiles = null;
         NativeUiMapContext? context = null; MemoryLayer? points = null; MemoryLayer? route = null; NativeUiElement[] markers = []; var generation = 0;
+        ZoomInOutWidget? zoom = null;
         void StopMap()
         {
-            generation++; control?.Dispose(); control = null; tiles?.Dispose(); tiles = null; baiduTiles?.Dispose(); baiduTiles = null; points = route = null; context = null;
+            generation++; control?.Dispose(); control = null; tiles?.Dispose(); tiles = null; baiduTiles?.Dispose(); baiduTiles = null; points = route = null; context = null; zoom = null;
             host.Children.Clear(); host.Visibility = fit.Visibility = Visibility.Collapsed;
         }
         (MPoint Point, NativeUiElement Marker)[] Projected() => markers.Where(marker => NativeUiCoordinates.Valid(new(N(marker, "lat"), N(marker, "lng"))))
@@ -95,6 +96,8 @@ internal sealed partial class NativeUiRenderer
             // highlight/window colours rather than to fixed RGB values.
             var pinFill = MapPaint("chart1", true); var pinSelected = MapPaint("chart2", true);
             var outline = new Pen(MapPaint("canvas", true), 2); var plate = MapPaint("canvas", true); var ink = MapPaint("ink");
+            // A theme change re-renders the card and lands here, so the zoom widget is repainted with the pins.
+            if (zoom is not null) { zoom.StrokeColor = MapPaint("border", true); zoom.TextColor = ink; zoom.BackColor = plate; }
             var features = new List<IFeature>();
             foreach (var item in projected)
             {
@@ -129,12 +132,9 @@ internal sealed partial class NativeUiRenderer
                 route = new MemoryLayer { Name = "地点顺序连线", Style = null }; points = new MemoryLayer { Name = "地点", Style = null };
                 map.Layers.Add(route); map.Layers.Add(points);
                 // The library's own +/- widget: it draws and handles taps inside the viewport, so it needs no XAML
-                // overlay and works without a wheel or a pinch. Colours come from the same theme tokens as the pins.
-                map.Widgets.Add(new ZoomInOutWidget
-                {
-                    Orientation = MapOrientation.Vertical, HorizontalAlignment = MapHorizontal.Right, VerticalAlignment = MapVertical.Top,
-                    Margin = new MRect(8), StrokeColor = MapPaint("border", true), TextColor = MapPaint("ink"), BackColor = MapPaint("canvas", true),
-                });
+                // overlay and works without a wheel or a pinch. Features() gives it the same theme tokens as the pins.
+                zoom = new ZoomInOutWidget { Orientation = MapOrientation.Vertical, HorizontalAlignment = MapHorizontal.Right, VerticalAlignment = MapVertical.Top, Margin = new MRect(8) };
+                map.Widgets.Add(zoom);
                 map.Tapped += (_, args) => { if (visual.Disposed || points is null) return; var feature = args.GetMapInfo(new ILayer[] { points }).Feature; if (feature?["label"] is string label) { SetField(visual, key, "selected", "", label); args.Handled = true; } };
                 control = new MapControl { Map = map, Height = Math.Clamp(N(visual.Model, "height", 320), 180, 640) };
                 AutomationProperties.SetName(control, "交互地图，可平移和缩放；右上角可放大和缩小"); AutomationProperties.SetAutomationId(control, "NativeUiLoadedMap");

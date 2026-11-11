@@ -84,7 +84,9 @@ internal static class MediaAndMapChromeTests
 
         // ---------------------------------------------------------------- renderer rules (source text)
         var mapSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Map.cs"));
-        Check(mapSource.Contains("map.Widgets.Add(new ZoomInOutWidget"), "Map chrome uses Mapsui's own zoom widget instead of a hand-built pair of buttons");
+        Check(mapSource.Contains("zoom = new ZoomInOutWidget") && mapSource.Contains("map.Widgets.Add(zoom)"), "Map chrome uses Mapsui's own zoom widget instead of a hand-built pair of buttons");
+        Check(mapSource.Contains("zoom.StrokeColor = MapPaint(\"border\", true); zoom.TextColor = ink; zoom.BackColor = plate;"),
+            "The zoom widget is repainted from the theme tokens on every re-render, so a theme switch reaches it");
         Check(!mapSource.Contains("DodgerBlue") && !mapSource.Contains("OrangeRed") && !mapSource.Contains("MapColor.White"),
             "Map markers and polylines no longer use fixed DodgerBlue/OrangeRed/white colours");
         Check(mapSource.Contains("MapPaint(\"chart1\", true)") && mapSource.Contains("MapPaint(\"chart2\", true)")
