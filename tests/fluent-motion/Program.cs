@@ -317,8 +317,9 @@ internal static class Program
         // ---- compatibility keys keep their target type (CONTRACT-F.md §4) ----
         foreach (var (key, target) in new[] { ("OpenCodeCautionBadgeStyle", "Border"), ("OpenCodeCriticalBadgeStyle", "Border"), ("OpenCodeNeutralBadgeStyle", "Border"), ("OpenCodeTransparentToolButtonStyle", "Button"), ("OpenCodeTransparentSurfaceStyle", "Border"), ("DockCard", "Border") })
             Check(app.Contains($"x:Key=\"{key}\" TargetType=\"{target}\""), $"STATIC compatibility key keeps its TargetType: {key} → {target}");
-        Check(app.Contains("x:Key=\"OpenCodeAttentionDotStyle\" TargetType=\"Ellipse\"") && app.Contains("x:Key=\"OpenCodeCautionDotStyle\" TargetType=\"Ellipse\""),
-            "STATIC the dot styles stay Ellipse-targeted until TabStatus migrates");
+        var tokens = Read("Styles/AppTokens.xaml");
+        Check(tokens.Contains("x:Key=\"OpenCodeAttentionDotStyle\" TargetType=\"Ellipse\"") && tokens.Contains("x:Key=\"OpenCodeCautionDotStyle\" TargetType=\"Ellipse\""),
+            "STATIC the dot styles stay Ellipse-targeted in AppTokens until TabStatus migrates");
         Check(System.Text.RegularExpressions.Regex.IsMatch(app, @"x:Key=""DockCard""[\s\S]{0,300}?SolidBackgroundFillColorQuarternaryBrush"),
             "STATIC DockCard stays opaque (SolidBackgroundFillColorQuarternary)");
 
