@@ -205,6 +205,9 @@
                    BasedOn="{StaticResource DefaultButtonStyle}">
                 <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
             </Style>
+            <Style x:Key="OpenCodeTransparentSurfaceStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
+            </Style>
             <Style x:Key="OpenCodeCautionBadgeStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource SystemFillColorCautionBackgroundBrush}" />
             </Style>
