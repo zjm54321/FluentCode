@@ -84,7 +84,7 @@ FluentCode 支持运行时深浅主题即时切换，无需重启应用。
 - **卡片**：`SettingsCards.Card(图标, 标题, 说明, 控件)`，左侧 20 DIP 图标 · 标题 / 一行 Caption 说明 · 右侧控件；卡片宽度不足 476 DIP 时控件自动换到标题下方。卡片本身不可点击、不占 Tab 停靠点，键盘焦点直接进入右侧控件。
 - **可展开卡片**：`SettingsCards.Expander(...)`，标题行与卡片一致，可在标题行放控件（如字体框）；子项用 `SettingsCards.SubContent(内容)`，左缘对齐标题文字，分隔线、圆角与展开动画由工具包模板绘制。
 - **随状态变化的说明**：`Card(..., out note, ...)` / `Expander(..., out note, ...)` 返回说明 `TextBlock`，`SettingsCards.SetNote(note, 文字)` 为空时折叠。
-- **整块表单**（如账号与连接）仍用 `SettingsCards.Panel` 的卡片外框（`AppSettingsCardStyle`，与 SettingsCard 同一画刷与圆角）。
+- **整块表单**（如账号与连接）改用与其余分类同一套行：`SettingsCards.Row(图标, 标题, 内容)` 把表单作为整行卡片内容承载，不再手工套一层 `Border` 卡片外框（B06 迁移后 `SettingsCards.Panel` 与 `AppSettingsCardStyle` 已删除）。
 - 画刷、悬停 / 禁用态与高对比度全部来自工具包模板的 ThemeResource，切换主题即时生效；卡片的 `AutomationProperties.Name` 取标题，未命名的右侧控件也会以标题作为无障碍名称。
 - 组标题为 BodyStrong；卡片间距 4 DIP，组间距 28 DIP；右侧下拉框 / 输入框统一 280 DIP 宽（`SettingsCards.Sized`）。
 
