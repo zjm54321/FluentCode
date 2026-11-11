@@ -176,7 +176,13 @@ internal sealed class ChromeCdpHost : IOpenCodeBrowserCdpConnection, IAsyncDispo
             var message = new JsonObject { ["id"] = id, ["method"] = method, ["params"] = parameters.DeepClone() };
             if (sessionId is not null) message["sessionId"] = sessionId;
             await writes.WaitAsync(cancellationToken);
-            try { await socket.SendAsync(Encoding.UTF8.GetBytes(message.ToJsonString()), WebSocketMessageType.Text, true, cancellationToken); }
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // A command may stop waiting, but cancelling its write aborts the shared socket
+                // and prevents audit cleanup from detaching sessions. Only host disposal cancels writes.
+                await socket.SendAsync(Encoding.UTF8.GetBytes(message.ToJsonString()), WebSocketMessageType.Text, true, lifetime.Token);
+            }
             finally { writes.Release(); }
             return await completion.Task.WaitAsync(cancellationToken);
         }
