@@ -123,6 +123,7 @@ internal static class CommunityTextBadge
     /// <summary>应用语义色调 → 库严重度的映射（见 CONTRACT-F.md）。私有：返回类型是库类型，不对外暴露。</summary>
     private static IssueLabelSeverity Severity(CommunityTextBadgeTone tone) => tone switch
     {
+        CommunityTextBadgeTone.Neutral => IssueLabelSeverity.Gray,
         CommunityTextBadgeTone.Caution => IssueLabelSeverity.Warning,
         CommunityTextBadgeTone.Critical => IssueLabelSeverity.Error,
         CommunityTextBadgeTone.Success => IssueLabelSeverity.Success,
