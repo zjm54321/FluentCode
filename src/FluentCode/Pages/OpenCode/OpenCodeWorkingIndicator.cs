@@ -67,7 +67,7 @@ internal sealed class OpenCodeWorkingIndicator : IOpenCodeWorkingClockSubscriber
         AutomationProperties.SetAccessibilityView(_dots, AccessibilityView.Raw);
         _elapsed = OpenCodeInteractionUi.StyledText(string.Empty, OpenCodeInteractionUi.CaptionStyleKey);
         _elapsed.FontSize = 13;
-        OpenCodeToolTheme.Apply(_elapsed, OpenCodeToolTheme.Text(OpenCodeToolTheme.TextSecondary, OpenCodeInteractionUi.CaptionStyleKey));
+        OpenCodeToolTheme.Apply(_elapsed, OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey));
         _elapsed.VerticalAlignment = VerticalAlignment.Center;
         _elapsed.TextWrapping = TextWrapping.NoWrap;
         _elapsed.Margin = new Thickness(6, 0, 0, 0);

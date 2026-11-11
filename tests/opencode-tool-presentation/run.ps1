@@ -35,6 +35,22 @@ $extracted = Join-Path $output 'ViewMethods.cs'
     "internal sealed partial class HomeLayoutProbe {`n$($homeGeometry.Value)`n$homeLayout`n$homeSettingsLayout`n}"
 ) -join "`n") | Set-Content -Encoding UTF8 $extracted
 
+# Execute the fixed timer/disposal bodies against inert event sources (no Dispatcher or window).
+$groupSource = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCode/OpenCodeToolGroupView.cs")
+$visualSource = $groupSource.Substring($groupSource.IndexOf('internal sealed class OpenCodeToolGroupVisual'))
+$lifecycleMembers = foreach ($name in @('UpdateTimer', 'Timer_Tick', 'StopTimer', 'HostVisibilityChanged', 'Dispose')) {
+    $pattern = '(?ms)^    (?:private|internal) [^\r\n]*\b' + $name + '\([^\r\n]*\)(?: => [^\r\n]*;|\r?\n    \{[^\r\n]*\}|\r?\n    \{\r?\n.*?^    \})'
+    $member = [regex]::Matches($visualSource, $pattern)
+    if ($member.Count -ne 1) { throw "Missing/ambiguous production lifecycle method: $name" }
+    $member[0].Value
+}
+$lifecycleGenerated = Join-Path $output 'GroupLifecycle.Methods.cs'
+$frameMembers = foreach ($name in @('QueueWindowUpdate', 'CancelWindowFrame', 'WindowFrame')) {
+    Extract-Method 'OpenCodeConversationView.cs' $name
+}
+"using System; namespace TimelineLifetime { internal sealed partial class GroupLifecycleProbe {`n" + ($lifecycleMembers -join "`n") +
+    "`n} internal sealed partial class WindowFrameProbe {`n" + ($frameMembers -join "`n") + "`n} }" | Set-Content -Encoding UTF8 $lifecycleGenerated
+
 # Execute the actual tooltip-only projections; keep UI labels, error text and announcements separate.
 $tooltipProjection = foreach ($item in @(
     @{ File = 'Motion/ActionFeedback.cs'; Name = 'FailureTooltip'; Class = 'FeedbackTooltipProbe'; Access = 'private' },
@@ -69,7 +85,13 @@ foreach ($name in @('OpenCodeToolRowPresentation.cs', 'OpenCodeDetailPopupLayout
 $assembly = Join-Path $output 'OpenCodeToolPresentationTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))
 $arguments += Get-ChildItem (Join-Path $pack.FullName 'ref/net10.0/*.dll') | ForEach-Object { '/reference:"' + $_.FullName + '"' }
-$arguments += ($production + @($extracted, $tooltipGenerated, (Join-Path $PSScriptRoot 'View.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'Omo307PresentationTests.cs'), (Join-Path $PSScriptRoot 'AgentIdentityTests.cs'), (Join-Path $PSScriptRoot 'TooltipCopyTests.cs'), (Join-Path $PSScriptRoot 'QuestionTodoFormatTests.cs'))) | ForEach-Object { '"' + $_ + '"' }
+# Source guards use the SDK's existing syntax parser; no package or app dependency is added.
+foreach ($name in @('Microsoft.CodeAnalysis.dll', 'Microsoft.CodeAnalysis.CSharp.dll')) {
+    $library = Join-Path $sdk.FullName "Roslyn/bincore/$name"
+    $arguments += '/reference:"' + $library + '"'
+    Copy-Item $library $output
+}
+$arguments += ($production + @($extracted, $tooltipGenerated, $lifecycleGenerated, (Join-Path $PSScriptRoot 'View.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'Omo307PresentationTests.cs'), (Join-Path $PSScriptRoot 'AgentIdentityTests.cs'), (Join-Path $PSScriptRoot 'TooltipCopyTests.cs'), (Join-Path $PSScriptRoot 'QuestionTodoFormatTests.cs'), (Join-Path $PSScriptRoot 'GroupLifecycle.TestHost.cs'), (Join-Path $PSScriptRoot 'TimelineLifecycleTests.cs'))) | ForEach-Object { '"' + $_ + '"' }
 $response = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $response
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$response" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')

@@ -56,6 +56,12 @@ internal static class OpenCodeToolTheme
 internal static class OpenCodeInteractionUi
 {
     internal const string BodyStyleKey = "body";
+    internal static string TryStyle(string key) => key switch
+    {
+        "OpenCodeSubtleSurfaceStyle" => "SubtleFillColorSecondaryBrush",
+        "OpenCodeTransparentSurfaceStyle" => "SubtleFillColorTransparentBrush",
+        _ => throw new System.InvalidOperationException(key),
+    };
     internal static TextBlock StyledText(string text, string style, bool selectable) => new() { Value = text };
 }
 internal sealed partial class HoverProbe

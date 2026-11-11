@@ -42,7 +42,7 @@ internal static partial class OpenCodeToolDetailContent
         AutomationProperties.SetName(image, source.Name);
         var caption = Caption(source.Name + " · 正在读取图片…");
         var frame = new Border { Child = image, CornerRadius = new CornerRadius(4), BorderThickness = new Thickness(1) };
-        OpenCodeToolTheme.Apply(frame, OpenCodeToolTheme.Border(OpenCodeToolTheme.SubtleSecondary, OpenCodeToolTheme.CardStroke));
+        OpenCodeToolTheme.Apply(frame, OpenCodeInteractionUi.TryStyle("OpenCodeSubtleCardChromeStyle"));
         panel.Children.Add(frame);
         panel.Children.Add(caption);
         var lifetime = new OpenCodeImageRenderLifetime();

@@ -54,7 +54,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                   </ToggleButton>
                 </Grid>
                 <TextBlock x:Name="Hint" Grid.Row="1" Margin="4,0,0,0" TextWrapping="Wrap"
-                           Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                           Style="{ThemeResource CaptionSubtleTextBlockStyle}" />
                 <!-- LeftDock's star row bounds this viewport; only the tree content scrolls.
                      A bare StackPanel measured both TreeViews at infinite height, so neither
                      native viewer ever had overflow. One native viewer also keeps terminals reachable. -->
@@ -158,7 +158,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
                 </TreeView>
                 <!-- The divider is outside either TreeView: it never shares row hover/focus chrome. -->
                 <Border x:Name="TerminalDivider" Height="1" Margin="4,8,4,8" Visibility="Collapsed"
-                        Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                        Style="{StaticResource OpenCodeDividerSurfaceStyle}" />
                 <TreeView x:Name="TerminalTree" SelectionMode="None" CanDragItems="False"
                           ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollMode="Disabled"
                           CanReorderItems="False" AllowDrop="False" Visibility="Collapsed" AutomationProperties.Name="终端会话树" />
@@ -351,8 +351,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
             TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
         if (tag is OpenCodeTreeShell)
         {
-            if (OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey) is { } code) task.Style = code;
-            else task.FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas");
+            task.Style = (Style)Application.Current.Resources[OpenCodeInteractionUi.CodeStyleKey];
         }
         // Code text styles can enable selection and consume clicks before TreeViewItem sees them.
         // Only the native full-width item owns pointer/hover/pressed/Enter interaction.
