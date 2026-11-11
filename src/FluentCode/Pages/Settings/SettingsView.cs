@@ -8,7 +8,9 @@ using FluentCode.Services.OpenCode;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace FluentCode.Pages.Settings;
 
@@ -46,13 +48,14 @@ public sealed partial class SettingsView : UserControl
     // ---- 页面骨架 ----
     private readonly InfoBar _statusBar = new() { IsOpen = false, IsClosable = true };
 
-    // 双栏主体（确认期间整体禁用）：左侧分类列表 + 右侧内容，左右各自滚动。
+    // 双栏主体（确认期间整体禁用）：原生 NavigationView 分类导航 + 右侧内容，左右各自滚动。
+    private NavigationView _navigation = null!;
     private ContentControl _contentHost = null!;
-    private ListView _categoryList = null!;
     private TextBlock _categoryTitle = null!;
     private ContentControl _categoryContentHost = null!;
     private ScrollViewer _categoryScroll = null!;
     private readonly List<CategoryEntry> _categories = new();
+    private readonly List<NavigationViewItem> _categoryItems = new();
 
     // 内联确认区：本控件由应用内设置页（SettingsPage）承载，确认/编辑一律就地内联展开，
     // 不在页面上叠加模态 ContentDialog（保持非模态、不遮挡、无嵌套对话框限制）。
@@ -306,54 +309,78 @@ public sealed partial class SettingsView : UserControl
     }
 
     /// <summary>设置分类：导航图标、标题与已构建好的内容（构建一次，切换分类时复用）。</summary>
-    private sealed record CategoryEntry(string Glyph, string Title, UIElement Content);
+    private sealed record CategoryEntry(string Glyph, string Title, UIElement Content, string AutomationId);
 
     /// <summary>
-    /// Windows 11 设置页版式：左侧分类导航（图标 + 名称），右侧大标题 + 设置卡片组（SettingsCards）。
-    /// 分类：账号与连接 · 外观（主题 / 文字 / 动画） · 终端 · 浏览器 · 常规（后台运行；应用目前没有通知设置项，故不单列“通知”）。
+    /// Windows 11 设置页版式：原生 <see cref="NavigationView"/> 分类导航（图标 + 名称 + 选中指示条 + 标准键盘处理），
+    /// 右侧大标题 + 设置卡片组（SettingsCards）。分类：账号与连接 · 外观（主题 / 文字 / 动画） · 终端 · 浏览器 ·
+    /// 原生卡片 · 常规（后台运行；应用目前没有通知设置项，故不单列“通知”）。
     /// </summary>
+    /// <remarks>
+    /// <para><b>固定左栏</b>：<see cref="NavigationViewPaneDisplayMode.Left"/> 让分类栏始终可见并保持 260 DIP 宽，
+    /// 与本页原先固定宽度的分类列表一致（Auto 会在窄窗口折叠成只剩图标的紧凑栏，分类名称就看不见了）；
+    /// 该模式下 NavigationView 自己也不显示汉堡按钮，所以窗格标题由 <see cref="NavigationView.PaneHeader"/> 承载。</para>
+    /// <para><b>不叠底</b>：本控件已位于页面内容层（<c>LayerFillColorDefaultBrush</c>）之内，NavigationView 默认还会
+    /// 给内容层再叠一层同色底、给分类栏叠亚克力。这里只做实例级轻量样式覆盖（不改模板、不影响别处），把这两层背景
+    /// 与内容层的 1px 描边、圆角去掉，左右连成一片。</para>
+    /// </remarks>
     private void BuildLayout()
     {
         _confirmPanel = BuildConfirmPanel();
 
-        _categoryList = new ListView
-        {
-            SelectionMode = ListViewSelectionMode.Single,
-            Width = 260,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            Padding = new Thickness(0, 4, 0, 0),
-        };
-        AutomationProperties.SetAutomationId(_categoryList, "SettingsCategoryList");
-        AutomationProperties.SetName(_categoryList, "设置分类");
-        _categoryList.SelectionChanged += OnCategorySelectionChanged;
+        _categories.Add(new CategoryEntry("\uE77B", "账号与连接", BuildAccountSection(), "SettingsCategoryAccount"));
+        _categories.Add(new CategoryEntry("\uE790", "外观", BuildAppearanceSection(), "SettingsCategoryAppearance"));
+        _categories.Add(new CategoryEntry("\uE756", "终端", BuildTerminalSection(), "SettingsCategoryTerminal"));
+        _categories.Add(new CategoryEntry("\uE774", "浏览器", BuildBrowserSection(), "SettingsCategoryBrowser"));
+        _categories.Add(new CategoryEntry("\uE707", "原生卡片", BuildNativeUiMapSection(), "SettingsCategoryNativeUi"));
+        _categories.Add(new CategoryEntry("\uE713", "常规", BuildGeneralSection(), "SettingsCategoryGeneral"));
 
-        _categories.Add(new CategoryEntry("\uE77B", "账号与连接", BuildAccountSection()));
-        _categories.Add(new CategoryEntry("\uE790", "外观", BuildAppearanceSection()));
-        _categories.Add(new CategoryEntry("\uE756", "终端", BuildTerminalSection()));
-        _categories.Add(new CategoryEntry("\uE774", "浏览器", BuildBrowserSection()));
-        _categories.Add(new CategoryEntry("\uE707", "原生卡片", BuildNativeUiMapSection()));
-        _categories.Add(new CategoryEntry("\uE713", "常规", BuildGeneralSection()));
-        foreach (CategoryEntry category in _categories)
+        _navigation = new NavigationView
         {
-            var item = new ListViewItem
+            PaneDisplayMode = NavigationViewPaneDisplayMode.Left,
+            IsPaneOpen = true,
+            OpenPaneLength = 260,
+            IsSettingsVisible = false,
+            IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed,
+            IsPaneToggleButtonVisible = false,
+            // 本控件由设置标签承载，不在窗口自定义标题栏内，无需为标题栏预留顶部内缩。
+            IsTitleBarAutoPaddingEnabled = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+        };
+        AutomationProperties.SetAutomationId(_navigation, "SettingsCategoryList");
+        AutomationProperties.SetName(_navigation, "设置分类");
+
+        var transparent = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        // 内容层：设置卡片的背景来自卡片自身，导航视图不再画自己的底色/描边/圆角（原来手写版式也没有）。
+        SettingsCards.Override(_navigation, "NavigationViewContentBackground", transparent, includeHighContrast: false);
+        SettingsCards.Override(_navigation, "NavigationViewContentGridBorderThickness", new Thickness(0));
+        SettingsCards.Override(_navigation, "NavigationViewContentGridCornerRadius", new CornerRadius(0));
+        SettingsCards.Override(_navigation, "NavigationViewBorderThickness", new Thickness(0));
+        // 分类栏：普通主题下与页面同底色（原来是一列普通文字，没有亚克力面板）；高对比度保留系统默认，
+        // 由系统提供的分隔与选中态负责区分窗格，不额外压制。
+        SettingsCards.Override(_navigation, "NavigationViewDefaultPaneBackground", transparent, includeHighContrast: false);
+
+        // 窗格标题（原来手写的“设置”标题）：高对比度下用系统窗口文字色，随主题变化。
+        _navigation.PaneHeader = SettingsCards.Styled(new TextBlock { Text = "设置", Margin = new Thickness(28, 16, 0, 4) }, "SubtitleTextBlockStyle");
+
+        for (int index = 0; index < _categories.Count; index++)
+        {
+            CategoryEntry category = _categories[index];
+            var item = new NavigationViewItem
             {
+                Content = category.Title,
+                Icon = new FontIcon { Glyph = category.Glyph, FontSize = 16 },
                 Tag = category,
-                MinHeight = 36,
-                Content = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 14,
-                    Children =
-                    {
-                        new FontIcon { Glyph = category.Glyph, FontSize = 16, VerticalAlignment = VerticalAlignment.Center },
-                        new TextBlock { Text = category.Title, VerticalAlignment = VerticalAlignment.Center },
-                    },
-                },
             };
             AutomationProperties.SetName(item, category.Title);
-            _categoryList.Items.Add(item);
+            AutomationProperties.SetAutomationId(item, category.AutomationId);
+            _categoryItems.Add(item);
+            _navigation.MenuItems.Add(item);
         }
+        _navigation.SelectionChanged += OnNavigationSelectionChanged;
+        // 分类栏在窄窗口也保持展开（Left 固定模式）时不需要折叠按钮；键盘上下键在分类间移动并选中。
+        _navigation.SelectionFollowsFocus = NavigationViewSelectionFollowsFocus.Disabled;
 
         _categoryTitle = SettingsCards.Styled(new TextBlock { Margin = new Thickness(0, 0, 0, 20) }, "TitleTextBlockStyle");
         _categoryContentHost = new ContentControl
@@ -370,7 +397,7 @@ public sealed partial class SettingsView : UserControl
                 new Microsoft.UI.Xaml.Media.Animation.ContentThemeTransition { VerticalOffset = 12 },
             });
 
-        var right = new StackPanel { Padding = new Thickness(0, 0, 4, 32) };
+        var right = new StackPanel();
         right.Children.Add(_categoryTitle);
         right.Children.Add(_statusBar);
         right.Children.Add(_confirmPanel);
@@ -386,28 +413,20 @@ public sealed partial class SettingsView : UserControl
         // 确认期间整体禁用设置内容（近似模态，不遮挡确认区）。
         right.Children.Add(_contentHost);
 
+        // 右侧内容页：Win11 设置页的内边距（左 8 让标题与内容列左缘对齐，右 28 留出滚动条）。
         _categoryScroll = new ScrollViewer
         {
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Padding = new Thickness(8, 20, 28, 0),
+            Padding = new Thickness(8, 20, 28, 32),
             Content = LeftAlignedColumn(right, 1000),
         };
+        _navigation.Content = _categoryScroll;
 
-        var nav = new StackPanel { Padding = new Thickness(16, 20, 8, 0), Spacing = 12 };
-        nav.Children.Add(SettingsCards.Styled(new TextBlock { Text = "设置", Margin = new Thickness(12, 0, 0, 4) }, "SubtitleTextBlockStyle"));
-        nav.Children.Add(_categoryList);
-
-        var root = new Grid();
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        Grid.SetColumn(_categoryScroll, 1);
-        root.Children.Add(nav);
-        root.Children.Add(_categoryScroll);
-        Content = root;
+        Content = _navigation;
 
         // 默认选中首个分类。
-        _categoryList.SelectedIndex = 0;
+        SelectCategory(0);
     }
 
     /// <summary>
@@ -423,21 +442,42 @@ public sealed partial class SettingsView : UserControl
         return grid;
     }
 
-    private void OnCategorySelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void OnNavigationSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
-        int index = _categoryList.SelectedIndex;
+        if (args.SelectedItem is NavigationViewItem { Tag: CategoryEntry category })
+        {
+            SelectCategory(_categories.IndexOf(category));
+        }
+    }
+
+    /// <summary>切换到指定分类（越界或与当前一致时为空操作）：设置标题、内容、滚动条回到顶部。</summary>
+    private void SelectCategory(int index)
+    {
         if (index < 0 || index >= _categories.Count)
         {
             return;
         }
 
+        // 由代码切换时 SelectionChanged 仍会回来一次，这里先落到 SelectedItem，事件里只会命中同一个分类。
+        if (!ReferenceEquals(_navigation.SelectedItem, _categoryItems[index]))
+        {
+            _navigation.SelectedItem = _categoryItems[index];
+        }
+
         CategoryEntry category = _categories[index];
         _categoryTitle.Text = category.Title;
         _categoryContentHost.Content = category.Content;
-        _categoryScroll.ChangeView(null, 0, null, disableAnimation: true);
+        // 标题是无障碍标题结构中的一级标题，与 Windows 11 设置页一致。
+        AutomationProperties.SetHeadingLevel(_categoryTitle, AutomationHeadingLevel.Level1);
+        _categoryScroll?.ChangeView(null, 0, null, disableAnimation: true);
     }
 
     /// <summary>构建内联确认区（Native InfoBar + 主/次/取消按钮，支持二态与三态确认）。</summary>
+    /// <summary>
+    /// 构建内联确认区：原生 <see cref="InfoBar"/> 承载标题/说明，主操作放 <see cref="InfoBar.ActionButton"/>，
+    /// 其余按钮（次操作 / 取消）放 <see cref="InfoBar.Content"/>，与提示条成一体而非在下面另起一排浮动按钮。
+    /// 支持二态（主 + 取消）与三态（主 + 次 + 取消）确认。仍是非模态：不出对话框、不遮挡、无嵌套对话框限制。
+    /// </summary>
     private StackPanel BuildConfirmPanel()
     {
         _confirmBar = new InfoBar
@@ -450,6 +490,7 @@ public sealed partial class SettingsView : UserControl
         _confirmPrimaryButton = new Button();
         _confirmPrimaryButton.Click += OnConfirmPrimaryClick;
         AutomationProperties.SetAutomationId(_confirmPrimaryButton, "SettingsConfirmPrimary");
+        _confirmBar.ActionButton = _confirmPrimaryButton;
 
         _confirmSecondaryButton = new Button { Visibility = Visibility.Collapsed };
         _confirmSecondaryButton.Click += OnConfirmSecondaryClick;
@@ -460,13 +501,12 @@ public sealed partial class SettingsView : UserControl
         AutomationProperties.SetAutomationId(_confirmCancelButton, "SettingsConfirmCancel");
 
         var buttonRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        buttonRow.Children.Add(_confirmPrimaryButton);
         buttonRow.Children.Add(_confirmSecondaryButton);
         buttonRow.Children.Add(_confirmCancelButton);
+        _confirmBar.Content = buttonRow;
 
-        _confirmPanel = new StackPanel { Spacing = 8, Visibility = Visibility.Collapsed };
+        _confirmPanel = new StackPanel { Visibility = Visibility.Collapsed };
         _confirmPanel.Children.Add(_confirmBar);
-        _confirmPanel.Children.Add(buttonRow);
         return _confirmPanel;
     }
 

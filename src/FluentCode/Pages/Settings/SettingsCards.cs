@@ -51,9 +51,6 @@ internal static class SettingsCards
         return card;
     }
 
-    /// <summary>任意内容的卡片外框（如整块表单）。</summary>
-    internal static Border Panel(Border content) => Styled(content, "AppSettingsCardStyle");
-
     /// <summary>说明文字随状态变化的卡片：<paramref name="note"/> 为空时折叠。</summary>
     internal static SettingsCard Card(string glyph, string header, out TextBlock note, FrameworkElement? control)
     {
@@ -93,6 +90,61 @@ internal static class SettingsCards
         HorizontalContentAlignment = HorizontalAlignment.Stretch,
         Content = content,
     };
+
+    /// <summary>标题 + 整行内容（无描述）的卡片：内容占满整行，左侧与卡片标题文字对齐。</summary>
+    internal static SettingsCard Row(string glyph, string header, UIElement content)
+    {
+        var card = SubContent(content);
+        card.Header = header;
+        card.HeaderIcon = Icon(glyph);
+        AutomationProperties.SetName(card, header);
+        return card;
+    }
+
+    /// <summary>
+    /// 轻量样式覆盖：把某个主题资源键写进 <paramref name="scope"/> 自身的主题字典。
+    /// 原生控件模板中以 <c>{ThemeResource …}</c> 引用的键会在运行时沿元素链查找，因此实例级覆盖先于库字典生效，
+    /// 不需要复制模板，也不会影响其他实例。默认四个键都写：<c>Default</c>/<c>Dark</c> 为深色，<c>Light</c>/<c>HighContrast</c> 各自独立。
+    /// 传 <paramref name="includeHighContrast"/> 为 <see langword="false"/> 可只覆盖普通主题，高对比度仍用系统默认值。
+    /// </summary>
+    internal static void Override<T>(FrameworkElement scope, string key, T value, bool includeHighContrast = true)
+    {
+        foreach (var theme in ThemeKeys)
+        {
+            if (!includeHighContrast && theme == HighContrastTheme) continue;
+            if (!scope.Resources.ThemeDictionaries.TryGetValue(theme, out object? existing) || existing is not ResourceDictionary dictionary)
+            {
+                dictionary = new ResourceDictionary();
+                scope.Resources.ThemeDictionaries[theme] = dictionary;
+            }
+            dictionary[key] = value!;
+        }
+    }
+
+    private const string HighContrastTheme = "HighContrast";
+
+    private static readonly string[] ThemeKeys = { "Default", "Dark", "Light", HighContrastTheme };
+
+    /// <summary>
+    /// 标准圆角：<c>ControlCornerRadius</c>（4）与 <c>OverlayCornerRadius</c>（8）主题资源，供代码构建的元素取用，
+    /// 与 WinUI 模板内的几何一致；资源不可用时退回其默认值（4 / 8）。
+    /// </summary>
+    internal static CornerRadius ControlRadius => Radius("ControlCornerRadius", new CornerRadius(4));
+
+    internal static CornerRadius OverlayRadius => Radius("OverlayCornerRadius", new CornerRadius(8));
+
+    private static CornerRadius Radius(string key, CornerRadius fallback)
+    {
+        try
+        {
+            return Application.Current?.Resources is { } resources && resources.TryGetValue(key, out object? value)
+                && value is CornerRadius radius ? radius : fallback;
+        }
+        catch (Exception)
+        {
+            return fallback;
+        }
+    }
 
     /// <summary>卡片下方、不在卡片内的附加内容（如密钥状态与清除选项），与上方卡片的标题文字对齐。</summary>
     internal static Border Indented(UIElement content) => new() { Padding = new Thickness(TextIndent, 8, 0, 8), Child = content };

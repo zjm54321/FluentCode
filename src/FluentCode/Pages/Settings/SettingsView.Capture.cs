@@ -10,7 +10,7 @@ public sealed partial class SettingsView
 
     internal string TestSelectCategory(int index)
     {
-        _categoryList.SelectedIndex = index;
+        SelectCategory(index);
         return _categories[index].Title;
     }
 
@@ -25,7 +25,8 @@ public sealed partial class SettingsView
         }
         var root = (Microsoft.UI.Xaml.FrameworkElement)Content;
         var right = (Microsoft.UI.Xaml.FrameworkElement)_categoryScroll.Content;
-        return $"view {ActualWidth:0}; root {Box(root)}; nav {Box((Microsoft.UI.Xaml.FrameworkElement)_categoryList.Parent)}; list {Box(_categoryList)}; scroll {Box(_categoryScroll)}; right {Box(right)}; host {Box(_categoryContentHost)}";
+        var pane = _categoryItems.Count > 0 ? _categoryItems[0] : (Microsoft.UI.Xaml.FrameworkElement)_navigation;
+        return $"view {ActualWidth:0}; root {Box(root)}; list {Box(_navigation)}; nav {Box(pane)}; scroll {Box(_categoryScroll)}; right {Box(right)}; host {Box(_categoryContentHost)}";
     }
 
     internal bool TestCanScroll => _categoryScroll.ScrollableHeight > 1;
