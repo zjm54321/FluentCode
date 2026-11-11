@@ -234,5 +234,112 @@ internal static class Program
         Check(Read("Pages/Settings/SettingsCards.cs").Contains("IsEditable = true") && settings.Contains("ActionFeedback.Success(_browserSave")
             && !settings.Contains("InfoBarSeverity.Success") && !settings.Contains("已保存\""),
             "STATIC settings: editable font boxes, in-place save feedback, no success text/InfoBars");
+        Foundation(repo, Read, sources);
+    }
+
+    // Guards over lane F's published contract (App.xaml keys + Controls/CommunityTextBadge.cs). Text scans, because a
+    // headless runner cannot reference DevWinUI: the point is that nothing in the app may either.
+    private static void Foundation(string repo, Func<string, string> Read, string[] sources)
+    {
+        var app = Read("App.xaml");
+        var badge = Read("Controls/CommunityTextBadge.cs");
+
+        // ---- the four P1 keys exist, and are the badge/shimmer kinds ----
+        foreach (var key in new[] { "AppCompactTextBadgeStyle", "AppPillTextBadgeStyle", "AppBadgeTitleTemplate", "AppStreamingShimmerStyle" })
+            Check(app.Contains($"x:Key=\"{key}\""), $"STATIC P1 key is published: {key}");
+        Check(app.Contains("x:Key=\"AppCompactTextBadgeStyle\" TargetType=\"dev:IssueLabel\"")
+            && app.Contains("x:Key=\"AppPillTextBadgeStyle\" TargetType=\"dev:IssueLabel\""),
+            "STATIC badge styles target the library label type, not Border");
+        Check(app.Contains("x:Key=\"AppStreamingShimmerStyle\" TargetType=\"dev:Shimmer\""), "STATIC shimmer style targets the library shimmer type");
+        Check(app.Contains("xmlns:dev=\"using:DevWinUI\""), "STATIC App.xaml declares the vendor namespace once");
+
+        // ---- geometry contract (CONTRACT-F.md §1): each style's own block, not a neighbour's ----
+        string StyleBlock(string key)
+        {
+            var start = app.IndexOf($"x:Key=\"{key}\"", StringComparison.Ordinal);
+            return start < 0 ? "" : app.Substring(start, app.IndexOf("</Style>", start, StringComparison.Ordinal) - start);
+        }
+        var compact = StyleBlock("AppCompactTextBadgeStyle");
+        var pill = StyleBlock("AppPillTextBadgeStyle");
+        Check(pill.Contains("Property=\"MinHeight\" Value=\"20\"") && pill.Contains("Property=\"CornerRadius\" Value=\"10\"") && pill.Contains("Property=\"Padding\" Value=\"8,2,8,2\""),
+            "STATIC pill badge keeps the C06 geometry: 20 DIP high, radius 10, padding 8,2");
+        Check(compact.Contains("Property=\"MinHeight\" Value=\"0\"") && compact.Contains("Property=\"CornerRadius\" Value=\"4\"") && compact.Contains("Property=\"Padding\" Value=\"6,1,6,2\""),
+            "STATIC compact badge keeps the inline-tag geometry: radius 4, padding 6,1,6,2, no forced height");
+        foreach (var (name, block) in new[] { ("compact", compact), ("pill", pill) })
+        {
+            Check(block.Contains("BasedOn=\"{StaticResource DefaultIssueLabelStyle}\""), $"STATIC {name} badge derives from the library style instead of copying its template");
+            Check(!block.Contains("Property=\"Template\""), $"STATIC {name} badge does not carry a copied vendor template");
+            Check(!block.Contains("Property=\"Foreground\""), $"STATIC {name} badge style never sets Foreground (it would bypass the tone colours)");
+            Check(block.Contains("Property=\"FontFamily\" Value=\"{ThemeResource ContentControlThemeFontFamily}\""), $"STATIC {name} badge follows the user's font setting");
+        }
+        Check(!StyleBlock("AppStreamingShimmerStyle").Contains("Property=\"Template\""), "STATIC shimmer style does not carry a copied vendor template");
+
+        // ---- merge order (PLAN-v2 §3(2)); the same scan the MSIX runner does, repeated here so a bad edit fails fast ----
+        var devIndex = app.IndexOf("ms-appx:///DevWinUI/Themes/Generic.xaml", StringComparison.Ordinal);
+        var toolkitIndex = app.IndexOf("ms-appx:///CommunityToolkit.WinUI.Controls.SettingsControls/Themes/Generic.xaml", StringComparison.Ordinal);
+        var appIndex = app.IndexOf("ms-appx:///Styles/AppTokens.xaml", StringComparison.Ordinal);
+        Check(devIndex >= 0 && toolkitIndex > devIndex && appIndex > toolkitIndex,
+            "STATIC App.xaml merge order stays WinUI → DevWinUI → Toolkit SettingsControls → app tokens");
+
+        // ---- no duplicate global key (the single-alias rule) ----
+        var keys = System.Text.RegularExpressions.Regex.Matches(app, "x:Key=\"([A-Za-z0-9_]+)\"").Select(m => m.Groups[1].Value).ToArray();
+        var dupes = keys.GroupBy(k => k).Where(g => g.Count() > 1).Select(g => g.Key)
+            .Except(new[] { "TabViewItemHeaderBackgroundSelected", "ShellTerminalBackground", "ShellTerminalForeground", "ShellTerminalPrompt" })
+            .ToArray();
+        Check(dupes.Length == 0, "STATIC no duplicate global resource key outside the theme dictionaries (found: " + string.Join(", ", dupes) + ")");
+
+        // ---- the adapter's public surface never names a vendor type ----
+        Check(badge.Contains("internal static class CommunityTextBadge"), "STATIC the badge adapter exists");
+        Check(badge.Contains("internal static FrameworkElement Create("), "STATIC adapter construction returns an ordinary WinUI element");
+        Check(badge.Contains("internal static void Update(FrameworkElement badge"),
+            "STATIC adapter update accepts the ordinary element it handed out");
+        Check(!System.Text.RegularExpressions.Regex.IsMatch(badge, @"(internal|public)\s+static\s+\S*\s*\bIssueLabel"),
+            "STATIC no adapter member exposes a vendor type; the tone mapping stays private");
+        var contract = System.Text.RegularExpressions.Regex.Match(badge, @"internal static class CommunityTextBadge[\s\S]*$").Value;
+        Check(System.Text.RegularExpressions.Regex.Matches(contract, @"\.Title\s*=\s*([^;]+);").All(m => m.Groups[1].Value.Trim() == "text ?? string.Empty"),
+            "STATIC adapter assigns Title as string data only, never an element");
+
+        // ---- the two library traps from PLAN-v2 §3 ----
+        Check(contract.Contains("label.TitleTemplate = TryResource(TitleTemplateKey)")
+            || contract.Contains("TitleTemplate = TryResource(TitleTemplateKey)"),
+            "STATIC adapter passes the title template (the library template has two title presenters)");
+        Check(!System.Text.RegularExpressions.Regex.IsMatch(contract, @"\b\w+\.Foreground\s*=|Control\.ForegroundProperty"),
+            "STATIC adapter never sets Foreground, which would bypass the library severity colours");
+
+        // ---- the vendor type stays in the adapter and App.xaml only ----
+        var vendorOwners = sources.Where(path => File.ReadAllText(path).Contains("DevWinUI") && !path.Contains("CommunityTextBadge")).Select(Path.GetFileName).ToArray();
+        Check(vendorOwners.Length == 0, "STATIC only the adapter names DevWinUI in C# (found: " + string.Join(", ", vendorOwners) + ")");
+        var xamlVendor = Directory.GetFiles(Path.Combine(repo, "src/FluentCode"), "*.xaml", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
+            .Where(path => File.ReadAllText(path).Contains("using:DevWinUI")).Select(Path.GetFileName).ToArray();
+        Check(xamlVendor.SequenceEqual(new[] { "App.xaml" }), "STATIC only App.xaml declares the vendor XAML namespace (found: " + string.Join(", ", xamlVendor) + ")");
+
+        // ---- compatibility keys keep their target type (CONTRACT-F.md §4) ----
+        foreach (var (key, target) in new[] { ("OpenCodeCautionBadgeStyle", "Border"), ("OpenCodeCriticalBadgeStyle", "Border"), ("OpenCodeNeutralBadgeStyle", "Border"), ("OpenCodeTransparentToolButtonStyle", "Button"), ("OpenCodeTransparentSurfaceStyle", "Border"), ("DockCard", "Border") })
+            Check(app.Contains($"x:Key=\"{key}\" TargetType=\"{target}\""), $"STATIC compatibility key keeps its TargetType: {key} → {target}");
+        Check(app.Contains("x:Key=\"OpenCodeAttentionDotStyle\" TargetType=\"Ellipse\"") && app.Contains("x:Key=\"OpenCodeCautionDotStyle\" TargetType=\"Ellipse\""),
+            "STATIC the dot styles stay Ellipse-targeted until TabStatus migrates");
+        Check(System.Text.RegularExpressions.Regex.IsMatch(app, @"x:Key=""DockCard""[\s\S]{0,300}?SolidBackgroundFillColorQuarternaryBrush"),
+            "STATIC DockCard stays opaque (SolidBackgroundFillColorQuarternary)");
+
+        // ---- the lanes' published keys exist under their final names ----
+        foreach (var key in new[] {
+            "OpenCodeQuickAccessToggleButtonStyle", "OpenCodeOverlayViewportScrollViewerStyle", "OpenCodeOverlayFlyoutPresenterStyle", "OpenCodeOverlaySmokeStyle",
+            "OpenCodePickerFlyoutPresenterStyle", "OpenCodeContextMenuFlyoutPresenterStyle", "OpenCodeComposerPopupChromeStyle", "OpenCodeComposerCommandChipChromeStyle",
+            "OpenCodeComposerIntentChipChromeStyle", "OpenCodeComposerNativeOriginChromeStyle", "OpenCodeComposerSecondaryChipChromeStyle",
+            "OpenCodeAccentTextStyle", "OpenCodeSecondaryTextStyle", "OpenCodeDisabledTextStyle", "OpenCodeTextOnAccentStyle",
+            "OpenCodeAccentFontIconStyle", "OpenCodeSecondaryFontIconStyle", "OpenCodeCriticalFontIconStyle", "OpenCodeSuccessFontIconStyle",
+            "OpenCodeContextMenuDividerRectangleStyle", "OpenCodeAgentMenuItemStyle",
+            "OpenCodeAgentTreeAccentIconStyle", "OpenCodeAgentTreeCaptionTextStyle",
+            "OpenCodeBrowserFloatingPillChromeStyle", "OpenCodeBrowserToolToggleStyle", "OpenCodeBrowserPreviewTableHeaderTemplate" })
+            Check(app.Contains($"x:Key=\"{key}\""), $"STATIC published contract key exists: {key}");
+
+        // ---- the package addition is the only package change (PLAN-v2 §3(1), §3 risk boundary) ----
+        var csproj = Read("FluentCode.csproj");
+        Check(csproj.Contains("CommunityToolkit.WinUI.Animations\" Version=\"8.2.251219\""), "STATIC Toolkit Animations is pinned at the agreed 8.2.251219");
+        Check(csproj.Contains("Microsoft.WindowsAppSDK\" Version=\"2.6.5\"") && csproj.Contains("DevWinUI\" Version=\"10.9.1\""), "STATIC SDK and DevWinUI pins are unchanged");
+        var lock_ = Read("packages.lock.json");
+        Check(lock_.Contains("\"CommunityToolkit.WinUI.Animations\"") && lock_.Contains("\"resolved\": \"8.2.251219\""),
+            "STATIC the lock file records the added package");
     }
 }
