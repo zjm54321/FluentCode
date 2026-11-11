@@ -33,13 +33,26 @@ internal sealed partial class NativeUiRenderer
         var player = new MediaPlayer { AutoPlay = false }; var transport = new MediaTransportControls { IsCompact = false };
         var element = new MediaPlayerElement { AreTransportControlsEnabled = true, AutoPlay = false, TransportControls = transport, Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Stretch };
         element.SetMediaPlayer(player); var status = NativeUiComponentTheme.Text("点击后加载到卡片；不会自动播放。", true);
-        var fullWindow = new Button { Content = "全窗口播放", Visibility = Visibility.Collapsed }; fullWindow.Click += (_, _) => element.IsFullWindow = !element.IsFullWindow;
+        // WinUI 3's MediaTransportControls has no full-window button (the FullWindow button and states are removed from
+        // its template and MediaPlayerElement.IsFullWindow is disabled at the framework level), so this stays a card
+        // button — but it shows the state and uses the framework's own FullScreen/BackToWindow symbols.
+        var fullWindowIcon = new SymbolIcon(); var fullWindowText = new TextBlock();
+        var fullWindow = new Button { Visibility = Visibility.Collapsed, Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { fullWindowIcon, fullWindowText } } };
+        void FullWindowLabel(bool on)
+        {
+            fullWindowIcon.Symbol = on ? Symbol.BackToWindow : Symbol.FullScreen;
+            fullWindowText.Text = on ? "退出全窗口" : "全窗口播放";
+            AutomationProperties.SetName(fullWindow, fullWindowText.Text);
+        }
+        FullWindowLabel(false);
+        fullWindow.Click += (_, _) => { element.IsFullWindow = !element.IsFullWindow; FullWindowLabel(element.IsFullWindow); };
         var panel = new StackPanel { Spacing = 8, Children = { title, url, load, element, fullWindow, status } }; var visual = new Visual(panel);
         var gate = new NativeUiLoadGate(); CancellationTokenSource? pending = null; InMemoryRandomAccessStream? stream = null; MediaSource? media = null; var version = 0;
         void Stop()
         {
             version++; pending?.Cancel(); pending?.Dispose(); pending = null; player.Pause(); player.Source = null;
-            media?.Dispose(); media = null; stream?.Dispose(); stream = null; element.IsFullWindow = false; element.Visibility = fullWindow.Visibility = Visibility.Collapsed;
+            media?.Dispose(); media = null; stream?.Dispose(); stream = null; element.IsFullWindow = false; FullWindowLabel(false);
+            element.Visibility = fullWindow.Visibility = Visibility.Collapsed;
         }
         player.MediaOpened += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) status.Text = "已加载 · 使用原生播放控件；视频可切换全窗口。"; });
         player.MediaFailed += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) { status.Text = "媒体无法播放；请检查格式、编码或地址后重试。"; load.IsEnabled = true; } });
@@ -75,10 +88,37 @@ internal sealed partial class NativeUiRenderer
     private Visual CreateGallery()
     {
         var title = NativeUiComponentTheme.Text(""); var urls = NativeUiComponentTheme.Text("", true); var load = new Button { Content = "加载图片集" }; var status = NativeUiComponentTheme.Text("点击后加载图片；选择大图可全尺寸查看。", true);
-        var flip = new FlipView { Height = 320, Visibility = Visibility.Collapsed }; var panel = new StackPanel { Spacing = 8, Children = { title, urls, load, flip, status } };
-        var visual = new Visual(panel); var gate = new NativeUiLoadGate(); CancellationTokenSource? pending = null; var generation = 0; ContentDialog? viewer = null;
+        var flip = new FlipView { Height = 320, Visibility = Visibility.Collapsed };
+        // The stock pager that belongs to this FlipView: it shows the position in the set and pages the gallery
+        // without a hand-built pager. It stays hidden for a single image, where pips would carry no information.
+        var pager = new PipsPager { Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 4, 0, 0) };
+        AutomationProperties.SetName(pager, "图片导航"); AutomationProperties.SetAutomationId(pager, "NativeUiGalleryPager");
+        var panel = new StackPanel { Spacing = 8, Children = { title, urls, load, flip, pager, status } };
+        var visual = new Visual(panel); var gate = new NativeUiLoadGate(); CancellationTokenSource? pending = null; var generation = 0; ContentDialog? viewer = null; var navigating = false;
         IReadOnlyDictionary<string, object?>[] images = [];
-        void Reset() { generation++; pending?.Cancel(); pending?.Dispose(); pending = null; flip.Items.Clear(); flip.Visibility = Visibility.Collapsed; viewer?.Hide(); viewer = null; }
+        void Reset()
+        {
+            generation++; pending?.Cancel(); pending?.Dispose(); pending = null; viewer?.Hide(); viewer = null;
+            navigating = true;
+            try { flip.Items.Clear(); flip.Visibility = pager.Visibility = Visibility.Collapsed; pager.NumberOfPages = -1; pager.SelectedPageIndex = 0; }
+            finally { navigating = false; }
+        }
+        // Both directions are guarded: a FlipView with no items reports index -1, which a PipsPager cannot hold
+        // (one pip is always selected), and a reset must not echo back into the FlipView.
+        flip.SelectionChanged += (_, _) =>
+        {
+            if (navigating || visual.Disposed) return;
+            navigating = true;
+            try { if (flip.SelectedIndex >= 0 && pager.SelectedPageIndex != flip.SelectedIndex) pager.SelectedPageIndex = flip.SelectedIndex; }
+            finally { navigating = false; }
+        };
+        pager.SelectedIndexChanged += (_, _) =>
+        {
+            if (navigating || visual.Disposed) return;
+            navigating = true;
+            try { if (pager.SelectedPageIndex >= 0 && pager.SelectedPageIndex < flip.Items.Count && flip.SelectedIndex != pager.SelectedPageIndex) flip.SelectedIndex = pager.SelectedPageIndex; }
+            finally { navigating = false; }
+        };
         load.Click += async (_, _) =>
         {
             if (visual.Disposed || !gate.Request()) return;
@@ -98,7 +138,10 @@ internal sealed partial class NativeUiRenderer
                     {
                         if (visual.Disposed || viewer is not null) return;
                         var full = new Image { Source = bitmap, Stretch = Stretch.None }; AutomationProperties.SetName(full, alt);
-                        viewer = new ContentDialog { XamlRoot = panel.XamlRoot, Title = alt, CloseButtonText = "关闭", FullSizeDesired = true, Content = new ScrollViewer { Content = full, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Enabled, MaxHeight = 720 } };
+                        // Ctrl+wheel and pinch zoom, as the stock ScrollViewer supports, so the full picture can be
+                        // inspected without leaving the card.
+                        var scroller = new ScrollViewer { Content = full, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Enabled, ZoomMode = ZoomMode.Enabled, MinZoomFactor = .5f, MaxZoomFactor = 4f, MaxHeight = 720 };
+                        viewer = new ContentDialog { XamlRoot = panel.XamlRoot, Title = alt, CloseButtonText = "关闭", FullSizeDesired = true, Content = scroller };
                         var leases = new List<IDisposable>();
                         void Suppress(DependencyObject root)
                         {
@@ -110,7 +153,13 @@ internal sealed partial class NativeUiRenderer
                     };
                     flip.Items.Add(new StackPanel { Spacing = 4, Children = { open, NativeUiComponentTheme.Text(alt, true) } });
                 }
-                flip.Visibility = Visibility.Visible; status.Text = images.Length + " 张图片 · 使用左右箭头切换，点击大图全尺寸查看。"; load.Content = "重新加载图片集";
+                // The stock pager follows the realized set: its page count is the number of slides, and it only adds
+                // information (and only takes a row) when there is more than one picture.
+                flip.Visibility = Visibility.Visible;
+                pager.NumberOfPages = flip.Items.Count;
+                pager.SelectedPageIndex = Math.Max(0, flip.SelectedIndex);
+                pager.Visibility = flip.Items.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+                status.Text = images.Length + " 张图片 · 使用左右箭头或页码切换，点击大图全尺寸查看（可缩放）。"; load.Content = "重新加载图片集";
             }
             catch (OperationCanceledException) { }
             catch (Exception) { if (!visual.Disposed && version == generation) status.Text = "图片加载失败；请检查 HTTPS 地址和图片大小。"; }
