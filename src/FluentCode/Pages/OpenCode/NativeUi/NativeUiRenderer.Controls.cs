@@ -39,33 +39,71 @@ internal sealed partial class NativeUiRenderer
                     AutomationProperties.SetName(segments, node.StatementId ?? "选项");
                 }; return segmented;
             case "RadioGroup":
-                var radioPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var radioVisual = new Visual(radioPanel); string radioSignature = "";
+                var radioPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var radioVisual = new Visual(radioPanel);
+                RadioButtons? radios = null; Segmented? pills = null; string radioSignature = ""; var cardStyle = false;
+                // The `cards` variant paints each tile from the checked state the host owns, so it is repainted after a
+                // real selection change rather than relying on a re-render to do it.
+                void StyleCards()
+                {
+                    if (!cardStyle || radios is null) return;
+                    foreach (var tile in radios.Items.OfType<RadioButton>()) NativeUiTheme.RadioCard(tile);
+                }
                 radioVisual.Apply = node =>
                 {
-                    var choices = Choices(node); var variant = S(node, "variant"); var signature = S(node, "label") + variant + NativeUiValues.ToJson(P(node, "options"))?.ToJsonString();
+                    var choices = Choices(node); var variant = S(node, "variant"); var label = S(node, "label");
+                    var signature = label + variant + NativeUiValues.ToJson(P(node, "options"))?.ToJsonString();
                     if (signature != radioSignature)
                     {
-                        radioPanel.Children.Clear();
-                        if (S(node, "label").Length > 0) radioPanel.Children.Add(NativeUiComponentTheme.Text(S(node, "label")));
+                        radioSignature = signature; radioPanel.Children.Clear(); radios = null; pills = null; cardStyle = variant == "cards";
                         if (variant == "pills")
                         {
-                            var pills = new Segmented { SelectionMode = ListViewSelectionMode.Single };
+                            if (label.Length > 0) radioPanel.Children.Add(NativeUiComponentTheme.Text(label));
+                            pills = new Segmented { SelectionMode = ListViewSelectionMode.Single };
                             foreach (var option in choices) pills.Items.Add(new SegmentedItem { Content = option.Label, Tag = option.Value });
                             pills.SelectionChanged += (_, _) => { if (pills.SelectedItem is SegmentedItem item) SetField(radioVisual, key, "value", S(radioVisual.Model, "label"), item.Tag); };
                             radioPanel.Children.Add(pills);
                         }
-                        else foreach (var choice in choices)
+                        else
                         {
-                            var label = new StackPanel { Spacing = NativeUiTheme.Gap(1) }; label.Children.Add(NativeUiComponentTheme.Text(choice.Label));
-                            if (choice.Description.Length > 0) label.Children.Add(NativeUiComponentTheme.Text(choice.Description, true));
-                            var radio = new RadioButton { Content = label, Tag = choice.Value, GroupName = key, HorizontalAlignment = HorizontalAlignment.Stretch };
-                            radio.Checked += (_, _) => SetField(radioVisual, key, "value", S(radioVisual.Model, "label"), radio.Tag); radioPanel.Children.Add(radio);
+                            // One host owns the group: arrow-key roving focus, a single tab stop and the group's UIA name
+                            // come from it. The items stay RadioButtons, so the `cards` style is unchanged.
+                            var host = new RadioButtons { MaxColumns = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
+                            if (label.Length > 0) host.Header = NativeUiComponentTheme.Text(label);
+                            // The header presenter would still contribute its margin without a label, so drop it.
+                            else host.Resources["RadioButtonsTopHeaderMargin"] = new Thickness(0);
+                            AutomationProperties.SetName(host, label.Length > 0 ? label : node.StatementId ?? "选项");
+                            foreach (var choice in choices)
+                            {
+                                var tileLabel = new StackPanel { Spacing = NativeUiTheme.Gap(1) }; tileLabel.Children.Add(NativeUiComponentTheme.Text(choice.Label));
+                                if (choice.Description.Length > 0) tileLabel.Children.Add(NativeUiComponentTheme.Text(choice.Description, true));
+                                host.Items.Add(new RadioButton { Content = tileLabel, Tag = choice.Value });
+                            }
+                            // The host lays each item out at its own desired width, while the StackPanel it replaces
+                            // stretched every row, so a tile's minimum width follows the group.
+                            host.SizeChanged += (_, _) =>
+                            {
+                                if (radioVisual.Disposed || host.ActualWidth <= 0) return;
+                                foreach (var tile in host.Items.OfType<RadioButton>()) if (tile.MinWidth != host.ActualWidth) tile.MinWidth = host.ActualWidth;
+                            };
+                            // The commit point is unchanged: a new selection writes the field immediately. The host also
+                            // re-asserts its own index while it loads, and that echo carries the value already applied
+                            // above, so it is recognised and dropped instead of re-rendering the card inside a layout pass.
+                            host.SelectionChanged += (_, _) =>
+                            {
+                                if (radioVisual.Disposed || host.SelectedIndex < 0) return;
+                                var current = Choices(radioVisual.Model);
+                                if (host.SelectedIndex >= current.Length) return;
+                                var value = current[host.SelectedIndex].Value;
+                                if (value == NativeUiValues.Text(Field(radioVisual, key, "value", label))) return;
+                                SetField(radioVisual, key, "value", label, value);
+                                if (!radioVisual.Disposed) StyleCards();
+                            };
+                            radios = host; radioPanel.Children.Add(host);
                         }
-                        radioSignature = signature;
                     }
-                    var selected = NativeUiValues.Text(Field(radioVisual, key, "value", S(node, "label")));
-                    foreach (var radio in radioPanel.Children.OfType<RadioButton>()) { radio.IsChecked = Equals(radio.Tag, selected); if (variant == "cards") NativeUiTheme.RadioCard(radio); }
-                    foreach (var pills in radioPanel.Children.OfType<Segmented>()) { pills.SelectedIndex = Array.FindIndex(choices, choice => choice.Value == selected); NativeUiTheme.Segmented(pills); }
+                    var selected = NativeUiValues.Text(Field(radioVisual, key, "value", label));
+                    if (radios is not null) { radios.SelectedIndex = Array.FindIndex(choices, choice => choice.Value == selected); StyleCards(); }
+                    if (pills is not null) { pills.SelectedIndex = Array.FindIndex(choices, choice => choice.Value == selected); NativeUiTheme.Segmented(pills); }
                 }; return radioVisual;
             case "DatePicker":
                 var date = new CalendarDatePicker { DateFormat = "{year.full}-{month.integer(2)}-{day.integer(2)}", HorizontalAlignment = HorizontalAlignment.Stretch }; var dateVisual = new Visual(date);
