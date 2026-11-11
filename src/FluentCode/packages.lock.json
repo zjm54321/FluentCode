@@ -23,6 +23,16 @@
         "resolved": "8.4.2",
         "contentHash": "SedQf214RzGA4Jwdl/auRM6h/8838DAbP0XvCxRWfeRTEnVqtl+6vn/XGYW2aXt8J5cWTh7rPdHWLZmly2qyIg=="
       },
+      "CommunityToolkit.WinUI.Animations": {
+        "type": "Direct",
+        "requested": "[8.2.251219, )",
+        "resolved": "8.2.251219",
+        "contentHash": "EHSppVx23OqAMq/biy5rffq+9q0sOQ/tOUzOnaLwH4sc3Be+kZw0s8qG8KN7P0tCm48IFtxoaQ+HF1LC0IZSGA==",
+        "dependencies": {
+          "CommunityToolkit.WinUI.Extensions": "8.2.251219",
+          "Microsoft.WindowsAppSDK": "1.6.250108002"
+        }
+      },
       "CommunityToolkit.WinUI.Controls.Segmented": {
         "type": "Direct",
         "requested": "[8.2.251219, )",
