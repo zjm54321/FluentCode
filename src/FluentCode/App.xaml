@@ -125,14 +125,6 @@
                 <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
             </Style>
 
-            <!-- 设置页整块表单的卡片外框（与 CommunityToolkit SettingsCard 同一画刷与圆角；SettingsCards.Panel 使用）。 -->
-            <Style x:Key="AppSettingsCardStyle" TargetType="Border">
-                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
-            </Style>
-
             <!-- WinUI provides the body style and secondary brush separately. -->
             <Style x:Key="BodySubtleTextBlockStyle"
                    TargetType="TextBlock"
@@ -236,10 +228,14 @@
                   设置它会绕过严重度配色（详见适配器注释）。
             -->
             <DataTemplate x:Key="AppBadgeTitleTemplate">
+                <!-- IsTextSelectionEnabled: 迁移前手绘徽章的标签文字是可选中复制的
+                     （NativeUiTheme.Text 第 214 行统一置 true），换成库药丸后纯文字徽章会失去该行为。
+                     两侧统一为可选中，与迁移前的观感/行为一致。 -->
                 <TextBlock Text="{Binding}"
                            FontFamily="{ThemeResource ContentControlThemeFontFamily}"
                            TextWrapping="NoWrap"
                            TextTrimming="CharacterEllipsis"
+                           IsTextSelectionEnabled="True"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Center" />
             </DataTemplate>

@@ -273,6 +273,12 @@ internal static class Program
             Check(block.Contains("Property=\"FontFamily\" Value=\"{ThemeResource ContentControlThemeFontFamily}\""), $"STATIC {name} badge follows the user's font setting");
         }
         Check(!StyleBlock("AppStreamingShimmerStyle").Contains("Property=\"Template\""), "STATIC shimmer style does not carry a copied vendor template");
+        // Badge text stays selectable: the hand-drawn badges enabled selection (NativeUiTheme.Text), and a
+        // text-only badge must not lose it while an icon-carrying badge keeps it.
+        var titleTemplate = app.Substring(app.IndexOf("x:Key=\"AppBadgeTitleTemplate\"", StringComparison.Ordinal));
+        titleTemplate = titleTemplate.Substring(0, titleTemplate.IndexOf("</DataTemplate>", StringComparison.Ordinal));
+        Check(titleTemplate.Contains("IsTextSelectionEnabled=\"True\""), "STATIC the badge title template keeps the text selectable (as before the migration)");
+        Check(!titleTemplate.Contains("IsTextSelectionEnabled=\"False\""), "STATIC the badge title template does not disable text selection");
 
         // ---- merge order (PLAN-v2 §3(2)); the same scan the MSIX runner does, repeated here so a bad edit fails fast ----
         var devIndex = app.IndexOf("ms-appx:///DevWinUI/Themes/Generic.xaml", StringComparison.Ordinal);
@@ -316,9 +322,12 @@ internal static class Program
         Check(!System.Text.RegularExpressions.Regex.IsMatch(contract, @"\b\w+\.Foreground\s*=|Control\.ForegroundProperty"),
             "STATIC adapter never sets Foreground, which would bypass the library severity colours");
 
-        // ---- the vendor type stays in the adapter and App.xaml only ----
-        var vendorOwners = sources.Where(path => File.ReadAllText(path).Contains("DevWinUI") && !path.Contains("CommunityTextBadge")).Select(Path.GetFileName).ToArray();
-        Check(vendorOwners.Length == 0, "STATIC only the adapter names DevWinUI in C# (found: " + string.Join(", ", vendorOwners) + ")");
+        // ---- the vendor type stays in the two adapters, and in App.xaml ----
+        // Two vendor boundaries: the text-badge adapter (this lane) and the effects adapter (N1, per its contract the
+        // only file that may name a DevWinUI effect control). Both hand ordinary WinUI elements to their consumers.
+        var vendorAdapters = new[] { "CommunityTextBadge.cs", "NativeUiCommunityEffects.cs" };
+        var vendorOwners = sources.Where(path => File.ReadAllText(path).Contains("DevWinUI") && !vendorAdapters.Contains(Path.GetFileName(path))).Select(Path.GetFileName).ToArray();
+        Check(vendorOwners.Length == 0, "STATIC only the badge and effects adapters name DevWinUI in C# (found: " + string.Join(", ", vendorOwners) + ")");
         var xamlVendor = Directory.GetFiles(Path.Combine(repo, "src/FluentCode"), "*.xaml", SearchOption.AllDirectories)
             .Where(path => !path.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
             .Where(path => File.ReadAllText(path).Contains("using:DevWinUI")).Select(Path.GetFileName).ToArray();
