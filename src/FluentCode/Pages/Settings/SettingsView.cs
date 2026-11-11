@@ -354,9 +354,10 @@ public sealed partial class SettingsView : UserControl
         var transparent = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         // 内容层：设置卡片的背景来自卡片自身，导航视图不再画自己的底色/描边/圆角（原来手写版式也没有）。
         SettingsCards.Override(_navigation, "NavigationViewContentBackground", transparent, includeHighContrast: false);
-        SettingsCards.Override(_navigation, "NavigationViewContentGridBorderThickness", new Thickness(0));
-        SettingsCards.Override(_navigation, "NavigationViewContentGridCornerRadius", new CornerRadius(0));
-        SettingsCards.Override(_navigation, "NavigationViewBorderThickness", new Thickness(0));
+        // 描边与圆角是“合并左右两栏”的观感处理，高对比度下保留系统默认：那里窗格与内容之间需要那条分隔线。
+        SettingsCards.Override(_navigation, "NavigationViewContentGridBorderThickness", new Thickness(0), includeHighContrast: false);
+        SettingsCards.Override(_navigation, "NavigationViewContentGridCornerRadius", new CornerRadius(0), includeHighContrast: false);
+        SettingsCards.Override(_navigation, "NavigationViewBorderThickness", new Thickness(0), includeHighContrast: false);
         // 分类栏：普通主题下与页面同底色（原来是一列普通文字，没有亚克力面板）；高对比度保留系统默认，
         // 由系统提供的分隔与选中态负责区分窗格，不额外压制。
         SettingsCards.Override(_navigation, "NavigationViewDefaultPaneBackground", transparent, includeHighContrast: false);
