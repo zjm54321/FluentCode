@@ -165,6 +165,7 @@ internal static class Program
             Require(noKey, "Missing TianDiTu user key fails locally");
             await BaiduMapTests.Run(repo, Require);
             NativeUiCoreTests.Run(repo, Require);
+            NativeUiEffectsTests.Run(repo, Require);
             foreach (var source in new[] { "http://example.org/a.mp4", "file:///a.mp4", "https://user:secret@example.org/a.mp4", "javascript:alert(1)" }) Require(!NativeUiMediaPolicy.Https(source), "Media disallows non-HTTPS and credential URLs");
             Require(NativeUiMediaPolicy.Https("https://example.org/full/video.mp4?token=1#track") && NativeUiMediaPolicy.YouTubeId("https://youtu.be/dQw4w9WgXcQ") == "dQw4w9WgXcQ" && NativeUiMediaPolicy.YouTubeId("https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ") is null, "Full HTTPS media and allowlisted YouTube IDs");
             var gate = new NativeUiLoadGate(); Require(!gate.Request(), "Empty media/map source cannot be requested"); gate.Bind("https://example.org/a"); Require(!gate.Requested && gate.Request(), "Media/map source loads only after explicit request"); gate.Bind("https://example.org/a"); Require(gate.Requested, "Reactive refresh retains same-source consent"); gate.Bind("https://example.org/b"); Require(!gate.Requested, "Source change revokes load consent");

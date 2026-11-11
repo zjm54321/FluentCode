@@ -9,9 +9,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Microsoft.UI.Xaml.Shapes;
 
 namespace FluentCode.Pages.OpenCode;
 
@@ -74,21 +72,25 @@ internal sealed partial class NativeUiRenderer
                 var flash = new Button { Content = flashContent, HorizontalContentAlignment = HorizontalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 140, Padding = new(NativeUiTheme.Gap(4)) }; var flashVisual = new Visual(flash);
                 var flipKey = "$ui:" + key + ":flipped";
                 flash.Click += (_, _) => { if (!flashVisual.Disposed) _runtime.TrySetField(flipKey, null, _runtime.Field(flipKey, false) is not true); };
-                flashVisual.Apply = node => { var flipped = _runtime.Field(flipKey, false) is true; Slot(flashFace, P(node, flipped ? "back" : "front"), key + (flipped ? "/back" : "/front"), depth); flashHint.Text = flipped ? "点击返回正面" : S(node, "hint") is { Length: > 0 } hint ? hint : "点击翻面"; AutomationProperties.SetName(flash, flipped ? "闪卡背面，点击返回" : "闪卡正面，点击翻面"); }; return flashVisual;
-            case "Celebration":
-                var celebration = new Canvas { Height = 0, IsHitTestVisible = false, Clip = new RectangleGeometry { Rect = new Windows.Foundation.Rect(0, 0, 640, 100) } }; var celebrationVisual = new Visual(celebration); var storyboard = new Storyboard(); bool? was = null;
-                celebrationVisual.Apply = node =>
+                // The adapter owns which face is on screen; it hands that face to this callback, so the painted side
+                // can never disagree with the flip that is actually current.
+                void RenderFace(bool flipped)
                 {
-                    var now = B(node, "when"); var burst = was is false && now; was = now; if (!burst) return;
-                    storyboard.Stop(); storyboard.Children.Clear(); celebration.Children.Clear(); celebration.Height = 100;
-                    for (var i = 0; i < 24; i++)
-                    {
-                        var transform = new TranslateTransform(); var confetti = new Rectangle { Width = 5 + i % 4, Height = 8, Fill = ComponentBrush(new[] { "info", "success", "warning", "purple", "pink", "danger" }[i % 6]), RenderTransform = transform }; Canvas.SetLeft(confetti, (i * 29) % 600); Canvas.SetTop(confetti, -12); celebration.Children.Add(confetti);
-                        var fall = new DoubleAnimation { From = -12, To = 110, Duration = new(TimeSpan.FromSeconds(1.2 + i % 4 * 0.15)) }; Storyboard.SetTarget(fall, transform); Storyboard.SetTargetProperty(fall, "Y"); storyboard.Children.Add(fall);
-                    }
-                    storyboard.Begin();
-                };
-                storyboard.Completed += (_, _) => { celebration.Height = 0; celebration.Children.Clear(); }; celebrationVisual.Cleanup = storyboard.Stop; return celebrationVisual;
+                    var node = flashVisual.Model;
+                    Slot(flashFace, P(node, flipped ? "back" : "front"), key + (flipped ? "/back" : "/front"), depth);
+                    flashHint.Text = flipped ? "点击返回正面" : S(node, "hint") is { Length: > 0 } hint ? hint : "点击翻面";
+                    AutomationProperties.SetName(flash, flipped ? "闪卡背面，点击返回" : "闪卡正面，点击翻面");
+                }
+                var flip = NativeUiCommunityEffects.Flip(flash, RenderFace);
+                // The adapter owns the displayed face: it repaints the current one on a reactive refresh, swaps a
+                // changed one, and, once the animation lands, swaps at the midpoint of the flip that is still current.
+                flashVisual.Apply = node => flip.Request(_runtime.Field(flipKey, false) is true);
+                flashVisual.Cleanup = flip.Dispose; return flashVisual;
+            case "Celebration":
+                // The burst, its 640x100 footprint and its teardown live in the effects adapter.
+                var celebration = NativeUiCommunityEffects.Celebration(); var celebrationVisual = new Visual(celebration.Host);
+                celebrationVisual.Apply = node => celebration.SetActive(B(node, "when"));
+                celebrationVisual.Cleanup = celebration.Dispose; return celebrationVisual;
             case "Icon":
                 var iconHost = new ContentControl(); var iconVisual = new Visual(iconHost);
                 iconVisual.Apply = node => { var icon = NativeUiTheme.Icon(S(node, "name")); if (icon is not null) { icon.FontSize = S(node, "size") switch { "sm" => 14, "lg" => 24, "xl" => 32, _ => 16 }; if (S(node, "color").Length > 0) icon.Foreground = ComponentBrush(S(node, "color")); } iconHost.Content = icon; AutomationProperties.SetName(iconHost, S(node, "name")); }; return iconVisual;
