@@ -19,6 +19,13 @@ internal static class Program
         Console.Error.WriteLine("FAIL " + name);
     }
 
+    /// <summary>The source with comments removed, so a guard can never be satisfied by prose alone.</summary>
+    private static string StripComments(string source)
+    {
+        var withoutBlocks = System.Text.RegularExpressions.Regex.Replace(source, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);
+        return System.Text.RegularExpressions.Regex.Replace(withoutBlocks, @"//[^\n]*", "");
+    }
+
     private static int Main(string[] args)
     {
         Tokens();
@@ -325,8 +332,10 @@ internal static class Program
         // ---- the vendor type stays in the two adapters, and in App.xaml ----
         // Two vendor boundaries: the text-badge adapter (this lane) and the effects adapter (N1, per its contract the
         // only file that may name a DevWinUI effect control). Both hand ordinary WinUI elements to their consumers.
+        // The scan reads each file with comments removed (same rule as the Native UI effect guards): C06 documents
+        // the library's tone-brush provenance in comments right at the call sites, and prose is not a vendor type.
         var vendorAdapters = new[] { "CommunityTextBadge.cs", "NativeUiCommunityEffects.cs" };
-        var vendorOwners = sources.Where(path => File.ReadAllText(path).Contains("DevWinUI") && !vendorAdapters.Contains(Path.GetFileName(path))).Select(Path.GetFileName).ToArray();
+        var vendorOwners = sources.Where(path => StripComments(File.ReadAllText(path)).Contains("DevWinUI") && !vendorAdapters.Contains(Path.GetFileName(path))).Select(Path.GetFileName).ToArray();
         Check(vendorOwners.Length == 0, "STATIC only the badge and effects adapters name DevWinUI in C# (found: " + string.Join(", ", vendorOwners) + ")");
         var xamlVendor = Directory.GetFiles(Path.Combine(repo, "src/FluentCode"), "*.xaml", SearchOption.AllDirectories)
             .Where(path => !path.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
