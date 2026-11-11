@@ -10,7 +10,7 @@
     <EntryPointExe>FluentCode.exe</EntryPointExe>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
     <AppxBundle>Never</AppxBundle>
-    <AppxPackageFileName>FluentCode_1.2611.17.0_x64.msix</AppxPackageFileName>
+    <AppxPackageFileName>FluentCode_1.2611.18.0_x64.msix</AppxPackageFileName>
     <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
     <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
     <UapAppxPackageBuildMode>SideloadOnly</UapAppxPackageBuildMode>
