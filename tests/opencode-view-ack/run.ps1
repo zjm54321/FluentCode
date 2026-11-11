@@ -42,6 +42,23 @@ $members = foreach ($pair in @(@($pagePath, 'CreateOperationToken'), @($pagePath
 $generated = Join-Path $output 'PageMembers.cs'
 'using System; using System.Collections.Generic; using System.Threading; using FluentCode.Services.OpenCode; using FluentCode.Services.Notifications; namespace FluentCode.Pages; public sealed partial class OpenCodePage {' + "`n" + ($members -join "`n") + "`n}" | Set-Content -Encoding UTF8 $generated
 $arguments += '"' + $generated + '"'
+# Link the real shell truth table and terminal-task gate; only window/clock/App side effects are inert.
+$shellMembers = foreach ($pair in @(
+    @((Join-Path $repo 'src/FluentCode/MainWindow.OpenCode.cs'), 'ShellWindow_VisibilityChanged'),
+    @((Join-Path $repo 'src/FluentCode/MainWindow.OpenCode.cs'), 'UpdateOpenCodeWindowVisibility'),
+    @((Join-Path $repo 'src/FluentCode/MainWindow.OpenCode.cs'), 'PushOpenCodeWindowVisibility'),
+    @((Join-Path $repo 'src/FluentCode/MainWindow.OpenCode.cs'), 'PushOpenCodeWindowActivation'),
+    @((Join-Path $repo 'src/FluentCode/MainWindow.Taskbar.cs'), 'AcknowledgeTerminalTasksWhenVisible'))) {
+    $text = [IO.File]::ReadAllText($pair[0])
+    $matches = [regex]::Matches($text, ('(?m)^    private [^\r\n]*\b' + $pair[1] + '\('))
+    if ($matches.Count -ne 1) { throw "Missing/ambiguous shell member $($pair[1])" }
+    $block = [regex]::Match($text.Substring($matches[0].Index), '(?ms)\A.*?^    \}\r?$')
+    if (!$block.Success) { throw "Missing shell member body $($pair[1])" }
+    $block.Value
+}
+$shellGenerated = Join-Path $output 'ShellMembers.cs'
+'using System; using System.Linq; using Microsoft.UI.Xaml; using Microsoft.UI.Windowing; namespace FluentCode; public sealed partial class MainWindow {' + "`n" + ($shellMembers -join "`n") + "`n}" | Set-Content -Encoding UTF8 $shellGenerated
+$arguments += '"' + $shellGenerated + '"'
 $arguments += Get-ChildItem (Join-Path $PSScriptRoot '*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile

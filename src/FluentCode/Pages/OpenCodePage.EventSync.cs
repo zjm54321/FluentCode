@@ -373,7 +373,7 @@ public sealed partial class OpenCodePage
             RefreshConversationSessionActivity();
             RetainHistoryChildEvidence(selected, MergeMessageHistory());
             ObserveExecutionState(selected, window);
-            NotifyViewAcknowledgementRendered(window, _hostWindowVisible);
+            NotifyViewAcknowledgementRendered(window, HostAttentionVisible);
             UpdateEmptyState();
             if (follow) ScrollToBottom(animated: false);
             Debug.WriteLine($"OpenCode.SSE apply received_utc={first:O} applied_utc={DateTimeOffset.UtcNow:O} latency_ms={(DateTimeOffset.UtcNow - first).TotalMilliseconds:F1} events={count}");

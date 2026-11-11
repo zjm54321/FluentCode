@@ -172,7 +172,7 @@ namespace FluentCode.Pages
         internal object Diagnostics => (_isRefreshing, _refreshQueued, _refreshQueuedInitial, _refreshQueuedForceFollow,
             _refreshQueuedExplicit, _firstMessagesLoading, _messagesResponseEmpty, _messagesLoadError, _historyExecutionRebaseline);
 
-        internal void TestActivate(OpenCodePageSource source, string sessionId)
+        internal void TestActivate(OpenCodePageSource source, string sessionId, bool activated = true)
         {
             InvalidateViewAcknowledgement();
             _source = source; _sourceRevision = source.Revision; _sourceGeneration++; _pageGeneration++; _sessionGeneration++;
@@ -185,9 +185,15 @@ namespace FluentCode.Pages
             _messageHistoryBoundaryKnown = true; _messageHistoryNeedsState = false;
             Visibility = Microsoft.UI.Xaml.Visibility.Visible; IsLoaded = true;
             AttachViewAcknowledgementEvents();
+            NotifyHostWindowActivation(activated);
         }
         internal void Apply(IReadOnlyList<OpenCodeMessage> rows, bool visible = true)
-        { _conversationView.ApplyMessages(rows); NotifyViewAcknowledgementRendered(rows, visible); }
+        { _conversationView.ApplyMessages(rows); NotifyHostWindowVisibility(visible); NotifyViewAcknowledgementRendered(rows, HostAttentionVisible); }
+        internal bool TestHostOnScreen => _hostWindowVisible;
+        internal bool TestHostActivated => _hostActivated;
+        internal bool TestUiVisible;
+        internal int TestUiVisibilityChanges;
+        partial void OnHostUiVisibilityChanged(bool visible) { TestUiVisible = visible; TestUiVisibilityChanges++; }
         internal void Layout(double? watermark, double x = 0) => _conversationView.SupplyGeometry(watermark, x);
         internal void RepeatLayout() { _conversationView.Layout(); MessageScroll.Layout(); }
         internal void Scroll() => MessageScroll.Scroll();

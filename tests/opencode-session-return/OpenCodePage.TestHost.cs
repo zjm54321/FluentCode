@@ -203,6 +203,8 @@ namespace FluentCode.Pages
             _client = source.CreateClient();
             _pageActive = true;
             _pageCts = new();
+            NotifyHostWindowActivation(true);
+            NotifyHostWindowVisibility(true);
         }
         internal void ChangeSource(OpenCodePageSource source) { InvalidateForSourceChange(); BindFixture(source); }
         internal void Unload() { IsLoaded = false; OnPageUnloaded(this, new()); }

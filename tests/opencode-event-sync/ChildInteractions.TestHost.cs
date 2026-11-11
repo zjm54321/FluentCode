@@ -72,6 +72,7 @@ public sealed partial class OpenCodePage : FrameworkElement
     private readonly List<OpenCodeMessage> _latestMessages = new();
     private readonly ConversationSurface _conversationView = new();
     private bool _hostWindowVisible = true;
+    private bool HostAttentionVisible => _hostWindowVisible; // Activation is fixed true in this inert ACK boundary.
     private bool _isRefreshing = false;
     private ImmutableArray<string> _historyUnresolvedChildren = ImmutableArray<string>.Empty;
     private bool _firstMessagesLoading = false;

@@ -77,11 +77,12 @@ public sealed partial class OpenCodePage
     private void ViewAcknowledgementViewChanged(ScrollView sender, object e) => RequestViewAcknowledgementReview();
 
     // Compatibility apply entry: DTOs do NOT choose a watermark or prove visibility.
+    // windowVisible means user attention, not bare on-screen render visibility.
     internal void NotifyViewAcknowledgementRendered(IReadOnlyList<OpenCodeMessage> appliedWindow, bool windowVisible)
     {
         ArgumentNullException.ThrowIfNull(appliedWindow);
         if (!DispatcherQueue.HasThreadAccess) return;
-        _viewAcknowledgementWindowVisible = windowVisible;
+        _viewAcknowledgementWindowVisible = windowVisible && HostAttentionVisible;
         AttachViewAcknowledgementEvents();
         InvalidateViewAcknowledgement();
         RequestViewAcknowledgementReview();
@@ -90,6 +91,7 @@ public sealed partial class OpenCodePage
     internal void UpdateViewAcknowledgementVisibility(bool windowVisible)
     {
         if (!DispatcherQueue.HasThreadAccess) return;
+        windowVisible &= HostAttentionVisible;
         if (windowVisible && !_viewAcknowledgementWindowVisible)
             foreach (var attempt in _viewAcknowledgementAttempted.Values)
                 if (!attempt.Confirmed && !attempt.InFlight) { attempt.Count = 0; attempt.Deferred = false; attempt.RetryAfter = default; }

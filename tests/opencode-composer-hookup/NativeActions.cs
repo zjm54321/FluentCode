@@ -461,6 +461,7 @@ namespace FluentCode.Pages
         // Viewport ACK is outside this composer harness; real cache Apply now requests that surface.
         private void NotifyViewAcknowledgementRendered(IReadOnlyList<OpenCodeMessage> rows, bool visible) { }
         private const bool _hostWindowVisible = false;
+        private bool HostAttentionVisible => _hostWindowVisible; // This inert ACK boundary is never foreground.
         private void InsertSessionItemFirst(OpenCodeSessionInfo session) => Created = session.Id;
         private void RefreshSessionStateUi() { }
         internal Task? NewSessionRefresh;

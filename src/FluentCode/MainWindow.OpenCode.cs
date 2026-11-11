@@ -35,8 +35,8 @@ public sealed partial class MainWindow
     private bool _openCodeNavigationFlushing;
     private bool _openCodePageLoaded;
 
-    // view ACK 的宿主窗口可见性（fail-closed 默认 false）：窗口已激活且未最小化才为 true；
-    // 不检测窗口被其他窗口遮挡的情形（XAML/AppWindow 无法判定），也不虚构“完全可见”。
+    // 可见 = 未最小化、未藏托盘且在屏（焦点无关）；ACK / 通知另需激活。
+    // 两个宿主信号均 fail-closed 默认 false；不检测被其他窗口遮挡的情形。
     private bool _openCodeWindowActivated;
     private bool _openCodeWindowVisible;
 
@@ -202,7 +202,8 @@ public sealed partial class MainWindow
         _openCodePageLoaded = true;
         if (sender is Pages.OpenCodePage page)
         {
-            // Loaded 后补推一次（attach 与 Loaded 的先后顺序不保证）；与可见性订阅推送幂等。
+            // Loaded 后补推两个信号（attach 与 Loaded 的先后顺序不保证）；与生命周期推送幂等。
+            page.NotifyHostWindowActivation(_openCodeWindowActivated);
             page.NotifyHostWindowVisibility(_openCodeWindowVisible);
         }
 
@@ -414,12 +415,12 @@ public sealed partial class MainWindow
         TryTrackOpenCodeSession(e.SessionId);
     }
 
-    // ---- 窗口可见性（view ACK 宿主输入：激活 / 最小化生命周期） ----
+    // ---- 在屏可见性与用户注意（复用激活 / 最小化生命周期） ----
 
     /// <summary>
     /// 构造期调用：订阅窗口激活（<see cref="Window.Activated"/>）与 AppWindow presenter 变化，
-    /// 维护 view ACK 的宿主窗口可见性（复用既有 Window/AppWindow 生命周期，不新建窗口事件通道）。
-    /// 判定保守：激活且未最小化才为可见；不检测被其他窗口遮挡的情形。
+    /// 维护焦点无关的在屏可见性，以及 ACK / 前台通知所需的激活状态
+    /// （复用既有 Window/AppWindow 生命周期，不新建窗口事件通道）。不检测被其他窗口遮挡的情形。
     /// </summary>
     private void InitializeOpenCodeWindowVisibilityTracking()
     {
@@ -432,13 +433,16 @@ public sealed partial class MainWindow
     {
         this.Activated -= ShellWindow_VisibilityChanged;
         AppWindow.Changed -= ShellAppWindow_Changed;
+        _openCodeWindowActivated = false;
         PushOpenCodeWindowVisibility(false);
+        PushOpenCodeWindowActivation();
     }
 
-    /// <summary>窗口激活状态变化（含最小化路径的失活）：失活即保守不可见；其余按 presenter 状态重算。</summary>
+    /// <summary>激活状态只决定用户注意；失活立即撤销 ACK / 前台通知，再重算焦点无关的在屏可见性。</summary>
     private void ShellWindow_VisibilityChanged(object sender, WindowActivatedEventArgs args)
     {
         _openCodeWindowActivated = args.WindowActivationState != WindowActivationState.Deactivated;
+        PushOpenCodeWindowActivation();
         UpdateOpenCodeWindowVisibility();
     }
 
@@ -452,24 +456,29 @@ public sealed partial class MainWindow
     }
 
     /// <summary>
-    /// 重算并推送窗口可见性：激活且未最小化才为 true（fail-closed）；presenter 状态无法判定时
-    /// 保守按不可见处理。只推送给当前 OpenCode 页；非当前页时仅记录，页面挂接 / Loaded 时补推。
+    /// 重算在屏可见性（焦点无关）：未最小化、未藏托盘且 AppWindow 可见才为 true。
+    /// 窗口状态无法判定时两个信号均 fail-closed 为 false。只推送给当前 OpenCode 页；挂接 / Loaded 时补推。
     /// </summary>
     private void UpdateOpenCodeWindowVisibility()
     {
-        bool minimized = false;
+        bool visible;
         try
         {
-            minimized = AppWindow.Presenter is OverlappedPresenter presenter
+            bool minimized = AppWindow.Presenter is OverlappedPresenter presenter
                 && presenter.State == OverlappedPresenterState.Minimized;
+            visible = !minimized && !IsHiddenToTray && AppWindow.IsVisible;
         }
         catch
         {
-            // 无法判定窗口状态：保守视为不可见（fail-closed），并清除激活标记避免陈旧为 true。
+            // 无法判定窗口状态：两个信号都关闭，避免陈旧的在屏 / 激活状态继续授权。
             _openCodeWindowActivated = false;
+            PushOpenCodeWindowVisibility(false);
+            PushOpenCodeWindowActivation();
+            return;
         }
 
-        PushOpenCodeWindowVisibility(_openCodeWindowActivated && !minimized && !IsHiddenToTray && AppWindow.IsVisible);
+        PushOpenCodeWindowVisibility(visible);
+        PushOpenCodeWindowActivation();
     }
 
     /// <summary>记录并把窗口可见性推送给当前 OpenCode 页（非当前页不推送，挂接时补推）。</summary>
@@ -481,6 +490,15 @@ public sealed partial class MainWindow
         if (ContentFrame.Content is Pages.OpenCodePage page)
         {
             page.NotifyHostWindowVisibility(visible);
+        }
+    }
+
+    /// <summary>把激活状态另行推送给当前页；它与在屏可见性共同决定 ACK / 前台通知，不暂停渲染。</summary>
+    private void PushOpenCodeWindowActivation()
+    {
+        if (ContentFrame.Content is Pages.OpenCodePage page)
+        {
+            page.NotifyHostWindowActivation(_openCodeWindowActivated);
         }
     }
 }

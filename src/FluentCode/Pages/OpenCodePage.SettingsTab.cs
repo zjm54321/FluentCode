@@ -103,7 +103,7 @@ public sealed partial class OpenCodePage
         _settingsSurfaceShown = shown;
         SettingsTabHost.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
         SessionPane.Visibility = shown ? Visibility.Collapsed : Visibility.Visible;
-        UpdateViewAcknowledgementVisibility(!shown && _hostWindowVisible);
+        UpdateViewAcknowledgementVisibility(!shown && HostAttentionVisible);
         if (shown)
         {
             _browserOverlayVisibilityBeforeSettings = BrowserOverlayHost.Visibility;

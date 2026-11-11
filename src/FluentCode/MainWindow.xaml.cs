@@ -209,8 +209,9 @@ public sealed partial class MainWindow : Window
                 openCodePage.SettingsTabClosed += OpenCodePage_SettingsTabClosed;
                 _openCodePageLoaded = false;
 
-                // 注入当前窗口级可见性（fail-closed 默认 false）；窗口后续变化由可见性订阅推送，
+                // 注入在屏可见性与激活状态（均 fail-closed 默认 false）；后续变化由生命周期订阅推送，
                 // Loaded 后另有补推（attach 与 Loaded 的先后顺序不保证）。
+                openCodePage.NotifyHostWindowActivation(_openCodeWindowActivated);
                 openCodePage.NotifyHostWindowVisibility(_openCodeWindowVisible);
                 // 页面实例重建后立即注入当前可信身份（含 null）；身份实际变化时页面自行重置卡片。
                 SyncOpenCodeEndpointIdentity();
