@@ -379,8 +379,9 @@ public sealed partial class SettingsView : UserControl
             _navigation.MenuItems.Add(item);
         }
         _navigation.SelectionChanged += OnNavigationSelectionChanged;
-        // 分类栏在窄窗口也保持展开（Left 固定模式）时不需要折叠按钮；键盘上下键在分类间移动并选中。
-        _navigation.SelectionFollowsFocus = NavigationViewSelectionFollowsFocus.Disabled;
+        // 与原手写 ListView（SingleSelectionFollowsFocus 默认开启）一致：键盘在分类间移动时即切换分类，
+        // 不需要再按一次 Enter；窄窗口下分类栏也保持展开（Left 固定模式），所以没有折叠按钮。
+        _navigation.SelectionFollowsFocus = NavigationViewSelectionFollowsFocus.Enabled;
 
         _categoryTitle = SettingsCards.Styled(new TextBlock { Margin = new Thickness(0, 0, 0, 20) }, "TitleTextBlockStyle");
         _categoryContentHost = new ContentControl
@@ -472,7 +473,6 @@ public sealed partial class SettingsView : UserControl
         _categoryScroll?.ChangeView(null, 0, null, disableAnimation: true);
     }
 
-    /// <summary>构建内联确认区（Native InfoBar + 主/次/取消按钮，支持二态与三态确认）。</summary>
     /// <summary>
     /// 构建内联确认区：原生 <see cref="InfoBar"/> 承载标题/说明，主操作放 <see cref="InfoBar.ActionButton"/>，
     /// 其余按钮（次操作 / 取消）放 <see cref="InfoBar.Content"/>，与提示条成一体而非在下面另起一排浮动按钮。

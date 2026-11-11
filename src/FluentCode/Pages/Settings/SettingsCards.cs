@@ -126,12 +126,10 @@ internal static class SettingsCards
     private static readonly string[] ThemeKeys = { "Default", "Dark", "Light", HighContrastTheme };
 
     /// <summary>
-    /// 标准圆角：<c>ControlCornerRadius</c>（4）与 <c>OverlayCornerRadius</c>（8）主题资源，供代码构建的元素取用，
-    /// 与 WinUI 模板内的几何一致；资源不可用时退回其默认值（4 / 8）。
+    /// 标准圆角：<c>ControlCornerRadius</c>（4）主题资源，供代码构建的元素取用，
+    /// 与 WinUI 模板内的几何一致；资源不可用时退回默认值 4。
     /// </summary>
     internal static CornerRadius ControlRadius => Radius("ControlCornerRadius", new CornerRadius(4));
-
-    internal static CornerRadius OverlayRadius => Radius("OverlayCornerRadius", new CornerRadius(8));
 
     private static CornerRadius Radius(string key, CornerRadius fallback)
     {
