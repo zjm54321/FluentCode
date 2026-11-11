@@ -39,15 +39,16 @@ $native += Get-ChildItem "$nuget/winuiex/2.9.3/lib" -Filter WinUIEx.dll -Recurse
 $native = @($native | Where-Object Name -NE 'WinRT.Runtime.dll')
 $native += Get-Item "$nuget/microsoft.windows.cswinrt/2.3.1/lib/net9.0/WinRT.Runtime.dll"
 $rendererSources = @("$folder/OpenCodePersistentPtySession.cs", "$folder/OpenCodePersistentPtyVtStream.cs", "$folder/OpenCodePersistentPtyAirspace.cs")
+$previewSources = @("$folder/OpenCodeShellTerminalPreview.cs", "$folder/OpenCodeShellTerminalText.cs")
 # Shared Fluent motion layer used by the card / ☰ list / chips (production files, compiled as-is).
 $rendererSources += @("$repo/src/FluentCode/Motion/FluentMotion.cs", "$repo/src/FluentCode/Motion/FluentMotionBindings.cs", "$repo/src/FluentCode/Motion/FluentMotionPolicy.cs", "$repo/src/FluentCode/Motion/ActionFeedback.cs", "$repo/src/FluentCode/Motion/OverlayCardMotion.cs", "$repo/src/FluentCode/Services/Appearance/ThemeResources.cs")
 Compile 'PtyNativeViewCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
     "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
-    "$repo/src/FluentCode/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
+    "$repo/src/FluentCode/Services/OpenCode/PersistentPtyModels.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources + $previewSources)
 Write-Output 'PASS actual WinUI/native terminal view API reference compile; no native runtime window executed.'
 Compile 'PtyOverlayGlueNativeCheck' 'library' ($refs + $native) ($models + @("$folder/OpenCodePersistentPtySurface.cs", "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs",
     "$folder/OpenCodePersistentPtyInventoryPresentation.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$folder/OpenCodePersistentPtyOverlay.cs", "$folder/OpenCodeBrowserOverlayLayout.cs",
-    "$repo/src/FluentCode/Services/OpenCode/PersistentPtyModels.cs", "$repo/src/FluentCode/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$PSScriptRoot/PtyOverlayGlue.TestHost.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources)
+    "$repo/src/FluentCode/Services/OpenCode/PersistentPtyModels.cs", "$repo/src/FluentCode/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$PSScriptRoot/PtyOverlayGlue.TestHost.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources + $previewSources)
 Write-Output 'PASS actual right-card/floating-card page glue reference compile against WinUI refs (page members shimmed).'
 
 # Production Billion/PTY bindings; the retired preset/clear action UI is intentionally absent.
@@ -74,6 +75,7 @@ $recordedInputs = @($bindingSources + $models + @("$folder/OpenCodeSessionInsigh
     "$repo/src/FluentCode/Pages/OpenCodePage.PersistentPtyOverlay.cs", "$repo/src/FluentCode/Pages/OpenCodePage.xaml", "$folder/OpenCodeBrowserOverlayLayout.cs",
     "$repo/src/FluentCode/Pages/OpenCodePage.xaml.cs", "$PSScriptRoot/NativeHost.cs", "$PSScriptRoot/run.ps1"))
 $recordedInputs += @(Get-ChildItem "$folder/OpenCodePersistentPty*.cs" | ForEach-Object FullName)
+$recordedInputs += @("$folder/OpenCodeShellTerminalPreview.cs", "$folder/OpenCodeShellTerminalText.cs")
 $recordedInputs = $recordedInputs | Sort-Object -Unique
 $inputHashes = @{}
 foreach ($input in $recordedInputs) { $inputHashes[$input] = (Get-FileHash -Algorithm SHA256 $input).Hash }
@@ -82,7 +84,7 @@ Compile 'BillionPtyBindingTests' 'exe' $refs $bindingSources
 & $dotnet (Join-Path $EvidenceRoot 'BillionPtyBindingTests.dll') | Tee-Object (Join-Path $EvidenceRoot 'binding-results.txt')
 if ($LASTEXITCODE -ne 0) { throw "Billion/PTY Page binding tests failed: $LASTEXITCODE" }
 $bindingNative = @($bindingSources | Where-Object { $_ -notlike '*BillionBindingTests.cs' -and $_ -notlike '*PersistentPtyBindingTests.cs' -and $_ -notlike '*ShellTerminalTests.cs' }) + @(
-    "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources
+    "$folder/OpenCodePersistentPtyRenderer.cs", "$folder/OpenCodePersistentPtyView.cs", "$folder/OpenCodePersistentPtyInventoryView.cs", "$folder/OpenCodeQuickAccessStyle.cs", "$folder/OpenCodeShellTerminalPreview.cs", "$PSScriptRoot/NativeHost.cs") + $rendererSources
 Compile 'BillionPtyBindingNativeCheck' 'library' ($refs + $native) $bindingNative 'NATIVE_UI'
 foreach ($input in $recordedInputs) {
     if ((Get-FileHash -Algorithm SHA256 $input).Hash -ne $inputHashes[$input]) { throw "Compiled/binding input changed during focused validation: $input" }

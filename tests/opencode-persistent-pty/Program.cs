@@ -78,6 +78,36 @@ internal static class Program
             "no Fit/takeover button/modal: ending a running terminal is confirmed in place of the header; close only detaches");
         Check(viewSource.Contains("Renderer.SuppressAirspace(snapshot: true)") && viewSource.Contains("Grid.SetColumn(_scrollBar, 2)") && viewSource.Contains("Grid.SetColumn(Renderer, 1)")
             && viewSource.Contains("ListExpanded ?? count >= 2"), "B2 card: menus freeze the terminal frame, scrollbar sits in its own gutter beside the HWND, list defaults collapsed for one terminal");
+        var scrollBar = viewSource[viewSource.IndexOf("internal sealed class OpenCodeTerminalScrollBar", StringComparison.Ordinal)..viewSource.IndexOf("internal static class OpenCodePersistentPtyViewText", StringComparison.Ordinal)];
+        Check(scrollBar.Contains("private readonly ScrollBar _bar = new()") && scrollBar.Contains("Children.Add(_bar)") && scrollBar.Contains("Orientation = Orientation.Vertical")
+            && scrollBar.Contains("IndicatorMode = ScrollingIndicatorMode.MouseIndicator") && scrollBar.Contains("SmallChange = 1")
+            && !scrollBar.Contains("new Border") && !scrollBar.Contains("CapturePointer") && !scrollBar.Contains("FromArgb")
+            && !scrollBar.Contains("PointerPressed +=") && !scrollBar.Contains("PointerMoved +="),
+            "terminal scrollbar uses the stock WinUI control/template, not painted track/thumb or custom pointer dragging");
+        Check(scrollBar.Contains("Minimum = 0;") && scrollBar.Contains("Maximum = state.MaximumTop;")
+            && scrollBar.Contains("ViewportSize = state.ViewHeight;") && scrollBar.Contains("Value = state.ViewTop;")
+            && scrollBar.Contains("LargeChange = Math.Max(1, state.ViewHeight - 1);"),
+            "native scrollbar maps terminal rows, maximum top and viewport directly, with the existing one-row-overlap page step");
+        Check(scrollBar.Contains("_updating = true;") && scrollBar.Contains("finally { _updating = false; }")
+            && scrollBar.Contains("ValueChanged +=") && scrollBar.Contains("if (!_updating) _renderer.ScrollTo((int)Math.Round(args.NewValue))")
+            && scrollBar.Contains("_state.ViewTop - Math.Sign(delta) * 3 * Math.Max(1, Math.Abs(delta) / 120)"),
+            "renderer refreshes cannot echo scrolling; native/UIA value changes and the existing gutter wheel step only scroll local history");
+        Check(scrollBar.Contains("GutterWidth = 40;") && scrollBar.Contains("state.MaximumTop > 0 && state.BufferSize > 0 ? Visibility.Visible : Visibility.Collapsed")
+            && !scrollBar.Contains("ActualHeight") && viewSource.Contains("Width = new GridLength(OpenCodeTerminalScrollBar.GutterWidth)")
+            && viewSource.Contains("_scrollBar.Margin = new Thickness(0, 12, 0, 12)") && viewSource.Contains("Renderer.Margin = new Thickness(0, 12, 0, 12)"),
+            "empty/history transitions retain the fixed 40-DIP gutter and terminal inset without depending on collapsed geometry");
+        Check(viewSource.Split("TryStyle(\"OpenCodeDividerSurfaceStyle\")").Length == 3
+            && viewSource.Contains("_well.Style = OpenCodeInteractionUi.TryStyle(\"OpenCodeCardOutlineStyle\")")
+            && viewSource.Contains("_statusPill.Style = OpenCodeInteractionUi.TryStyle(\"OpenCodeSubtleSurfaceStyle\")"),
+            "terminal card and both dividers reuse same-value named resources without changing geometry or scheme background");
+        var previewSource = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCode/OpenCodeShellTerminalPreview.cs"));
+        var appResources = System.Xml.Linq.XDocument.Load(Path.Combine(args[0], "src/FluentCode/App.xaml"));
+        var codeStyle = appResources.Descendants().Single(e => e.Name.LocalName == "Style" && e.Attributes().Any(a => a.Name.LocalName == "Key" && a.Value == "OpenCodeCodeTextBlockStyle"));
+        Check(previewSource.Contains("_command.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey)")
+            && previewSource.Contains("_output.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CodeStyleKey)")
+            && previewSource.Contains("_command.IsTextSelectionEnabled = false") && !previewSource.Contains("new FontFamily")
+            && codeStyle.Elements().Any(e => (string?)e.Attribute("Property") == "FontFamily" && (string?)e.Attribute("Value") == "{ThemeResource AppMonospaceFontFamily}"),
+            "shell summary follows the shared user monospace resource while retaining output-only text selection");
         var renderer = File.ReadAllText(Path.Combine(args[0], "src/FluentCode/Pages/OpenCode/OpenCodePersistentPtyRenderer.cs"));
         Check(!renderer.Contains("InputIntentRequested") && renderer.Contains("else ReadOnlyInteraction?.Invoke();")
             && renderer.Contains("if (click.ClickCount == 2 && _activatable)") && renderer.Contains("click.Handled = true;")
@@ -110,6 +140,9 @@ internal static class Program
         Check(File.ReadAllText(Path.Combine(pages, "OpenCodePage.EventSync.cs")).Contains("or \"persistent-pty.updated\""),
             "updated SSE is forwarded before message-workflow filtering");
         var inventoryView = File.ReadAllText(Path.Combine(pages, "OpenCode/OpenCodePersistentPtyInventoryView.cs"));
+        Check(!inventoryView.Contains("Segoe Fluent Icons") && !inventoryView.Contains("FontFamily =")
+            && inventoryView.Contains("_isSelected ? \"OpenCodeSubtleSurfaceStyle\" : \"OpenCodeTransparentSurfaceStyle\""),
+            "terminal chrome uses the native icon font fallback and existing selected/unselected surface resources");
         Check(inventoryView.Contains("rows.Select(OpenCodeTerminalUi.Entry).Concat(_shellEntries") && inventoryView.Contains("if (!changed) return;")
             && inventoryView.Contains("Reconcile in place") && inventoryView.Contains("class OpenCodeTerminalSwitcher"),
             "one-row strip lists PTYs and agent commands once, shared with the overlay list, and reconciles chips in place during refresh");

@@ -502,7 +502,7 @@ internal sealed class OpenCodeTerminalSwitcher : Grid
         private void Paint()
         {
             if (Application.Current is null || _entry is not { } entry) return;
-            OpenCodeTerminalUi.Themed(_selected, "Background", _isSelected ? "SubtleFillColorSecondaryBrush" : "SubtleFillColorTransparentBrush");
+            _selected.Style = OpenCodeInteractionUi.TryStyle(_isSelected ? "OpenCodeSubtleSurfaceStyle" : "OpenCodeTransparentSurfaceStyle");
             OpenCodeTerminalUi.Themed(_bar, "Background", "AccentFillColorDefaultBrush");
             _bar.Visibility = _isSelected ? Visibility.Visible : Visibility.Collapsed;
             OpenCodeTerminalUi.Themed(_title, "Foreground", "TextFillColorPrimaryBrush");
@@ -561,7 +561,7 @@ internal static class OpenCodeTerminalUi
     {
         // Terminal-only hit targets. Glyphs stay small; their transparent button area is touch-sized.
         width = Math.Max(40, width); height = Math.Max(40, height);
-        var button = new Button { Content = new FontIcon { Glyph = glyph, FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = size },
+        var button = new Button { Content = new FontIcon { Glyph = glyph, FontSize = size },
             Width = width, Height = height, MinWidth = 0, MinHeight = 0, Padding = new Thickness(0), BorderThickness = new Thickness(0),
             CornerRadius = new CornerRadius(4), VerticalAlignment = VerticalAlignment.Center };
         if (OpenCodeInteractionUi.TryStyle("OpenCodeTransparentToolButtonStyle") is { } quiet) button.Style = quiet;

@@ -164,7 +164,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         Grid.SetColumn(_rename, 1); _header.Children.Add(_rename);
         _rename.Finished += () => Renderer.FocusTerminal();
         _statusPill.Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center, Children = { _statusDot, _status } };
-        OpenCodeTerminalUi.Themed(_statusPill, "Background", "SubtleFillColorSecondaryBrush");
+        _statusPill.Style = OpenCodeInteractionUi.TryStyle("OpenCodeSubtleSurfaceStyle");
         var readOnlyText = new TextBlock { Text = "只读", FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
         OpenCodeTerminalUi.Themed(readOnlyText, "Foreground", "TextFillColorSecondaryBrush");
         _readOnly.Child = readOnlyText;
@@ -176,7 +176,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         var chips = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center, Children = { _jump, _statusPill, _readOnly } };
         Grid.SetColumn(chips, 2); _header.Children.Add(chips);
         var divider = new Border { Width = 1, Height = 20, Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
-        OpenCodeTerminalUi.Themed(divider, "Background", "DividerStrokeColorDefaultBrush");
+        divider.Style = OpenCodeInteractionUi.TryStyle("OpenCodeDividerSurfaceStyle");
         foreach (var (button, tooltip) in new[]
         {
             (_menu, "终端列表（Ctrl+Shift+L）"),
@@ -234,7 +234,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
             _confirm.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
         OpenCodeTerminalUi.Themed(_confirm, "Background", "SystemFillColorCautionBackgroundBrush");
         var warning = new FontIcon { Glyph = "\uE7BA", FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
-        OpenCodeTerminalUi.Themed(warning, "Foreground", "SystemFillColorCautionBrush");
+        warning.Style = OpenCodeInteractionUi.TryStyle("OpenCodeCautionIconStyle");
         _confirm.Children.Add(warning);
         OpenCodeTerminalUi.Themed(_confirmDetail, "Foreground", "TextFillColorSecondaryBrush");
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { _confirmTitle, _confirmDetail } };
@@ -255,7 +255,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         body.ColumnDefinitions.Add(_listColumn);
         body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         body.Children.Add(_listHost);
-        OpenCodeTerminalUi.Themed(_well, "BorderBrush", "CardStrokeColorDefaultBrush");
+        _well.Style = OpenCodeInteractionUi.TryStyle("OpenCodeCardOutlineStyle");
         var surface = new Grid();
         surface.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         surface.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
@@ -286,7 +286,7 @@ internal sealed class OpenCodePersistentPtyView : Grid
         AutomationProperties.SetName(_findCase, "区分大小写"); AutomationProperties.SetName(_findRegex, "正则表达式");
         AutomationProperties.SetAutomationId(_findBox, "OpenCodePersistentPtyFindBox");
         var divider = new Border { Width = 1, Height = 20, Margin = new Thickness(4, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center };
-        OpenCodeTerminalUi.Themed(divider, "Background", "DividerStrokeColorDefaultBrush");
+        divider.Style = OpenCodeInteractionUi.TryStyle("OpenCodeDividerSurfaceStyle");
         OpenCodeTerminalUi.Themed(_findCount, "Foreground", "TextFillColorSecondaryBrush");
         var column = 0;
         foreach (var element in new FrameworkElement[] { _findBox, _findCount, previous, next, _findCase, _findRegex, divider, close })
@@ -630,93 +630,55 @@ internal sealed class OpenCodePersistentPtyView : Grid
 }
 
 /// <summary>
-/// Thin scrollbar in the well's right padding (never over the HWND): 3px at rest, 6px with a 10% track on hover.
-/// Drag, track click (page) and wheel all scroll local history only.
+/// Stock WinUI scrollbar in the well's right padding, never over the child HWND.
+/// The fixed gutter stays reserved even without history, so visibility changes cannot resize the terminal.
 /// </summary>
 internal sealed class OpenCodeTerminalScrollBar : Grid
 {
     internal const double GutterWidth = 40;
     private readonly OpenCodePersistentPtyRenderer _renderer;
-    private readonly Border _track = new() { Width = 8, CornerRadius = new CornerRadius(4), HorizontalAlignment = HorizontalAlignment.Center, Opacity = 0 };
-    private readonly Border _thumb = new() { Width = 3, CornerRadius = new CornerRadius(1.5), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top };
+    private readonly ScrollBar _bar = new()
+    {
+        Orientation = Orientation.Vertical, IndicatorMode = ScrollingIndicatorMode.MouseIndicator,
+        SmallChange = 1, Width = 14, HorizontalAlignment = HorizontalAlignment.Center,
+    };
     private TerminalScrollState _state;
-    private bool _hover, _dragging;
-    private double _dragOffset;
+    private bool _updating;
 
     internal OpenCodeTerminalScrollBar(OpenCodePersistentPtyRenderer renderer)
     {
         _renderer = renderer; Width = GutterWidth;
-        ManipulationMode = ManipulationModes.None; // Keep touch drags here, not in an ancestor ScrollViewer.
         Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-        Children.Add(_track); Children.Add(_thumb);
-        AutomationProperties.SetName(this, "终端滚动条");
-        AutomationProperties.SetAutomationId(this, "OpenCodeTerminalScrollBar");
-        PointerEntered += (_, _) => { _hover = true; Paint(); };
-        PointerExited += (_, _) => { _hover = false; Paint(); };
-        PointerPressed += (_, args) =>
-        {
-            if (_state.MaximumTop <= 0) return;
-            var y = args.GetCurrentPoint(this).Position.Y;
-            if (y >= _thumb.Margin.Top && y <= _thumb.Margin.Top + _thumb.Height) { _dragging = true; _dragOffset = y - _thumb.Margin.Top; CapturePointer(args.Pointer); }
-            else if (args.Pointer.PointerDeviceType == Microsoft.UI.Input.PointerDeviceType.Touch)
-            {
-                _dragging = true; _dragOffset = _thumb.Height / 2; CapturePointer(args.Pointer);
-                DragTo(y);
-            }
-            else _renderer.ScrollTo(_state.ViewTop + (y < _thumb.Margin.Top ? -1 : 1) * Math.Max(1, _state.ViewHeight - 1));
-            Paint();
-            args.Handled = true;
-        };
-        PointerMoved += (_, args) =>
-        {
-            if (!_dragging) return;
-            DragTo(args.GetCurrentPoint(this).Position.Y);
-            args.Handled = true;
-        };
-        PointerReleased += (_, args) => { _dragging = false; ReleasePointerCapture(args.Pointer); Paint(); args.Handled = true; };
-        PointerCanceled += (_, args) => { _dragging = false; ReleasePointerCapture(args.Pointer); Paint(); };
-        PointerCaptureLost += (_, _) => { _dragging = false; Paint(); };
+        Children.Add(_bar);
+        AutomationProperties.SetName(_bar, "终端滚动条");
+        AutomationProperties.SetAutomationId(_bar, "OpenCodeTerminalScrollBar");
+        // ValueChanged includes UI Automation range changes; renderer updates must never echo a scroll back.
+        _bar.ValueChanged += (_, args) => { if (!_updating) _renderer.ScrollTo((int)Math.Round(args.NewValue)); };
+        // Standalone ScrollBar has no ScrollViewer to consume wheel input. Keep the existing gutter wheel step.
         PointerWheelChanged += (_, args) =>
         {
             var delta = args.GetCurrentPoint(this).Properties.MouseWheelDelta;
             if (delta != 0) _renderer.ScrollTo(_state.ViewTop - Math.Sign(delta) * 3 * Math.Max(1, Math.Abs(delta) / 120));
             args.Handled = true;
         };
-        SizeChanged += (_, _) => Layout();
-        ActualThemeChanged += (_, _) => Paint();
-        Loaded += (_, _) => Paint();
+        Update(default);
     }
 
-    internal void Update(TerminalScrollState state) { _state = state; Layout(); }
-
-    private void DragTo(double y)
+    internal void Update(TerminalScrollState state)
     {
-        var free = ActualHeight - _thumb.Height;
-        if (free > 0) _renderer.ScrollTo((int)Math.Round(Math.Clamp((y - _dragOffset) / free, 0, 1) * _state.MaximumTop));
-    }
-
-    private void Layout()
-    {
-        // A collapsed element measures to zero. Show from buffer state first, then
-        // SizeChanged supplies geometry; testing ActualHeight here kept it collapsed forever.
-        var visible = _state.MaximumTop > 0 && _state.BufferSize > 0;
-        Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        if (!visible || ActualHeight <= 0) return;
-        var height = Math.Max(24, ActualHeight * _state.ViewHeight / Math.Max(1, _state.BufferSize));
-        _thumb.Height = Math.Min(ActualHeight, height);
-        _thumb.Margin = new Thickness(0, (ActualHeight - _thumb.Height) * _state.ViewTop / Math.Max(1, _state.MaximumTop), 0, 0);
-        Paint();
-    }
-
-    private void Paint()
-    {
-        var wide = _hover || _dragging;
-        _thumb.Width = wide ? 6 : 3;
-        _thumb.CornerRadius = new CornerRadius(wide ? 3 : 1.5);
-        _track.Opacity = wide ? 1 : 0;
-        var (_, foreground) = _renderer.Appearance.SurfaceColors(ActualTheme == ElementTheme.Light);
-        _thumb.Background = new SolidColorBrush(Windows.UI.Color.FromArgb((byte)(wide ? 0x99 : 0x66), foreground.R, foreground.G, foreground.B));
-        _track.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x1A, foreground.R, foreground.G, foreground.B));
+        _state = state;
+        _updating = true;
+        try
+        {
+            _bar.Minimum = 0;
+            _bar.Maximum = state.MaximumTop;
+            _bar.ViewportSize = state.ViewHeight;
+            _bar.LargeChange = Math.Max(1, state.ViewHeight - 1);
+            _bar.Value = state.ViewTop;
+            // Show from buffer state, not measured height: a collapsed element measures to zero.
+            Visibility = state.MaximumTop > 0 && state.BufferSize > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+        finally { _updating = false; }
     }
 }
 
