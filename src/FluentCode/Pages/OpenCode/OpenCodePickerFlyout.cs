@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
+using Windows.System;
 
 namespace FluentCode.Pages.OpenCode;
 
@@ -58,6 +59,14 @@ internal static class OpenCodePickerFlyout
             completion.TrySetResult(cancelled);
             flyout.Hide();
         }
+        // AutoSuggestBox consumes Escape in KeyDown, even with no suggestions. Dismiss before its native handler.
+        var dismissOnEscape = new KeyEventHandler((_, e) =>
+        {
+            if (e.Key != VirtualKey.Escape) return;
+            e.Handled = true;
+            flyout.Hide(); // Closed supplies cancelled; Escape never invokes a choice.
+        });
+        content.AddHandler(UIElement.PreviewKeyDownEvent, dismissOnEscape, true);
         anchor.Unloaded += Unloaded;
         try
         {
@@ -65,6 +74,10 @@ internal static class OpenCodePickerFlyout
             return await completion.Task;
         }
         catch (Exception) { return cancelled; }
-        finally { anchor.Unloaded -= Unloaded; }
+        finally
+        {
+            anchor.Unloaded -= Unloaded;
+            content.RemoveHandler(UIElement.PreviewKeyDownEvent, dismissOnEscape);
+        }
     }
 }

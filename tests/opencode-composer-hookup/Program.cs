@@ -135,6 +135,7 @@ internal static class Program
         typeof(OpenCodeRecentModels).GetField("_loaded",recentFlags)!.SetValue(OpenCodeRecentModels.Shared,true);
         await CatalogDispatchTests.Run();
         if (args.Length > 2 && args[2] == "True") return;
+        PickerEscapeTests.Run(args[0]);
         await ComposerActivityTests.Run();
         ComposerStatusHost.Run();
         await SideQuestionTests.Run();

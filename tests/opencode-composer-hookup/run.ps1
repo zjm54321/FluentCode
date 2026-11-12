@@ -54,6 +54,14 @@ $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.BuiltinActions.cs"
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.MessagePagination.cs"
 $sources += Get-Item "$repo/src/FluentCode/Pages/OpenCodePage.MessageBinding.cs"
 $sources += Get-Item (Join-Path $PSScriptRoot 'Program.cs')
+$sources += Get-Item (Join-Path $PSScriptRoot 'PickerEscape.cs')
+# Execute the actual shared-flyout Escape callback against an explicit Hide double, without loading WinUI.
+$pickerFlyout = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCode/OpenCodePickerFlyout.cs")
+$escapeCallbacks = [regex]::Matches($pickerFlyout, '(?ms)^        var dismissOnEscape = new KeyEventHandler\(\(_, e\) =>\s*\{.*?^        \}\);\r?$')
+if ($escapeCallbacks.Count -ne 1) { throw 'Expected one production picker Escape callback.' }
+$escapeGenerated = Join-Path $output 'PickerEscapeCallback.cs'
+"using Microsoft.UI.Xaml.Input; using Windows.System; internal static partial class PickerEscapeTests {`n    private static KeyEventHandler CreateDismissHandler(Flyout flyout) {`n" + $escapeCallbacks[0].Value + "`n        return dismissOnEscape;`n    }`n}" | Set-Content -Encoding UTF8 $escapeGenerated
+$sources += Get-Item $escapeGenerated
 $sources += Get-Item (Join-Path $PSScriptRoot 'ComposerStatus.cs')
 # Execute the actual status renderer against explicit in-memory control state, without native UI.
 $view = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCode/OpenCodeComposerView.cs")
