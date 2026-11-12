@@ -33,7 +33,6 @@ public sealed partial class OpenCodePage
     private void RefreshComposerSessionActivity() => ActivityRefreshes++;
     internal int SessionStateRefreshes;
     private void RefreshSessionStateUi() => SessionStateRefreshes++;
-    private Task RefreshSessionsAsync() => Task.CompletedTask;
     // Server-scoped PTY inventory is outside pagination; its real event/transport lifecycle is
     // exercised in tests/opencode-persistent-pty. Do not emulate its server behavior here.
     private void OnPersistentPtyEvent(OpenCodeEvent item) { }

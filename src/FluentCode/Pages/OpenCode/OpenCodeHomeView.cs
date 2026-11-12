@@ -89,6 +89,12 @@ public sealed class OpenCodeHomeView : UserControl
     private readonly Button _projectOverflow = new() { Content = "…", CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
     private readonly Dictionary<object, TextBlock> _headerCounts = new();
     private readonly Dictionary<OpenCodeHomeProjectKey, (ProgressRing Ring, TextBlock Count)> _projectBadges = new();
+    private readonly HashSet<ListViewItem> _openSessionMenus = new();
+    private bool _reconcilingSessions;
+    private bool _projectMenuOpen;
+    private bool _projectChipsPending;
+    private DateTime _calendarDay = DateTime.Today;
+    private string _calendarZone = TimeZoneInfo.Local.Id;
     private ListViewItem? _allProjectsItem;
     private TextBlock? _allProjectsCount;
     private bool _refreshing;
@@ -272,7 +278,13 @@ public sealed class OpenCodeHomeView : UserControl
         SetConnection(null, false, null);
         SizeChanged += (_, _) => ApplyLayout();
         Loaded += (_, _) => { ApplyLayout(); RefreshSessions(); }; // Recompute local calendar groups after a cached view returns.
-        Unloaded += (_, _) => AllowRowExits(false);
+        Unloaded += (_, _) =>
+        {
+            _projectOverflow.Flyout?.Hide();
+            foreach (var owner in _openSessionMenus.ToArray()) owner.ContextFlyout?.Hide();
+            _openSessionMenus.Clear();
+            AllowRowExits(false);
+        };
         RebuildProjects();
         RefreshSessions();
         ApplyLayout();
@@ -319,6 +331,17 @@ public sealed class OpenCodeHomeView : UserControl
         MaybeLoadMore();
     }
 
+    /// <summary>The local calendar has no server event. Only the visible Home timer calls this.</summary>
+    public void RefreshCalendar()
+    {
+        var day = DateTime.Today;
+        var zone = TimeZoneInfo.Local.Id;
+        if (day == _calendarDay && zone == _calendarZone) return;
+        _calendarDay = day;
+        _calendarZone = zone;
+        RefreshSessions();
+    }
+
     /// <summary>Latest list scroll metrics (from the ListView's ScrollViewer: view, size and extent changes).</summary>
     internal void OnListScrolled(double offset, double viewport, double extent)
     {
@@ -328,7 +351,7 @@ public sealed class OpenCodeHomeView : UserControl
 
     private void MaybeLoadMore()
     {
-        if (_requestedRevision >= 0 || !OpenCodeHomeInfiniteScroll.ShouldLoad(_scroll.Offset, _scroll.Viewport, _scroll.Extent,
+        if (_reconcilingSessions || _openSessionMenus.Count > 0 || _requestedRevision >= 0 || !OpenCodeHomeInfiniteScroll.ShouldLoad(_scroll.Offset, _scroll.Viewport, _scroll.Extent,
             _snapshot.HasMoreSessions, _snapshot.IsLoading, _snapshot.LoadMoreFailed)) return;
         RequestMore();
     }
@@ -378,22 +401,47 @@ public sealed class OpenCodeHomeView : UserControl
         _refreshing = true;
         try
         {
-            _projects.Items.Clear();
-            _projectBadges.Clear();
-            var (allItem, _, allCount) = ProjectItem(AllProjectsTag, "全部项目", null, "\uE8FD");
-            _allProjectsItem = allItem;
-            _allProjectsCount = allCount;
-            SetIdentity(allItem, "OpenCodeHomeAllProjects", "全部项目");
-            _projects.Items.Add(allItem);
+            var existing = _projects.Items.OfType<ListViewItem>().Where(item => item.Tag is OpenCodeHomeProject)
+                .ToDictionary(item => ((OpenCodeHomeProject)item.Tag!).Key);
+            if (_allProjectsItem is null)
+            {
+                var (allItem, _, allCount) = ProjectItem(AllProjectsTag, "全部项目", null, "\uE8FD");
+                _allProjectsItem = allItem;
+                _allProjectsCount = allCount;
+                SetIdentity(allItem, "OpenCodeHomeAllProjects", "全部项目");
+            }
+            var desired = new List<ListViewItem> { _allProjectsItem };
+            var keys = new HashSet<OpenCodeHomeProjectKey>();
             foreach (var project in DistinctProjects())
             {
+                keys.Add(project.Key);
                 var name = ProjectName(project);
-                var (item, ring, count) = ProjectItem(project, name, project.Key.Directory, "\uE8B7");
+                if (!existing.TryGetValue(project.Key, out var item))
+                {
+                    var created = ProjectItem(project, name, project.Key.Directory, "\uE8B7");
+                    item = created.Item;
+                    _projectBadges[project.Key] = (created.Ring, created.Count);
+                }
+                else if (item.Content is Grid grid && grid.Children[1] is StackPanel labels)
+                {
+                    ((TextBlock)labels.Children[0]).Text = name;
+                    if (labels.Children.Count > 1) AppFonts.Apply((TextBlock)labels.Children[1], AppFontSlot.Monospace);
+                }
+                item.Tag = project;
                 AutomationProperties.SetName(item, name + "，" + project.Key.Directory);
                 ToolTipService.SetToolTip(item, project.Key.Directory);
-                _projectBadges[project.Key] = (ring, count);
-                _projects.Items.Add(item);
+                desired.Add(item);
             }
+            foreach (var key in _projectBadges.Keys.Where(key => !keys.Contains(key)).ToArray()) _projectBadges.Remove(key);
+            for (var index = 0; index < desired.Count; index++)
+            {
+                var item = desired[index];
+                var old = _projects.Items.IndexOf(item);
+                if (old == index) continue;
+                if (old >= 0) _projects.Items.RemoveAt(old);
+                _projects.Items.Insert(index, item);
+            }
+            while (_projects.Items.Count > desired.Count) _projects.Items.RemoveAt(_projects.Items.Count - 1);
             _projects.SelectedItem = SelectedItemFor(SelectedProject);
         }
         finally { _refreshing = false; }
@@ -459,7 +507,8 @@ public sealed class OpenCodeHomeView : UserControl
         {
             var own = rows.Where(row => row.Session.Project == key).ToArray();
             count.Text = own.Length == 0 ? string.Empty : own.Length.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            var working = own.Any(row => row.Tone is OpenCodeHomeTone.Working or OpenCodeHomeTone.WorkingNeedsAction);
+            // Questions/protection may own the row's dominant glyph without cancelling its working fact.
+            var working = own.Any(row => row.Session.Status?.Working == true);
             ring.IsActive = working;
             ring.Visibility = working ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -472,8 +521,7 @@ public sealed class OpenCodeHomeView : UserControl
     /// </summary>
     private void RebuildChips()
     {
-        _chips.Items.Clear();
-        _chips.Items.Add(Chip("全部", null));
+        if (_projectMenuOpen) { _projectChipsPending = true; return; }
         var projects = DistinctProjects().ToArray();
         // Keep the narrow filter to one compact row. Every remaining project stays reachable in the native menu.
         var visible = projects.Take(5).ToList();
@@ -483,12 +531,28 @@ public sealed class OpenCodeHomeView : UserControl
             if (visible.Count == 5) visible.RemoveAt(4);
             visible.Add(selected);
         }
-        foreach (var project in visible)
-            _chips.Items.Add(Chip(ProjectName(project), project.Key));
-        // 程序化回填选中项：抑制 SelectionChanged，避免 SelectProject → RebuildChips → 选中 → 再通知 的回环。
         var previous = _refreshing;
         _refreshing = true;
-        try { _chips.SelectedItem = _chips.Items.OfType<SelectorBarItem>().FirstOrDefault(item => Equals(item.Tag, SelectedProject)); }
+        try
+        {
+            var desired = new List<(string Text, OpenCodeHomeProjectKey? Key)> { ("全部", null) };
+            desired.AddRange(visible.Select(project => (ProjectName(project), (OpenCodeHomeProjectKey?)project.Key)));
+            for (var index = 0; index < desired.Count; index++)
+            {
+                var (text, key) = desired[index];
+                var item = _chips.Items.OfType<SelectorBarItem>().FirstOrDefault(item => Equals(item.Tag, key));
+                if (item is null) { item = Chip(text, key); _chips.Items.Insert(index, item); }
+                else
+                {
+                    item.Text = text;
+                    var old = _chips.Items.IndexOf(item);
+                    if (old != index) { _chips.Items.RemoveAt(old); _chips.Items.Insert(index, item); }
+                }
+                AutomationProperties.SetName(item, key is null ? "全部项目" : text);
+            }
+            while (_chips.Items.Count > desired.Count) _chips.Items.RemoveAt(_chips.Items.Count - 1);
+            _chips.SelectedItem = _chips.Items.OfType<SelectorBarItem>().FirstOrDefault(item => Equals(item.Tag, SelectedProject));
+        }
         finally { _refreshing = previous; }
         var overflow = new MenuFlyout();
         foreach (var project in projects.Except(visible))
@@ -502,6 +566,12 @@ public sealed class OpenCodeHomeView : UserControl
         var add = new MenuFlyoutItem { Text = "添加项目", Icon = new FontIcon { Glyph = "\uE710" } };
         add.Click += (_, _) => AddProject?.Invoke(this, Context());
         overflow.Items.Add(add);
+        overflow.Opened += (_, _) => _projectMenuOpen = true;
+        overflow.Closed += (_, _) =>
+        {
+            _projectMenuOpen = false;
+            if (_projectChipsPending) { _projectChipsPending = false; RebuildChips(); }
+        };
         _projectOverflow.Flyout = overflow;
     }
 
@@ -570,13 +640,71 @@ public sealed class OpenCodeHomeView : UserControl
 
     private void RefreshSessions()
     {
+        if (!_reconcilingSessions) PreserveSessionViewport(RefreshSessionsCore);
+    }
+
+    private void PreserveSessionViewport(Action update)
+    {
+        if (_reconcilingSessions) { update(); return; }
+        var focused = XamlRoot is null ? null : FocusManager.GetFocusedElement(XamlRoot) as Control;
+        var focusState = focused?.FocusState ?? FocusState.Unfocused;
+        ListViewItem? anchor = null;
+        var anchorTop = 0d;
+        if (_listScroller is { } scroller)
+            foreach (var item in _sessions.Items.OfType<ListViewItem>().Where(item => item.IsLoaded && item.Tag is OpenCodeHomeSessionRow))
+            {
+                var top = item.TransformToVisual(scroller).TransformPoint(new Windows.Foundation.Point()).Y;
+                if (top + item.ActualHeight <= 0 || top >= scroller.ViewportHeight) continue;
+                anchor = item;
+                anchorTop = top;
+                break;
+            }
+        _reconcilingSessions = true;
+        try
+        {
+            update();
+            _sessions.UpdateLayout();
+            if (anchor is { IsLoaded: true } && _sessions.Items.Contains(anchor) && _listScroller is { } current)
+            {
+                var top = anchor.TransformToVisual(current).TransformPoint(new Windows.Foundation.Point()).Y;
+                var delta = top - anchorTop;
+                if (Math.Abs(delta) > 0.5) current.ChangeView(null, current.VerticalOffset + delta, null, true);
+            }
+            // Moving a native own-container item can clear its keyboard focus. Restore that exact
+            // control only; never focus a different row or take focus from an open popup/search box.
+            var currentFocus = XamlRoot is null ? null : FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+            if (focused is { IsLoaded: true, FocusState: FocusState.Unfocused } && focusState != FocusState.Unfocused
+                && IsSessionFocus(focused) && (currentFocus is null || IsSessionFocus(currentFocus))) focused.Focus(focusState);
+        }
+        finally { _reconcilingSessions = false; }
+    }
+
+    private bool IsSessionFocus(DependencyObject element)
+    {
+        for (DependencyObject? current = element; current is not null; current = VisualTreeHelper.GetParent(current))
+            if (ReferenceEquals(current, _sessions)) return true;
+        return false;
+    }
+
+    private void RefreshSessionsCore()
+    {
         var zone = TimeZoneInfo.Local;
         var rows = OpenCodeHomeProjection.Rows(_snapshot, SelectedProject, _search.Text, DateTimeOffset.Now, zone);
+        if (_openSessionMenus.Count > 0)
+        {
+            // Keep the popup's native owner in place until it closes. Its target metadata and live
+            // indicators still update, and commands validate the latest source/catalog on invocation.
+            foreach (var item in _sessions.Items.OfType<ListViewItem>())
+                if (item.Tag is OpenCodeHomeSessionRow old
+                    && rows.FirstOrDefault(row => SessionKey(row).Equals(SessionKey(old))) is { } row)
+                    SessionItem(row, zone, item);
+            return;
+        }
         // Real deletion/archive leaves the source snapshot; filters and search do not animate as deletions.
         // Reconcile only after the exit, so a concurrent SSE snapshot cannot pull the row out mid-animation.
         if (_removingSessions.Count > 0) return;
         var removed = _allowRowExits && IsLoaded ? _sessions.Items.OfType<ListViewItem>().Where(item => item.Tag is OpenCodeHomeSessionRow old
-            && !_snapshot.Sessions.Any(session => session.Project == old.Session.Project && session.Info.Id == old.Session.Info.Id)).ToArray()
+            && !_snapshot.Sessions.Any(session => session.Project.SourceId == old.Session.Project.SourceId && session.Info.Id == old.Session.Info.Id)).ToArray()
             : Array.Empty<ListViewItem>();
         var exitGeneration = _rowExitGeneration;
         foreach (var item in removed) _removingSessions.Add(item);
@@ -584,9 +712,12 @@ public sealed class OpenCodeHomeView : UserControl
             FluentCode.Motion.ActionFeedback.AnimateOut(item, () =>
             {
                 if (exitGeneration != _rowExitGeneration || !_allowRowExits) return;
-                _sessions.Items.Remove(item);
-                _removingSessions.Remove(item);
-                if (_removingSessions.Count == 0) RefreshSessions();
+                PreserveSessionViewport(() =>
+                {
+                    _sessions.Items.Remove(item);
+                    _removingSessions.Remove(item);
+                });
+                if (_removingSessions.Count == 0) DispatcherQueue.TryEnqueue(RefreshSessions);
             });
         if (removed.Length > 0) return;
         // Reconcile native item containers instead of clearing them on every SSE/status snapshot.
@@ -707,11 +838,16 @@ public sealed class OpenCodeHomeView : UserControl
         return item;
     }
 
-    private static object SessionKey(OpenCodeHomeSessionRow row) => (row.Session.Project, row.Session.Info.Id);
+    private static object SessionKey(OpenCodeHomeSessionRow row) => (row.Session.Project.SourceId, row.Session.Info.Id);
     private static object? ItemKey(ListViewItem item) => item.Tag is OpenCodeHomeSessionRow row ? SessionKey(row) : item.Tag;
 
     private ListViewItem SessionItem(OpenCodeHomeSessionRow row, TimeZoneInfo zone, ListViewItem? item = null)
     {
+        if (item is not null)
+        {
+            UpdateSessionItem(row, zone, item);
+            return item;
+        }
         var grid = new Grid { Tag = row, ColumnSpacing = 12, Padding = new Thickness(0, 2, 0, 2) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -806,6 +942,66 @@ public sealed class OpenCodeHomeView : UserControl
         return item;
     }
 
+    private void UpdateSessionItem(OpenCodeHomeSessionRow row, TimeZoneInfo zone, ListViewItem item)
+    {
+        var grid = (Grid)item.Content!;
+        var badges = (Grid)grid.Children[0];
+        var feedback = (ContentControl)badges.Children[0];
+        var working = row.Tone is OpenCodeHomeTone.Working or OpenCodeHomeTone.WorkingNeedsAction;
+        // Retain the native row grid, labels, unread dot, feedback host and a running ring. Only
+        // switch the indicator control when its kind changes, not on every refreshed DTO/status.
+        if (working && feedback.Content is not ProgressRing)
+            feedback.Content = new ProgressRing { Width = 16, Height = 16 };
+        else if (!working && feedback.Content is not FontIcon)
+            feedback.Content = new FontIcon { FontSize = 14 };
+        var indicator = (FrameworkElement)feedback.Content!;
+        if (indicator is ProgressRing ring)
+        {
+            ring.IsActive = true;
+            OpenCodeToolTheme.Apply(ring, OpenCodeToolTheme.Ring(row.Tone == OpenCodeHomeTone.WorkingNeedsAction
+                ? OpenCodeToolTheme.Caution : OpenCodeToolTheme.Accent));
+        }
+        else if (indicator is FontIcon icon)
+        {
+            icon.Glyph = row.Tone switch
+            {
+                OpenCodeHomeTone.Succeeded => "\uE73E", OpenCodeHomeTone.Failed => "\uEA39",
+                OpenCodeHomeTone.Interrupted => "\uE711", OpenCodeHomeTone.NeedsAction => "\uE7BA",
+                OpenCodeHomeTone.QuestionBlocked => "\uE897", OpenCodeHomeTone.Unread => "\uE8F2", _ => "\uE8A5",
+            };
+            OpenCodeToolTheme.Apply(icon, OpenCodeToolTheme.Icon(row.Tone switch
+            {
+                OpenCodeHomeTone.Succeeded => OpenCodeToolTheme.Success,
+                OpenCodeHomeTone.Failed => OpenCodeToolTheme.Critical,
+                OpenCodeHomeTone.NeedsAction or OpenCodeHomeTone.Interrupted or OpenCodeHomeTone.QuestionBlocked => OpenCodeToolTheme.Caution,
+                _ => OpenCodeToolTheme.TextSecondary,
+            }));
+        }
+        indicator.VerticalAlignment = VerticalAlignment.Center;
+        indicator.HorizontalAlignment = HorizontalAlignment.Center;
+        indicator.Visibility = row.ShowStatusIndicator ? Visibility.Visible : Visibility.Collapsed;
+        var status = ToneLabel(row.Tone) + (row.IsUnread ? "，未读" : row.Session.Status?.CompletedAt is not null ? "，已查看" : string.Empty);
+        AutomationProperties.SetAutomationId(indicator, "OpenCodeHomeStatus");
+        AutomationProperties.SetName(indicator, status);
+        ToolTipService.SetToolTip(indicator, status);
+        var unread = (Border)badges.Children[1];
+        unread.Visibility = row.ShowUnreadIndicator ? Visibility.Visible : Visibility.Collapsed;
+        AutomationProperties.SetName(unread, status);
+        ToolTipService.SetToolTip(unread, status);
+        var title = (TextBlock)grid.Children[1];
+        title.Text = row.Title;
+        title.Style = OpenCodeInteractionUi.TryStyle(row.NeedsAttention ? "BodyStrongTextBlockStyle" : "BodyTextBlockStyle");
+        ((TextBlock)grid.Children[2]).Text = row.ProjectName;
+        var time = (TextBlock)grid.Children[3];
+        time.Text = OpenCodeHomeProjection.TimeLabel(row, zone);
+        OpenCodeToolTheme.Apply(time, OpenCodeToolTheme.Text(row.Tone == OpenCodeHomeTone.QuestionBlocked ? OpenCodeToolTheme.Caution
+            : working ? OpenCodeToolTheme.Accent : OpenCodeToolTheme.TextTertiary, "CaptionTextBlockStyle"));
+        grid.Tag = row;
+        item.Tag = row;
+        AutomationProperties.SetName(item, row.Title + "，" + row.ProjectName + "，" + status);
+        ToolTipService.SetToolTip(item, row.Session.Project.Directory + Environment.NewLine + row.Session.Info.Id);
+    }
+
     // Shared context-menu shape: list 归档此会话; bottom row 重命名 · 复制 ID · 删除 (short cell labels).
     internal void ShowRenameSuccess(string id)
     {
@@ -819,7 +1015,7 @@ public sealed class OpenCodeHomeView : UserControl
     // Fluent order confirmed by the user: edit actions first, destructive delete last (rightmost in the row).
     private FlyoutBase CreateSessionMenu(ListViewItem owner)
     {
-        return OpenCodeContextMenu.Create(_ =>
+        var menu = OpenCodeContextMenu.Create(_ =>
         {
             // Native context flyout does not activate/select the row. Resolve its reconciled current Tag,
             // not a previously captured row or hidden SessionList selection, and make no reads here.
@@ -830,8 +1026,12 @@ public sealed class OpenCodeHomeView : UserControl
                 var enabled = target is not null && CanRequestSessionAction?.Invoke(revision, target, action) == true;
                 return new(label, glyph, () =>
                 {
-                    if (target is not null && CanRequestSessionAction?.Invoke(revision, target, action) == true)
-                        SessionActionRequested?.Invoke(this, new(revision, target, action));
+                    // A cosmetic snapshot revision must not invalidate an open menu. Its exact
+                    // source/project/session identity must still match; use the latest accepted row.
+                    if (target is not null && owner.Tag is OpenCodeHomeSessionRow current
+                        && current.Session.Project == target.Project && current.Session.Info.Id == target.Info.Id
+                        && CanRequestSessionAction?.Invoke(_snapshot.Revision, current.Session, action) == true)
+                        SessionActionRequested?.Invoke(this, new(_snapshot.Revision, current.Session, action));
                 })
                 {
                     Enabled = enabled, AutomationId = "OpenCodeHomeMenu" + action,
@@ -846,6 +1046,9 @@ public sealed class OpenCodeHomeView : UserControl
                 Command(OpenCodeHomeSessionAction.Archive, "归档此会话", "\uE7B8"),
             };
         });
+        menu.Opened += (_, _) => _openSessionMenus.Add(owner);
+        menu.Closed += (_, _) => { _openSessionMenus.Remove(owner); RefreshSessions(); };
+        return menu;
     }
 
     private static string GroupLabel(object key) => key switch

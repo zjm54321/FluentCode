@@ -154,6 +154,11 @@ public sealed partial class OpenCodePage : FrameworkElement
     private void RefreshAgentSelectorDisplay() { }
     private Task RefreshSessionsAsync() => Task.CompletedTask;
     private Task RefreshListedSessionStatusesAsync() => Task.CompletedTask;
+    // Home owns these optional catalog hooks; this fixture isolates permission/composer behavior.
+    partial void OnHomeCatalogEvent(OpenCodeEvent item);
+    partial void OnHomeEventStreamConnected();
+    partial void OnHomeActiveSessionsAccepted(IEnumerable<string> ids);
+    partial void OnHomeSessionBecameInactive(string sessionId);
     private bool IsSelectedBackgroundChildCompletion(OpenCodeEvent item) => false;
     private IReadOnlyList<OpenCodeMessage> MergeMessageHistory() => _latestMessages;
     private IReadOnlyList<OpenCodeMessage> ProjectMessageHistory(IReadOnlyList<OpenCodeMessage> messages) => messages;

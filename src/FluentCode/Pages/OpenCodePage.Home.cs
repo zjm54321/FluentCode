@@ -25,6 +25,7 @@ public sealed partial class OpenCodePage
     private bool _homeQueued;
     private bool _homeCatalogLoading;
     private string? _homeMessage;
+    private string? _homeProjectMessage;
     private string? _homeSessionsMessage;
     private string? _homeDefaultDirectory;
     /// <summary>Cursor whose next-page request last failed (with its list epoch); the view then shows 加载失败 · 重试
@@ -34,6 +35,19 @@ public sealed partial class OpenCodePage
     /// <summary>Sessions whose archive the server accepted (204) in this source; hidden until a re-read carries time.archived.</summary>
     private readonly HashSet<string> _homeArchivedSessions = new(StringComparer.Ordinal);
     private ContentDialog? _homeDialog;
+    private CancellationTokenSource? _homeLiveCancellation;
+    private bool _homeRefreshVisible;
+    private bool _homeRefreshRunning;
+    private Task? _homeRefreshTask;
+    private bool _homeCatchUpPending;
+    private long _homeCatchUpVersion;
+    private int _homeRefreshFailures;
+    private DateTimeOffset _homeRefreshAt = DateTimeOffset.MaxValue;
+    private DateTimeOffset _homeStatusAt = DateTimeOffset.MaxValue;
+    private readonly Dictionary<string, long> _homeDirtySessions = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _homeKnownChildren = new(StringComparer.Ordinal);
+    private bool _homeCatalogPending;
+    private const int HomeMetadataReadsPerPass = 16;
 
     partial void OnSessionCatalogChanged()
     {
@@ -72,20 +86,244 @@ public sealed partial class OpenCodePage
         _homeView.SessionActionRequested += async (_, e) => await RunHomeSessionActionAsync(e.Revision, e.Session, e.Action);
         // Infinite scroll: the view asks near the bottom of the list (or when the first page does not fill it).
         _homeView.LoadMore += async (_, e) => { if (HomeEventCurrent(e.Revision, e.Project)) await LoadMoreHomeSessionsAsync(); };
-        // No refresh button: session create/delete/rename events and live status snapshots already re-project Home.
+        // Native events drive metadata/status changes. Visibility/reconnect repair the volatile
+        // feed's missed interval; foreground-drain inventory has a separate bounded status read.
         _homeView.SetWordmark(_homeWordmark);
         Loaded += (_, _) => { if (_hostWindowVisible) _homeChromeTimer?.Start(); };
         Unloaded += (_, _) => { if (!IsLoaded) _homeChromeTimer?.Stop(); };
         _homeChromeTimer = DispatcherQueue.CreateTimer();
         _homeChromeTimer.Interval = TimeSpan.FromSeconds(1);
-        // Local-state reconciliation only (connection state, already-read server version, settings); never a network poll.
-        _homeChromeTimer.Tick += (_, _) => { if (_homeActive && _hostWindowVisible) RefreshHomeChrome(); };
+        _homeChromeTimer.Tick += HomeChromeTimer_Tick;
     }
 
     private readonly Image _homeWordmark = new() { Height = 30, Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
         HorizontalAlignment = HorizontalAlignment.Left };
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _homeChromeTimer;
     private (string? Version, bool Connected, string? Identity)? _homeChromeShown;
+
+    private void HomeChromeTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
+    {
+        UpdateHomeRefreshVisibility();
+        if (!_homeRefreshVisible) return;
+        RefreshHomeChrome();
+        _homeView.RefreshCalendar(); // Calendar rollovers have no server event.
+        if (_homeCatalogPending) _ = LoadHomeCatalogAsync();
+        StartHomeRefreshIfDue();
+    }
+
+    private bool CanRefreshHome()
+        => _pageActive && _homeActive && _hostWindowVisible && SourceReady && _homeCancellation is not null;
+
+    private void UpdateHomeRefreshVisibility()
+    {
+        var visible = CanRefreshHome();
+        if (visible == _homeRefreshVisible) return;
+        _homeRefreshVisible = visible;
+        _homeLiveCancellation?.Cancel();
+        _homeLiveCancellation?.Dispose();
+        _homeLiveCancellation = null;
+        if (!visible) return;
+        _homeLiveCancellation = CancellationTokenSource.CreateLinkedTokenSource(_homeCancellation!.Token);
+        RequestHomeCatchUp();
+        if (_homeCatalogPending) _ = LoadHomeCatalogAsync();
+    }
+
+    private void RequestHomeCatchUp()
+    {
+        _homeCatchUpPending = true;
+        _homeCatchUpVersion++;
+        _homeRefreshFailures = 0;
+        _homeRefreshAt = DateTimeOffset.UtcNow;
+        _homeStatusAt = _homeRefreshAt;
+        _homeCatalogPending = true;
+        StartHomeRefreshIfDue();
+    }
+
+    private void StartHomeRefreshIfDue()
+    {
+        var now = DateTimeOffset.UtcNow;
+        if (!CanRefreshHome() || _homeLiveCancellation is null || _homeRefreshRunning || _homeRefreshTask is { IsCompleted: false }
+            || (now < _homeRefreshAt && (_homeRefreshFailures > 0 || now < _homeStatusAt))) return;
+        if (!_homeCatchUpPending && _homeDirtySessions.Count == 0)
+        {
+            if (!HomeEventStreamConnected()) _homeCatchUpPending = true; // No replay/event proof: repair metadata too.
+            else if (now < _homeStatusAt) return;
+        }
+        _homeRefreshRunning = true;
+        _homeRefreshTask = RefreshHomeLiveAsync(_homeLiveCancellation);
+    }
+
+    private bool HomeEventStreamConnected()
+        => SourceReady && _eventCts is { IsCancellationRequested: false } && _eventReady?.Task.IsCompletedSuccessfully == true;
+
+    private async Task RefreshHomeLiveAsync(CancellationTokenSource owner)
+    {
+        var source = _source!;
+        var client = _client!;
+        var runtime = _homeRuntimeSource;
+        var generation = _pageGeneration;
+        var sourceGeneration = _sourceGeneration;
+        var catchUpVersion = _homeCatchUpVersion;
+        var ct = owner.Token;
+        bool Current() => !ct.IsCancellationRequested && ReferenceEquals(owner, _homeLiveCancellation)
+            && CanRefreshHome() && generation == _pageGeneration && sourceGeneration == _sourceGeneration && OwnsHome(source, client, runtime);
+        var succeeded = false;
+        try
+        {
+            if (_homeCatchUpPending)
+            {
+                var catalogReads = _sessionCatalogAcceptedReads;
+                await RefreshSessionsAsync();
+                if (!Current()) return;
+                if (_sessionCatalogAcceptedReads == catalogReads) return;
+                // The accepted catalog read already queued one status flight under the common
+                // gate. Join it, including its failure, instead of immediately retrying a fast failure.
+                if (_sessionCatalogStatusFlight is not { } statusFlight || !await statusFlight) return;
+                if (!Current()) return;
+                _homeStatusAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(15);
+                if (_homeCatchUpVersion == catchUpVersion) _homeCatchUpPending = false;
+                foreach (var (id, version) in _homeDirtySessions.ToArray())
+                    if (version <= _sessionCatalogReadVersion && _sessionItems.ContainsKey(id)) _homeDirtySessions.Remove(id);
+            }
+            else if (DateTimeOffset.UtcNow >= _homeStatusAt)
+            {
+                // /api/session/active reports foreground drains, not execution outcomes. There
+                // is no native drain-inventory event, so even a healthy stream cannot replace this
+                // bounded visible-only check. Never infer completion/unread from absence alone.
+                if (!await RefreshListedSessionStatusesAsync() || !Current()) return;
+                _homeStatusAt = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(15);
+            }
+            if (_homeDirtySessions.Count == 0) { succeeded = true; return; }
+            using var flight = await EnterSessionCatalogReadAsync(client, ct);
+            if (flight is null || !Current()) return;
+            var epoch = _sessionListEpoch;
+            foreach (var (id, version) in _homeDirtySessions.Take(HomeMetadataReadsPerPass).ToArray())
+            {
+                if (!Current() || epoch != _sessionListEpoch) return;
+                OpenCodeSessionInfo? info = null;
+                Task<OpenCodeSessionInfo>? pending = null;
+                try
+                {
+                    source.TryExecute(ct, () => { if (Current()) pending = client.GetSessionInfoAsync(id, ct); });
+                    if (pending is null) return;
+                    info = await pending;
+                }
+                catch (OpenCodeApiException error) when (error.StatusCode == 404) { }
+                if (!Current() || epoch != _sessionListEpoch) return;
+                if (_sessionCatalogEventVersions.GetValueOrDefault(id) > version) continue;
+                if (info is not null && IsRootSession(info) && info.Time?.Archived is null)
+                {
+                    _sessionItems[id] = info;
+                    _homeArchivedSessions.Remove(id); // A verified unarchive must replace local accepted archive hiding.
+                }
+                else
+                {
+                    _sessionItems.Remove(id);
+                    if (info?.ParentId is not null) _homeKnownChildren.Add(id);
+                }
+                if (_homeDirtySessions.GetValueOrDefault(id) == version) _homeDirtySessions.Remove(id);
+            }
+            OnSessionCatalogChanged();
+            succeeded = true;
+        }
+        catch (OperationCanceledException) { }
+        catch (OpenCodeException) { } // Keep rows/cursors; read-only retries use the visible timer's backoff.
+        finally
+        {
+            _homeRefreshRunning = false;
+            if (Current())
+            {
+                _homeRefreshFailures = succeeded ? 0 : Math.Min(_homeRefreshFailures + 1, 5);
+                _homeRefreshAt = DateTimeOffset.UtcNow + (succeeded
+                    ? TimeSpan.FromSeconds(_homeDirtySessions.Count > 0 || _homeCatchUpPending ? 1 : 15)
+                    : TimeSpan.FromSeconds(Math.Min(30, 1 << _homeRefreshFailures)));
+            }
+        }
+    }
+
+    partial void OnHomeEventStreamConnected()
+    {
+        RequestHomeCatchUp(); // /api/event is global but volatile: disconnected events are never replayed.
+    }
+
+    partial void OnHomeActiveSessionsAccepted(IEnumerable<string> ids)
+    {
+        foreach (var id in ids)
+            if (!_sessionItems.ContainsKey(id) && !_homeKnownChildren.Contains(id) && !_homeDirtySessions.ContainsKey(id))
+                MarkHomeMetadataDirty(id);
+    }
+
+    partial void OnHomeSessionBecameInactive(string sessionId)
+    {
+        if (_sessionItems.ContainsKey(sessionId)) MarkHomeMetadataDirty(sessionId);
+    }
+
+    private void MarkHomeMetadataDirty(string id)
+    {
+        var version = ++_sessionCatalogEventVersion;
+        _sessionCatalogEventVersions[id] = version;
+        _homeDirtySessions[id] = version;
+        if (_homeRefreshFailures == 0)
+        {
+            var due = DateTimeOffset.UtcNow + TimeSpan.FromMilliseconds(200);
+            if (due < _homeRefreshAt) _homeRefreshAt = due;
+        }
+    }
+
+    private void MarkHomeCatalogDirty()
+    {
+        _homeCatchUpPending = true;
+        _homeCatchUpVersion++;
+        if (_homeRefreshFailures == 0)
+        {
+            var due = DateTimeOffset.UtcNow + TimeSpan.FromMilliseconds(200);
+            if (due < _homeRefreshAt) _homeRefreshAt = due;
+        }
+    }
+
+    partial void OnHomeCatalogEvent(OpenCodeEvent item)
+    {
+        if (item.Type is "project.updated" or "worktree.updated" or "worktree.resolved")
+        {
+            _homeCatalogPending = true;
+            if (CanRefreshHome()) _ = LoadHomeCatalogAsync();
+            return;
+        }
+        if (item.Type == "location.shutdown") { RequestHomeCatchUp(); return; }
+        var metadata = item.Type is "session.created" or "session.forked" or "session.deleted" or "session.renamed"
+            or "session.moved" or "session.metadata.updated" or "session.viewed" or "session.archived" or "session.unarchived"
+            or "session.usage.updated" or "session.execution.started" or "session.execution.succeeded" or "session.execution.failed"
+            or "session.execution.interrupted" or "session.idle" or "session.inbox.delivered" or "session.inbox.enqueued"
+            or "session.inbox.cancelled" or "session.shell.started" or "session.shell.ended";
+        if (item.Type == "session.status" && item.SessionId is { } legacy
+            && item.Data.TryGetProperty("status", out var status) && status.TryGetProperty("type", out var kind))
+        {
+            var running = kind.GetString() is "running" or "busy" or "retry";
+            metadata = !_liveSessionStatuses.TryGetValue(legacy, out var old) || old.Working != running;
+        }
+        if (item.SessionId is not { } id)
+        {
+            if (metadata) MarkHomeCatalogDirty();
+            return;
+        }
+        if (item.Type is "session.created" or "session.forked")
+        {
+            MarkHomeCatalogDirty(); // A fork event may identify its source; re-read the catalog frontier too.
+        }
+        if (_homeKnownChildren.Contains(id)) return;
+        var discovery = !_sessionItems.ContainsKey(id) && !_homeKnownChildren.Contains(id) && !_homeDirtySessions.ContainsKey(id)
+            && (item.Type.StartsWith("session.text.", StringComparison.Ordinal) || item.Type.StartsWith("session.reasoning.", StringComparison.Ordinal)
+                || item.Type.StartsWith("session.tool.", StringComparison.Ordinal) || item.Type == "session.step.started");
+        if (!metadata && !discovery) return;
+        MarkHomeMetadataDirty(id);
+        if (item.Type == "session.deleted")
+        {
+            _sessionItems.Remove(id);
+            _homeArchivedSessions.Remove(id);
+            _homeDirtySessions.Remove(id); // The event is definitive; keep its version fence against older REST.
+            QueueHomeProjection();
+        }
+    }
 
     /// <summary>Right-side Home identity card from real state only: accepted server version, live connection,
     /// and configured connection identity. Directory quick access belongs only to the session right panel.</summary>
@@ -122,9 +360,10 @@ public sealed partial class OpenCodePage
     /// view stops auto-loading until the user retries.</summary>
     private async Task LoadMoreHomeSessionsAsync()
     {
+        if (!CanRefreshHome()) return;
         _homeLoadMoreFailure = null; // Every request (automatic or 重试) is a fresh attempt.
         var cursor = _sessionNextCursor;
-        var started = cursor is not null && !_isLoadingMoreSessions && SourceReady && _pageActive;
+        var started = cursor is not null && !_isLoadingMoreSessions && SourceReady && _pageActive && _hostWindowVisible;
         var generation = _pageGeneration;
         var epoch = _sessionListEpoch;
         try { await LoadMoreSessionsAsync(); }
@@ -158,6 +397,7 @@ public sealed partial class OpenCodePage
         _activeTabSessionId = null;
         DismissSidebarDrawers();
         VisualStateManager.GoToState(this, "HomeLayout", false);
+        RequestHomeCatchUp();
         QueueHomeProjection();
     }
 
@@ -169,7 +409,14 @@ public sealed partial class OpenCodePage
     {
         return HomeEventCurrent(revision, project) && sessionId is { Length: > 0 }
             && _sessionItems.TryGetValue(sessionId, out var info)
-            && info.Id == sessionId && info.ParentId is null && info.Location?.Directory == project.Directory;
+            && info.Id == sessionId && info.ParentId is null && info.Location?.Directory == project.Directory
+            && info.Time?.Archived is null && !_homeArchivedSessions.Contains(sessionId);
+    }
+
+    private void AcceptHomeCatalogRefresh()
+    {
+        foreach (var id in _homeArchivedSessions.ToArray())
+            if (_sessionCatalogEventVersions.GetValueOrDefault(id) <= _sessionCatalogReadVersion) _homeArchivedSessions.Remove(id);
     }
 
     private void CopyHomeSessionId(long revision, OpenCodeHomeProjectKey project, string? sessionId, OpenCodeHomeSessionAction action)
@@ -227,6 +474,23 @@ public sealed partial class OpenCodePage
 
     private void ResetHomeSource()
     {
+        _homeRefreshVisible = false;
+        _homeLiveCancellation?.Cancel();
+        _homeLiveCancellation?.Dispose();
+        _homeLiveCancellation = null;
+        _sessionCatalogStatusFlight = null;
+        _homeCatchUpPending = false;
+        _homeDirtySessions.Clear();
+        _homeKnownChildren.Clear();
+        _homeCatalogPending = false;
+        _homeRefreshAt = DateTimeOffset.MaxValue;
+        _homeStatusAt = DateTimeOffset.MaxValue;
+        if (_pageReleased && _homeChromeTimer is { } timer)
+        {
+            timer.Stop();
+            timer.Tick -= HomeChromeTimer_Tick;
+            _homeChromeTimer = null;
+        }
         _homeView.AllowRowExits(false);
         _homeActionOwner = null;
         _homeCancellation?.Cancel();
@@ -243,6 +507,7 @@ public sealed partial class OpenCodePage
         _homeDefaultDirectory = null;
         _homeCatalogLoading = false;
         _homeMessage = null;
+        _homeProjectMessage = null;
         _homeSessionsMessage = null;
         _homeLoadMoreFailure = null;
         _homeArchivedSessions.Clear();
@@ -253,7 +518,8 @@ public sealed partial class OpenCodePage
     {
         _homeCancellation = CancellationTokenSource.CreateLinkedTokenSource(_pageCts?.Token ?? CancellationToken.None,
             _source!.RevocationToken);
-        _ = LoadHomeCatalogAsync();
+        _homeCatalogPending = true;
+        if (_hostWindowVisible) _ = LoadHomeCatalogAsync();
         if (_homeActive) ShowHomePage();
     }
 
@@ -270,20 +536,29 @@ public sealed partial class OpenCodePage
 
     private async Task LoadHomeCatalogAsync()
     {
-        if (_source is not { } source || _client is not { } client || _homeCancellation is null) return;
+        if (_source is not { } source || _client is not { } client || _homeCancellation is null || !_hostWindowVisible || _homeCatalogLoading) return;
         var runtime = _homeRuntimeSource;
-        var ct = _homeCancellation.Token;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_homeCancellation.Token,
+            _homeActive ? _homeLiveCancellation?.Token ?? CancellationToken.None : CancellationToken.None);
+        var ct = linked.Token;
+        _homeCatalogPending = false;
         _homeCatalogLoading = true;
         QueueHomeProjection();
         try
         {
+            using var flight = await EnterSessionCatalogReadAsync(client, ct);
+            if (flight is null)
+            {
+                if (OwnsHome(source, client, runtime)) _homeCatalogPending = true;
+                return;
+            }
             var location = await client.GetLocationAsync(null, ct);
-            if (!OwnsHome(source, client, runtime)) return;
+            if (!OwnsHome(source, client, runtime) || !_hostWindowVisible || ct.IsCancellationRequested) return;
             _homeDefaultDirectory = location.Directory;
             RememberHomeProject(location.Directory!, location.Project?.Name, location.Project?.Id);
             QueueHomeProjection();
             var settings = _homeSettings.Current ?? await _homeSettings.LoadAsync(ct);
-            if (!OwnsHome(source, client, runtime)) return;
+            if (!OwnsHome(source, client, runtime) || !_hostWindowVisible || ct.IsCancellationRequested) return;
             foreach (var bookmark in OpenCodeProjectBookmarks.ForSource(settings, source.Identity))
                 RememberHomeProject(bookmark.Directory, bookmark.DisplayName, bookmark.ProjectId);
             var catalog = await client.GetProjectsAsync(cancellationToken: ct);
@@ -293,12 +568,12 @@ public sealed partial class OpenCodePage
                 if (project.Canonical is { Length: > 0 } canonical) RememberHomeProject(canonical, project.Name, project.Id);
                 foreach (var sandbox in project.Sandboxes ?? new()) RememberHomeProject(sandbox, null, project.Id);
             }
-            _homeMessage = null;
+            _homeProjectMessage = null;
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException) { if (OwnsHome(source, client, runtime)) _homeCatalogPending = true; }
         catch (Exception)
         {
-            if (OwnsHome(source, client, runtime)) _homeMessage = "部分项目目录未能读取；会话仅显示已加载的数据。";
+            if (OwnsHome(source, client, runtime)) _homeProjectMessage = "部分项目目录未能读取；会话仅显示已加载的数据。";
         }
         finally
         {
@@ -313,6 +588,7 @@ public sealed partial class OpenCodePage
 
     private void QueueHomeProjection()
     {
+        UpdateHomeRefreshVisibility(); // Power's visible/hidden state replay reaches this existing hook.
         CaptureHomeActionRoots();
         if (_homeQueued) return;
         _homeQueued = true;
@@ -320,9 +596,7 @@ public sealed partial class OpenCodePage
     }
 
     private static OpenCodeHomeStatus? CreateHomeStatus(OpenCodeSessionUiState? state, OpenCodeSessionInfo info)
-        => state is null ? null : new OpenCodeHomeStatus(state.Working, state.PendingAction, state.IsUnread,
-            state.Completion?.Outcome ?? info.Outcome) { QuestionPending = state.QuestionPending, MutationProtected = state.MutationProtected,
-                CompletedAt = state.Completion?.IdleWatermark };
+        => OpenCodeHomeProjection.Status(state, info);
 
     private void RefreshHomeProjection()
     {
@@ -341,7 +615,7 @@ public sealed partial class OpenCodePage
                 rows.Add(new(new(_homeRuntimeSource, directory), info, status));
             }
         _homeView.SetSnapshot(new(++_homeRevision, _homeProjects.Values.ToArray(), rows,
-            _homeCatalogLoading || _isLoadingMoreSessions, _homeSessionsMessage ?? _homeMessage, _sessionNextCursor is not null,
+            _homeCatalogLoading || _isLoadingMoreSessions, _homeSessionsMessage ?? _homeMessage ?? _homeProjectMessage, _sessionNextCursor is not null,
             _isLoadingMoreSessions, HomeLoadMoreFailed()));
         RefreshHomeChrome();
     }

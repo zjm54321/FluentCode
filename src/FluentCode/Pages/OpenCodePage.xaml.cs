@@ -645,7 +645,7 @@ public sealed partial class OpenCodePage : Page
 
     private async Task RefreshSessionsAsync()
     {
-        if (!SourceReady || !_pageActive)
+        if (!SourceReady || !_pageActive || !_hostWindowVisible)
         {
             return;
         }
@@ -657,21 +657,44 @@ public sealed partial class OpenCodePage : Page
         }
 
         var generation = _pageGeneration;
-        var ct = _pageCts?.Token ?? CancellationToken.None;
+        var catalogSource = _source;
+        var catalogRevision = _sourceRevision;
+        var catalogSourceGeneration = _sourceGeneration;
+        bool OwnsCatalogRead() => _pageActive && generation == _pageGeneration && ReferenceEquals(client, _client)
+            && catalogSource is { IsRevoked: false } && catalogSource.Revision == catalogRevision
+            && ReferenceEquals(catalogSource, _source) && catalogRevision == _sourceRevision && catalogSourceGeneration == _sourceGeneration;
+        if (_sessionCatalogRefreshTask is { IsCompleted: false } running)
+        {
+            var sameGeneration = _sessionCatalogRefreshGeneration == generation
+                && ReferenceEquals(_sessionCatalogRefreshSource, catalogSource) && ReferenceEquals(_sessionCatalogRefreshClient, client);
+            await running;
+            if (sameGeneration) return;
+            if (!SourceReady || !_hostWindowVisible || !OwnsCatalogRead()) return;
+        }
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _sessionCatalogRefreshTask = completion.Task;
+        _sessionCatalogRefreshGeneration = generation;
+        _sessionCatalogRefreshSource = catalogSource;
+        _sessionCatalogRefreshClient = client;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_pageCts?.Token ?? CancellationToken.None,
+            catalogSource?.RevocationToken ?? CancellationToken.None, _homeActive ? _homeLiveCancellation?.Token ?? CancellationToken.None : CancellationToken.None);
+        var ct = linked.Token;
+        SessionCatalogReadLease? flight = null;
 
         // 刷新开始即递增列表代际并暂停旧分页（隐藏旧游标、保留可见列表）：在途续页响应与该次
         // 刷新的旧首屏响应自此失效；仅当本次新首屏成功后才由 RestartSessionPagination 重建分页。
-        var epoch = BeginSessionRefresh();
+        var epoch = _sessionListEpoch;
         var homeReadAccepted = false;
 
         try
         {
+            flight = await EnterSessionCatalogReadAsync(client, ct);
+            if (flight is null || !OwnsCatalogRead()) return;
+            epoch = BeginSessionRefresh();
             OpenCodeSessionsResponse response;
             try
             {
-                response = await client.ListSessionsAsync(
-                    new OpenCodeSessionListQuery { Order = OpenCodeSessionOrders.Desc, Limit = 50, ParentFilter = OpenCodeSessionParentFilter.Roots },
-                    ct);
+                response = await ReadLoadedSessionDepthAsync(client, ct);
             }
             catch (OperationCanceledException)
             {
@@ -679,7 +702,7 @@ public sealed partial class OpenCodePage : Page
             }
             catch (OpenCodeApiException ex)
             {
-                if (generation == _pageGeneration && epoch == _sessionListEpoch)
+                if (OwnsCatalogRead() && epoch == _sessionListEpoch)
                 {
                     HandleApiException(ex, "会话列表");
                 }
@@ -688,7 +711,7 @@ public sealed partial class OpenCodePage : Page
             }
             catch (OpenCodeTransportException)
             {
-                if (generation == _pageGeneration && epoch == _sessionListEpoch)
+                if (OwnsCatalogRead() && epoch == _sessionListEpoch)
                 {
                     SetConnectionState(ConnectionState.Failed);
                     ShowMessage(InfoBarSeverity.Error, "无法连接 OpenCode 服务", "会话列表加载失败；请确认服务地址与服务状态。");
@@ -698,7 +721,7 @@ public sealed partial class OpenCodePage : Page
             }
             catch (OpenCodeTimeoutException)
             {
-                if (generation == _pageGeneration && epoch == _sessionListEpoch)
+                if (OwnsCatalogRead() && epoch == _sessionListEpoch)
                 {
                     SetConnectionState(ConnectionState.Failed);
                     ShowMessage(InfoBarSeverity.Error, "会话列表超时", "客户端 30 秒内未完成请求。");
@@ -708,7 +731,7 @@ public sealed partial class OpenCodePage : Page
             }
             catch (OpenCodeProtocolException)
             {
-                if (generation == _pageGeneration && epoch == _sessionListEpoch)
+                if (OwnsCatalogRead() && epoch == _sessionListEpoch)
                 {
                     ShowMessage(InfoBarSeverity.Error, "响应不符合契约", "会话列表响应不符合已核实的 V2 契约。");
                 }
@@ -717,7 +740,7 @@ public sealed partial class OpenCodePage : Page
             }
 
             // 并发刷新代际保护：页面/列表代际任一变化即丢弃本次响应，旧响应绝不覆盖新列表。
-            if (generation != _pageGeneration || !_pageActive || epoch != _sessionListEpoch)
+            if (ct.IsCancellationRequested || !OwnsCatalogRead() || epoch != _sessionListEpoch)
             {
                 return;
             }
@@ -726,7 +749,8 @@ public sealed partial class OpenCodePage : Page
 
             homeReadAccepted = true;
             var target = RebuildSessionList(response.Data ?? new List<OpenCodeSessionInfo>());
-            _ = RefreshListedSessionStatusesAsync();
+            AcceptHomeCatalogRefresh();
+            _sessionCatalogStatusFlight = RefreshListedSessionStatusesAsync();
             RefreshSessionStateUi();
             // 新首屏成功：以本次响应的 cursor.next 重建分页；首屏空 data 视为正常结束
             // （即使携带 next 也不进入续页）。
@@ -736,19 +760,28 @@ public sealed partial class OpenCodePage : Page
                 await SwitchToSessionAsync(target);
             }
         }
+        catch (OperationCanceledException) { }
         catch (Exception)
         {
-            if (generation == _pageGeneration && _pageActive && epoch == _sessionListEpoch)
+            if (OwnsCatalogRead() && epoch == _sessionListEpoch)
             {
                 ShowMessage(InfoBarSeverity.Error, "刷新会话失败", "发生未预期错误；请稍后重试。");
             }
         }
         finally
         {
-            // Only the accepted refresh updates the Home projection.
-            if (_pageActive && epoch == _sessionListEpoch)
+            flight?.Dispose();
+            completion.TrySetResult();
+            if (ReferenceEquals(_sessionCatalogRefreshTask, completion.Task))
             {
-                _homeSessionsMessage = homeReadAccepted ? null : "会话列表未能刷新；仅显示之前已加载的会话，可重试刷新。";
+                _sessionCatalogRefreshTask = null;
+                _sessionCatalogRefreshSource = null;
+                _sessionCatalogRefreshClient = null;
+            }
+            // Only the accepted refresh updates the Home projection.
+            if (OwnsCatalogRead() && epoch == _sessionListEpoch)
+            {
+                _homeSessionsMessage = homeReadAccepted ? null : "会话列表暂未更新；已保留列表，稍后自动重试。";
                 QueueHomeProjection();
             }
         }
@@ -764,12 +797,7 @@ public sealed partial class OpenCodePage : Page
     /// <summary>重建会话列表；返回需要切换到（并重新拉取消息）的会话 id（无则 null）。</summary>
     private string? RebuildSessionList(List<OpenCodeSessionInfo> sessions)
     {
-        _sessionItems.Clear();
-        foreach (var session in sessions)
-        {
-            if (IsRootSession(session) && session.Id is { Length: > 0 } id)
-                _sessionItems.TryAdd(id, session);
-        }
+        ApplySessionCatalogRead(sessions);
         OnSessionCatalogChanged();
 
         // A viewed session need not occur in the current catalog page.

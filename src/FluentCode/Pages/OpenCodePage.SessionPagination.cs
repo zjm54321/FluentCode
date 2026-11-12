@@ -1,15 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentCode.Services.OpenCode;
+using FluentCode.Services.Notifications;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace FluentCode.Pages;
 
 /// <summary>
-/// OpenCode 页会话列表分页（“加载更多”）：只追加去重、绝不切换选中；刷新整体重建并重置分页状态。
+/// OpenCode 页会话列表分页：续页只追加去重；重新读取保留已加载深度，所有目录/状态读取共用单航班。
 /// </summary>
 /// <remarks>
 /// <para>
@@ -39,6 +41,111 @@ public sealed partial class OpenCodePage
     partial void OnSessionCatalogChanged();
     /// <summary>续页 limit（与首屏一致；续页只带 cursor + limit，绝不带 order）。</summary>
     private const int SessionPageSize = 50;
+    // First-page/depth reconciliation, keyed Home metadata, foreground status and paging all
+    // acquire this instance-owned gate. A source replacement cancels waiters before they can read.
+    private readonly SemaphoreSlim _sessionCatalogReadGate = new(1, 1);
+    private Task? _sessionCatalogRefreshTask;
+    private Task<bool>? _sessionCatalogStatusFlight;
+    private int _sessionCatalogRefreshGeneration;
+    private OpenCodePageSource? _sessionCatalogRefreshSource;
+    private OpenCodeClient? _sessionCatalogRefreshClient;
+    private long _sessionCatalogAcceptedReads;
+    private long _sessionCatalogEventVersion;
+    private long _sessionCatalogReadVersion;
+    private readonly Dictionary<string, long> _sessionCatalogEventVersions = new(StringComparer.Ordinal);
+
+    private sealed class SessionCatalogReadLease(SemaphoreSlim gate) : IDisposable
+    {
+        public void Dispose() => gate.Release();
+    }
+
+    private async Task<SessionCatalogReadLease?> EnterSessionCatalogReadAsync(OpenCodeClient client, CancellationToken ct)
+    {
+        await _sessionCatalogReadGate.WaitAsync(ct);
+        if (ct.IsCancellationRequested || !_pageActive || !_hostWindowVisible || !SourceReady || !ReferenceEquals(client, _client))
+        {
+            _sessionCatalogReadGate.Release();
+            return null;
+        }
+        return new(_sessionCatalogReadGate);
+    }
+
+    /// <summary>Re-read the already loaded page depth, then verify displaced old roots by exact ID.
+    /// Newly updated/created rows must not evict a previously loaded older row just because it moved
+    /// beyond the refreshed cursor. No full-server scan, message reads or selection side effects.</summary>
+    private async Task<OpenCodeSessionsResponse> ReadLoadedSessionDepthAsync(OpenCodeClient client, CancellationToken ct)
+    {
+        var source = _source;
+        var revision = _sourceRevision;
+        var generation = _sourceGeneration;
+        bool Current() => !ct.IsCancellationRequested && _hostWindowVisible && _pageActive && source is { IsRevoked: false }
+            && ReferenceEquals(source, _source) && ReferenceEquals(client, _client)
+            && source.Revision == revision && revision == _sourceRevision && generation == _sourceGeneration;
+        var retained = _sessionItems.Keys.ToArray();
+        var pages = Math.Max(1, (retained.Length + SessionPageSize - 1) / SessionPageSize);
+        var rows = new Dictionary<string, OpenCodeSessionInfo>(StringComparer.Ordinal);
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        OpenCodeSessionsResponse response = new();
+        string? cursor = null;
+        _sessionCatalogReadVersion = _sessionCatalogEventVersion;
+        for (var page = 0; page < pages; page++)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!Current()) throw new OperationCanceledException(ct);
+            Task<OpenCodeSessionsResponse>? pending = null;
+            source!.TryExecute(ct, () => pending = client.ListSessionsAsync(new()
+            {
+                Order = cursor is null ? OpenCodeSessionOrders.Desc : null,
+                Cursor = cursor, Limit = SessionPageSize, ParentFilter = OpenCodeSessionParentFilter.Roots,
+            }, ct));
+            if (pending is null) throw new OperationCanceledException(ct);
+            response = await pending;
+            foreach (var info in response.Data ?? new())
+                if (IsRootSession(info) && info.Time?.Archived is null) rows[info.Id!] = info;
+            if ((response.Data?.Count ?? 0) == 0) { response = response with { Cursor = null }; break; }
+            var kind = ClassifySessionCursor(response.Cursor?.Next, out var next);
+            if (kind != SessionCursorKind.Valid) break; // RestartSessionPagination owns invalid/missing UI.
+            if (!used.Add(next!)) throw new OpenCodeProtocolException("会话列表重新读取遇到重复游标。");
+            cursor = next;
+        }
+        foreach (var id in retained.Where(id => !rows.ContainsKey(id)))
+        {
+            ct.ThrowIfCancellationRequested();
+            if (!Current()) throw new OperationCanceledException(ct);
+            try
+            {
+                Task<OpenCodeSessionInfo>? pending = null;
+                source!.TryExecute(ct, () => pending = client.GetSessionInfoAsync(id, ct));
+                if (pending is null) throw new OperationCanceledException(ct);
+                var info = await pending;
+                if (IsRootSession(info) && info.Time?.Archived is null) rows[id] = info;
+            }
+            catch (OpenCodeApiException error) when (error.StatusCode == 404) { } // A real deletion, not paging absence.
+        }
+        return response with { Data = rows.Values.ToList() };
+    }
+
+    private void ApplySessionCatalogRead(List<OpenCodeSessionInfo> sessions)
+    {
+        var accepted = new Dictionary<string, OpenCodeSessionInfo>(StringComparer.Ordinal);
+        foreach (var info in sessions)
+        {
+            if (!IsRootSession(info) || info.Time?.Archived is not null) continue;
+            var id = info.Id!;
+            if (_sessionCatalogEventVersions.GetValueOrDefault(id) > _sessionCatalogReadVersion)
+            {
+                // An event that arrived during REST keeps its newer local row (or deletion).
+                // Home's dirty-ID queue will re-read metadata; REST cannot resurrect a tombstone.
+                if (_sessionItems.TryGetValue(id, out var current)) accepted[id] = current;
+            }
+            else accepted.TryAdd(id, info); // Keep the existing first-wins policy for a duplicated catalog ID.
+        }
+        foreach (var (id, info) in _sessionItems)
+            if (_sessionCatalogEventVersions.GetValueOrDefault(id) > _sessionCatalogReadVersion) accepted[id] = info;
+        _sessionItems.Clear();
+        foreach (var (id, info) in accepted) _sessionItems[id] = info;
+        _sessionCatalogAcceptedReads++;
+    }
 
     /// <summary>
     /// 页面侧对 opaque cursor 的防御上限（客户端未定义数值上限）：只做边界防呆，避免异常超长游标
@@ -130,6 +237,13 @@ public sealed partial class OpenCodePage
         _sessionUsedCursors.Clear();
         _sessionNextCursor = null;
         _isLoadingMoreSessions = false;
+        // Event metadata fences belong to the source, not a cosmetic reload. Reset only after the
+        // actual catalog was cleared (source replacement), never while a depth re-read is starting.
+        if (_sessionItems.Count == 0)
+        {
+            _sessionCatalogEventVersions.Clear();
+            _sessionCatalogReadVersion = _sessionCatalogEventVersion;
+        }
     }
 
     /// <summary>
@@ -170,7 +284,7 @@ public sealed partial class OpenCodePage
     /// </summary>
     private async Task LoadMoreSessionsAsync()
     {
-        if (!SourceReady || !_pageActive || _isLoadingMoreSessions)
+        if (!SourceReady || !_pageActive || !_hostWindowVisible || _isLoadingMoreSessions)
         {
             return;
         }
@@ -185,13 +299,24 @@ public sealed partial class OpenCodePage
 
         var generation = _pageGeneration;
         var epoch = _sessionListEpoch;
-        var ct = _pageCts?.Token ?? CancellationToken.None;
+        var source = _source;
+        var revision = _sourceRevision;
+        var sourceGeneration = _sourceGeneration;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_pageCts?.Token ?? CancellationToken.None,
+            source?.RevocationToken ?? CancellationToken.None, _homeActive ? _homeLiveCancellation?.Token ?? CancellationToken.None : CancellationToken.None);
+        var ct = linked.Token;
+        bool CurrentPage() => IsCurrentSessionPage(generation, epoch) && !ct.IsCancellationRequested
+            && ReferenceEquals(source, _source) && ReferenceEquals(client, _client)
+            && revision == _sourceRevision && sourceGeneration == _sourceGeneration;
 
         _isLoadingMoreSessions = true;
         UpdateLoadMoreSessionsUi();
 
         try
         {
+            using var flight = await EnterSessionCatalogReadAsync(client, ct);
+            if (flight is null || !CurrentPage()) return;
+            _sessionCatalogReadVersion = _sessionCatalogEventVersion;
             OpenCodeSessionsResponse response;
             try
             {
@@ -205,7 +330,7 @@ public sealed partial class OpenCodePage
             }
             catch (OpenCodeApiException ex)
             {
-                if (IsCurrentSessionPage(generation, epoch))
+                if (CurrentPage())
                 {
                     if (ex.StatusCode == 400)
                     {
@@ -227,7 +352,7 @@ public sealed partial class OpenCodePage
             }
             catch (OpenCodeTransportException)
             {
-                if (IsCurrentSessionPage(generation, epoch))
+                if (CurrentPage())
                 {
                     SetConnectionState(ConnectionState.Failed);
                     ShowMessage(InfoBarSeverity.Error, "无法连接 OpenCode 服务", "加载更多会话失败；可稍后重试。");
@@ -237,7 +362,7 @@ public sealed partial class OpenCodePage
             }
             catch (OpenCodeTimeoutException)
             {
-                if (IsCurrentSessionPage(generation, epoch))
+                if (CurrentPage())
                 {
                     SetConnectionState(ConnectionState.Failed);
                     ShowMessage(InfoBarSeverity.Error, "加载更多会话超时", "客户端 30 秒内未完成请求；可稍后重试。");
@@ -247,7 +372,7 @@ public sealed partial class OpenCodePage
             }
             catch (OpenCodeProtocolException)
             {
-                if (IsCurrentSessionPage(generation, epoch))
+                if (CurrentPage())
                 {
                     ShowMessage(InfoBarSeverity.Error, "响应不符合契约", "会话列表续页响应不符合已核实的 V2 契约；已停止本次加载。");
                 }
@@ -255,7 +380,7 @@ public sealed partial class OpenCodePage
                 return;
             }
 
-            if (!IsCurrentSessionPage(generation, epoch))
+            if (!CurrentPage())
             {
                 return;
             }
@@ -310,7 +435,7 @@ public sealed partial class OpenCodePage
         }
         catch (Exception)
         {
-            if (IsCurrentSessionPage(generation, epoch))
+            if (CurrentPage())
             {
                 ShowMessage(InfoBarSeverity.Error, "加载更多会话失败", "发生未预期错误；请稍后重试。");
             }
@@ -330,7 +455,8 @@ public sealed partial class OpenCodePage
     {
         foreach (var session in sessions)
         {
-            if (!IsRootSession(session) || session?.Id is not { Length: > 0 } id || _sessionItems.ContainsKey(id))
+            if (!IsRootSession(session) || session?.Id is not { Length: > 0 } id || _sessionItems.ContainsKey(id)
+                || _sessionCatalogEventVersions.GetValueOrDefault(id) > _sessionCatalogReadVersion || session.Time?.Archived is not null)
             {
                 continue;
             }

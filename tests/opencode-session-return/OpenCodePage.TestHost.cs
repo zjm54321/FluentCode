@@ -145,6 +145,11 @@ namespace FluentCode.Pages
         private CancellationTokenSource? _pageCts, _sessionCts;
         private bool _sessionMissing;
         private readonly Dictionary<string, OpenCodeSessionInfo> _sessionItems = new(StringComparer.Ordinal);
+        // The real RebuildSessionList delegates to the source-linked catalog acceptance fence.
+        private long _sessionCatalogReadVersion = 0;
+        private long _sessionCatalogAcceptedReads;
+        private readonly Dictionary<string, long> _sessionCatalogEventVersions = new(StringComparer.Ordinal);
+        internal long CatalogAcceptedReads => _sessionCatalogAcceptedReads;
         private readonly OpenCodeConversationView _conversationView = new();
         private readonly ReturnHostScroll MessageScroll = new();
         private readonly Border _ackRoot = new();

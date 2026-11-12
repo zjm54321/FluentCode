@@ -41,7 +41,7 @@ internal static partial class Program
             Check(action == OpenCodeHomeSessionAction.Delete
                 ? page.TestHomeRootTitle("ses_root") is null && page.DeletedBindings == 1 && page.Bindings == 1 && page.RemovedTabs == 1
                 : action == OpenCodeHomeSessionAction.Archive
-                    ? page.TestHomeRootTitle("ses_root") == "actual root title" && page.DeletedBindings == 0 && backend.Archived
+                    ? page.TestHomeRootTitle("ses_root") is null && page.DeletedBindings == 0 && backend.Archived
                     : page.TestHomeRootTitle("ses_root") == "confirmed new title" && page.DeletedBindings == 0,
                 "only accepted delete invalidates its normal binding; only refreshed server metadata publishes rename; archive sends only archived:true");
             Check(!page.TestHomeBusy && !await page.TestHomeComposerProtected("ses_root"),
@@ -138,7 +138,7 @@ internal static partial class Program
                 return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
             if (path == "/api/session") { ListReads++; return Json("{\"data\":[" + (_deleted ? "" : Info) + "],\"cursor\":{}}"); }
-            if (path == "/api/session/ses_root") return Json("{\"data\":" + Info + "}");
+            if (path == "/api/session/ses_root") return _deleted ? new(HttpStatusCode.NotFound) : Json("{\"data\":" + Info + "}");
             if (path.EndsWith("/message")) return Json("{\"data\":[{\"id\":\"msg_idle\",\"type\":\"idle\",\"time\":{\"created\":3},\"outcome\":\"succeeded\"}],\"cursor\":{}}");
             if (path == "/api/session/active") return Json("{\"data\":{}}");
             if (path.EndsWith("/permission") || path.EndsWith("/form") || path.EndsWith("/inbox")) return Json("{\"data\":[]}");
@@ -299,12 +299,19 @@ internal static partial class Program
         return Task.CompletedTask;
     }
 
-    private static async Task<int> Main()
+    private static async Task<int> Main(string[] args)
     {
         try
         {
+            if (args.Contains("--base-home"))
+            {
+                await HomeBaseCounterexamples();
+                return 0;
+            }
             foreach (var (name, run) in new (string, Func<Task>)[]
             {
+                ("Home native/global metadata, loaded depth, visible/reconnect repair, shared flight and backoff", () => HomeRefreshRegressions()),
+                ("Home native row/ring/grid identity, viewport/focus, open menu, project ring and calendar", () => { HomeViewRefreshRegressions(); return Task.CompletedTask; }),
                 ("PF2 independent refresh reads share one round-trip; unknown/canceled display snapshots stay fenced", ParallelRefreshReads),
                 ("PF2 workflow events survive handoff; stream identity/gap/boundary checks retain fallback", WorkflowEventCoverage),
                 ("warm direct/Home first real text body applies with state AND messages held", BindingFirstBodyWithoutNetworkWait),
