@@ -41,8 +41,8 @@ internal sealed partial class NativeUiRenderer
             case "RadioGroup":
                 var radioPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var radioVisual = new Visual(radioPanel);
                 RadioButtons? radios = null; Segmented? pills = null; string radioSignature = ""; var cardStyle = false;
-                // The `cards` variant paints each tile from the checked state the host owns, so it is repainted after a
-                // real selection change rather than relying on a re-render to do it.
+                // The `cards` variant paints each tile from the checked state the host owns, so every selection change
+                // repaints it, including a move between options that share a value.
                 void StyleCards()
                 {
                     if (!cardStyle || radios is null) return;
@@ -92,15 +92,17 @@ internal sealed partial class NativeUiRenderer
                             host.Loaded += (_, _) => FitTiles();
                             // The commit point is unchanged: a new selection writes the field immediately. The host also
                             // re-asserts its own index while it loads, and that echo carries the value already applied
-                            // above, so it is recognised and dropped instead of re-rendering the card inside a layout pass.
+                            // above, so the field write is skipped without skipping the checked-state repaint.
                             host.SelectionChanged += (_, _) =>
                             {
-                                if (radioVisual.Disposed || host.SelectedIndex < 0) return;
+                                if (radioVisual.Disposed) return;
                                 var current = Choices(radioVisual.Model);
-                                if (host.SelectedIndex >= current.Length) return;
-                                var value = current[host.SelectedIndex].Value;
-                                if (value == NativeUiValues.Text(Field(radioVisual, key, "value", label))) return;
-                                SetField(radioVisual, key, "value", label, value);
+                                if (host.SelectedIndex >= 0 && host.SelectedIndex < current.Length)
+                                {
+                                    var value = current[host.SelectedIndex].Value;
+                                    if (value != NativeUiValues.Text(Field(radioVisual, key, "value", label)))
+                                        SetField(radioVisual, key, "value", label, value);
+                                }
                                 if (!radioVisual.Disposed) StyleCards();
                             };
                             radios = host; radioPanel.Children.Add(host); FitTiles();

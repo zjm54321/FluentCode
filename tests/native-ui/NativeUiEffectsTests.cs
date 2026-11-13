@@ -211,10 +211,10 @@ internal static class NativeUiEffectsTests
         require(radio.Contains("host.Items.Add(new RadioButton { Content = tileLabel, Tag = choice.Value });", StringComparison.Ordinal)
             && radio.Contains("var tileLabel = new StackPanel { Spacing = NativeUiTheme.Gap(1) };", StringComparison.Ordinal),
             "The items stay RadioButton with their label and description, so the cards style is unchanged");
-        require(radio.Contains("if (host.SelectedIndex >= current.Length) return;", StringComparison.Ordinal)
-            && radio.Contains("if (value == NativeUiValues.Text(Field(radioVisual, key, \"value\", label))) return;", StringComparison.Ordinal)
-            && radio.Contains("SetField(radioVisual, key, \"value\", label, value);", StringComparison.Ordinal),
-            "A new selection commits its value at the same moment, and the host's own echo of the applied value is dropped instead of re-rendering the card");
+        var radioChange = Slice(radio, "host.SelectionChanged += (_, _) =>", "radios = host;");
+        require(radioChange.Contains("if (host.SelectedIndex >= 0 && host.SelectedIndex < current.Length)", StringComparison.Ordinal)
+            && Regex.IsMatch(radioChange, @"if \(value != NativeUiValues.Text\(Field\(radioVisual, key, ""value"", label\)\)\)\s+SetField\(radioVisual, key, ""value"", label, value\);"),
+            "A valid selection commits only a changed field value, so the host's applied-value echo does not re-render the card");
         require(radio.Contains("if (label.Length > 0) host.Header = NativeUiComponentTheme.Text(label);", StringComparison.Ordinal),
             "The group label is the host header, so the group keeps its UIA name");
         require(radio.Contains("pills = new Segmented { SelectionMode = ListViewSelectionMode.Single };", StringComparison.Ordinal),
@@ -224,9 +224,10 @@ internal static class NativeUiEffectsTests
             && radio.Contains("host.Loaded += (_, _) => FitTiles();", StringComparison.Ordinal)
             && radio.Contains("radios = host; radioPanel.Children.Add(host); FitTiles();", StringComparison.Ordinal),
             "A card tile keeps filling the group's width, and it follows a narrower card instead of only growing");
-        require(radio.Contains("if (!radioVisual.Disposed) StyleCards();", StringComparison.Ordinal)
+        require(Regex.IsMatch(radioChange, @"SetField\(radioVisual, key, ""value"", label, value\);\s*\}\s*if \(!radioVisual.Disposed\) StyleCards\(\);")
+            && !radioChange.Contains("if (value ==", StringComparison.Ordinal)
             && radio.Contains("foreach (var tile in radios.Items.OfType<RadioButton>()) NativeUiTheme.RadioCard(tile);", StringComparison.Ordinal),
-            "The cards style is repainted on a real selection change, from the state the host owns");
+            "Every selection change repaints the checked-state cards, even when options share a value or selection is cleared");
     }
 
     /// <summary>The text between two case labels of one renderer file.</summary>
