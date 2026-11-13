@@ -34,7 +34,8 @@ internal sealed partial class NativeUiRenderer
         var element = new MediaPlayerElement { AreTransportControlsEnabled = true, AutoPlay = false, TransportControls = transport, Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Stretch };
         element.SetMediaPlayer(player); var status = NativeUiComponentTheme.Text("点击后加载到卡片；不会自动播放。", true);
         // No full-window control: Windows App SDK 2.6.5 compiles IsFullWindow handling out
-        // (upstream-winui/MPE__winui3_release_2.6.5.cpp:257-263, 370-383; DISABLE_FULL_WINDOW).
+        // (#if false // DISABLE_FULL_WINDOW): https://github.com/microsoft/microsoft-ui-xaml,
+        // branch winui3/release/2.6.5, src/dxaml/xcp/dxaml/lib/MediaPlayerElement_partial.cpp:257-263, 370-383.
         var panel = new StackPanel { Spacing = 8, Children = { title, url, load, element, status } }; var visual = new Visual(panel);
         var gate = new NativeUiLoadGate(); CancellationTokenSource? pending = null; InMemoryRandomAccessStream? stream = null; MediaSource? media = null; var version = 0;
         void Stop()
