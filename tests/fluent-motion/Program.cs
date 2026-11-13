@@ -367,6 +367,8 @@ internal static class Program
             "OpenCodeBrowserFloatingPillChromeStyle", "OpenCodeBrowserToolToggleStyle", "OpenCodeBrowserPreviewTableHeaderTemplate" })
             Check(app.Contains($"x:Key=\"{key}\""), $"STATIC published contract key exists: {key}");
 
+        FloatingNotices(repo, app);
+
         // ---- the package addition is the only package change (PLAN-v2 §3(1), §3 risk boundary) ----
         var csproj = Read("FluentCode.csproj");
         Check(csproj.Contains("CommunityToolkit.WinUI.Animations\" Version=\"8.2.251219\""), "STATIC Toolkit Animations is pinned at the agreed 8.2.251219");
@@ -374,5 +376,49 @@ internal static class Program
         var lock_ = Read("packages.lock.json");
         Check(lock_.Contains("\"CommunityToolkit.WinUI.Animations\"") && lock_.Contains("\"resolved\": \"8.2.251219\""),
             "STATIC the lock file records the added package");
+    }
+
+    // Session-page notices float over the content. They must never go back into a layout row above the timeline,
+    // where opening or closing one pushes the conversation, the composer or Home down.
+    private static void FloatingNotices(string repo, string app)
+    {
+        var page = System.Xml.Linq.XDocument.Load(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.xaml"));
+        System.Xml.Linq.XElement? Named(string name) => page.Descendants()
+            .SingleOrDefault(e => e.Attributes().Any(a => a.Name.LocalName == "Name" && a.Value == name));
+        string? Attr(System.Xml.Linq.XElement? element, string name) => (string?)element?.Attribute(name);
+
+        var layer = Named("NoticeLayer");
+        var root = Named("PageRoot");
+        Check(layer is not null && layer.Parent == root && Attr(root, "RowDefinitions") == "Auto,*"
+            && Attr(layer, "Grid.Row") == "1" && Attr(layer, "VerticalAlignment") == "Top",
+            "STATIC notices: NoticeLayer overlays the page's star row, top-aligned");
+        Check(layer is not null && layer.Attribute("Background") is null && Attr(layer, "Canvas.ZIndex") == "1"
+            && layer.ElementsBeforeSelf().Any(e => e == Named("SessionTabs"))
+            && layer.ElementsAfterSelf().Any(e => e == Named("SessionPane")),
+            "STATIC notices: the layer has no background (input passes through), sits above the page and follows the tab strip in tab order");
+        foreach (var name in new[] { "SshConnectionAlert", "PermissionBar", "MessageBar", "SessionStateHint" })
+        {
+            var notice = Named(name);
+            var surface = Named(name + "Surface");
+            Check(notice is not null && surface is not null && notice.Parent == surface
+                && surface.Ancestors().Contains(layer) && Attr(surface, "Visibility") == "Collapsed"
+                && (Attr(surface, "Style") ?? "").Contains("OpenCodeFloatingNotice"),
+                $"STATIC notices: {name} keeps its name and floats on an opaque surface inside NoticeLayer");
+            Check(notice is not null && !notice.Ancestors().Any(a => a == Named("SessionLayoutRoot") || a == Named("WorkspaceGrid")),
+                $"STATIC notices: {name} is not inside the session layout rows");
+        }
+        Check(!(Named("SessionLayoutRoot")?.Descendants().Any(e => e.Name.LocalName == "InfoBar") ?? true),
+            "STATIC notices: no InfoBar is declared in the session layout");
+        Check(app.Contains("x:Key=\"OpenCodeFloatingNoticeSurfaceStyle\"") && app.Contains("x:Key=\"OpenCodeFloatingNoticePillStyle\""),
+            "STATIC notices: shared surface styles are published in App.xaml");
+        var notices = StripComments(File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Notices.cs")));
+        Check(notices.Contains("RegisterPropertyChangedCallback(InfoBar.IsOpenProperty, OnNoticeSourceChanged)")
+            && notices.Contains("WatchNoticeBar(MessageBar)") && notices.Contains("WatchNoticeBar(PermissionBar)")
+            && notices.Contains("WatchNoticeBar(SshConnectionAlert)"),
+            "STATIC notices: the layer observes the bars, so direct writers and ShowMessage keep working");
+        var pageCode = StripComments(File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.xaml.cs")));
+        Check(pageCode.Contains("private void ShowMessage(InfoBarSeverity severity, string title, string message)")
+            && pageCode.Contains("InitializeNotices();"),
+            "STATIC notices: ShowMessage keeps its signature and the layer is wired once in the constructor");
     }
 }

@@ -149,6 +149,78 @@
         </TabView>
 
         <!-- ============================================================
+             提示浮层：盖在内容区上方居中，不占布局行，出现 / 变化 / 关闭都不会推动时间线、输入区或首页。
+             声明在标签栏之后（Tab 顺序：标签栏 → 提示 → 页面），用 Canvas.ZIndex 盖在会话区与浏览器 / 终端浮层之上。
+             浮层自身没有 Background：提示以外的区域，鼠标和键盘照常落到页面。
+             固定顺序：SSH 安全提示 → 权限 → 消息 → 状态未知。逻辑见 OpenCodePage.Notices.cs。
+             ============================================================ -->
+        <Grid x:Name="NoticeLayer" Grid.Row="1" Canvas.ZIndex="1"
+              VerticalAlignment="Top" MaxWidth="784"
+              AutomationProperties.AutomationId="OpenCodeNoticeLayer">
+            <!-- 四周留白给阴影（ScrollViewer 会裁掉视口外的阴影）；可见宽度仍是 760。 -->
+            <ScrollViewer x:Name="NoticeScroll"
+                          HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollMode="Auto" VerticalScrollBarVisibility="Auto"
+                          IsTabStop="False">
+                <StackPanel x:Name="NoticeStack" Spacing="8" Padding="12,8,12,20">
+                    <Border x:Name="SshConnectionAlertSurface" Visibility="Collapsed" Translation="0,0,32"
+                            Style="{StaticResource OpenCodeFloatingNoticeSurfaceStyle}">
+                        <Border.Shadow>
+                            <ThemeShadow />
+                        </Border.Shadow>
+                        <!-- SSH 安全提示（主机密钥变化 / 监听警告）：首页与会话页都能看到。 -->
+                        <InfoBar
+                            x:Name="SshConnectionAlert"
+                            Visibility="Collapsed"
+                            Severity="Warning"
+                            IsOpen="False"
+                            IsClosable="True"
+                            AutomationProperties.AutomationId="OpenCodeSshConnectionAlert" />
+                    </Border>
+                    <Border x:Name="PermissionBarSurface" Visibility="Collapsed" Translation="0,0,32"
+                            Style="{StaticResource OpenCodeFloatingNoticeSurfaceStyle}">
+                        <Border.Shadow>
+                            <ThemeShadow />
+                        </Border.Shadow>
+                        <InfoBar
+                            x:Name="PermissionBar"
+                            Severity="Warning"
+                            IsOpen="False"
+                            IsClosable="True"
+                            AutomationProperties.AutomationId="OpenCodePermissionBar" />
+                    </Border>
+                    <Border x:Name="MessageBarSurface" Visibility="Collapsed" Translation="0,0,32"
+                            Style="{StaticResource OpenCodeFloatingNoticeSurfaceStyle}">
+                        <Border.Shadow>
+                            <ThemeShadow />
+                        </Border.Shadow>
+                        <InfoBar
+                            x:Name="MessageBar"
+                            Severity="Informational"
+                            IsOpen="False"
+                            IsClosable="True"
+                            AutomationProperties.AutomationId="OpenCodeMessageBar" />
+                    </Border>
+                    <!-- 状态未知：小号胶囊，不抢视线；持续状态仍由标签提示和连接按钮表示。 -->
+                    <Border x:Name="SessionStateHintSurface" Visibility="Collapsed" Translation="0,0,16"
+                            Style="{StaticResource OpenCodeFloatingNoticePillStyle}">
+                        <Border.Shadow>
+                            <ThemeShadow />
+                        </Border.Shadow>
+                        <TextBlock
+                            x:Name="SessionStateHint"
+                            Visibility="Collapsed"
+                            TextWrapping="Wrap"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            AutomationProperties.LiveSetting="Polite"
+                            AutomationProperties.AutomationId="OpenCodeSessionStateHint" />
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- ============================================================
              Row 1：内容区。不设 Background，直接透出窗口桌面亚克力（BG1）。
              ============================================================ -->
         <!-- FluentCode：内容层 = 原 NavigationView 内容层颜色（LayerFillColorDefaultBrush），贴边铺满，无描边、无圆角、无外边距；
@@ -303,21 +375,11 @@
                             </Grid>
                         </SplitView.Pane>
 
-                        <Grid RowDefinitions="Auto,*">
-                            <!-- SSH 安全提示（主机密钥变化 / 监听警告）：放在会话布局与首页之外，首页与会话页都能看到；
-                                 左右 16 与会话区内边距对齐，下方间距由会话区顶部 8 提供。关闭时不占空间。 -->
-                            <InfoBar
-                                x:Name="SshConnectionAlert"
-                                Grid.Row="0"
-                                Margin="16,8,16,0"
-                                Visibility="Collapsed"
-                                Severity="Warning"
-                                IsOpen="False"
-                                IsClosable="True"
-                                AutomationProperties.AutomationId="OpenCodeSshConnectionAlert" />
-                            <!-- 会话布局根：状态行 / 进度 / 提示条 / 时间线 / 交互区 / 排队条 / 输入区（+ 新标签页列表行） -->
+                        <Grid>
+                            <!-- 提示（SSH 安全提示、权限、消息、状态未知）都在页面级浮层 NoticeLayer 里，不占这里的布局行。 -->
+                            <!-- 会话布局根：状态行 /（空）/（空）/ 时间线 / 交互区 / 排队条 / 输入区（+ 新标签页列表行） -->
                             <!-- S2: replies own their card surfaces; the reading host exposes page acrylic. -->
-                            <Grid x:Name="ConversationSurface" Grid.Row="1">
+                            <Grid x:Name="ConversationSurface">
                             <Grid x:Name="SessionLayoutRoot" Padding="16,8,16,16">
                                 <Grid.RowDefinitions>
                                     <RowDefinition x:Name="SessionStatusRow" Height="Auto" />
@@ -331,32 +393,8 @@
                                     <RowDefinition x:Name="NewSessionBottomRow" Height="0" />
                                 </Grid.RowDefinitions>
 
-                                <!-- Row 1 会话状态说明（F6：横向工作进度线已移除，工作状态由标签栏着色工作环表示） -->
-                                <StackPanel x:Name="SessionStatusHints" Grid.Row="1" Spacing="4">
-                                    <TextBlock
-                                        x:Name="SessionStateHint"
-                                        Visibility="Collapsed"
-                                        TextWrapping="Wrap"
-                                        Style="{ThemeResource CaptionTextBlockStyle}"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        AutomationProperties.AutomationId="OpenCodeSessionStateHint" />
-                                </StackPanel>
-
-                                <!-- Row 2 提示条（按需） -->
-                                <StackPanel Grid.Row="2" Spacing="8" Margin="0,4,0,0">
-                                    <InfoBar
-                                        x:Name="PermissionBar"
-                                        Severity="Warning"
-                                        IsOpen="False"
-                                        IsClosable="True"
-                                        AutomationProperties.AutomationId="OpenCodePermissionBar" />
-                                    <InfoBar
-                                        x:Name="MessageBar"
-                                        Severity="Informational"
-                                        IsOpen="False"
-                                        IsClosable="True"
-                                        AutomationProperties.AutomationId="OpenCodeMessageBar" />
-                                </StackPanel>
+                                <!-- Rows 1–2 stay declared but empty: the state hint and the notice bars float in NoticeLayer,
+                                     so showing or closing one never moves the timeline. Row numbers below are unchanged. -->
 
                                 <!-- Row 3 时间线（居中，最大宽度见 OpenCodeTimelineMaxWidth）；新标签页布局时换为标题区 -->
                                 <!-- SB1: scrolling covers the whole center area. The ScrollView's native scrollbar is shifted

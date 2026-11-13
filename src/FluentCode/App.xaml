@@ -116,6 +116,21 @@
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
             </Style>
+            <!-- 会话页浮动提示的底面：不透明，盖住下面的内容（InfoBar 的信息色底是半透明的）。
+                 InfoBar 自己的严重度底色和描边叠在上面，所以这里不再描边。 -->
+            <Style x:Key="OpenCodeFloatingNoticeSurfaceStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorQuarternaryBrush}" />
+                <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+            </Style>
+            <!-- “状态未知”胶囊：同一底面，居中、小号。 -->
+            <Style x:Key="OpenCodeFloatingNoticePillStyle" TargetType="Border"
+                   BasedOn="{StaticResource OpenCodeFloatingNoticeSurfaceStyle}">
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="Padding" Value="12,5,12,6" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+            </Style>
             <Style x:Key="DockCardFlyoutPresenterStyle" TargetType="FlyoutPresenter"
                    BasedOn="{StaticResource DefaultFlyoutPresenterStyle}">
                 <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
