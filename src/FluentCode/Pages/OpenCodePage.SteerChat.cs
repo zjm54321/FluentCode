@@ -11,12 +11,25 @@ public sealed partial class OpenCodePage
     private MessageHistoryRead? _steerReceiptBinding;
     private readonly Dictionary<string, OpenCodeInboxItem> _steerReceipts = new(StringComparer.Ordinal);
     private readonly HashSet<string> _steerReceiptsSeenInInbox = new(StringComparer.Ordinal);
+    // Local admission proves ownership even before/after pending-ack reconciliation; it never proves pending state.
+    private readonly HashSet<string> _ownedInboxReceipts = new(StringComparer.Ordinal);
 
     private void ClearSteerReceipts()
     {
         _steerReceiptBinding = null;
         _steerReceipts.Clear();
         _steerReceiptsSeenInInbox.Clear();
+        _ownedInboxReceipts.Clear();
+    }
+
+    private bool OwnsAdmittedInboxItem(string inboxId)
+        => _steerReceiptBinding is { } binding && IsCurrentMessageHistoryRead(binding) && _ownedInboxReceipts.Contains(inboxId);
+
+    private void ForgetInboxReceipt(string inboxId)
+    {
+        _steerReceipts.Remove(inboxId);
+        _steerReceiptsSeenInInbox.Remove(inboxId);
+        _ownedInboxReceipts.Remove(inboxId);
     }
 
     // Called by the real durable admission publisher, after the existing operation/source checks.
@@ -25,9 +38,12 @@ public sealed partial class OpenCodePage
     {
         if (!_pageActive || !SourceReady || _client is not { } client || _selectedSessionId != sessionId
             || receipt.SessionId != sessionId || receipt.Type != OpenCodeInboxItemTypes.User
-            || receipt.Delivery != OpenCodeDeliveryModes.Steer || receipt.Id is not { Length: > 0 } id) return;
+            || receipt.Delivery is not (OpenCodeDeliveryModes.Steer or OpenCodeDeliveryModes.Queue)
+            || receipt.Id is not { Length: > 0 } id) return;
         if (_steerReceiptBinding is { } old && !IsCurrentMessageHistoryRead(old)) ClearSteerReceipts();
         _steerReceiptBinding = CaptureMessageHistoryRead(client, sessionId);
+        _ownedInboxReceipts.Add(id);
+        if (receipt.Delivery != OpenCodeDeliveryModes.Steer) return; // Queue receipts provide ownership only, not a chat projection.
         _steerReceipts[id] = new OpenCodeInboxItem
         {
             Id = id, SessionId = receipt.SessionId, Time = receipt.Time, Type = receipt.Type, Delivery = receipt.Delivery,
@@ -44,6 +60,7 @@ public sealed partial class OpenCodePage
             return accepted;
         }
         var result = accepted?.ToList() ?? new List<OpenCodeInboxItem>();
+        _ownedInboxReceipts.RemoveWhere(_conversationView.ContainsRenderedMessage);
         var byId = new HashSet<string>(result.Where(item => item.Id is not null).Select(item => item.Id!), StringComparer.Ordinal);
         foreach (var pair in _steerReceipts.ToArray())
         {

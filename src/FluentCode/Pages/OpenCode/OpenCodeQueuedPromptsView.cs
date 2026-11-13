@@ -51,7 +51,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
     internal event EventHandler<OpenCodePendingDeliveryRequest>? DeliveryChangeRequested;
     internal event EventHandler? BusyChanged;
     internal void RequestWithdraw(string id) { if (!_withdrawBusy) WithdrawRequested?.Invoke(this, id); }
-    internal void RequestDeliveryChange(OpenCodePendingDeliveryRequest request) { if (!_withdrawBusy) DeliveryChangeRequested?.Invoke(this, request); }
+    internal void RequestDeliveryChange(OpenCodePendingDeliveryRequest request) => DeliveryChangeRequested?.Invoke(this, request);
     internal static bool IsSteerUser(OpenCodeInboxItem item)
         => item.Type == OpenCodeInboxItemTypes.User && item.Delivery == OpenCodeDeliveryModes.Steer;
 
@@ -240,7 +240,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         if (changeable)
         {
             var change = new Button { Content = "改为插入当前回合", IsEnabled = !_withdrawBusy };
-            change.Click += (_, _) => { if (!_withdrawBusy) DeliveryChangeRequested?.Invoke(this, new(id, OpenCodeDeliveryModes.Steer)); };
+            change.Click += (_, _) => RequestDeliveryChange(new(id, OpenCodeDeliveryModes.Steer));
             AutomationProperties.SetAutomationId(change, "OpenCodePendingDelivery." + id);
             AutomationProperties.SetName(change, "修改投递方式：" + DescribeDelivery(delivery));
             _deliveryButtons.Add(change);

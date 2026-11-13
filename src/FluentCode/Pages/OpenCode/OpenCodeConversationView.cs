@@ -619,6 +619,9 @@ public sealed class OpenCodeConversationView : StackPanel
         internal readonly StackPanel Content = new() { Spacing = 4 };
         internal readonly OpenCodeRichTextPresenter Presenter = new();
         internal readonly OpenCodeUserAttachmentsView Attachments = new();
+        internal readonly StackPanel Layout = new() { Spacing = 4 };
+        internal readonly StackPanel Actions = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
+        internal readonly Button DeliveryButton = new() { Content = "改为排队", VerticalAlignment = VerticalAlignment.Center };
         internal string Signature = string.Empty;
         internal JsonElement? RenderedPayload;
     }
@@ -655,7 +658,19 @@ public sealed class OpenCodeConversationView : StackPanel
                     row = new SteerRow { Item = item };
                     row.Content.Children.Add(row.Presenter.Element);
                     var bubble = new OpenCodeUserBubbleView(row.Content, delivered: false, attachments: row.Attachments.Element);
-                    row.Element.Content = bubble.Element;
+                    row.Layout.Children.Add(bubble.Element);
+                    row.Actions.Children.Add(OpenCodeInteractionUi.StyledText("插入当前回合", OpenCodeInteractionUi.CaptionSubtleStyleKey));
+                    row.Actions.Children.Add(row.DeliveryButton);
+                    row.Layout.Children.Add(row.Actions); // Outside the bubble's two-line text clip, including for long messages.
+                    row.Element.Content = row.Layout;
+                    var actionRow = row;
+                    row.DeliveryButton.Click += (_, _) => RequestSteerDeliveryChange(actionRow);
+                    AutomationProperties.SetAutomationId(row.DeliveryButton, "OpenCodeAdmittedSteerQueue." + id);
+                    OpenCodeTouchInput.WireReveal(row.Element, visible =>
+                    {
+                        actionRow.DeliveryButton.Opacity = visible ? 1 : 0;
+                        actionRow.DeliveryButton.IsHitTestVisible = visible;
+                    });
                     AutomationProperties.SetAutomationId(row.Element, "OpenCodeAdmittedSteer." + id);
                     _steerRows[id] = row;
                 }
@@ -677,6 +692,11 @@ public sealed class OpenCodeConversationView : StackPanel
     public void SetPendingSteerBusy(bool busy)
     {
         _steerBusy = busy; // Read when a steer menu opens and re-checked when its action runs.
+        foreach (var row in _steerRows.Values)
+        {
+            row.DeliveryButton.IsEnabled = !busy;
+            ToolTipService.SetToolTip(row.DeliveryButton, busy ? "正在处理待投递消息" : "当前回合结束后发送");
+        }
     }
 
     private bool CurrentSteer(SteerRow row) => !_steerBusy && row.Item.SessionId == _steerSession
@@ -688,6 +708,9 @@ public sealed class OpenCodeConversationView : StackPanel
         var item = row.Item;
         var withdraw = _canWithdrawSteer?.Invoke(item) == true;
         var change = _canChangeSteerDelivery?.Invoke(item) == true;
+        row.DeliveryButton.Visibility = change ? Visibility.Visible : Visibility.Collapsed;
+        row.DeliveryButton.IsEnabled = !_steerBusy;
+        AutomationProperties.SetName(row.DeliveryButton, "改为排队：" + (OpenCodeQueuedPromptsView.ReadText(item.Payload) ?? "附件消息"));
         var signature = withdraw + "|" + change;
         var samePayload = row.RenderedPayload is { } previous && item.Payload is { } current
             ? JsonElement.DeepEquals(previous, current) : row.RenderedPayload is null && item.Payload is null;
@@ -732,14 +755,18 @@ public sealed class OpenCodeConversationView : StackPanel
             var id = row.Item.Id;
             yield return new("改为排队", "\uE8FD", () =>
             {
-                if (CurrentSteer(row) && _canChangeSteerDelivery?.Invoke(row.Item) == true)
-                    PendingSteerDeliveryChangeRequested?.Invoke(this, new(row.Item.Id!, OpenCodeDeliveryModes.Queue));
+                RequestSteerDeliveryChange(row);
             }) { Enabled = CurrentSteer(row) && _canChangeSteerDelivery?.Invoke(row.Item) == true, AutomationId = "OpenCodeAdmittedSteerDelivery." + id };
             yield return new("撤回", "\uE7A7", () =>
             {
                 if (CurrentSteer(row) && _canWithdrawSteer?.Invoke(row.Item) == true) PendingSteerWithdrawRequested?.Invoke(this, row.Item.Id!);
             }) { Enabled = CurrentSteer(row) && _canWithdrawSteer?.Invoke(row.Item) == true, AutomationId = "OpenCodeAdmittedSteerWithdraw." + id };
         }
+    }
+
+    private void RequestSteerDeliveryChange(SteerRow row)
+    {
+        if (CurrentSteer(row)) PendingSteerDeliveryChangeRequested?.Invoke(this, new(row.Item.Id!, OpenCodeDeliveryModes.Queue));
     }
 
     private void ReconcileSteerRows()

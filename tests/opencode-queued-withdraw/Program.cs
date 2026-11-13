@@ -12,7 +12,7 @@ using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
 using FluentCode.Services.Notifications;
 
-internal static class Program
+internal static partial class Program
 {
     private const string Session = "ses_q1";
     private const string Inbox = "msg_q1";
@@ -29,7 +29,8 @@ internal static class Program
         await NotWithdrawable();
         JudgeDeliveryCoverage();
         await RevocationAndBindingFences();
-        Console.WriteLine($"PASS 9 queued-withdraw groups; {checks} assertions; fake HTTP only; never re-sends.");
+        await PendingDeliveryRegressions();
+        Console.WriteLine($"PASS queued-withdraw and pending-delivery groups; {checks} assertions; fake HTTP only; never re-sends.");
         return 0;
     }
 
@@ -242,7 +243,7 @@ internal static class Program
 
     // ---------------------------------------------------------------- fake server
 
-    private sealed record Item(string Id, string Type, string Payload, double Created);
+    private sealed record Item(string Id, string Type, string Payload, double Created, string Delivery = "queue");
 
     private static Item UserItem(string id, string text, double created, string? extra = null)
         => new(id, "user", "{\"text\":" + System.Text.Json.JsonSerializer.Serialize(text) + (extra is null ? "" : "," + extra) + "}", created);
@@ -262,9 +263,12 @@ internal static class Program
         public List<string?> Bodies { get; } = new();
         public List<string?> Auth { get; } = new();
         public HttpStatusCode DeleteStatus { get; init; } = HttpStatusCode.NoContent;
+        public HttpStatusCode PatchStatus { get; init; } = HttpStatusCode.NoContent;
+        public bool PatchChangesDelivery { get; init; } = true;
         public bool DeleteRemoves { get; init; } = true;
         public Action<FakeServer>? OnDelete { get; set; }
         public Action<FakeServer>? OnInboxRead { get; set; }
+        public Action<FakeServer>? OnPatch { get; set; }
         public string CursorJson { get; init; } = "\"cursor\":{\"previous\":null,\"next\":null}";
         public Func<string, bool> Fail { get; init; } = _ => false;
         public Func<string, bool> Hang { get; init; } = _ => false;
@@ -298,11 +302,22 @@ internal static class Program
                 return new HttpResponseMessage(DeleteStatus);
             }
 
-            if (request.Method == HttpMethod.Patch) return new HttpResponseMessage(HttpStatusCode.NoContent);
+            if (request.Method == HttpMethod.Patch)
+            {
+                var id = request.RequestUri.AbsolutePath.Split('/').Last();
+                var index = Inbox.FindIndex(i => i.Id == id);
+                if (PatchStatus == HttpStatusCode.NoContent && PatchChangesDelivery && index >= 0)
+                {
+                    using var body = System.Text.Json.JsonDocument.Parse(Bodies[^1]!);
+                    Inbox[index] = Inbox[index] with { Delivery = body.RootElement.GetProperty("delivery").GetString()! };
+                }
+                OnPatch?.Invoke(this);
+                return new HttpResponseMessage(PatchStatus);
+            }
             if (call.EndsWith("/inbox"))
             {
                 var items = Inbox.Select(i => "{\"id\":\"" + i.Id + "\",\"sessionID\":\"" + Session + "\",\"type\":\"" + i.Type
-                    + "\",\"delivery\":\"queue\",\"time\":{\"created\":" + i.Created + "},\"payload\":" + i.Payload + "}");
+                    + "\",\"delivery\":\"" + i.Delivery + "\",\"time\":{\"created\":" + i.Created + "},\"payload\":" + i.Payload + "}");
                 var response = Json("{\"data\":[" + string.Join(",", items) + "]}");
                 OnInboxRead?.Invoke(this);
                 return response;

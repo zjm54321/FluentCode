@@ -1,6 +1,6 @@
 # Headless only: installed .NET 10 SDK/reference packs, no restore, no new packages, no UI, no live server.
 # Fake HttpMessageHandler only. Production sources compile read-only: the full OpenCode client/DTOs (wildcard),
-# the real Services.Notifications types they depend on, and the WinUI-free withdrawal flow.
+# the real Services.Notifications types, withdrawal flow, pending-delivery page handlers and view controls.
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $dotnet = (Get-Command dotnet.exe).Source
@@ -20,6 +20,27 @@ $arguments += Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" |
     $arguments += '"' + (Join-Path "$repo/src/FluentCode/Services/Notifications" $_) + '"'
 }
 $arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages/OpenCode" 'OpenCodeQueuedPromptWithdrawal.cs') + '"'
+$arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages/OpenCode" 'OpenCodeQueuedPromptsView.cs') + '"'
+$arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages/OpenCode" 'OpenCodeTouchInput.cs') + '"'
+$arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages" 'OpenCodePage.ComposerDelivery.cs') + '"'
+$arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages" 'OpenCodePage.SteerChat.cs') + '"'
+# Extract complete verbatim members/regions; controls and unrelated page services are explicit inert boundaries.
+$overlay = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCodePage.ComposerOverlays.cs")
+$update = [regex]::Match($overlay, '(?ms)^    private void UpdateQueuedPrompts\(\).*?^    \}\r?$')
+$withdraw = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCodePage.QueuedWithdraw.cs")
+$ownership = [regex]::Match($withdraw, '(?ms)^    private bool CanWithdrawQueued\(.*?(?=^    private async void QueuedPromptsView_WithdrawRequested)')
+if (!$update.Success -or !$ownership.Success) { throw 'Missing actual pending-list/ownership members.' }
+$pageMembers = Join-Path $output 'PendingDelivery.PageMembers.cs'
+"using System; using System.Linq; using FluentCode.Pages.OpenCode; using FluentCode.Services.OpenCode; using Microsoft.UI.Xaml; namespace FluentCode.Pages; public sealed partial class OpenCodePage {`n" + $update.Value + "`n" + $ownership.Value + "`n}" | Set-Content -Encoding UTF8 $pageMembers
+$arguments += '"' + $pageMembers + '"'
+$conversation = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCode/OpenCodeConversationView.cs")
+$steer = [regex]::Match($conversation, '(?ms)^    private sealed class SteerRow.*?(?=^    // Not a Button/detail source:)')
+if (!$steer.Success) { throw 'Missing actual pending-steer view region.' }
+$steerMembers = Join-Path $output 'PendingDelivery.SteerMembers.cs'
+"using System; using System.Collections.Generic; using System.Globalization; using System.Linq; using System.Text.Json; using FluentCode.Services.OpenCode; using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Automation; using Microsoft.UI.Xaml.Controls; namespace FluentCode.Pages.OpenCode; public sealed partial class OpenCodeConversationView {`n" + $steer.Value + "`n}" | Set-Content -Encoding UTF8 $steerMembers
+$arguments += '"' + $steerMembers + '"'
+$arguments += '"' + (Join-Path $PSScriptRoot 'PendingDelivery.TestHost.cs') + '"'
+$arguments += '"' + (Join-Path $PSScriptRoot 'PendingDeliveryTests.cs') + '"'
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile

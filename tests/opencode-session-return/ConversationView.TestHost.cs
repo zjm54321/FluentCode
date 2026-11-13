@@ -24,6 +24,13 @@ namespace FluentCode.Pages.OpenCode
         }
     }
     internal partial class OpenCodeToolDetailPopup { internal static FrameworkElement? RetainedAnchor => null; }
+    // Inert reveal boundary for the pending-steer 改为排队 button: actions stay revealed, no pointer/focus wiring.
+    // The real OpenCodeTouchInput is exercised by tests/opencode-queued-withdraw.
+    internal static class OpenCodeTouchInput
+    {
+        internal static void WireReveal(Microsoft.UI.Xaml.UIElement host, Action<bool> apply) => apply(true);
+    }
+
     internal static class ConversationViewTestProbe
     {
         // A class rather than a record: default ToString must not dump captured input fields.
@@ -512,6 +519,7 @@ namespace Microsoft.UI.Xaml
         public Microsoft.UI.Xaml.Media.RectangleGeometry? Clip { get; set; }
         public Visibility Visibility { get; set; }
         public double Opacity { get; set; } = 1;
+        public bool IsHitTestVisible { get; set; } = true; // pending-steer reveal: inert property, no hit testing here
         internal UIElement? Parent { get; set; }
         internal string AutomationId { get; set; } = string.Empty;
         internal string AutomationName { get; set; } = string.Empty;

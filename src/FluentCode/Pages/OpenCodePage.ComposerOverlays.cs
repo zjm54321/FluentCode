@@ -141,19 +141,19 @@ public sealed partial class OpenCodePage
     /// <summary>排队条：当前会话的服务端 inbox，包括其他客户端排入的消息；撤回权限仍单独判定。</summary>
     private void UpdateQueuedPrompts()
     {
-        var show = _pageActive
-            && _queuedInbox is { Count: > 0 }
+        var hasSnapshot = _pageActive
+            && _queuedInbox is not null
             && _selectedSessionId is { } selected
             && string.Equals(_queuedInboxSessionId, selected, System.StringComparison.Ordinal);
-        ReconcilePendingDeliveryUpdates(show ? _queuedInbox : null);
+        ReconcilePendingDeliveryUpdates(hasSnapshot ? _queuedInbox : null);
         // Keep the accepted snapshot intact for ownership/PATCH/withdrawal reconciliation; partition only the UI.
-        var accepted = show ? _queuedInbox!.Where(item => item.SessionId == _selectedSessionId).ToArray() : null;
+        var accepted = hasSnapshot ? _queuedInbox!.Where(item => item.SessionId == _selectedSessionId).ToArray() : null;
         var steer = ProjectSteerReceipts(accepted);
         _conversationView.ApplyAdmittedSteer(_pageActive && SourceReady ? _selectedSessionId : null, steer, CanWithdrawQueued, CanUpdatePendingDelivery);
         _conversationView.SetPendingSteerBusy(_queuedPromptsView.IsWithdrawBusy);
         _queuedPromptsView.Apply(accepted, CanWithdrawQueued, CanUpdatePendingDelivery);
         QueuedPromptsHost.Visibility = _queuedPromptsView.HasItems ? Visibility.Visible : Visibility.Collapsed;
-        if (!show)
+        if (!hasSnapshot)
         {
             _queuedInbox = null;
             _queuedInboxSessionId = null;
