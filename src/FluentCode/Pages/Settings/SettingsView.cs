@@ -363,7 +363,8 @@ public sealed partial class SettingsView : UserControl
         SettingsCards.Override(_navigation, "NavigationViewDefaultPaneBackground", transparent, includeHighContrast: false);
 
         // 窗格标题（原来手写的“设置”标题）：高对比度下用系统窗口文字色，随主题变化。
-        _navigation.PaneHeader = SettingsCards.Styled(new TextBlock { Text = "设置", Margin = new Thickness(28, 16, 0, 4) }, "SubtitleTextBlockStyle");
+        // 左缘 16 与下面分类图标的左缘对齐（标题、图标同一条线，文字另一条）；下方留 12，标题统领整个列表而不是贴在第一项上。
+        _navigation.PaneHeader = SettingsCards.Styled(new TextBlock { Text = "设置", Margin = new Thickness(16, 16, 0, 12) }, "SubtitleTextBlockStyle");
 
         for (int index = 0; index < _categories.Count; index++)
         {
@@ -399,7 +400,10 @@ public sealed partial class SettingsView : UserControl
                 new Microsoft.UI.Xaml.Media.Animation.ContentThemeTransition { VerticalOffset = 12 },
             });
 
-        var right = new StackPanel();
+        // 页首的 20 与页尾的 32 留白放在被滚动的面板上，随内容一起滚动：在页首 / 滚到底时才出现，
+        // 其余时候内容一直铺到标签栏下缘和窗口下缘。
+        // 不能放进 ScrollViewer.Padding：那是视口四周的固定留边，会在窗口上下各留一条永远空白的带子，把行切掉。
+        var right = new StackPanel { Padding = new Thickness(0, 20, 0, 32) };
         right.Children.Add(_categoryTitle);
         right.Children.Add(_statusBar);
         right.Children.Add(_confirmPanel);
@@ -420,7 +424,7 @@ public sealed partial class SettingsView : UserControl
         {
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Padding = new Thickness(8, 20, 28, 32),
+            Padding = new Thickness(8, 0, 28, 0),
             Content = LeftAlignedColumn(right, 1000),
         };
         _navigation.Content = _categoryScroll;
@@ -475,8 +479,9 @@ public sealed partial class SettingsView : UserControl
     }
 
     /// <summary>
-    /// 构建内联确认区：原生 <see cref="InfoBar"/> 承载标题/说明，主操作放 <see cref="InfoBar.ActionButton"/>，
-    /// 其余按钮（次操作 / 取消）放 <see cref="InfoBar.Content"/>，与提示条成一体而非在下面另起一排浮动按钮。
+    /// 构建内联确认区：原生 <see cref="InfoBar"/> 承载标题/说明；同一个决定的全部按钮（主操作 · 次操作 · 取消）
+    /// 排成一行放在 <see cref="InfoBar.Content"/> 里，顺序即阅读顺序和 Tab 顺序，与提示条成一体。
+    /// 不用 <see cref="InfoBar.ActionButton"/>：控件会把它放到说明行末尾（或换行到说明下方），与其余按钮分在两处。
     /// 支持二态（主 + 取消）与三态（主 + 次 + 取消）确认。仍是非模态：不出对话框、不遮挡、无嵌套对话框限制。
     /// </summary>
     private StackPanel BuildConfirmPanel()
@@ -491,7 +496,6 @@ public sealed partial class SettingsView : UserControl
         _confirmPrimaryButton = new Button();
         _confirmPrimaryButton.Click += OnConfirmPrimaryClick;
         AutomationProperties.SetAutomationId(_confirmPrimaryButton, "SettingsConfirmPrimary");
-        _confirmBar.ActionButton = _confirmPrimaryButton;
 
         _confirmSecondaryButton = new Button { Visibility = Visibility.Collapsed };
         _confirmSecondaryButton.Click += OnConfirmSecondaryClick;
@@ -501,7 +505,9 @@ public sealed partial class SettingsView : UserControl
         _confirmCancelButton.Click += OnConfirmCancelClick;
         AutomationProperties.SetAutomationId(_confirmCancelButton, "SettingsConfirmCancel");
 
-        var buttonRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        // 内容区在说明文字下方、与文字左缘对齐；模板不给内容区留底边距，这里补 16，按钮不贴提示条下缘。
+        var buttonRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 0, 0, 16) };
+        buttonRow.Children.Add(_confirmPrimaryButton);
         buttonRow.Children.Add(_confirmSecondaryButton);
         buttonRow.Children.Add(_confirmCancelButton);
         _confirmBar.Content = buttonRow;

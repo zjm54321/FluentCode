@@ -44,7 +44,7 @@ internal static class SettingsCards
     /// <summary>一张设置卡片：图标 · 标题 / 说明 · 右侧控件。</summary>
     internal static SettingsCard Card(string glyph, string header, string? description, FrameworkElement? control, string? automationId = null)
     {
-        var card = new SettingsCard { Header = header, HeaderIcon = Icon(glyph), Content = control };
+        var card = new SettingsCard { Header = header, HeaderIcon = Icon(glyph), Content = Slotted(control) };
         if (!string.IsNullOrEmpty(description)) card.Description = description;
         AutomationProperties.SetName(card, header);
         if (automationId is not null) AutomationProperties.SetAutomationId(card, automationId);
@@ -70,7 +70,7 @@ internal static class SettingsCards
     {
         var expander = new SettingsExpander { Header = header, HeaderIcon = Icon(glyph) };
         if (!string.IsNullOrEmpty(description)) expander.Description = description;
-        if (headerControl is not null) expander.Content = headerControl;
+        if (headerControl is not null) expander.Content = Slotted(headerControl);
         foreach (var row in rows) expander.Items.Add(row);
         return expander;
     }
@@ -147,16 +147,64 @@ internal static class SettingsCards
     /// <summary>卡片下方、不在卡片内的附加内容（如密钥状态与清除选项），与上方卡片的标题文字对齐。</summary>
     internal static Border Indented(UIElement content) => new() { Padding = new Thickness(TextIndent, 8, 0, 8), Child = content };
 
+    /// <summary>
+    /// 卡片右侧控件的标准宽度：有地方时正好 <paramref name="width"/>，地方不够时收窄到卡片实际给的宽度。
+    /// 这里只记下“最多这么宽”并让控件横向铺满；真正的取宽在 <see cref="SettingsControlSlot"/> 里，
+    /// 由 <c>Card</c> / <c>Expander</c> 在放进卡片时套上。
+    /// 不能写死 <c>Width</c>：卡片窄于 476 时工具包模板把控件换到标题下方那一列，那一列可能不足 280，写死的控件右缘和箭头就被切掉。
+    /// </summary>
     internal static T Sized<T>(T control, double width = ControlWidth) where T : FrameworkElement
     {
-        control.Width = width;
+        control.MaxWidth = width;
+        control.HorizontalAlignment = HorizontalAlignment.Stretch;
         return control;
     }
+
+    /// <summary>经 <see cref="Sized{T}"/> 标过宽度的控件套一层 <see cref="SettingsControlSlot"/>；其余控件原样返回。</summary>
+    [return: System.Diagnostics.CodeAnalysis.NotNullIfNotNull(nameof(control))]
+    private static FrameworkElement? Slotted(FrameworkElement? control)
+        => control is not null && double.IsNaN(control.Width) && !double.IsInfinity(control.MaxWidth)
+            ? new SettingsControlSlot(control, control.MaxWidth)
+            : control;
 
     private static FontIcon Icon(string glyph) => new() { Glyph = glyph };
 
     /// <summary>说明行占位：作为 Description 常驻（模板只按 null 折叠说明区），文字为空时自身折叠、不占高度。</summary>
     private static TextBlock Note() => new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
+}
+
+/// <summary>
+/// 卡片右侧控件的位置：宽度取“标准宽度”和“卡片给的宽度”中较小的一个，控件铺满这个宽度。
+/// 宽卡片里控件在模板的自适应列中（量宽时不设上限），得到完整的标准宽度；
+/// 窄卡片里控件换到标题下方的那一列，得到这一列的宽度，右缘和下拉箭头留在卡片内。
+/// </summary>
+internal sealed partial class SettingsControlSlot : Panel
+{
+    private readonly double _width;
+
+    internal SettingsControlSlot(FrameworkElement control, double width)
+    {
+        _width = width;
+        Children.Add(control);
+    }
+
+    /// <summary>标准宽度与可用宽度取小（可用宽度为无穷大时即标准宽度）。</summary>
+    internal static double Fit(double width, double available) => Math.Min(width, available);
+
+    protected override Windows.Foundation.Size MeasureOverride(Windows.Foundation.Size availableSize)
+    {
+        UIElement control = Children[0];
+        if (control.Visibility == Visibility.Collapsed) return new Windows.Foundation.Size(0, 0);
+        double width = Fit(_width, availableSize.Width);
+        control.Measure(new Windows.Foundation.Size(width, availableSize.Height));
+        return new Windows.Foundation.Size(width, control.DesiredSize.Height);
+    }
+
+    protected override Windows.Foundation.Size ArrangeOverride(Windows.Foundation.Size finalSize)
+    {
+        Children[0].Arrange(new Windows.Foundation.Rect(0, 0, finalSize.Width, finalSize.Height));
+        return finalSize;
+    }
 }
 
 /// <summary>
@@ -177,7 +225,7 @@ internal sealed class SettingsFontBox
     internal SettingsFontBox(string automationId, string name, bool monospaceOnly)
     {
         _monospaceOnly = monospaceOnly;
-        _combo = new ComboBox { IsEditable = true, IsTextSearchEnabled = true, Width = SettingsCards.ControlWidth, PlaceholderText = DefaultText };
+        _combo = SettingsCards.Sized(new ComboBox { IsEditable = true, IsTextSearchEnabled = true, PlaceholderText = DefaultText });
         AutomationProperties.SetAutomationId(_combo, automationId);
         AutomationProperties.SetName(_combo, name);
         _combo.Items.Add(DefaultText);

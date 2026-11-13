@@ -86,7 +86,7 @@ FluentCode 支持运行时深浅主题即时切换，无需重启应用。
 - **随状态变化的说明**：`Card(..., out note, ...)` / `Expander(..., out note, ...)` 返回说明 `TextBlock`，`SettingsCards.SetNote(note, 文字)` 为空时折叠。
 - **整块表单**（如账号与连接）改用与其余分类同一套行：`SettingsCards.Row(图标, 标题, 内容)` 把表单作为整行卡片内容承载，不再手工套一层 `Border` 卡片外框（B06 迁移后 `SettingsCards.Panel` 与 `AppSettingsCardStyle` 已删除）。
 - 画刷、悬停 / 禁用态与高对比度全部来自工具包模板的 ThemeResource，切换主题即时生效；卡片的 `AutomationProperties.Name` 取标题，未命名的右侧控件也会以标题作为无障碍名称。
-- 组标题为 BodyStrong；卡片间距 4 DIP，组间距 28 DIP；右侧下拉框 / 输入框统一 280 DIP 宽（`SettingsCards.Sized`）。
+- 组标题为 BodyStrong；卡片间距 4 DIP，组间距 28 DIP；右侧下拉框 / 输入框最宽 280 DIP（`SettingsCards.Sized`）：卡片给得下时正好 280，窄卡片里控件换到标题下方后随那一列收窄，右缘和箭头留在卡片内。
 
 ### 5.4 会话页浮动提示（NoticeLayer）
 会话页的提示盖在内容上方，不占布局行：提示出现、变化或关闭时，时间线、输入区和首页都不移动。
