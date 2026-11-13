@@ -115,11 +115,13 @@ internal static class ContinuationTests
             else { if (failure == "enhanced400") await f.Page.File(); f.Page.Text("submit"); }
             f.Mutation = _ => failure == "disconnect" ? Task.FromException<HttpResponseMessage>(new HttpRequestException("synthetic"))
                 : Task.FromResult(new HttpResponseMessage(failure == "command204" ? HttpStatusCode.NoContent : HttpStatusCode.BadRequest));
+            // The command acknowledgement is in-place feedback (a38fac1), not a banner. Clear what an earlier test left.
+            FluentCode.Motion.ActionFeedback.LastSuccessAnnouncement = null;
             await f.Page.Send();
             using (var lease = await OpenCodeInteractionGate.Shared.EnterAsync(f.Source.Identity, "ses_test"))
                 Check(lease.GetSessionControlProtection() is not null && lease.GetComposerSubmissionProtection() is null, "command204/generic4xx/unknown retain honest rollback protection separately");
             Check(f.Http.Posts == 1 && f.Page.HistoryNeedsState && f.Page.Receipts == 0 && f.Page.Working == 0, "unresolved effects reset history, no fabricated receipt/Working");
-            if (failure == "command204") Check(f.Page.Messages.Any(m => m.Contains("204")) && f.Page.Messages.Any(m => m.Contains("撤回影响")), "command identity retained alongside unresolved rollback evidence");
+            if (failure == "command204") Check(FluentCode.Motion.ActionFeedback.LastSuccessAnnouncement is { } acknowledgement && acknowledgement.Contains("命令回调") && f.Page.Messages.Any(m => m.Contains("撤回影响")), "command identity retained alongside unresolved rollback evidence");
             f.Page.Discard(); f.Page.Text("must not retry"); await f.Page.Send(); Check(f.Http.Posts == 1, "retained control protection cannot be bypassed by another Send");
         }
     }
