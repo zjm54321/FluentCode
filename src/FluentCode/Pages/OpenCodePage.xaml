@@ -158,7 +158,7 @@
               VerticalAlignment="Top" MaxWidth="784"
               AutomationProperties.AutomationId="OpenCodeNoticeLayer">
             <!-- 四周留白给阴影（ScrollViewer 会裁掉视口外的阴影）；可见宽度仍是 760。 -->
-            <ScrollViewer x:Name="NoticeScroll"
+            <ScrollViewer x:Name="NoticeScroll" Background="{x:Null}"
                           HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollMode="Auto" VerticalScrollBarVisibility="Auto"
                           IsTabStop="False">

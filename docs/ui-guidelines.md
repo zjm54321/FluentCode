@@ -88,6 +88,18 @@ FluentCode 支持运行时深浅主题即时切换，无需重启应用。
 - 画刷、悬停 / 禁用态与高对比度全部来自工具包模板的 ThemeResource，切换主题即时生效；卡片的 `AutomationProperties.Name` 取标题，未命名的右侧控件也会以标题作为无障碍名称。
 - 组标题为 BodyStrong；卡片间距 4 DIP，组间距 28 DIP；右侧下拉框 / 输入框统一 280 DIP 宽（`SettingsCards.Sized`）。
 
+### 5.4 会话页浮动提示（NoticeLayer）
+会话页的提示盖在内容上方，不占布局行：提示出现、变化或关闭时，时间线、输入区和首页都不移动。
+- **位置**：`OpenCodePage.xaml` 的 `NoticeLayer`，内容区顶部居中，可见宽度最多 760 DIP（与窗口级 `ShellNoticeBar` 同轴同宽）；`ShellNoticeBar` 打开时排在它下面。浮层没有背景，提示以外的区域照常响应鼠标和键盘。
+- **固定顺序**（上 → 下）：`SshConnectionAlert`（SSH 安全提示）→ `PermissionBar`（权限）→ `MessageBar`（消息）→ `SessionStateHint`（“状态未知”胶囊）。每个位置只有一条，新内容替换旧内容。
+- **底面**：`OpenCodeFloatingNoticeSurfaceStyle`（不透明底 + `ThemeShadow`），胶囊用 `OpenCodeFloatingNoticePillStyle`；画刷全部来自 ThemeResource，深浅色与高对比度即时生效。新增浮动提示请复用这两个样式，不要再放进时间线上方的 `Auto` 行（`tests/fluent-motion` 有守卫）。
+- **高度**：提示栈封顶在交互区 / 排队条 / 输入区之上，超出部分在层内滚动，不会盖住输入框。
+- **停留**：错误、警告和带操作按钮的提示一直留到用户关闭；没有按钮的“信息”级消息 6–12 秒后自己收起（按字数），鼠标停在上面或键盘焦点在里面时不收起。自动收起不写入“不再提示”记忆，只有点关闭按钮才写入。SSH 安全提示和权限条不会自动收起。
+- **状态未知**：持续 0.6 秒以上才出现（切换会话时不闪），停留 6 秒后自己消失；文字或会话变化后重新计时。持续状态仍看标签提示和连接按钮。
+- **动效**：整层经 `FluentMotion.SlideFadeIn` 从上方 12 DIP 落下淡入；减弱动态效果时直接出现。
+- **终端**：提示与终端原生窗口重叠时，对该终端持有 `SuppressAirspace(snapshot: true)` 租约（终端保留最后一帧，暂时不能输入），提示关闭或不再重叠后立即归还。
+- **写法不变**：`ShowMessage(InfoBarSeverity, string, string)` 和直接设置 `MessageBar` / `PermissionBar` 的代码照常使用；浮层只观察这些元素（`Pages/OpenCodePage.Notices*.cs`）。
+
 ---
 
 ## 6. 安全富文本渲染管线（`SafeContentRenderer`）
