@@ -74,6 +74,28 @@ public sealed record OpenCodeHomeSessionRow(OpenCodeHomeSession Session, string 
 /// <summary>Pure display projection; never creates catalog entries, changes session records, or infers activity.</summary>
 public static class OpenCodeHomeProjection
 {
+    /// <summary>Home can show durable completion/viewed metadata for unopened roots without enrolling
+    /// them in notifications. The newer completion wins; a local viewed receipt never moves backwards.</summary>
+    public static OpenCodeHomeStatus? Status(OpenCodeSessionUiState? state, OpenCodeSessionInfo info)
+    {
+        var completion = state?.Completion;
+        if (info.Outcome is "succeeded" or "failed" or "interrupted"
+            && info.Time?.Idle is { } idle && double.IsFinite(idle) && idle >= 0
+            && (completion is null || idle >= completion.IdleWatermark))
+            completion = new(info.Outcome, idle);
+        if (state is null && completion is null) return null;
+        var viewed = state?.ViewedWatermark;
+        if (info.Time?.Viewed is { } durableViewed && double.IsFinite(durableViewed) && durableViewed >= 0
+            && (viewed is null || durableViewed > viewed)) viewed = durableViewed;
+        return new(state?.Working, state?.PendingAction,
+            completion is not null && (viewed is null || completion.IdleWatermark > viewed), completion?.Outcome ?? info.Outcome)
+        {
+            QuestionPending = state?.QuestionPending,
+            MutationProtected = state?.MutationProtected == true,
+            CompletedAt = completion?.IdleWatermark,
+        };
+    }
+
     public static OpenCodeHomeTone Classify(OpenCodeHomeSession session)
     {
         var status = session.Status;

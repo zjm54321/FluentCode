@@ -101,7 +101,11 @@ public sealed partial class OpenCodePage
                 o => OwnsHomeAction(owner, o), ct);
             if (!OwnsHomeAction(owner, origin) || source.IsRevoked) return;
             if (result.AcceptanceKnown && kind == SessionControlKind.DeleteRoot) InvalidateDeletedHomeSession(owner);
-            if (result.AcceptanceKnown && kind == SessionControlKind.ArchiveRoot) _homeArchivedSessions.Add(owner.SessionId);
+            if (result.AcceptanceKnown && kind == SessionControlKind.ArchiveRoot)
+            {
+                _homeArchivedSessions.Add(owner.SessionId);
+                MarkHomeMetadataDirty(owner.SessionId); // Fence a catalog read that began before this accepted write.
+            }
             SetHomeActionStatus(owner, result.Status, result.Error);
             if (result.AcceptanceKnown || result.MutationStarted && result.Status == SessionControlStatus.OutcomeUnknown)
                 await RefreshHomeActionMetadataAsync(owner, ct); // Read-only; never replay or release unknown protection.
@@ -196,29 +200,34 @@ public sealed partial class OpenCodePage
 
     private async Task RefreshHomeActionMetadataAsync(HomeActionOwner owner, CancellationToken ct)
     {
-        var epoch = BeginSessionRefresh();
+        var epoch = _sessionListEpoch;
         Task<OpenCodeSessionsResponse>? pending = null;
         try
         {
+            using var flight = await EnterSessionCatalogReadAsync(owner.Client, ct);
+            if (flight is null || !OwnsHomeAction(owner, owner.Origin)) return;
+            epoch = BeginSessionRefresh();
             owner.Origin.Source.TryExecute(ct, () =>
             {
-                if (OwnsHomeAction(owner, owner.Origin)) pending = owner.Client.ListSessionsAsync(
-                    new OpenCodeSessionListQuery { Order = OpenCodeSessionOrders.Desc, Limit = 50, ParentFilter = OpenCodeSessionParentFilter.Roots }, ct);
+                if (OwnsHomeAction(owner, owner.Origin)) pending = ReadLoadedSessionDepthAsync(owner.Client, ct);
             });
             if (pending is null) return;
             var response = await pending;
             if (!OwnsHomeAction(owner, owner.Origin) || owner.Origin.Source.IsRevoked || epoch != _sessionListEpoch) return;
             _ = RebuildSessionList(response.Data ?? new List<OpenCodeSessionInfo>()); // Metadata only; deliberately never SwitchToSessionAsync.
+            AcceptHomeCatalogRefresh();
             RestartSessionPagination((response.Data?.Count ?? 0) > 0 ? response.Cursor?.Next : null);
             _homeSessionsMessage = null;
             RefreshSessionStateUi();
             QueueHomeProjection();
         }
+        catch (OperationCanceledException) { }
         catch (Exception)
         {
             if (OwnsHomeAction(owner, owner.Origin) && !owner.Origin.Source.IsRevoked && epoch == _sessionListEpoch)
             {
-                _homeSessionsMessage = "操作后的会话列表未能刷新；请手动刷新。不会自动重试写操作，已有保护保持不变。";
+                _homeSessionsMessage = "操作后的列表暂未更新；稍后自动读取。不会重试写操作，已有保护保持不变。";
+                RequestHomeCatchUp(); // Only metadata is retried; the accepted/unknown mutation is never replayed.
                 QueueHomeProjection();
             }
         }

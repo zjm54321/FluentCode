@@ -26,6 +26,10 @@ public sealed partial class OpenCodePage
     private long _liveStatusVersion;
     private bool _eventProjectionDirty;
     private bool _statusRefreshRunning;
+    private Task<bool>? _statusRefreshTask;
+    private int _statusRefreshGeneration;
+    private OpenCodePageSource? _statusRefreshSource;
+    private long _statusAcceptedReads;
     private bool _eventSnapshotBeforeReady;
     private bool _eventReconciliationPending;
 
@@ -34,6 +38,10 @@ public sealed partial class OpenCodePage
     partial void OnBrowserEventStreamHealthChanged(bool connected);
     partial void OnBrowserControlEvent(OpenCodeEvent item);
     partial void RefreshAgentSelectorDisplay();
+    partial void OnHomeCatalogEvent(OpenCodeEvent item);
+    partial void OnHomeEventStreamConnected();
+    partial void OnHomeActiveSessionsAccepted(IEnumerable<string> ids);
+    partial void OnHomeSessionBecameInactive(string sessionId);
 
     // Capture connection identity as well as readiness: a disconnect/reconnect during an action
     // cannot retroactively cover its missed interval. Boundary/gap repair is never suppressed.
@@ -116,6 +124,7 @@ public sealed partial class OpenCodePage
         if (owner.IsCancellationRequested || !ReferenceEquals(owner, _eventCts) || !_pageActive || !SourceReady) return;
         _eventReady?.TrySetResult();
         OnBrowserEventStreamHealthChanged(true);
+        OnHomeEventStreamConnected();
         var repair = reconnect || _eventSnapshotBeforeReady;
         _eventSnapshotBeforeReady = false;
         if (repair)
@@ -243,6 +252,7 @@ public sealed partial class OpenCodePage
             drainedCount++;
             if (!ReferenceEquals(queued.Owner, _eventCts) || queued.Owner.IsCancellationRequested) continue;
             var item = queued.Event;
+            OnHomeCatalogEvent(item); // Catalog metadata is independent of selected-message workflow ownership.
             OnChildInteractionEvent(item);
             if (item.Type is "persistent-pty.added" or "persistent-pty.removed" or "persistent-pty.updated")
             {
@@ -328,7 +338,7 @@ public sealed partial class OpenCodePage
             RefreshComposerSessionActivity();
             RefreshConversationSessionActivity();
         }
-        if (refreshSessionList) _ = RefreshSessionsAsync();
+        if (refreshSessionList && !_homeActive) _ = RefreshSessionsAsync(); // Visible Home coalesces exact dirty IDs instead.
         if (selectionChanged) RefreshAgentSelectorDisplay();
         _eventProjectionDirty |= changed;
         if (_eventProjectionDirty && _hostWindowVisible && _eventReducer is not null && _selectedSessionId is { } selected
@@ -461,25 +471,45 @@ public sealed partial class OpenCodePage
         RefreshCurrentRetry();
     }
 
-    private async Task RefreshListedSessionStatusesAsync()
+    private async Task<bool> RefreshListedSessionStatusesAsync()
     {
-        if (_statusRefreshRunning || _client is not { } client || _source is not { } source || _pageCts is null || !SourceReady) return;
-        _statusRefreshRunning = true;
+        if (_client is not { } client || _source is not { } source || _pageCts is null || !SourceReady || !_pageActive || !_hostWindowVisible) return false;
+        // The Home reconciler owns disconnected fallback cadence/backoff. Do not let the older
+        // selected-message poll timer turn a quiet Home into a parallel two-second status poll.
+        if (_homeActive && _homeRefreshVisible && !_homeRefreshRunning && _statusAcceptedReads > 0
+            && DateTimeOffset.UtcNow < _homeRefreshAt) return false;
         var generation = _pageGeneration;
-        var version = _liveStatusVersion;
-        var observedAt = DateTimeOffset.UtcNow;
-        var coverage = CaptureHealthyEventStream();
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_pageCts.Token, source.RevocationToken);
+        if (_statusRefreshRunning && _statusRefreshTask is { } running)
+        {
+            var sameGeneration = generation == _statusRefreshGeneration && ReferenceEquals(_statusRefreshSource, source);
+            var accepted = await running;
+            if (sameGeneration) return accepted && generation == _pageGeneration && ReferenceEquals(client, _client)
+                && ReferenceEquals(source, _source) && source.Revision == _sourceRevision;
+            if (!ReferenceEquals(client, _client) || !ReferenceEquals(source, _source)) return false;
+        }
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _statusRefreshTask = completion.Task;
+        _statusRefreshGeneration = generation;
+        _statusRefreshSource = source;
+        _statusRefreshRunning = true;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_pageCts.Token, source.RevocationToken,
+            _homeActive ? _homeLiveCancellation?.Token ?? CancellationToken.None : CancellationToken.None);
         var ct = linked.Token;
+        var readAccepted = false;
         try
         {
+            using var flight = await EnterSessionCatalogReadAsync(client, ct);
+            if (flight is null || generation != _pageGeneration || !ReferenceEquals(source, _source)) return false;
+            var version = _liveStatusVersion; // Events during the HTTP read still beat its captured snapshot.
+            var observedAt = DateTimeOffset.UtcNow;
+            var coverage = CaptureHealthyEventStream();
             // One authoritative foreground snapshot covers every session, including unopened rows.
             Task<OpenCodeActiveSessionsResponse>? pending = null;
             source.TryExecute(ct, () => pending = client.GetActiveSessionsAsync(ct));
-            if (pending is null) return;
+            if (pending is null) return false;
             var response = await pending;
             if (ct.IsCancellationRequested || generation != _pageGeneration || !ReferenceEquals(client, _client)
-                || !ReferenceEquals(source, _source) || source.Revision != _sourceRevision || !_pageActive) return;
+                || !ReferenceEquals(source, _source) || source.Revision != _sourceRevision || !_pageActive || !_hostWindowVisible) return false;
             foreach (var id in _sessionItems.Keys.Concat(response.Data!.Keys).Concat(_liveSessionStatuses.Keys)
                 .Concat(_selectedSessionId is { } selected ? new[] { selected } : Array.Empty<string>()).Distinct(StringComparer.Ordinal))
             {
@@ -487,17 +517,28 @@ public sealed partial class OpenCodePage
                 if (response.Data.TryGetValue(id, out var active) && active.Type != "running") continue;
                 _liveSessionStatuses[id] = (response.Data.ContainsKey(id), ++_liveStatusVersion);
                 if (response.Data.ContainsKey(id)) OnSessionBackgroundActiveSnapshot(id, observedAt, coverage);
+                else if (live.Working) OnHomeSessionBecameInactive(id); // Foreground drain release is not an execution-outcome event.
             }
+            OnHomeActiveSessionsAccepted(response.Data.Keys);
+            _statusAcceptedReads++;
             RefreshSessionStateUi();
             RefreshComposerSessionActivity();
             RefreshConversationSessionActivity();
             OnAgentTreeActivityChanged();
+            readAccepted = true;
+            return true;
         }
-        catch (OperationCanceledException) { }
-        catch (OpenCodeException) { /* Keep last successful foreground observation; retry at fallback. */ }
+        catch (OperationCanceledException) { return false; }
+        catch (OpenCodeException) { return false; /* Keep last successful foreground observation; retry at fallback. */ }
         finally
         {
             _statusRefreshRunning = false;
+            completion.TrySetResult(readAccepted);
+            if (ReferenceEquals(_statusRefreshTask, completion.Task))
+            {
+                _statusRefreshTask = null;
+                _statusRefreshSource = null;
+            }
         }
     }
 }

@@ -15,7 +15,11 @@ using Microsoft.UI.Xaml.Controls;
 // Presentation-only feedback is an explicit native boundary; Home mutation transport remains production code.
 namespace FluentCode.Motion
 {
-    internal static class ActionFeedback { internal static void Announce(object anchor, string text) { } }
+    internal static class ActionFeedback
+    {
+        internal static void Announce(object anchor, string text) { }
+        internal static void AnimateOut(object anchor, Action completed) => completed(); // Explicit reduced-motion/native boundary.
+    }
 }
 
 namespace Windows.ApplicationModel.DataTransfer
@@ -37,17 +41,16 @@ namespace Microsoft.UI.Xaml
 
 namespace Microsoft.UI.Xaml.Controls
 {
-    public class Button
+    public class Button : ContentControl
     {
-        public Visibility Visibility { get; set; }
-
         public bool IsEnabled { get; set; }
     }
 
-    public class TextBlock
+    public class TextBlock : Microsoft.UI.Xaml.FrameworkElement
     {
         public string Text { get; set; } = string.Empty;
-        public Visibility Visibility { get; set; }
+        public Microsoft.UI.Xaml.TextWrapping TextWrapping { get; set; }
+        public Microsoft.UI.Xaml.TextTrimming TextTrimming { get; set; }
     }
 
     public partial class ScrollView
@@ -76,10 +79,13 @@ namespace Microsoft.UI.Dispatching
     public sealed class DispatcherQueue
     {
         public bool HasThreadAccess => true;
+        internal bool Deferred;
+        private readonly Queue<Action> _pending = new();
+        internal void Drain() { while (_pending.TryDequeue(out var next)) next(); }
         // 同步执行排队回调：测试中无真实布局，有界复核立即收敛。
         public bool TryEnqueue(Action callback)
         {
-            callback();
+            if (Deferred) _pending.Enqueue(callback); else callback();
             return true;
         }
     }
@@ -177,11 +183,16 @@ namespace FluentCode.Pages
         // The extracted Home router calls the guarded switch directly from accepted DTO metadata.
         private string? _homeMessage;
         private readonly HomeFeedbackBoundary _homeView = new();
-        private sealed class HomeFeedbackBoundary { internal void ShowRenameSuccess(string id) { } }
+        private sealed class HomeFeedbackBoundary { internal void ShowRenameSuccess(string id) { } internal void RefreshCalendar() { } }
         private readonly System.Collections.Generic.HashSet<string> _homeArchivedSessions = new(System.StringComparer.Ordinal);
         internal readonly List<string> HomeSwitchRequests = new();
         internal int HomeMirrors, HomeProjectionRequests;
-        private void QueueHomeProjection() { CaptureHomeActionRoots(); HomeProjectionRequests++; }
+        private void QueueHomeProjection()
+        {
+            if (_testHomeRefreshEnabled) TestHomeVisibilityBoundary();
+            CaptureHomeActionRoots();
+            HomeProjectionRequests++;
+        }
         private volatile HomeActionOwner? _homeActionOwner;
         private sealed record HomeActionRoot(string Directory, string? Title);
         private volatile System.Collections.Immutable.ImmutableDictionary<string, HomeActionRoot> _homeActionRoots = System.Collections.Immutable.ImmutableDictionary<string, HomeActionRoot>.Empty;
@@ -201,7 +212,8 @@ namespace FluentCode.Pages
         private sealed record TestReturnContext(string TargetSessionId);
         private TestReturnContext? _sessionReturnContext = null;
         private bool IsSessionReturnContextCurrent(TestReturnContext context) => ReferenceEquals(_sessionReturnContext, context);
-        internal int DeletedBindings, MetadataApplications, Bindings, RemovedTabs;
+        internal int DeletedBindings, Bindings, RemovedTabs;
+        internal int MetadataApplications => (int)_sessionCatalogAcceptedReads;
         private void RemoveSessionTab(object tab) { RemovedTabs++; }
         private void DeselectSessionForNewTab() { DeletedBindings++; _selectedSessionId = null; CancelSessionOperations(); ResetMessagePaginationState(); }
         private void BindComposer() { Bindings++; if (_selectedSessionId is { } id) HomeSwitchRequests.Add(id); }
@@ -210,16 +222,9 @@ namespace FluentCode.Pages
         private void RestoreDraftSlotTabSelection() { }
         private void ForceSuspendDraftSlot(string reason) { }
         private void OnSessionContextSelected(string sessionId) { }
-        private int _sessionListEpoch;
         private string? _homeSessionsMessage = null;
-        private int BeginSessionRefresh() => ++_sessionListEpoch;
-        private void RestartSessionPagination(string? next) { }
-        private string? RebuildSessionList(List<OpenCodeSessionInfo> sessions)
-        {
-            MetadataApplications++; _sessionItems.Clear();
-            foreach (var info in sessions) _sessionItems[info.Id!] = info;
-            CaptureHomeActionRoots(); return null;
-        }
+        partial void OnSessionCatalogChanged() => QueueHomeProjection();
+        private void ShowHomePage() => _homeActive = true;
         internal Task TestRunHomeAction(long revision, string directory, string id, OpenCodeHomeSessionAction action)
             => RunHomeSessionActionAsync(revision, new(new(_homeRuntimeSource, directory), new() { Id = id }), action);
         internal void TestAcceptHomeRoot(string id, string directory, string title)

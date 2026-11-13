@@ -39,6 +39,8 @@ $names = @('SwitchToSessionAsync', 'NavigateToSessionAsync', 'CancelSessionOpera
     'CreateOperationToken', 'TryStartRead', 'ProcessNavigationTargetAsync', 'LocateSessionAsync',
     'DescribeNavigationReadFailure', 'ApplyNavigationResult', 'OnPageUnloaded', 'PausePage', 'InvalidateForSourceChange', 'DisposeOwnClient')
 $methods = @($names | ForEach-Object { Extract-Method $page $_ })
+$catalog = [IO.File]::ReadAllText("$repo/src/FluentCode/Pages/OpenCodePage.SessionPagination.cs")
+$methods += Extract-Method $catalog 'ApplySessionCatalogRead'
 $builtinPath = Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.BuiltinActions.cs'
 $methods += Extract-Method ([IO.File]::ReadAllText($builtinPath)) 'ResetAcceptedHistoryProjection'
 $methods += Extract-Method $page 'OrderMessages'
