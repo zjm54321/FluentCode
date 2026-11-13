@@ -290,6 +290,9 @@ internal static class NativeTests
         Check(OpenCodeRollbackConfirmationState.RequiresPrompt(plain) && state.CanConfirm && state.ConfirmIsDefault
             && state.Cautions().Count == 0 && state.OffersFileRestoration && !state.RestoreFiles,
             "plain undo: one light prompt, nothing to warn about, files off by default");
+        // The prompt must not promise more than the server keeps: the next message makes a staged undo final.
+        Check(state.Summary.Contains("发送下一条消息之前", StringComparison.Ordinal) && state.Summary.Contains("恢复撤回", StringComparison.Ordinal),
+            "the undo sentence says until when it can be taken back");
         Check(ReferenceEquals(state.Confirm().ConfirmedIdentity, text), "unticked undo confirms the text-only preview");
         state.SetRestoreFiles(true);
         Check(state.RestoreFiles && ReferenceEquals(state.Confirm().ConfirmedIdentity, files)
