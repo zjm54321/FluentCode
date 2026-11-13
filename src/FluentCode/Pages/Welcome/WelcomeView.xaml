@@ -22,7 +22,13 @@
         <Grid x:Name="DragRegion" Background="Transparent"
               AutomationProperties.AutomationId="FluentCodeWelcomeDragRegion" />
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <!--
+            窗口够高时内容在可视区内垂直居中；不够高时从顶部排起、向下滚动，图标和标题始终能看到。
+            居中不直接交给 ScrollViewer 的内容：内容比可视区高时，居中的内容上端会跑到可视区之外。
+            所以滚动内容是顶对齐的 CenterHost，它的最小高度跟随可视区高度（见 WelcomeView.xaml.cs），居中在它内部完成。
+        -->
+        <ScrollViewer x:Name="Scroller" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid x:Name="CenterHost" VerticalAlignment="Top">
             <StackPanel x:Name="Column" MaxWidth="480" Margin="32,0,32,32"
                         HorizontalAlignment="Stretch" VerticalAlignment="Center">
                 <Image Source="ms-appx:///Assets/AppIcon/app-256.png" Width="64" Height="64"
@@ -51,6 +57,7 @@
                     </StackPanel>
                 </Border>
             </StackPanel>
+            </Grid>
         </ScrollViewer>
     </Grid>
 </UserControl>
