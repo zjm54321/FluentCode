@@ -25,6 +25,9 @@ public sealed partial class OpenCodePage
     // 窗口级提示条属于 MainWindow：只读地找到它并观察，页面卸载时摘掉回调，不让它反过来持有页面。
     private void Notices_Loaded(object sender, RoutedEventArgs e)
     {
+        // 计时器只在页面加载期间存在：这里按当前状态重新计时。
+        RearmNoticeMessageTimer();
+        ArmNoticeHint();
         if (_shellNoticeBar is not null) return;
         _shellNoticeBar = (XamlRoot?.Content as FrameworkElement)?.FindName("ShellNoticeBar") as InfoBar;
         if (_shellNoticeBar is null) return;
@@ -35,7 +38,9 @@ public sealed partial class OpenCodePage
 
     private void Notices_Unloaded(object sender, RoutedEventArgs e)
     {
-        if (IsLoaded || _shellNoticeBar is null) return;
+        if (IsLoaded) return;
+        StopNoticeTimers();
+        if (_shellNoticeBar is null) return;
         _shellNoticeBar.UnregisterPropertyChangedCallback(InfoBar.IsOpenProperty, _shellNoticeOpenToken);
         _shellNoticeBar.SizeChanged -= Notices_BoundsChanged;
         _shellNoticeBar = null;

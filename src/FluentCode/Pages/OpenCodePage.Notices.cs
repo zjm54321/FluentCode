@@ -26,6 +26,7 @@ public sealed partial class OpenCodePage
         SettingsTabHost.RegisterPropertyChangedCallback(VisibilityProperty, OnNoticeSourceChanged);
         WorkspaceGrid.RegisterPropertyChangedCallback(VisibilityProperty, OnNoticeSourceChanged);
         InitializeNoticeBounds();
+        InitializeNoticeTiming();
         RefreshNoticeLayer();
     }
 
@@ -47,7 +48,7 @@ public sealed partial class OpenCodePage
         bool ssh = IsNoticeBarShown(SshConnectionAlert);
         bool permission = IsNoticeBarShown(PermissionBar);
         bool message = IsNoticeBarShown(MessageBar);
-        bool hint = SessionStateHint.Visibility == Visibility.Visible;
+        bool hint = SessionStateHint.Visibility == Visibility.Visible && _noticeHintRevealed;
         SshConnectionAlertSurface.Visibility = NoticeVisibility(ssh);
         PermissionBarSurface.Visibility = NoticeVisibility(permission);
         MessageBarSurface.Visibility = NoticeVisibility(message);
@@ -55,7 +56,9 @@ public sealed partial class OpenCodePage
 
         bool hostShown = SettingsTabHost.Visibility != Visibility.Visible
             && WorkspaceGrid.Visibility == Visibility.Visible;
-        NoticeLayer.Visibility = NoticeVisibility(hostShown && (ssh || permission || message || hint));
+        bool shown = hostShown && (ssh || permission || message || hint);
+        NoticeLayer.Visibility = NoticeVisibility(shown);
+        PlayNoticeEntrance(shown);
         UpdateNoticeBounds();
     }
 }

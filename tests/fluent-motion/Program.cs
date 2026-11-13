@@ -432,5 +432,17 @@ internal static class Program
         Check(System.Text.RegularExpressions.Regex.Matches(bounds, @"\b(\w+)\.(Margin|MaxHeight|Height|Padding) = ")
             .All(m => m.Groups[1].Value == "NoticeLayer"),
             "STATIC notices: positioning changes only the layer itself, never the page layout");
+        var timing = StripComments(File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Notices.Timing.cs")));
+        Check(timing.Contains("MessageBar.Severity != InfoBarSeverity.Informational") && timing.Contains("MessageBar.ActionButton is not null")
+            && timing.Contains("_noticeMessagePointerOver || IsNoticeFocusWithin(MessageBarSurface)"),
+            "STATIC notices: only plain informational messages close themselves, and not while pointed at or focused");
+        Check(!timing.Contains("PermissionBar.IsOpen = false") && !timing.Contains("SshConnectionAlert.IsOpen = false")
+            && !timing.Contains("RecordUserDismissal"),
+            "STATIC notices: timing never closes the permission or SSH notice and never writes dismissal memory");
+        Check(timing.Contains("message.Tick -= NoticeMessageTimer_Tick;") && timing.Contains("hint.Tick -= NoticeHintTimer_Tick;")
+            && bounds.Contains("StopNoticeTimers();") && !timing.Contains("Tick += (") && !timing.Contains("static event"),
+            "STATIC notices: timers use named Tick handlers that are removed when the page unloads");
+        Check(timing.Contains("FluentMotion.SlideFadeIn(NoticeStack") && !timing.Contains("Storyboard") && !timing.Contains("FluentMotion.Bind("),
+            "STATIC notices: the entrance goes through FluentMotion, so reduced motion shows the notice at once");
     }
 }

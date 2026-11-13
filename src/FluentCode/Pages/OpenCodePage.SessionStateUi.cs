@@ -173,9 +173,13 @@ public sealed partial class OpenCodePage
         if (_selectedSessionId is { } selected) states.TryGetValue(selected, out current);
         _selectedSessionWorkingIndicated = current?.Working == true;
         SetSessionStateHint(SessionStateHint, _selectedSessionId is null ? string.Empty : DescribeSessionStateUnknown(current));
+        OnSessionStateHintApplied();
 
         OnSessionUiStatesApplied(states);
     }
+
+    // Implemented by the floating notice layer; headless hosts that compile this file alone leave it out.
+    partial void OnSessionStateHintApplied();
 
     partial void ApplyLiveSessionStatuses(Dictionary<string, OpenCodeSessionUiState> states);
 
