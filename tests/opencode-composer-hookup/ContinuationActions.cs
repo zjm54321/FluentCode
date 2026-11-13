@@ -203,7 +203,7 @@ internal static class ContinuationTests
         using (var f = new NativeTests.Fixture())
         {
             await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo"); var epoch = f.Page.Epoch;
-            OpenCodeRollbackConfirmationDialog.Next = p => Task.FromResult(new OpenCodeRollbackConfirmationResult(OpenCodeRollbackOutcome.Cancelled, p, false, false));
+            OpenCodeRollbackConfirmationDialog.Next = p => Task.FromResult(new OpenCodeRollbackConfirmationResult(OpenCodeRollbackOutcome.Cancelled, p, false));
             await f.Page.RunNative(); Check(f.Http.Posts == 0 && f.Page.Epoch == epoch, "cancelled/not-started rollback does not invalidate history");
         }
     }

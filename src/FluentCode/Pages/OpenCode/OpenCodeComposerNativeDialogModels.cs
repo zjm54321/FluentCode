@@ -183,17 +183,30 @@ internal enum OpenCodeRollbackKind { Undo, Redo }
 
 /// <summary>
 /// Exact immutable preview prepared by the page from a fresh read. Undo: <paramref name="TargetText"/> is the text that
-/// would be restored into the empty draft. <paramref name="Identity"/> is an opaque page object (e.g. the coordinator
-/// preview); the confirmation result carries this same instance back and the page must re-read before acting.
+/// would be restored into the empty draft. <paramref name="PriorStageFileCount"/> is the number of files the staged
+/// undo changed (the server's <c>revert.files</c>): exactly those are rewritten when the stage is cleared or moved, so
+/// zero means this rollback touches no file unless restoration is ticked. <paramref name="Identity"/> is an opaque
+/// page object (e.g. the coordinator preview); the confirmation result carries this same instance back and the page
+/// must re-read before acting.
 /// </summary>
-internal sealed record OpenCodeRollbackPreviewPresentation(OpenCodeRollbackKind Kind, string SessionLabel,
-    string? TargetText, string? TargetLabel, bool HasExistingStage, bool PriorStageMayHaveFileEffects,
-    bool TargetHasNonTextReferences, bool ReferencesIncomplete, bool DraftEmpty, object Identity);
+internal sealed record OpenCodeRollbackPreviewPresentation(OpenCodeRollbackKind Kind, string? TargetText,
+    int PriorStageFileCount, bool TargetHasNonTextReferences, bool ReferencesIncomplete, bool DraftEmpty, object Identity)
+{
+    /// <summary>Undo only: the preview prepared for the SAME target with file restoration, read before the dialog
+    /// opens so that one dialog covers both choices. Null: file restoration is not offered this time.</summary>
+    internal object? FilesIdentity { get; init; }
+}
 
 internal enum OpenCodeRollbackOutcome { Confirmed, Cancelled, OwnerUnavailable }
 
 internal sealed record OpenCodeRollbackConfirmationResult(OpenCodeRollbackOutcome Outcome,
-    OpenCodeRollbackPreviewPresentation? Preview, bool RestoreFiles, bool TextOnlyAcknowledged);
+    OpenCodeRollbackPreviewPresentation? Preview, bool RestoreFiles)
+{
+    /// <summary>The one identity the user confirmed: the with-files preview only when that box was ticked.
+    /// Null unless confirmed. The page executes exactly this object and never swaps it afterwards.</summary>
+    internal object? ConfirmedIdentity => Outcome != OpenCodeRollbackOutcome.Confirmed || Preview is null ? null
+        : RestoreFiles ? Preview.FilesIdentity : Preview.Identity;
+}
 
 internal sealed class OpenCodeRollbackConfirmationState
 {
@@ -205,54 +218,61 @@ internal sealed class OpenCodeRollbackConfirmationState
     internal OpenCodeRollbackPreviewPresentation Preview { get; }
     /// <summary>Undo only. Explicit opt-in; default false.</summary>
     internal bool RestoreFiles { get; private set; }
-    internal bool TextOnlyAcknowledged { get; private set; }
 
-    internal bool OffersFileRestoration => Preview.Kind == OpenCodeRollbackKind.Undo;
-    /// <summary>Undo restoring a message that referenced files/agents/skills (or whose references are not fully known).</summary>
-    internal bool RequiresTextOnlyAcknowledgment => Preview.Kind == OpenCodeRollbackKind.Undo
+    internal bool OffersFileRestoration => Preview.Kind == OpenCodeRollbackKind.Undo && Preview.FilesIdentity is not null;
+    /// <summary>Undo of a message that referenced files/agents/skills (or whose references are not fully known):
+    /// only its text returns to the input box. Told as one caution line; it is not a separate tick any more.</summary>
+    internal bool RestoresTextOnly => Preview.Kind == OpenCodeRollbackKind.Undo
         && (Preview.TargetHasNonTextReferences || Preview.ReferencesIncomplete);
 
     internal void SetRestoreFiles(bool value) => RestoreFiles = OffersFileRestoration && value;
-    internal void SetTextOnlyAcknowledged(bool value) => TextOnlyAcknowledged = RequiresTextOnlyAcknowledgment && value;
 
     internal string? BlockingReason => Preview.Kind == OpenCodeRollbackKind.Undo && !Preview.DraftEmpty
-        ? "撤回需要输入框、已选命令和附件都为空（撤回的文字会放回输入框）。请先发送或清空当前草稿。"
+        ? "输入框里还有内容。撤回的文字要放回输入框，请先发送或清空。"
         : Preview.Kind == OpenCodeRollbackKind.Undo && string.IsNullOrEmpty(Preview.TargetText) && !Preview.TargetHasNonTextReferences
             ? "没有找到可以撤回的消息。"
             : null;
 
-    internal bool CanConfirm => BlockingReason is null && (!RequiresTextOnlyAcknowledgment || TextOnlyAcknowledged);
+    internal bool CanConfirm => BlockingReason is null;
+
+    /// <summary>
+    /// Enter confirms only the plain case: nothing to warn about, which 恢复撤回 can take back. With a caution on
+    /// screen 取消 is the default and confirming is a click. Decided when the prompt opens and fixed afterwards:
+    /// ticking file restoration is itself the deliberate step, and an Enter carried over from the input box or
+    /// the menu cannot tick it.
+    /// </summary>
+    internal bool ConfirmIsDefault => CanConfirm && Cautions().Count == 0;
 
     internal OpenCodeRollbackConfirmationResult Confirm()
-        => CanConfirm ? new(OpenCodeRollbackOutcome.Confirmed, Preview, RestoreFiles, TextOnlyAcknowledged)
-            : new(OpenCodeRollbackOutcome.Cancelled, null, false, false);
+        => CanConfirm ? new(OpenCodeRollbackOutcome.Confirmed, Preview, RestoreFiles)
+            : new(OpenCodeRollbackOutcome.Cancelled, null, false);
 
-    /// <summary>Risk lines shown before any confirmation, in this order.</summary>
-    internal IReadOnlyList<string> Warnings()
-    {
-        var list = new List<string>();
-        if (Preview.Kind == OpenCodeRollbackKind.Undo)
-        {
-            list.Add("这条消息及其后的回复会从会话中撤回；撤回的文字会放回输入框，不会自动重新发送。");
-            if (Preview.HasExistingStage)
-                list.Add("这个会话已经有一次未完成的撤回，这次会在它的基础上继续。");
-            if (Preview.PriorStageMayHaveFileEffects)
-                list.Add("之前的撤回可能已经改动过文件；即使这次不恢复文件，移动撤回点也可能恢复那次的文件状态。");
-        }
-        else
-        {
-            list.Add("将清除这个会话的整个撤回状态，恢复所有已撤回的消息。输入框中的内容保持不变。");
-            list.Add("撤回之后如果在别处（其他窗口或客户端）又做过修改，恢复后可能与那些修改冲突。");
-            list.Add("恢复后，排队中的工作可能会继续运行。");
-        }
-        list.Add("这是尽力而为的操作：服务器不提供跨客户端的一致性检查，其他客户端同时修改时结果可能不同。确认前会重新读取一次，内容变化时需要重新确认。");
-        list.Add("文件快照可能覆盖你当前的编辑，不包括外部效果，也可能不可用。");
-        if (RequiresTextOnlyAcknowledgment)
-            list.Add(Preview.ReferencesIncomplete
-                ? "无法确认这条消息是否引用了文件、智能体或技能。只会恢复文字，引用不会恢复、也不会重新下载。"
-                : "这条消息引用了文件、智能体或技能。只会恢复文字，这些引用不会恢复、也不会重新下载。");
-        return list;
-    }
+    internal string Title => Preview.Kind == OpenCodeRollbackKind.Undo ? "撤回这条消息？" : "恢复已撤回的消息？";
+    internal string PrimaryText => Preview.Kind == OpenCodeRollbackKind.Undo ? "撤回" : "恢复";
+
+    /// <summary>The one sentence that says what will happen.</summary>
+    internal string Summary => Preview.Kind == OpenCodeRollbackKind.Undo
+        ? "这条消息和它之后的回复会被撤回，文字放回输入框。之后可以用“恢复撤回”还原。"
+        : "已撤回的消息会全部回到会话里，输入框的内容不变。";
+
+    internal const string RestoreFilesLabel = "同时恢复文件";
+    /// <summary>Always shown under the box when it is offered: the risk is read before ticking.</summary>
+    internal const string RestoreFilesNote = "文件会回到这条消息之前的样子，可能覆盖你之后的修改；已经执行的命令等外部操作不会撤销。";
+
+    /// <summary>Only text comes back: the caution line that replaced the separate tick. Null when it does not apply.</summary>
+    internal string? TextOnlyNote => !RestoresTextOnly ? null : Preview.ReferencesIncomplete
+        ? "无法确认这条消息是否带有文件、智能体或技能引用。放回输入框的只有文字。"
+        : "这条消息带有文件、智能体或技能引用。放回输入框的只有文字，这些引用需要重新添加。";
+
+    /// <summary>The staged undo changed files, and this rollback rewrites them. Null when it does not apply.</summary>
+    internal string? FileEffectNote => Preview.PriorStageFileCount <= 0 ? null
+        : Preview.Kind == OpenCodeRollbackKind.Undo
+            ? $"上一次撤回同时恢复了 {Preview.PriorStageFileCount} 个文件。这次如果不勾选“{RestoreFilesLabel}”，它们会变回那次撤回之前的样子，你在这之后对它们的修改会丢失。"
+            : $"撤回时同时恢复了 {Preview.PriorStageFileCount} 个文件。恢复后它们会变回撤回之前的样子，你在这之后对它们的修改会丢失。";
+
+    /// <summary>Caution lines, in display order. Empty in the plain case: nothing risky, nothing to read.</summary>
+    internal IReadOnlyList<string> Cautions()
+        => new[] { FileEffectNote, TextOnlyNote }.Where(line => line is not null).Select(line => line!).ToArray();
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
