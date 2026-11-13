@@ -342,6 +342,21 @@ internal static class Program
             Check(other.Status == SessionControlStatus.ConfirmationRequired && !other.MutationStarted && server.Mutations == 1,
                 "the preview that was not chosen cannot run afterwards: " + other.Status);
         }
+        using (var server = new Server())
+        {
+            // An accepted undo writes the message back into the input box, so text already there stops it at the
+            // first read: no preview to show, with or without files, and redo (which leaves the box alone) is not affected.
+            var coordinator = new OpenCodeSessionControlCoordinator(new()); var origin = server.Origin(); var typed = new SessionControlDraft("typed-draft-token", false);
+            foreach (var files in new[] { false, true })
+            {
+                var blocked = await coordinator.PreviewAsync(origin, new(SessionControlKind.StageRevert, Files: files), typed, Current);
+                Check(blocked.Status == SessionControlStatus.Blocked && blocked.Preview is null && server.Mutations == 0 && server.HistoryReads == 0,
+                    "a non-empty draft blocks undo before any prompt (files=" + files + "): " + blocked.Status);
+            }
+            server.Stage = "{\"messageID\":\"msg_a\"}";
+            Check((await coordinator.PreviewAsync(origin, new(SessionControlKind.ClearRevert), typed, Current)).Status == SessionControlStatus.Ready,
+                "redo does not depend on an empty draft");
+        }
         foreach (var history in new[] {
             "{\"data\":[],\"cursor\":{\"next\":\"more\"}}",
             Server.Page(Server.User("msg_a", 2, "x"), "loop"),
