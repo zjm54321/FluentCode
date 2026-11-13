@@ -50,16 +50,44 @@ internal sealed partial class NativeUiRenderer
         var key = settings.TianDiTuCredentialId is { } id ? await AppServices.Secrets.GetAsync(id) : null;
         return new(settings, key, Path.Combine(AppServices.Settings.DataDirectory, "cache", "native-ui-tiles"));
     }
+    // Map paint follows one rule (docs/native-ui.md, "Map colours").
+    //  - Drawn ON the tiles (pins, the order line, place labels): fixed colours chosen against a light map. Every
+    //    provider serves a light raster whatever the app theme is (Services/NativeUi/NativeUiMapProviders.cs), so a
+    //    colour picked for a dark app surface is the wrong colour here.
+    //  - Drawn AROUND the map (the zoom buttons here, the XAML credit chip): follows the app theme.
+    //  - High contrast: both groups take the system colours through the theme tokens.
+    // The chosen pin is told apart twice, by size (1.3x) and by a warm colour next to the blue ones, and is drawn
+    // last so a neighbour cannot cover it. Blue against orange-red stays apart for red-green colour-blind readers.
+    // WCAG contrast against OpenStreetMap Carto's @land-color #F2EFE9 and @water-color #AAD3DF
+    // (gravitystorm/openstreetmap-carto, master, style/style.mss): pin and line 5.50 / 3.93, chosen pin 4.64 / 3.32,
+    // white edge against either fill 6.31 / 5.32, label ink on its plate 21. tests/native-ui recomputes these.
+    private static readonly MapColor MapPinColor = new(0, 95, 184);
+    private static readonly MapColor MapChosenPinColor = new(200, 52, 0);
+    private static readonly MapColor MapEdgeColor = new(255, 255, 255);
+    private static readonly MapColor MapLabelInkColor = new(0, 0, 0);
     /// <summary>
-    /// Skia paints the markers, the polyline, the zoom widget and the label plates, and cannot read XAML theme
-    /// resources. Their colours therefore come from the shared theme tokens — the same accent/series palette and
-    /// canvas/ink/border tokens the charts and cards use — resolved on every re-render, so a light, dark or
-    /// high-contrast session keeps matching fills instead of fixed RGB values.
+    /// Skia paints the map and its widgets and cannot read XAML theme resources, so a theme token is resolved to its
+    /// brush and copied, alpha included. Used for what follows the theme (the zoom buttons) and for high contrast.
     /// </summary>
     private MapColor MapPaint(string token, bool background = false)
         => ComponentBrush(token, background) is SolidColorBrush brush
             ? new MapColor(brush.Color.R, brush.Color.G, brush.Color.B, brush.Color.A)
             : new MapColor(128, 128, 128);
+    /// <summary>
+    /// Composites a translucent theme colour over an opaque one. Fluent text and stroke colours are black or white
+    /// with an alpha, and the map behind a widget is not the surface they were designed for.
+    /// </summary>
+    private static MapColor Flatten(MapColor top, MapColor under)
+    {
+        var alpha = top.A / 255d;
+        int Mix(int over, int below) => (int)Math.Round(over * alpha + below * (1 - alpha));
+        return new MapColor(Mix(top.R, under.R), Mix(top.G, under.G), Mix(top.B, under.B));
+    }
+    private static bool MapHighContrast()
+    {
+        try { return new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast; }
+        catch (Exception) { return false; }
+    }
     private Visual CreateMap(string type, string key)
     {
         var panel = new StackPanel { Spacing = 8 }; var locations = new StackPanel { Spacing = 8 };
@@ -90,25 +118,43 @@ internal sealed partial class NativeUiRenderer
         {
             if (control is null || points is null || route is null) return;
             var projected = Projected(); var selected = NativeUiValues.Text(Field(visual, key, "selected", ""));
-            // Theme fills: the resting pin takes palette slot 1 — the accent, exactly as the charts' first series does —
-            // and the selected pin the next palette slot. The outline, label plate and label text reuse the canvas/ink
-            // tokens. All four come from registered theme brushes, so high contrast resolves them to the system
-            // highlight/window colours rather than to fixed RGB values.
-            var pinFill = MapPaint("chart1", true); var pinSelected = MapPaint("chart2", true);
-            var outline = new Pen(MapPaint("canvas", true), 2); var plate = MapPaint("canvas", true); var ink = MapPaint("ink");
-            // A theme change re-renders the card and lands here, so the zoom widget is repainted with the pins.
-            if (zoom is not null) { zoom.StrokeColor = MapPaint("border", true); zoom.TextColor = ink; zoom.BackColor = plate; }
+            // On the tiles: fixed colours, or the system colours in high contrast, where the selected pin takes the
+            // system highlight and the others the window text colour.
+            var contrast = MapHighContrast();
+            var edge = contrast ? Flatten(MapPaint("canvas", true), MapEdgeColor) : MapEdgeColor;
+            var pinFill = contrast ? Flatten(MapPaint("ink"), edge) : MapPinColor;
+            var pinChosen = contrast ? Flatten(MapPaint("chart1", true), edge) : MapChosenPinColor;
+            var labelInk = contrast ? pinFill : MapLabelInkColor;
+            var outline = new Pen(edge, 2);
+            // Around the map: the zoom buttons follow the theme. A theme change re-renders the card and lands here.
+            // The fill is the opaque page colour; the frame and the signs are the theme's secondary and primary text
+            // colours flattened onto it, so both keep their designed contrast with the button whatever tile is behind.
+            // Light theme: frame #5C5C5C on fill #F3F3F3 is 6.0:1, and 5.8 / 4.2 against land / water. Dark theme:
+            // fill #202020 is 14.2 / 10.2 against land / water, frame #CCCCCC on it 10.2. In high contrast all three
+            // tokens are system colours (window, window text) and opaque, so flattening changes nothing.
+            if (zoom is not null)
+            {
+                var fill = Flatten(MapPaint("canvas", true), MapEdgeColor);
+                zoom.BackColor = fill; zoom.StrokeColor = Flatten(MapPaint("muted"), fill); zoom.TextColor = Flatten(MapPaint("ink"), fill);
+            }
             var features = new List<IFeature>();
-            foreach (var item in projected)
+            // The chosen place is built last. A MemoryLayer draws its features in Id order whatever the list order is,
+            // and Ids are handed out at construction (Mapsui/Mapsui, tag 5.1.0, Mapsui/Layers/MemoryLayer.cs
+            // SortFeatures and Mapsui/Features/BaseFeature.cs), so the last one built is the one on top.
+            foreach (var item in projected.OrderBy(place => S(place.Marker, "label") == selected))
             {
                 var label = S(item.Marker, "label"); var chosen = label == selected;
                 var feature = new PointFeature(item.Point); feature["label"] = label;
-                feature.Styles.Add(new SymbolStyle { SymbolScale = chosen ? 1.3 : 1, Fill = new Mapsui.Styles.Brush(chosen ? pinSelected : pinFill), Outline = outline });
-                feature.Styles.Add(new LabelStyle { Text = label, Font = new Mapsui.Styles.Font { FontFamily = NativeUiTheme.MapLabelFont, Size = 14 }, ForeColor = ink, BackColor = new Mapsui.Styles.Brush(plate), Offset = new Offset(0, 22), CollisionDetection = false }); features.Add(feature);
+                feature.Styles.Add(new SymbolStyle { SymbolScale = chosen ? 1.3 : 1, Fill = new Mapsui.Styles.Brush(chosen ? pinChosen : pinFill), Outline = outline });
+                feature.Styles.Add(new LabelStyle { Text = label, Font = new Mapsui.Styles.Font { FontFamily = NativeUiTheme.MapLabelFont, Size = 14 }, ForeColor = labelInk, BackColor = new Mapsui.Styles.Brush(edge), Offset = new Offset(0, 22), CollisionDetection = false }); features.Add(feature);
             }
             points.Features = features; points.FeaturesWereModified();
+            // The order line is the pin colour with a casing in the edge colour, so it stays readable where it crosses
+            // water, a motorway or map text. The casing is the style's Outline: the line renderer draws it first, as
+            // wide as the line plus the outline on both sides, here 3 + 2 x 1.5 = 6 (Mapsui/Mapsui, tag 5.1.0,
+            // Mapsui.Rendering.Skia/SkiaStyles/LineStringRenderer.cs). A VectorStyle's default outline is 1 px grey.
             route.Features = B(visual.Model, "route") && projected.Length > 1
-                ? new IFeature[] { new GeometryFeature(new LineString(projected.Select(item => new Coordinate(item.Point.X, item.Point.Y)).ToArray())) { Styles = { new VectorStyle { Line = new Pen(pinFill, 3) } } } }
+                ? new IFeature[] { new GeometryFeature(new LineString(projected.Select(item => new Coordinate(item.Point.X, item.Point.Y)).ToArray())) { Styles = { new VectorStyle { Line = new Pen(pinFill, 3), Outline = new Pen(edge, 1.5) } } } }
                 : Array.Empty<IFeature>();
             route.FeaturesWereModified(); control.RefreshGraphics();
         }
@@ -132,8 +178,10 @@ internal sealed partial class NativeUiRenderer
                 route = new MemoryLayer { Name = "地点顺序连线", Style = null }; points = new MemoryLayer { Name = "地点", Style = null };
                 map.Layers.Add(route); map.Layers.Add(points);
                 // The library's own +/- widget: it draws and handles taps inside the viewport, so it needs no XAML
-                // overlay and works without a wheel or a pinch. Features() gives it the same theme tokens as the pins.
-                zoom = new ZoomInOutWidget { Orientation = MapOrientation.Vertical, HorizontalAlignment = MapHorizontal.Right, VerticalAlignment = MapVertical.Top, Margin = new MRect(8) };
+                // overlay and works without a wheel or a pinch. Features() paints it from the theme. Opacity is 1
+                // because the renderer multiplies every colour's alpha by it and the default is 0.8
+                // (Mapsui/Mapsui, tag 5.1.0, Mapsui.Rendering.Skia/SkiaWidgets/ZoomInOutWidgetRenderer.cs).
+                zoom = new ZoomInOutWidget { Orientation = MapOrientation.Vertical, HorizontalAlignment = MapHorizontal.Right, VerticalAlignment = MapVertical.Top, Margin = new MRect(8), Opacity = 1 };
                 map.Widgets.Add(zoom);
                 map.Tapped += (_, args) => { if (visual.Disposed || points is null) return; var feature = args.GetMapInfo(new ILayer[] { points }).Feature; if (feature?["label"] is string label) { SetField(visual, key, "selected", "", label); args.Handled = true; } };
                 control = new MapControl { Map = map, Height = Math.Clamp(N(visual.Model, "height", 320), 180, 640) };

@@ -13,6 +13,7 @@ using Mapsui;
 using Mapsui.Extensions;
 using Mapsui.Layers;
 using Mapsui.Manipulations;
+using Mapsui.Rendering;
 using Mapsui.Widgets;
 using Mapsui.Widgets.ButtonWidgets;
 
@@ -83,16 +84,100 @@ internal static class MediaAndMapChromeTests
                 "Mapsui exposes every enabled layer's attribution widget to the renderer as well as to the card overlay");
         }
 
-        // ---------------------------------------------------------------- renderer rules (source text)
+        // ---------------------------------------------------------------- map colours: the rule, recomputed
+        // Rule (docs/native-ui.md, "Map colours"): what is drawn on the tiles has fixed colours chosen against a
+        // light map; what is drawn around the map follows the theme; high contrast takes the system colours.
+        // The fixed colours are read out of the renderer and judged by arithmetic, so a later edit that makes a pin
+        // or the order line too pale for a light map fails here whatever the colour is called.
         var mapSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Map.cs"));
+        var paint = Regex.Matches(mapSource, @"private static readonly MapColor (\w+) = new\((\d+), (\d+), (\d+)\);")
+            .ToDictionary(match => match.Groups[1].Value, match => (R: int.Parse(match.Groups[2].Value), G: int.Parse(match.Groups[3].Value), B: int.Parse(match.Groups[4].Value)));
+        Check(paint.Count == 4 && paint.ContainsKey("MapPinColor") && paint.ContainsKey("MapChosenPinColor") && paint.ContainsKey("MapEdgeColor") && paint.ContainsKey("MapLabelInkColor"),
+            "The renderer declares exactly the four fixed on-map colours: " + string.Join(", ", paint.Keys));
+        // WCAG 2 relative luminance and contrast ratio.
+        static double Channel(int value) { var c = value / 255d; return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4); }
+        static double Luminance((int R, int G, int B) c) => 0.2126 * Channel(c.R) + 0.7152 * Channel(c.G) + 0.0722 * Channel(c.B);
+        static double Contrast((int R, int G, int B) a, (int R, int G, int B) b)
+        { var (hi, lo) = (Math.Max(Luminance(a), Luminance(b)), Math.Min(Luminance(a), Luminance(b))); return (hi + 0.05) / (lo + 0.05); }
+        static string Ratio(double value) => value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+        // OpenStreetMap Carto, the default provider's style (gravitystorm/openstreetmap-carto, master): @land-color and
+        // @water-color in style/style.mss, @park and @forest in style/landcover.mss. The other providers' default
+        // styles are light maps of the same kind (pale land, pale blue water), which is the assumption behind the rule.
+        var tiles = new (string Name, (int R, int G, int B) Colour)[] { ("land", (242, 239, 233)), ("water", (170, 211, 223)), ("park", (200, 250, 204)), ("forest", (173, 209, 158)) };
+        var pin = paint["MapPinColor"]; var chosenPin = paint["MapChosenPinColor"]; var mapEdge = paint["MapEdgeColor"]; var labelInk = paint["MapLabelInkColor"];
+        foreach (var (name, colour) in tiles)
+        {
+            Check(Contrast(pin, colour) >= 3, "A pin and the order line reach 3:1 on " + name + ": " + Ratio(Contrast(pin, colour)));
+            Check(Contrast(chosenPin, colour) >= 3, "The chosen pin reaches 3:1 on " + name + ": " + Ratio(Contrast(chosenPin, colour)));
+            Check(Contrast(labelInk, colour) >= 7, "Label ink would still read at 7:1 directly on " + name + ": " + Ratio(Contrast(labelInk, colour)));
+        }
+        Check(Contrast(pin, tiles[0].Colour) >= 4.5 && Contrast(chosenPin, tiles[0].Colour) >= 4.5,
+            "Both pin colours reach 4.5:1 on land, where most pins sit: " + Ratio(Contrast(pin, tiles[0].Colour)) + " / " + Ratio(Contrast(chosenPin, tiles[0].Colour)));
+        Check(Contrast(mapEdge, pin) >= 4.5 && Contrast(mapEdge, chosenPin) >= 4.5,
+            "The pin outline and the line casing separate from both fills: " + Ratio(Contrast(mapEdge, pin)) + " / " + Ratio(Contrast(mapEdge, chosenPin)));
+        Check(Contrast(labelInk, mapEdge) >= 7, "Label text on its plate: " + Ratio(Contrast(labelInk, mapEdge)));
+        Check(pin.B > 2 * pin.R && chosenPin.R > 2 * chosenPin.B,
+            "The chosen pin is the warm one among cool ones, a pair that red-green colour blindness does not merge");
+        // The thresholds above are the ones the theme-following pins failed: the dark theme's default accent
+        // (SystemAccentColorLight2, #60CDFF) on the same tiles.
+        Check(Contrast((96, 205, 255), tiles[0].Colour) < 3 && Contrast((96, 205, 255), tiles[1].Colour) < 3,
+            "A dark-theme accent on a light map is what these checks reject: " + Ratio(Contrast((96, 205, 255), tiles[0].Colour)) + " / " + Ratio(Contrast((96, 205, 255), tiles[1].Colour)));
+
+        // The chosen pin is drawn on top of its neighbours, and every pin under its own label. Both rest on the order
+        // in which Mapsui visits features and styles, so that order is exercised here against the locked library: a
+        // MemoryLayer yields features by Id (construction order), not by list order, and a feature's styles in order.
+        {
+            var first = new PointFeature(0, 0); var second = new PointFeature(1, 1);
+            var under = new Mapsui.Styles.VectorStyle(); var over = new Mapsui.Styles.VectorStyle(); var only = new Mapsui.Styles.SymbolStyle();
+            first.Styles.Add(only); second.Styles.Add(under); second.Styles.Add(over);
+            var order = new MemoryLayer { Name = "顺序", Style = null, Features = new IFeature[] { second, first } };
+            var visited = new List<(IFeature Feature, Mapsui.Styles.IStyle Style)>();
+            VisibleFeatureIterator.IterateLayers(new Viewport(0, 0, 1, 0, 200, 200), new ILayer[] { order }, 0, (_, _, style, feature, _, _) => visited.Add((feature, style)));
+            Check(visited.Count == 3 && ReferenceEquals(visited[0].Feature, first) && ReferenceEquals(visited[1].Style, under) && ReferenceEquals(visited[2].Style, over),
+                "Mapsui draws the feature built last on top and a feature's styles in order (" + visited.Count + " visits)");
+        }
+
+        // ---------------------------------------------------------------- renderer rules (source text)
         Check(mapSource.Contains("zoom = new ZoomInOutWidget") && mapSource.Contains("map.Widgets.Add(zoom)"), "Map chrome uses Mapsui's own zoom widget instead of a hand-built pair of buttons");
-        Check(mapSource.Contains("zoom.StrokeColor = MapPaint(\"border\", true); zoom.TextColor = ink; zoom.BackColor = plate;"),
-            "The zoom widget is repainted from the theme tokens on every re-render, so a theme switch reaches it");
-        Check(!mapSource.Contains("DodgerBlue") && !mapSource.Contains("OrangeRed") && !mapSource.Contains("MapColor.White"),
-            "Map markers and polylines no longer use fixed DodgerBlue/OrangeRed/white colours");
-        Check(mapSource.Contains("MapPaint(\"chart1\", true)") && mapSource.Contains("MapPaint(\"chart2\", true)")
-            && mapSource.Contains("MapPaint(\"canvas\", true)") && mapSource.Contains("MapPaint(\"ink\")"),
-            "Map paints come from the shared theme tokens and the accent-first series palette");
+        // Zoom buttons are around the map, so they follow the theme, with an opaque fill and a frame that shows on
+        // any tile. Mapsui's renderer multiplies each colour's alpha by the widget's Opacity, 0.8 unless set.
+        Check(Math.Abs(new ZoomInOutWidget().Opacity - 0.8) < 1e-6, "Mapsui's zoom widget is translucent unless its opacity is set");
+        Check(Regex.IsMatch(mapSource, @"zoom = new ZoomInOutWidget \{[^}]*\bOpacity = 1 \}"), "The zoom buttons are drawn opaque");
+        Check(mapSource.Contains("var fill = Flatten(MapPaint(\"canvas\", true), MapEdgeColor);")
+            && mapSource.Contains("zoom.BackColor = fill; zoom.StrokeColor = Flatten(MapPaint(\"muted\"), fill); zoom.TextColor = Flatten(MapPaint(\"ink\"), fill);"),
+            "The zoom buttons are repainted from the theme on every re-render: page colour fill, text colours flattened onto it for the frame and the signs");
+        // The figures behind that choice, from the values of those tokens (microsoft/microsoft-ui-xaml, branch
+        // winui3/release/2.6.5, src/controls/dev/CommonStyles/Common_themeresources_any.xaml): SolidBackgroundFillColorBase
+        // #F3F3F3 / #202020 and TextFillColorSecondary #9E000000 / #C5FFFFFF. This is arithmetic on documented values,
+        // not a rendering: it shows the rule can hold, and what the hairline divider colour it replaces came to.
+        static (int R, int G, int B) Over((int R, int G, int B) top, double alpha, (int R, int G, int B) under)
+        { int Mix(int a, int b) => (int)Math.Round(a * alpha + b * (1 - alpha)); return (Mix(top.R, under.R), Mix(top.G, under.G), Mix(top.B, under.B)); }
+        var lightFill = (R: 243, G: 243, B: 243); var lightFrame = Over((0, 0, 0), 0x9E / 255d, lightFill);
+        var darkFill = (R: 32, G: 32, B: 32); var darkFrame = Over((255, 255, 255), 0xC5 / 255d, darkFill);
+        Check(Contrast(lightFrame, lightFill) >= 3 && tiles.All(tile => Contrast(lightFrame, tile.Colour) >= 3),
+            "Light theme: the frame reaches 3:1 against the button and against every tile colour: " + Ratio(Contrast(lightFrame, lightFill)) + ", " + string.Join(" / ", tiles.Select(tile => Ratio(Contrast(lightFrame, tile.Colour)))));
+        Check(Contrast(darkFrame, darkFill) >= 3 && tiles.All(tile => Contrast(darkFill, tile.Colour) >= 3),
+            "Dark theme: the fill reaches 3:1 against every tile colour and the frame against the fill: " + string.Join(" / ", tiles.Select(tile => Ratio(Contrast(darkFill, tile.Colour)))) + ", " + Ratio(Contrast(darkFrame, darkFill)));
+        var hairline = Over((0, 0, 0), 0x0F / 255d * 0.8, tiles[0].Colour);
+        Check(Contrast(hairline, tiles[0].Colour) < 1.2 && Contrast(lightFill, tiles[0].Colour) < 1.2,
+            "The divider colour at 0.8 opacity left a light button with no visible frame on land: " + Ratio(Contrast(hairline, tiles[0].Colour)) + " frame, " + Ratio(Contrast(lightFill, tiles[0].Colour)) + " fill");
+        Check(mapSource.Contains("var pinFill = contrast ? Flatten(MapPaint(\"ink\"), edge) : MapPinColor;")
+            && mapSource.Contains("var pinChosen = contrast ? Flatten(MapPaint(\"chart1\", true), edge) : MapChosenPinColor;")
+            && mapSource.Contains("var edge = contrast ? Flatten(MapPaint(\"canvas\", true), MapEdgeColor) : MapEdgeColor;")
+            && mapSource.Contains("var labelInk = contrast ? pinFill : MapLabelInkColor;"),
+            "On the tiles the fixed colours are used; only high contrast replaces them, with the system text, highlight and window colours");
+        Check(mapSource.Contains("var contrast = MapHighContrast();") && mapSource.Contains("new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast"),
+            "High contrast is read from the system setting each time the map is painted");
+        Check(!mapSource.Contains("MapPaint(\"chart2\"") && !mapSource.Contains("MapPaint(\"border\""),
+            "Selection is not a second series colour, and nothing on the map is painted with the hairline divider colour");
+        Check(mapSource.Contains("SymbolScale = chosen ? 1.3 : 1, Fill = new Mapsui.Styles.Brush(chosen ? pinChosen : pinFill), Outline = outline")
+            && mapSource.Contains("foreach (var item in projected.OrderBy(place => S(place.Marker, \"label\") == selected))"),
+            "The chosen pin is larger, has its own colour and is built last");
+        Check(mapSource.Contains("new VectorStyle { Line = new Pen(pinFill, 3), Outline = new Pen(edge, 1.5) }"),
+            "The order line is the pin colour with a casing in the edge colour");
+        // The casing is the style's Outline, which only draws while it has a width; the library's default is 1 px grey.
+        Check(new Mapsui.Styles.VectorStyle().Outline is { Width: 1.0 },
+            "Mapsui's vector style carries an outline pen by default, which the line renderer draws around a line");
         Check(mapSource.Contains("new MapColor(brush.Color.R, brush.Color.G, brush.Color.B, brush.Color.A)"),
             "Theme brushes are converted to Mapsui colours, including alpha, so high contrast keeps the system colours");
         Check(mapSource.Contains("private MapColor MapPaint(") && mapSource.Contains("ComponentBrush(token, background)"),
@@ -150,6 +235,6 @@ internal static class MediaAndMapChromeTests
             && mediaSource.Contains(".Take(12)"),
             "Gallery sources are still validated per image and capped at twelve");
 
-        Console.WriteLine($"PASS lane N2 media/map chrome: Mapsui zoom widget, theme-tinted pins, PipsPager and viewer zoom; {checks} checks");
+        Console.WriteLine($"PASS lane N2 media/map chrome: Mapsui zoom widget, fixed on-map colours for light tiles, PipsPager and viewer zoom; {checks} checks");
     }
 }

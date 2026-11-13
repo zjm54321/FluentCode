@@ -58,11 +58,30 @@ internal static class NativeUiEffectsTests
             "The burst has exactly one call site, the false→true edge guard");
         require(adapter.Contains("if (!FluentMotion.Enabled) return; // Reduced motion: no confetti.", StringComparison.Ordinal),
             "Reduced motion skips the burst before any instance exists");
-        require(adapter.Contains("Particles = 24", StringComparison.Ordinal)
-            && adapter.Contains("private const int Columns = 4;", StringComparison.Ordinal)
+        require(adapter.Contains("private const int Columns = 4;", StringComparison.Ordinal)
             && adapter.Contains("ParticleCount = Particles / Columns", StringComparison.Ordinal)
             && adapter.Contains("for (var column = 0; column < Columns; column++)", StringComparison.Ordinal),
-            "The particle count stays bounded at the previous 24, split across the band rather than added to");
+            "The burst is one fixed set of pieces, split across the band");
+        // Strength, recomputed against the hand-rolled burst this replaced: 24 opaque rectangles of 5–8 x 8 DIP.
+        // A library piece averages 100 x Scalar² / π DIP² and fades linearly, so it averages half its alpha
+        // (ghost1372/DevWinUI, commit 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e,
+        // dev/DevWinUI/Controls/Win2DAndComposition/ConfettiCannon/ConfettiEngine.cs). Arithmetic, not a rendering.
+        var pieces = int.Parse(Regex.Match(adapter, @"private const int Particles = (\d+);").Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+        var pieceScale = double.Parse(Regex.Match(adapter, @"private const double PieceScale = ([\d.]+);").Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+        require(adapter.Contains("Scalar = PieceScale,", StringComparison.Ordinal), "The burst's piece size is the declared scale");
+        const double oldPiece = 6.5 * 8, oldInk = 24 * oldPiece;
+        var pieceArea = 100 * pieceScale * pieceScale / Math.PI; var firstFrame = pieces * pieceArea; var averaged = firstFrame / 2;
+        string Sum(double value) => value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        require(pieceArea >= .5 * oldPiece && pieceArea <= 1.25 * oldPiece,
+            "A piece is near the old rectangle's size: " + Sum(pieceArea) + " against " + Sum(oldPiece) + " DIP²");
+        require(firstFrame >= oldInk && firstFrame <= 1.5 * oldInk && averaged >= .5 * oldInk,
+            "The burst brackets the old one: " + Sum(firstFrame) + " DIP² at the first frame and " + Sum(averaged) + " averaged over the fade, against " + Sum(oldInk));
+        require(24 * (100 * .3 * .3 / Math.PI) / 2 < .05 * oldInk, "The values this replaces (24 pieces at Scalar .3) came to under a twentieth of the old burst");
+        require(pieces % (4 * 6) == 0, "Each of the four origins gives every one of the six tones the same number of pieces");
+        require(adapter.Contains("=> new[] { \"info\", \"success\", \"warning\", \"purple\", \"pink\", \"danger\" }", StringComparison.Ordinal)
+            && adapter.Contains(".Select(tone => NativeUiTheme.Brush(tone, theme: _band.ActualTheme)).OfType<SolidColorBrush>().Select(brush => brush.Color).ToList();", StringComparison.Ordinal)
+            && !adapter.Contains("ChartColor", StringComparison.Ordinal),
+            "The burst cycles the six named tones as the card's theme paints them, not the chart series, whose sixth colour is grey");
         require(adapter.Contains("private const double BandWidth = 640;", StringComparison.Ordinal)
             && adapter.Contains("private const double BandHeight = 100;", StringComparison.Ordinal)
             && adapter.Contains("Clip = new RectangleGeometry { Rect = new(0, 0, BandWidth, BandHeight) }", StringComparison.Ordinal),
