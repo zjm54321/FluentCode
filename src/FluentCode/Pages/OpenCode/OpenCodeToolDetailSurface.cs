@@ -141,8 +141,10 @@ internal static partial class OpenCodeToolDetailContent
             new OpenCodeToolProperty(0, "tool", model.ToolName, OpenCodeToolPropertyKind.Code),
             new OpenCodeToolProperty(0, "partID", model.PartId, OpenCodeToolPropertyKind.Code),
         }));
-        panel.Children.Add(Section("输入", model.InputProperties.Count > 0 ? PropertyList(model.InputProperties) : CodeBlock(model.InputText ?? "未提供")));
-        panel.Children.Add(Section("输出", model.OutputProperties.Count > 0 ? PropertyList(model.OutputProperties) : CodeBlock(model.OutputText ?? "未提供")));
+        // RawOutputText set = the row replaced the server's text with its own wording; raw data shows what the server sent.
+        var replaced = model.RawOutputText is not null;
+        panel.Children.Add(Section("输入", model.InputProperties.Count > 0 && !replaced ? PropertyList(model.InputProperties) : CodeBlock(model.InputText ?? "未提供")));
+        panel.Children.Add(Section("输出", model.OutputProperties.Count > 0 && !replaced ? PropertyList(model.OutputProperties) : CodeBlock(model.RawOutputText ?? model.OutputText ?? "未提供")));
         return panel;
     }
 

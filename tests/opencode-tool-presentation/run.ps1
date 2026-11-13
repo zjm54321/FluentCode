@@ -91,7 +91,7 @@ foreach ($name in @('Microsoft.CodeAnalysis.dll', 'Microsoft.CodeAnalysis.CSharp
     $arguments += '/reference:"' + $library + '"'
     Copy-Item $library $output
 }
-$arguments += ($production + @($extracted, $tooltipGenerated, $lifecycleGenerated, (Join-Path $PSScriptRoot 'View.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'Omo307PresentationTests.cs'), (Join-Path $PSScriptRoot 'AgentIdentityTests.cs'), (Join-Path $PSScriptRoot 'TooltipCopyTests.cs'), (Join-Path $PSScriptRoot 'QuestionTodoFormatTests.cs'), (Join-Path $PSScriptRoot 'GroupLifecycle.TestHost.cs'), (Join-Path $PSScriptRoot 'TimelineLifecycleTests.cs'))) | ForEach-Object { '"' + $_ + '"' }
+$arguments += ($production + @($extracted, $tooltipGenerated, $lifecycleGenerated, (Join-Path $PSScriptRoot 'View.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'Omo307PresentationTests.cs'), (Join-Path $PSScriptRoot 'AgentIdentityTests.cs'), (Join-Path $PSScriptRoot 'TooltipCopyTests.cs'), (Join-Path $PSScriptRoot 'QuestionTodoFormatTests.cs'), (Join-Path $PSScriptRoot 'ImageToolTests.cs'), (Join-Path $PSScriptRoot 'GroupLifecycle.TestHost.cs'), (Join-Path $PSScriptRoot 'TimelineLifecycleTests.cs'))) | ForEach-Object { '"' + $_ + '"' }
 $response = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $response
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$response" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')

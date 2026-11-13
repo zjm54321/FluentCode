@@ -14,7 +14,24 @@ namespace FluentCode.Pages.OpenCode;
 internal static partial class OpenCodeToolDetailContent
 {
     internal static IReadOnlyList<OpenCodeToolImageSource> ToolImages(OpenCodeToolRowModel model)
-        => OpenCodeToolImageResolver.Sources(model.State, model.ToolName, model.Target);
+    {
+        var sources = OpenCodeToolImageResolver.Sources(model.State, model.ToolName, model.Target);
+        // A file the row's own strict parse named (finished image job, restored original): same reader, same limits.
+        if (model.ResultImagePath is not { Length: > 0 } path || SavedImageSource(path) is not { } saved) return sources;
+        foreach (var source in sources) if (source.Reference == path) return sources;
+        var all = new List<OpenCodeToolImageSource>(sources.Count + 1) { saved };
+        all.AddRange(sources);
+        return all;
+    }
+
+    /// <summary>A literal server path as a picture source; null unless its extension is a supported image type.</summary>
+    internal static OpenCodeToolImageSource? SavedImageSource(string path)
+    {
+        if (OpenCodeToolImageResolver.PathMime(path) is not { } mime) return null;
+        var name = path.Replace('\\', '/');
+        name = name[(name.LastIndexOf('/') + 1)..];
+        return new(path, mime, name.Length == 0 ? "图片" : name);
+    }
 
     /// <summary>No file I/O until this image section is realized; unload cancels both fetch and publication.</summary>
     internal static FrameworkElement BuildToolImages(OpenCodeToolRowModel model, OpenCodeToolDetailOptions options,

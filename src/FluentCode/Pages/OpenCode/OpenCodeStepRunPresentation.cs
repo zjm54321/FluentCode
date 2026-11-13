@@ -45,6 +45,9 @@ internal enum OpenCodeAsyncCompletionKind
 
     /// <summary>插件后台任务（synthetic / system，正文以 <c>&lt;task id=… state=…&gt;</c> 开头）。</summary>
     Task,
+
+    /// <summary>图片生成任务（synthetic / system，metadata.source == "experimental_image_generate" + jobID + state）。</summary>
+    Image,
 }
 
 /// <summary>
@@ -59,7 +62,9 @@ internal sealed record OpenCodeAsyncCompletion(
     int? ExitCode,
     string Body,
     string? ChildSessionId,
-    string? Agent)
+    string? Agent,
+    string? ImagePath = null,
+    string? Model = null)
 {
     /// <summary>状态表示失败 / 中止（error / failed / killed / timeout / cancelled / interrupted）。</summary>
     public bool IsFailure => State.ToLowerInvariant() is "error" or "failed" or "killed" or "timeout" or "cancelled" or "canceled" or "interrupted" or "aborted";
@@ -101,7 +106,9 @@ internal sealed record OpenCodeTimelineRowContent(
     bool DetailMarkdown = false,
     string? LinkText = null,
     string? AgentName = null,
-    bool IsEscalation = false);
+    bool IsEscalation = false,
+    string? ImagePath = null,
+    string? GlyphOverride = null);
 
 /// <summary>
 /// 时间线“处理过程”分组与紧凑提示行的纯展示算法（F4 / F5 / F8）：耗时文案、分组摘要、
@@ -308,6 +315,7 @@ internal static class OpenCodeStepRunPresentation
     /// <summary>
     /// 读取异步完成通知（后台终端 / 后台子任务 / 插件后台任务）：仅 synthetic / system 消息；
     /// 终端按 <c>metadata.source == "shell" / "pty"</c>，子任务按 <c>metadata.source == "subagent"</c> + childID，
+    /// 图片按 <c>metadata.source == "experimental_image_generate"</c> + jobID + state，
     /// 插件任务按正文 <c>&lt;task id="…" state="…"&gt;</c> 前缀。只读识别，不执行正文。
     /// </summary>
     internal static bool TryReadAsyncCompletion(OpenCodeMessage? message, out OpenCodeAsyncCompletion completion)
@@ -325,6 +333,9 @@ internal static class OpenCodeStepRunPresentation
 
         if (string.Equals(source, "pty", StringComparison.Ordinal))
             return TryReadPtyCompletion(message, metadata, out completion);
+
+        if (string.Equals(source, ImageSource, StringComparison.Ordinal))
+            return TryReadImageCompletion(metadata, tag, attributes, body, out completion);
 
         if (string.Equals(source, "shell", StringComparison.Ordinal))
         {
@@ -440,6 +451,75 @@ internal static class OpenCodeStepRunPresentation
         return false;
     }
 
+    internal const string ImageSource = "experimental_image_generate";
+    internal const string ImageGlyph = "\uEB9F";
+
+    // image/notice.ts: metadata { source, jobID, state, path: <stem> } is the discriminator. The text is only read for the
+    // saved file name, and only when it agrees with that metadata; otherwise the notice shows without a picture.
+    private static bool TryReadImageCompletion(System.Text.Json.JsonElement? metadata, string tag,
+        Dictionary<string, string> attributes, string body, out OpenCodeAsyncCompletion completion)
+    {
+        completion = null!;
+        var job = MetadataString(metadata, "jobID");
+        var state = MetadataString(metadata, "state");
+        if (string.IsNullOrWhiteSpace(job) || string.IsNullOrWhiteSpace(state)) return false;
+        var stem = MetadataString(metadata, "path") ?? string.Empty;
+        string? saved = null;
+        string? model = null;
+        if (state == "completed" && tag == "image" && Attribute(attributes, "id") == job
+            && TryParseSavedImage(body, out var path, out var reference) && stem.Length > 0
+            && path.Length > stem.Length && path.StartsWith(stem, StringComparison.Ordinal)
+            && path.LastIndexOf('.') == stem.Length)
+        {
+            saved = path;
+            model = reference;
+        }
+
+        completion = new OpenCodeAsyncCompletion(OpenCodeAsyncCompletionKind.Image, job!, state!, FileNameOf(saved ?? stem), null,
+            tag == "image" ? body : string.Empty, null, null, saved, model);
+        return true;
+    }
+
+    /// <summary>
+    /// Strict read of “Image request finished. Saved image: &lt;absolute file&gt; (&lt;provider/model&gt;).”: first body line only,
+    /// absolute path, no control characters, one of the four extensions the server writes. No guessing on a miss.
+    /// </summary>
+    internal static bool TryParseSavedImage(string? body, out string path, out string model)
+    {
+        path = model = string.Empty;
+        const string prefix = "Image request finished. Saved image: ";
+        var line = (body ?? string.Empty).Split('\n', 2)[0].TrimEnd('\r');
+        if (!line.StartsWith(prefix, StringComparison.Ordinal) || !line.EndsWith(").", StringComparison.Ordinal)) return false;
+        var open = line.LastIndexOf(" (", StringComparison.Ordinal);
+        if (open < prefix.Length) return false;
+        var file = line[prefix.Length..open];
+        var reference = line[(open + 2)..^2];
+        if (reference.Length == 0 || reference.Length > 200) return false;
+        foreach (var ch in reference) if (char.IsWhiteSpace(ch) || char.IsControl(ch) || ch is '(' or ')') return false;
+        if (file.Length > 1024 || file != file.Trim()) return false;
+        foreach (var ch in file) if (char.IsControl(ch)) return false;
+        var absolute = file.StartsWith('/') || file.Length > 3 && char.IsAsciiLetter(file[0]) && file[1] == ':' && file[2] is '\\' or '/';
+        if (!absolute) return false;
+        var dot = file.LastIndexOf('.');
+        if (dot < 1 || file[dot - 1] is '/' or '\\' || file[dot..] is not (".png" or ".jpg" or ".webp" or ".gif")) return false;
+        path = file;
+        model = reference;
+        return true;
+    }
+
+    private static string FileNameOf(string? path)
+    {
+        var value = (path ?? string.Empty).Replace('\\', '/').TrimEnd('/');
+        return OpenCodeDisplayText.Line(value[(value.LastIndexOf('/') + 1)..]);
+    }
+
+    /// <summary>“openai/gpt-image-2.5-flare” → “gpt-image-2.5-flare”（只用于行内摘要；详情保留完整引用）。</summary>
+    internal static string ShortModel(string? reference)
+    {
+        var value = OpenCodeDisplayText.Line(reference);
+        return value[(value.LastIndexOf('/') + 1)..];
+    }
+
     /// <summary>异步状态的中文说明（completed → 已完成 等；缺失为“状态未提供”，未识别原样）。</summary>
     internal static string DescribeAsyncState(string? state) => (state ?? string.Empty).ToLowerInvariant() switch
     {
@@ -465,16 +545,20 @@ internal static class OpenCodeStepRunPresentation
         {
             OpenCodeAsyncCompletionKind.Shell or OpenCodeAsyncCompletionKind.Pty => "终端",
             OpenCodeAsyncCompletionKind.Subagent => SubagentLabel,
+            OpenCodeAsyncCompletionKind.Image => "图片生成",
             _ => "后台任务",
         };
 
-        var name = completion.Kind is OpenCodeAsyncCompletionKind.Shell or OpenCodeAsyncCompletionKind.Pty or OpenCodeAsyncCompletionKind.Subagent ? noun + "（后台）" : noun;
+        var name = completion.Kind is OpenCodeAsyncCompletionKind.Shell or OpenCodeAsyncCompletionKind.Pty or OpenCodeAsyncCompletionKind.Subagent
+            or OpenCodeAsyncCompletionKind.Image ? noun + "（后台）" : noun;
         var target = completion.Kind == OpenCodeAsyncCompletionKind.Subagent && !string.IsNullOrWhiteSpace(completion.Agent)
             ? (completion.Agent + " " + completion.Target).Trim()
             : completion.Target;
         target = FirstLineOf(target);
         var summary = completion.IsRunning ? "后台运行中" : stateText;
         if (completion.ExitCode is { } exit) summary += " · 退出码 " + exit.ToString(CultureInfo.InvariantCulture);
+        var image = completion.Kind == OpenCodeAsyncCompletionKind.Image;
+        if (image && ShortModel(completion.Model) is { Length: > 0 } shortModel) summary += " · " + shortModel;
         OpenCodeToolRowStatus status = completion.IsFailure || completion.ExitCode is { } e && e != 0
             ? OpenCodeToolRowStatus.Error
             : completion.IsRunning
@@ -510,6 +594,12 @@ internal static class OpenCodeStepRunPresentation
                 Add("状态", stateText, OpenCodeToolPropertyKind.Text);
                 Add("子会话", completion.ChildSessionId, OpenCodeToolPropertyKind.Code);
                 break;
+            case OpenCodeAsyncCompletionKind.Image:
+                Add("文件", completion.ImagePath ?? completion.Target, OpenCodeToolPropertyKind.Code);
+                Add("模型", OpenCodeDisplayText.Line(completion.Model), OpenCodeToolPropertyKind.Text);
+                Add("状态", stateText, OpenCodeToolPropertyKind.Text);
+                Add("任务 id", completion.Key, OpenCodeToolPropertyKind.Code);
+                break;
             default:
                 Add("任务", completion.Target, OpenCodeToolPropertyKind.Text);
                 Add("状态", stateText, OpenCodeToolPropertyKind.Text);
@@ -527,9 +617,13 @@ internal static class OpenCodeStepRunPresentation
             accessible,
             name,
             properties,
-            string.IsNullOrWhiteSpace(completion.Body) ? null : completion.Body,
-            DetailMarkdown: completion.Kind != OpenCodeAsyncCompletionKind.Shell,
-            LinkText: completion.ChildSessionId is { Length: > 0 } ? "打开子会话" : null);
+            // A parsed image notice has nothing left but an instruction addressed to the model; any other image body
+            // (failure reason, cancellation, an unparsed line) is the server's own words and is shown as plain text.
+            image && completion.ImagePath is not null || string.IsNullOrWhiteSpace(completion.Body) ? null : completion.Body,
+            DetailMarkdown: completion.Kind is not (OpenCodeAsyncCompletionKind.Shell or OpenCodeAsyncCompletionKind.Image),
+            LinkText: completion.ChildSessionId is { Length: > 0 } ? "打开子会话" : null,
+            ImagePath: completion.ImagePath,
+            GlyphOverride: image ? ImageGlyph : null);
     }
 
     /// <summary>V2 parent notice: “Designer 已完成 · 任务”，结果正文只留在详情中。</summary>

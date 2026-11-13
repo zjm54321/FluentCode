@@ -54,7 +54,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         ? _content.Status == OpenCodeToolRowStatus.Completed ? CompletionNoticeDoneGlyph : CompletionNoticeFailedGlyph
         : _content.AgentName is { } agent ? OpenCodeAgentIcons.Glyph(agent)
         : OpenCodeStepRunPresentation.IsSubagentLabel(_content.Name) ? OpenCodeStepRunPresentation.SubagentGlyph
-        : _content.Name == "终端（后台）" ? OpenCodeStepRunPresentation.TerminalGlyph : _glyph;
+        : _content.GlyphOverride ?? (_content.Name == "终端（后台）" ? OpenCodeStepRunPresentation.TerminalGlyph : _glyph);
 
     /// <param name="automationId">行按钮的 AutomationId。</param>
     /// <param name="glyph">Segoe Fluent Icons 字形。</param>
@@ -187,6 +187,20 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
     OpenCodeToolDetailView IOpenCodeDetailContentSource.BuildDetailContent()
     {
         var panel = new StackPanel { Spacing = 12 };
+        if (!_disposed && _content.ImagePath is { Length: > 0 } imagePath
+            && OpenCodeToolDetailContent.SavedImageSource(imagePath) is { } picture)
+        {
+            // The finished picture leads the detail. Same lazy, cancellable, size-capped session reader as tool pictures:
+            // nothing is fetched until this detail is shown, and a failed read says so under the frame.
+            panel.Children.Add(OpenCodeToolDetailContent.BuildImage("image-notice:" + imagePath,
+                picture,
+                new OpenCodeToolDetailOptions
+                {
+                    Compact = OpenCodeToolDetailPopup.Shared.Mode == OpenCodeDetailPopupMode.Preview,
+                    BrowserImageScope = OpenCodeImageContext.Find(_chip),
+                }, automationId: "OpenCodeImageNoticePicture"));
+        }
+
         if (_content.Properties.Count > 0)
         {
             panel.Children.Add(OpenCodeToolDetailContent.PropertyList(_content.Properties));

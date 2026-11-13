@@ -481,6 +481,7 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
         OpenCodeToolKind.Question => "\uE897",
         OpenCodeToolKind.Todo => "\uE9D5",
         OpenCodeToolKind.Report => "\uE8F2",
+        OpenCodeToolKind.Image => OpenCodeStepRunPresentation.ImageGlyph,
         _ => "\uE90F",
     };
 
