@@ -46,10 +46,21 @@ internal static class NativeUiCommunityEffects
         // The footprint the hand-rolled celebration had, clip included, so a particle cannot paint outside it.
         private const double BandWidth = 640;
         private const double BandHeight = 100;
-        // Bounded burst: the previous implementation drew 24 rectangles over 1.2–1.65s, so neither grows.
-        private const int Particles = 24;
-        // The rectangles were spread across the whole band at (i*29)%600 and fell straight down; four origins of six
-        // particles keep the total at 24 while covering the same width.
+        // Strength is set against the hand-rolled burst this replaced: 24 opaque rectangles of 5–8 x 8 DIP (52 DIP²
+        // on average, 1,248 DIP² in all) for 1.2–1.65s. A library piece is a parallelogram whose corners are offset
+        // by 10 x Scalar DIP along a turning wobble angle w and by 2–3 DIP (r) along a turning tilt angle t. Its area
+        // is |(10 x Scalar)² sin 2w − r² sin 2t| / 2, which averages 100 x Scalar² / π once 10 x Scalar is well over
+        // 3. Its alpha is 1 − tick / Ticks, so it fades from the first frame and averages one half
+        // (ghost1372/DevWinUI, commit 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e,
+        // dev/DevWinUI/Controls/Win2DAndComposition/ConfettiCannon/ConfettiEngine.cs, Update and Draw).
+        //   Scalar 1  -> a piece averages 32 DIP² inside a box of about 8 x 8 DIP, the old piece's footprint.
+        //   48 pieces -> 1,528 DIP² at the first frame (1.22 x the old burst), 764 DIP² averaged over the fade (0.61 x).
+        // Matching the average would take 78 pieces and start at twice the old burst, so the count brackets it instead.
+        // At Scalar .3 with 24 pieces a piece came to about 3 DIP² and the burst to about 3% of the old one.
+        private const int Particles = 48;
+        private const double PieceScale = 1;
+        // The rectangles were spread across the whole band at (i*29)%600 and fell straight down; four origins cover
+        // the same width, and twelve pieces at each take every one of the six tones twice.
         private const int Columns = 4;
         // ≈1.5s at 60fps, inside the 1.2–1.65s the previous burst used.
         private const int BurstFrames = 90;
@@ -97,7 +108,7 @@ internal static class NativeUiCommunityEffects
                     cannon.Fire(new ConfettiCannonOptions
                     {
                         ParticleCount = Particles / Columns, Angle = 270, Spread = 180, StartVelocity = .65, Decay = 1, Gravity = .1,
-                        Drift = 0, Ticks = BurstFrames, Origin = new((column + .5) / Columns, 0), Scalar = .3,
+                        Drift = 0, Ticks = BurstFrames, Origin = new((column + .5) / Columns, 0), Scalar = PieceScale,
                         Shapes = new() { "square" }, Colors = Palette(),
                     });
                 _limit = _queue?.CreateTimer();
