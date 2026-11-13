@@ -92,8 +92,10 @@ internal sealed partial class NativeUiRenderer
             try { flip.Items.Clear(); flip.Visibility = pager.Visibility = Visibility.Collapsed; pager.NumberOfPages = -1; pager.SelectedPageIndex = 0; }
             finally { navigating = false; }
         }
-        // Both directions are guarded: a FlipView with no items reports index -1, which a PipsPager cannot hold
-        // (one pip is always selected), and a reset must not echo back into the FlipView.
+        // Both directions are guarded: an empty FlipView reports -1, but PipsPager clamps negative selection to 0;
+        // NumberOfPages = 0 clears all pips. A reset must not echo back into the FlipView. Source:
+        // https://github.com/microsoft/microsoft-ui-xaml, branch winui3/release/2.6.5,
+        // src/controls/dev/PipsPager/PipsPager.cpp:310-346, 418-446.
         flip.SelectionChanged += (_, _) =>
         {
             if (navigating || visual.Disposed) return;
