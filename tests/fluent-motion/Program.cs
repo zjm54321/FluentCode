@@ -23,7 +23,8 @@ internal static class Program
     /// <summary>Removes C# comments, preserving literals and token/line boundaries for source guards.</summary>
     private static string StripComments(string source)
     {
-        // Keep this scanner and its executed cases in sync with tests/native-ui/NativeUiEffectsTests.cs.
+        // Keep this scanner and its executed cases in sync with tests/native-ui/NativeUiEffectsTests.cs
+        // and tests/opencode-composer-hookup/PickerEscape.cs; each runner compiles its own copy.
         var code = new System.Text.StringBuilder(source.Length);
         var index = 0;
         while (index < source.Length)
