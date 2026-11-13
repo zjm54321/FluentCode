@@ -13,9 +13,14 @@ The app and patched terminal library use the 2.6.5 umbrella package. A split-onl
 
 App notifications, AppInstance and windowing compile against the new packages. Child-HWND terminal hosting is unchanged. Packaged publish and manifest checks are headless; installed activation, notification delivery, theme changes and window interaction require a user-approved desktop session.
 
-## DevWinUI 10.9.1 availability, without control replacement
+## DevWinUI 10.9.1
 
-`DevWinUI` brings `DevWinUI.Base` 10.9.1 and `Microsoft.Graphics.Win2D` 1.4.0. No DevWinUI control is instantiated by the application in this upgrade.
+`DevWinUI` brings `DevWinUI.Base` 10.9.1 and `Microsoft.Graphics.Win2D` 1.4.0. The dependency upgrade itself instantiated no DevWinUI control. Since 1.2611.18 two are in use, each behind one adapter file, and a headless check keeps the vendor namespace out of every other C# file:
+
+- `IssueLabel`, through `Controls/CommunityTextBadge.cs`: badges without an icon in Native UI cards. Badges with an icon are still built by hand and styled to match.
+- `ConfettiCannon`, through `Pages/OpenCode/NativeUi/NativeUiCommunityEffects.cs`: the Celebration burst.
+
+That effects file also holds an adapter for `Shimmer`, and `App.xaml` a style for it (`AppStreamingShimmerStyle`). Nothing calls them yet: the streaming placeholder still draws its own bars.
 
 Application dictionaries are merged in this order:
 
@@ -27,6 +32,10 @@ Application dictionaries are merged in this order:
 Later merged dictionaries win duplicate-key lookups. The actual Toolkit PRI confirms its Generic dictionary merges the unchanged SettingsCard and SettingsExpander dictionaries. Comparing the PRI identifiers with DevWinUI resources confirms 48 shared identifiers, including the three standard theme dictionary names. Loading the entire Toolkit dictionary after DevWinUI preserves the Toolkit definitions instead of copying selected values or relying on generic-theme fallback. DevWinUI has no application-level implicit style targeting stock WinUI controls; nested styles remain in their control/template scopes.
 
 The MSIX check asserts this merge order, verifies both Generic XBFs in the primary PRI, and verifies the Win2D DLLs and harvested activation classes. These checks establish source/resource provenance and package completeness. Settings cards in Light, Dark and HighContrast, and application startup/resource initialization, still need visual/runtime verification on the desktop.
+
+## CommunityToolkit.WinUI.Animations 8.2.251219
+
+Referenced since 1.2611.18 for a flashcard flip animation that is not written yet. The flashcard swaps its faces in one frame, as before, and no application code uses the package.
 
 ## Net.Codecrete.QrCodeGenerator 3.2.1
 
