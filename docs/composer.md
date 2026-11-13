@@ -34,6 +34,18 @@ EditorSync 保留 baseline / input revision / 提交 ACK / reentrant predecessor
 - 紧凑宽度投影使用 `RichTextBlock` 的 `Paragraph` 承载 `InlineUIContainer`，不能放进 `TextBlock.Inlines`（WinUI 会返回 `E_INVALIDARG`）。芯片宽度读取已验证的规范位图尺寸，不在该投影中查询尚未布局的 TOM 对象。原生 patch 期间沿用上次完成的测量，`NativeLayoutReady` 后重新计算。
 - `OpenCodeComposerNativeGeometry` 在 TOM / 位图调用前验证有限、正值和 ascent ≤ height；布局 DIP 尺寸向上取整，避免正的小数被截为零。composer 安全预算为图像 4096 DIP、每边光栅 4096 px、段落 1638 pt（至少一个 twip），不是声明 TOM 的最大值。段落 points 转换只移除一次文字缩放。URL 位图在原始粘贴事务提交前准备；尺寸无效时原文作为一次普通文本粘贴，撤销一次即恢复。后续原生图片插入失败只显式降级失败 token 为其原始文本，保留其他 token 身份和选区方向；其他失败继续使用既有 held/recovery 流程。粘贴、芯片指针与布局回调边界只拦截 COM / 参数异常，不使用全局异常吞噬。
 
+## 撤回与恢复撤回
+
+`/undo`、`/redo` 和消息菜单的“撤回 / 恢复撤回”走同一条路径（`RunNativeRollbackAsync`）。一次操作最多出现一个提示框：
+
+- 撤回：提示框打开之前，页面先读好两份预览（只撤回文字 / 同时恢复文件）。两份必须对应同一会话状态和同一条消息，否则不提示也不执行。提示框里是要放回输入框的文字、一句说明和默认不勾选的“同时恢复文件”；确认后执行的就是所选的那一份预览，不会再弹第二次，也不会事后换成另一份。
+- 警示行只在有事实依据时出现：消息带有文件 / 智能体 / 技能引用（只放回文字），或上一次撤回恢复过文件（会话 `revert.files` 非空，继续撤回或恢复时这些文件会再变一次）。有警示行时默认按钮是“取消”，否则是“撤回”。
+- 恢复撤回：上一次撤回没有恢复文件时不提示，直接执行；恢复过文件时提示一次。
+- 输入框非空时不能撤回：命令和菜单项是禁用的；万一仍然触发，预览会被拒绝并给出一条通知，提示框自身也不允许确认。
+- 成功后没有通知：撤回的文字已经在输入框里，读屏会播报结果。只有没有执行、被服务器拒绝或结果未知时，才通过 `ShowMessage` 给出一条通知。结果未知时不暗示成功、不自动重试，会话保护保持原样。唯一的例外是撤回已成功、但文字没能写回输入框：这时有一条带着这段文字的通知，方便复制。
+
+提示框的文字和判断都在不依赖 WinUI 的 `OpenCodeRollbackConfirmationState` 里，由 `tests/opencode-composer-hookup/NativeActions.cs` 覆盖；该 runner 的默认运行包含这一组。
+
 ## 验证
 
 协议回归：`tests/opencode-composer/run.ps1`、`tests/opencode-composer-hookup/run.ps1`、`tests/opencode-session-return/run.ps1`、`tests/message-pagination/run.ps1`，均传新的 EvidenceRoot；编译 composer 的其他现有 runner 同样保留。
