@@ -20,15 +20,104 @@ internal static class Program
         Console.Error.WriteLine("FAIL " + name);
     }
 
-    /// <summary>The source with comments removed, so a guard can never be satisfied by prose alone.</summary>
+    /// <summary>Removes C# comments, preserving literals and token/line boundaries for source guards.</summary>
     private static string StripComments(string source)
     {
-        var withoutBlocks = System.Text.RegularExpressions.Regex.Replace(source, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);
-        return System.Text.RegularExpressions.Regex.Replace(withoutBlocks, @"//[^\n]*", "");
+        // Keep this scanner and its executed cases in sync with tests/native-ui/NativeUiEffectsTests.cs.
+        var code = new System.Text.StringBuilder(source.Length);
+        var index = 0;
+        while (index < source.Length)
+        {
+            if (source[index] == '/' && index + 1 < source.Length && source[index + 1] == '/')
+            {
+                code.Append(' '); index += 2;
+                while (index < source.Length && source[index] is not '\r' and not '\n') index++;
+                continue;
+            }
+            if (source[index] == '/' && index + 1 < source.Length && source[index + 1] == '*')
+            {
+                code.Append(' '); index += 2;
+                while (index < source.Length)
+                {
+                    if (source[index] == '*' && index + 1 < source.Length && source[index + 1] == '/') { index += 2; break; }
+                    if (source[index] is '\r' or '\n') code.Append(source[index]);
+                    index++;
+                }
+                continue;
+            }
+            if (source[index] is '"' or '\'')
+            {
+                var start = index; var quote = source[index];
+                var verbatim = quote == '"' && ((index > 0 && source[index - 1] == '@')
+                    || (index > 1 && source[index - 1] == '$' && source[index - 2] == '@'));
+                var delimiterLength = 1;
+                if (quote == '"' && !verbatim)
+                    while (start + delimiterLength < source.Length && source[start + delimiterLength] == '"') delimiterLength++;
+                if (delimiterLength >= 3)
+                {
+                    index += delimiterLength;
+                    while (index < source.Length)
+                    {
+                        if (source[index] != '"') { index++; continue; }
+                        var quotes = 1;
+                        while (index + quotes < source.Length && source[index + quotes] == '"') quotes++;
+                        index += quotes;
+                        if (quotes == delimiterLength) break;
+                    }
+                }
+                else
+                {
+                    index++;
+                    while (index < source.Length)
+                    {
+                        var current = source[index++];
+                        if (!verbatim && current == '\\' && index < source.Length) { index++; continue; }
+                        if (current != quote) continue;
+                        if (verbatim && index < source.Length && source[index] == '"') { index++; continue; }
+                        break;
+                    }
+                }
+                code.Append(source, start, index - start);
+                continue;
+            }
+            code.Append(source[index++]);
+        }
+        return code.ToString();
+    }
+
+    private static void CommentScannerTests()
+    {
+        void Literal(string source, string name)
+        {
+            Check(StripComments(source + " // discard DevWinUI") == source + "  ", name + ": preserves literal and following code, removes line comment");
+            Check(StripComments(source + " /* discard DevWinUI */") == source + "  ", name + ": preserves literal and following code, removes block comment");
+        }
+        Literal("var url = \"https://example.test\"; DevWinUI.After();", "URL before same-line vendor code");
+        Literal("var text = \"/* DevWinUI */\"; DevWinUI.After();", "Block marker inside a string");
+        Literal("var type = \"DevWinUI.Widget\";", "Vendor type named only inside a string remains a reference");
+        Literal("var slash = '/'; var quote = '\"'; var apostrophe = '\\''; var backslash = '\\\\'; DevWinUI.After();", "Char literals with slash, quote, escaped apostrophe and backslash");
+        foreach (var prefix in new[] { "", "$" })
+            Literal("var text = " + prefix + "\"\\\"/* DevWinUI */ // kept\\\"\"; DevWinUI.After();", prefix + " regular string with escaped quotes");
+        foreach (var prefix in new[] { "@", "$@", "@$" })
+        {
+            Literal("var text = " + prefix + "\"https://host/\"\"/* DevWinUI */ // kept\"\"\"; DevWinUI.After();", prefix + " verbatim string with doubled quotes");
+            Literal("var text = " + prefix + "\"\"\"/* DevWinUI */ // kept\"\"\"; DevWinUI.After();", prefix + " verbatim string starting with a doubled quote, not a raw delimiter");
+        }
+        foreach (var count in new[] { 3, 4, 5 })
+            foreach (var prefix in new[] { "", "$$" })
+            {
+                var delimiter = new string('"', count);
+                Literal("var text = " + prefix + delimiter + "\nhttps://host/ " + new string('"', count - 1)
+                    + " /* DevWinUI */ // kept\n" + delimiter + "; DevWinUI.After();", prefix + " raw string with " + count + "-quote delimiters");
+            }
+        Check(StripComments("var first = 1; // DevWinUI\r\n/* DevWinUI\ncomment */ var second = 2;")
+            == "var first = 1;  \r\n \n var second = 2;", "Real vendor comments disappear while line boundaries and following code survive");
+        Check(StripComments("one/* DevWinUI */two") == "one two", "Removing a comment never joins two code tokens");
     }
 
     private static int Main(string[] args)
     {
+        CommentScannerTests();
         Tokens();
         SlowMotion();
         Policy();
