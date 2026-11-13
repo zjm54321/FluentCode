@@ -168,6 +168,7 @@ public sealed partial class OpenCodePage : Page
         }
         NavigationCacheMode = Microsoft.UI.Xaml.Navigation.NavigationCacheMode.Required;
         InitializeNoticeDismissal();
+        InitializeNotices();
 
         _conversationView.HorizontalAlignment = HorizontalAlignment.Stretch;
         AutomationProperties.SetAutomationId(_conversationView, "OpenCodeMessageList");
