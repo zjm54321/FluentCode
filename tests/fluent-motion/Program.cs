@@ -420,5 +420,17 @@ internal static class Program
         Check(pageCode.Contains("private void ShowMessage(InfoBarSeverity severity, string title, string message)")
             && pageCode.Contains("InitializeNotices();"),
             "STATIC notices: ShowMessage keeps its signature and the layer is wired once in the constructor");
+        var bounds = StripComments(File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Notices.Layout.cs")));
+        Check(bounds.Contains("FindName(\"ShellNoticeBar\")")
+            && File.ReadAllText(Path.Combine(repo, "src/FluentCode/MainWindow.xaml")).Contains("x:Name=\"ShellNoticeBar\""),
+            "STATIC notices: the shell notice bar the layer moves below still has the name it looks up");
+        Check(bounds.Contains("UnregisterPropertyChangedCallback(InfoBar.IsOpenProperty, _shellNoticeOpenToken)")
+            && bounds.Contains("_shellNoticeBar.SizeChanged -= Notices_BoundsChanged;"),
+            "STATIC notices: callbacks on the window-owned bar are removed when the page unloads");
+        Check(bounds.Contains("InteractionsSection, ComposerQueueHost, ComposerCell") && bounds.Contains("NoticeLayer.MaxHeight = height"),
+            "STATIC notices: the stack is capped above the interaction, queue and composer rows");
+        Check(System.Text.RegularExpressions.Regex.Matches(bounds, @"\b(\w+)\.(Margin|MaxHeight|Height|Padding) = ")
+            .All(m => m.Groups[1].Value == "NoticeLayer"),
+            "STATIC notices: positioning changes only the layer itself, never the page layout");
     }
 }

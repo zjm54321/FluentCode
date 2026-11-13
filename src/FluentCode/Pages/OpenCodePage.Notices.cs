@@ -25,6 +25,7 @@ public sealed partial class OpenCodePage
         // 浮层跟着它所属的界面一起隐藏：设置标签盖住会话区时、或工作区整体折叠（未配置）时不显示。
         SettingsTabHost.RegisterPropertyChangedCallback(VisibilityProperty, OnNoticeSourceChanged);
         WorkspaceGrid.RegisterPropertyChangedCallback(VisibilityProperty, OnNoticeSourceChanged);
+        InitializeNoticeBounds();
         RefreshNoticeLayer();
     }
 
@@ -55,5 +56,6 @@ public sealed partial class OpenCodePage
         bool hostShown = SettingsTabHost.Visibility != Visibility.Visible
             && WorkspaceGrid.Visibility == Visibility.Visible;
         NoticeLayer.Visibility = NoticeVisibility(hostShown && (ssh || permission || message || hint));
+        UpdateNoticeBounds();
     }
 }
