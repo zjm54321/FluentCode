@@ -58,6 +58,7 @@ internal sealed partial class OpenCodePairDeviceView
             _code = code;
             _expiresAtTick = Environment.TickCount64 + (long)code.Lifetime.TotalMilliseconds;
             _rule.Text = "链接只能用一次，" + OpenCodePairingLinks.DescribeLifetime(code.Lifetime) + "内有效。用过或过期后请重新生成。";
+            _countdown.Text = "剩余 " + OpenCodePairingLinks.FormatRemaining(code.Lifetime);
             _timer.Start();
         }
         catch (OperationCanceledException) { return; }
