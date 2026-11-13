@@ -119,7 +119,17 @@ public sealed partial class OpenCodePage
             McpActionError = _mcpActionError,
         };
         ConnectionFlyout.Content = OpenCodeConnectionFlyout.Build(details, RefreshConnectionDetails, _connectionDetailKey,
-            SelectConnectionDetail, (server, request) => _ = ControlMcpAsync(server, request));
+            SelectConnectionDetail, (server, request) => _ = ControlMcpAsync(server, request),
+            SourceReady && baseUrl is not null ? OpenPairDeviceFromFlyout : null);
+    }
+
+    /// <summary>连接浮层 → “连接其他设备”：先收起浮层（对话框不叠在浮层上），再打开配对对话框。</summary>
+    private async void OpenPairDeviceFromFlyout()
+    {
+        ConnectionFlyout.Hide();
+        if (!_pageActive || !SourceReady) return;
+        await FluentCode.Pages.Account.OpenCodePairDeviceDialog.ShowAsync(this,
+            _homeSettings.Current?.OpenCode.Kind ?? FluentCode.Models.OpenCodeConnectionKind.Remote);
     }
 
     /// <summary>与页头连接圆点相同的语义色（按页头已显示的状态文字映射，不另行推断）。</summary>

@@ -59,6 +59,7 @@
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Segmented" Version="8.2.251219" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
     <PackageReference Include="DevWinUI" Version="10.9.1" />
+    <PackageReference Include="Net.Codecrete.QrCodeGenerator" Version="3.2.1" />
     <ProjectReference Include="..\ThirdParty\WindowsTerminalControl\src\WindowsTerminalControl.WinUI\WindowsTerminalControl.WinUI.csproj" />
   </ItemGroup>
   <ItemGroup>
@@ -70,6 +71,7 @@
     <Page Include="Styles\**\*.xaml" />
     <Content Include="Assets\Brands\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\licenses\fluentui-system-icons-LICENSE.txt" Link="licenses\fluentui-system-icons-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\qrcodegenerator-LICENSE.txt" Link="licenses\qrcodegenerator-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="ThirdPartyNotices\OneDarkPro.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets\OpenCode\*.svg" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets\OpenCode\Mermaid\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
