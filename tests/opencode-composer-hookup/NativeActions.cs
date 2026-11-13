@@ -287,7 +287,7 @@ internal static class NativeTests
         var plain = new OpenCodeRollbackPreviewPresentation(OpenCodeRollbackKind.Undo, "newer text", 0,
             false, false, true, text) { FilesIdentity = files };
         var state = new OpenCodeRollbackConfirmationState(plain);
-        Check(state.CanConfirm && state.ConfirmIsDefault
+        Check(OpenCodeRollbackConfirmationState.RequiresPrompt(plain) && state.CanConfirm && state.ConfirmIsDefault
             && state.Cautions().Count == 0 && state.OffersFileRestoration && !state.RestoreFiles,
             "plain undo: one light prompt, nothing to warn about, files off by default");
         Check(ReferenceEquals(state.Confirm().ConfirmedIdentity, text), "unticked undo confirms the text-only preview");
@@ -298,6 +298,8 @@ internal static class NativeTests
         noFiles.SetRestoreFiles(true);
         Check(!noFiles.OffersFileRestoration && !noFiles.RestoreFiles && ReferenceEquals(noFiles.Confirm().ConfirmedIdentity, text),
             "file restoration cannot be chosen when its preview was not prepared");
+        Check(OpenCodeRollbackConfirmationState.ConfirmWithoutPrompt(plain).Outcome == OpenCodeRollbackOutcome.Cancelled,
+            "undo is never confirmed without its prompt");
         var references = new OpenCodeRollbackConfirmationState(plain with { TargetHasNonTextReferences = true });
         Check(references.CanConfirm && !references.ConfirmIsDefault && references.Cautions().Single() == references.TextOnlyNote
             && references.TextOnlyNote!.Contains("只有文字"), "non-text references are told in the same prompt, without a second tick");
@@ -308,13 +310,16 @@ internal static class NativeTests
         Check(draft.BlockingReason is not null && !draft.CanConfirm && !draft.ConfirmIsDefault
             && draft.Confirm() is { Outcome: OpenCodeRollbackOutcome.Cancelled, ConfirmedIdentity: null }, "a non-empty draft still blocks undo");
         var redo = plain with { Kind = OpenCodeRollbackKind.Redo, TargetText = null, FilesIdentity = null };
-        var plainRedo = new OpenCodeRollbackConfirmationState(redo);
-        Check(plainRedo.CanConfirm && plainRedo.ConfirmIsDefault && plainRedo.Cautions().Count == 0 && !plainRedo.OffersFileRestoration
-            && ReferenceEquals(plainRedo.Confirm().ConfirmedIdentity, text), "plain redo: one light prompt with no file choice");
+        var direct = OpenCodeRollbackConfirmationState.ConfirmWithoutPrompt(redo);
+        Check(!OpenCodeRollbackConfirmationState.RequiresPrompt(redo) && direct.Outcome == OpenCodeRollbackOutcome.Confirmed && !direct.RestoreFiles
+            && ReferenceEquals(direct.Preview, redo) && ReferenceEquals(direct.ConfirmedIdentity, text),
+            "plain redo needs no prompt and confirms exactly the preview just read");
         var redoFiles = redo with { PriorStageFileCount = 2 };
         var risky = new OpenCodeRollbackConfirmationState(redoFiles);
-        Check(!risky.ConfirmIsDefault && risky.Cautions().Single() == risky.FileEffectNote && risky.FileEffectNote!.Contains("2 个文件"),
-            "redo that changes files back says how many");
+        Check(OpenCodeRollbackConfirmationState.RequiresPrompt(redoFiles) && !risky.ConfirmIsDefault && risky.Cautions().Single() == risky.FileEffectNote
+            && risky.FileEffectNote!.Contains("2 个文件")
+            && OpenCodeRollbackConfirmationState.ConfirmWithoutPrompt(redoFiles).Outcome == OpenCodeRollbackOutcome.Cancelled,
+            "redo that changes files back still asks once and says how many");
         var further = new OpenCodeRollbackConfirmationState(plain with { PriorStageFileCount = 1 });
         Check(further.CanConfirm && !further.ConfirmIsDefault && further.Cautions().Single() == further.FileEffectNote
             && further.FileEffectNote != risky.FileEffectNote && further.FileEffectNote!.Contains(OpenCodeRollbackConfirmationState.RestoreFilesLabel),
@@ -368,19 +373,18 @@ internal static class NativeTests
             var opens = 0;
             OpenCodeRollbackConfirmationDialog.Next = p => { opens++; return Confirm(p); };
             await f.Page.StageNative(OpenCodeComposerClientActionKind.Redo, "redo"); await f.Page.RunNative();
-            Check(opens == 1 && f.Http.Posts == 1 && f.LastMutationPath == "/api/session/ses_test/revert" && f.Stage is null
+            Check(opens == 0 && f.Http.Posts == 1 && f.LastMutationPath == "/api/session/ses_test/revert" && f.Stage is null
                 && f.Page.Messages.Count == 0,
-                $"plain redo: one prompt and no notice (dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
+                $"plain redo: no prompt and no notice (dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
         }
         using (var f = new Fixture())
         {
             f.Stage = SnapshotOnlyStage;
-            var opens = 0; OpenCodeRollbackPreviewPresentation? shown = null;
-            OpenCodeRollbackConfirmationDialog.Next = p => { opens++; shown = p; return Confirm(p); };
+            var opens = 0;
+            OpenCodeRollbackConfirmationDialog.Next = p => { opens++; return Confirm(p); };
             await f.Page.StageNative(OpenCodeComposerClientActionKind.Redo, "redo"); await f.Page.RunNative();
-            Check(opens == 1 && shown is { PriorStageFileCount: 0 } && new OpenCodeRollbackConfirmationState(shown!).Cautions().Count == 0
-                && f.Http.Posts == 1 && f.Stage is null && f.Page.Messages.Count == 0,
-                $"redo of an undo that kept a snapshot but changed no file carries no file caution (dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
+            Check(opens == 0 && f.Http.Posts == 1 && f.Stage is null && f.Page.Messages.Count == 0,
+                $"redo of an undo that kept a snapshot but changed no file is still plain (dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
         }
         using (var f = new Fixture())
         {

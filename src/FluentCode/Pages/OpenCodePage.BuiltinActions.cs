@@ -296,9 +296,15 @@ public sealed partial class OpenCodePage
             preview.Target?.Text, preview.State.Revert?.FileCount ?? 0, preview.Target?.HasNonTextReferences == true,
             preview.Target is { ReferencesComplete: false }, owner.Draft.Empty, preview) { FilesIdentity = filesPreview };
         OpenCodeRollbackConfirmationResult confirmation;
-        _nativeDialogPending = true;
-        try { confirmation = await OpenCodeRollbackConfirmationDialog.ShowAsync(XamlRoot, shown); }
-        finally { _nativeDialogPending = false; }
+        if (!OpenCodeRollbackConfirmationState.RequiresPrompt(shown))
+            // Plain 恢复: nothing to choose and nothing at risk, so the gesture confirms the preview just read.
+            confirmation = OpenCodeRollbackConfirmationState.ConfirmWithoutPrompt(shown);
+        else
+        {
+            _nativeDialogPending = true;
+            try { confirmation = await OpenCodeRollbackConfirmationDialog.ShowAsync(XamlRoot, shown); }
+            finally { _nativeDialogPending = false; }
+        }
         if (!CanStartNativeAction(owner, owner.Origin) || confirmation.Outcome != OpenCodeRollbackOutcome.Confirmed
             || !ReferenceEquals(confirmation.Preview, shown)) return;
         // Execute exactly the preview the dialog confirmed: the with-files one only when that box was ticked there.

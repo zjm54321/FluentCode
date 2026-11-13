@@ -219,6 +219,19 @@ internal sealed class OpenCodeRollbackConfirmationState
     /// <summary>Undo only. Explicit opt-in; default false.</summary>
     internal bool RestoreFiles { get; private set; }
 
+    /// <summary>
+    /// Whether this rollback asks at all. Undo always asks once: the prompt names the message and is the one place
+    /// where file restoration can be chosen. Redo only brings messages back and can be undone again, so it asks
+    /// only when the staged undo changed files (redo would change them back).
+    /// </summary>
+    internal static bool RequiresPrompt(OpenCodeRollbackPreviewPresentation preview)
+        => preview.Kind == OpenCodeRollbackKind.Undo || preview.PriorStageFileCount > 0;
+
+    /// <summary>For a rollback that needs no prompt: the gesture itself confirmed exactly this preview.</summary>
+    internal static OpenCodeRollbackConfirmationResult ConfirmWithoutPrompt(OpenCodeRollbackPreviewPresentation preview)
+        => RequiresPrompt(preview) ? new(OpenCodeRollbackOutcome.Cancelled, null, false)
+            : new(OpenCodeRollbackOutcome.Confirmed, preview, false);
+
     internal bool OffersFileRestoration => Preview.Kind == OpenCodeRollbackKind.Undo && Preview.FilesIdentity is not null;
     /// <summary>Undo of a message that referenced files/agents/skills (or whose references are not fully known):
     /// only its text returns to the input box. Told as one caution line; it is not a separate tick any more.</summary>
