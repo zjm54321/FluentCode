@@ -46,7 +46,11 @@ public sealed partial class OpenCodePage
 
     // ---- 消息条：只有“信息”级且没有操作按钮的才自动收起 ----
 
-    private void OnNoticeMessageChanged(DependencyObject sender, DependencyProperty property) => RearmNoticeMessageTimer();
+    private void OnNoticeMessageChanged(DependencyObject sender, DependencyProperty property)
+    {
+        RefreshNoticeLayer(); // 级别或按钮变了，“要不要让开终端”也可能跟着变。
+        RearmNoticeMessageTimer();
+    }
 
     private void NoticeMessage_PointerEntered(object sender, PointerRoutedEventArgs e) => _noticeMessagePointerOver = true;
 
@@ -55,7 +59,7 @@ public sealed partial class OpenCodePage
     private void RearmNoticeMessageTimer()
     {
         _noticeMessageTimer?.Stop();
-        if (!IsLoaded || !MessageBar.IsOpen || MessageBar.Severity != InfoBarSeverity.Informational
+        if (!IsLoaded || _noticeMessageHeld || !MessageBar.IsOpen || MessageBar.Severity != InfoBarSeverity.Informational
             || MessageBar.ActionButton is not null) return;
         // 按字数给阅读时间：6 秒起，每 12 个字多 1 秒，最多 12 秒。
         int length = (MessageBar.Title?.Length ?? 0) + (MessageBar.Message?.Length ?? 0);
@@ -140,7 +144,7 @@ public sealed partial class OpenCodePage
             StartNoticeHintTimer(NoticeHintStay);
         }
         RefreshNoticeLayer();
-        if (_noticeHintRevealed)
+        if (_noticeHintRevealed && !_noticeHintHeld)
             FrameworkElementAutomationPeer.CreatePeerForElement(SessionStateHint)?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
     }
 

@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using FluentCode.Motion;
+using FluentCode.Pages;
 
 // Offline tests for Fluent motion tokens, reduce-motion policy, generation gates and binding lifetimes,
 // plus static guards over the WinUI execution layer.
@@ -34,6 +35,7 @@ internal static class Program
         ShortCircuit();
         Generations();
         Bindings();
+        NoticePolicy();
         if (args.Length > 0) Static(args[0]);
         if (_failures > 0)
         {
@@ -182,6 +184,40 @@ internal static class Program
     }
 
     // Static guards over the WinUI layer: one UISettings owner, no layout (dependent) animations, terminal HWND gating.
+    // Only a notice that needs the user's action may interrupt a terminal; a passive one is held back while it would
+    // overlap. Every combination of kind, severity, action button and overlap.
+    private static void NoticePolicy()
+    {
+        foreach (var kind in Enum.GetValues<OpenCodeNoticeKind>())
+            foreach (var errorOrWarning in new[] { false, true })
+                foreach (var hasAction in new[] { false, true })
+                    foreach (var overlaps in new[] { false, true })
+                    {
+                        bool needs = kind is OpenCodeNoticeKind.SshAlert or OpenCodeNoticeKind.Permission
+                            || (kind == OpenCodeNoticeKind.Message && (errorOrWarning || hasAction));
+                        string label = $"{kind} errorOrWarning={errorOrWarning} action={hasAction} overlaps={overlaps}";
+                        bool held = OpenCodeNoticePolicy.IsHeldBack(kind, errorOrWarning, hasAction, overlaps);
+                        bool takes = OpenCodeNoticePolicy.TakesTerminal(kind, errorOrWarning, hasAction, overlaps);
+                        Check(OpenCodeNoticePolicy.NeedsAction(kind, errorOrWarning, hasAction) == needs, "notice needs action: " + label);
+                        Check(held == (overlaps && !needs), "notice held back: " + label);
+                        Check(takes == (overlaps && needs), "notice takes terminal: " + label);
+                        Check(!(held && takes) && (overlaps || (!held && !takes)), "notice never both held and leasing, and neither without overlap: " + label);
+                    }
+        Check(OpenCodeNoticePolicy.IsHeldBack(OpenCodeNoticeKind.Message, false, false, true)
+            && OpenCodeNoticePolicy.IsHeldBack(OpenCodeNoticeKind.StateHint, true, true, true),
+            "plain informational message and the state pill are passive whatever else is set");
+        Check(!OpenCodeNoticePolicy.TakesTerminal(OpenCodeNoticeKind.Message, false, false, true)
+            && !OpenCodeNoticePolicy.TakesTerminal(OpenCodeNoticeKind.StateHint, false, false, true),
+            "a passive notice never takes the terminal");
+        Check(OpenCodeNoticePolicy.Overlaps(0, 0, 10, 10, 5, 5, 20, 20) && OpenCodeNoticePolicy.Overlaps(5, 5, 20, 20, 0, 0, 10, 10),
+            "rectangles sharing area overlap, in either order");
+        Check(!OpenCodeNoticePolicy.Overlaps(0, 0, 10, 10, 0, 10, 10, 20) && !OpenCodeNoticePolicy.Overlaps(0, 0, 10, 10, 10, 0, 20, 10),
+            "rectangles that only touch do not overlap (a notice ending at the terminal's top edge is not held)");
+        Check(!OpenCodeNoticePolicy.Overlaps(0, 0, 10, 10, 20, 0, 30, 10) && !OpenCodeNoticePolicy.Overlaps(0, 0, 10, 10, 0, 20, 10, 30),
+            "separated rectangles do not overlap");
+        Check(OpenCodeNoticePolicy.Overlaps(0, 0, 100, 100, 40, 40, 60, 60), "a contained rectangle overlaps");
+    }
+
     private static void Static(string repo)
     {
         string Read(string relative) => File.ReadAllText(Path.Combine(repo, "src/FluentCode", relative));
@@ -445,11 +481,22 @@ internal static class Program
         Check(timing.Contains("FluentMotion.SlideFadeIn(NoticeStack") && !timing.Contains("Storyboard") && !timing.Contains("FluentMotion.Bind("),
             "STATIC notices: the entrance goes through FluentMotion, so reduced motion shows the notice at once");
         var airspace = StripComments(File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Notices.Airspace.cs")));
-        Check(airspace.Contains("terminal.SuppressAirspace(snapshot: true)") && airspace.Contains("NoticeRectsOverlap(notices, bounds)")
+        Check(airspace.Contains("terminal.SuppressAirspace(snapshot: true)") && airspace.Contains("OpenCodeNoticePolicy.TakesTerminal(kind,")
             && airspace.Contains("lease.Dispose()") && bounds.Contains("ReleaseNoticeAirspace();")
             && !airspace.Contains("static readonly Dictionary") && !airspace.Contains("static Dictionary"),
             "STATIC notices: a notice over the terminal HWND holds a snapshot lease only while it overlaps, released on close and unload");
         Check(notices.Contains("UpdateNoticeAirspace();") && notices.Contains("InitializeNoticeAirspace();"),
             "STATIC notices: every notice change re-evaluates the terminal overlap");
+        var holds = StripComments(File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Notices.Holds.cs")));
+        Check(holds.Contains("OpenCodeNoticePolicy.IsHeldBack(OpenCodeNoticeKind.Message, NoticeMessageErrorOrWarning,")
+            && holds.Contains("OpenCodeNoticePolicy.IsHeldBack(OpenCodeNoticeKind.StateHint, false, false,")
+            && !holds.Contains("SuppressAirspace") && !holds.Contains(".Focus("),
+            "STATIC notices: passive notices ask the policy, and holding one back takes no lease and no focus");
+        Check(notices.Contains("bool message = messageWanted && !_noticeMessageHeld;") && notices.Contains("bool hint = hintWanted && !_noticeHintHeld;")
+            && timing.Contains("!IsLoaded || _noticeMessageHeld ||") && holds.Contains("if (hintHeld) _noticeHintTimer?.Stop();"),
+            "STATIC notices: a held-back notice is not shown and its dismissal clock does not run");
+        Check(!airspace.Contains("SessionStateHintSurface") && !timing.Contains(".Focus(") && !notices.Contains(".Focus(")
+            && !airspace.Contains(".Focus("),
+            "STATIC notices: the pill never leases a terminal and no notice code moves keyboard focus");
     }
 }

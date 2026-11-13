@@ -12,6 +12,7 @@ New-Item -ItemType Directory -Path $output | Out-Null
 $production = @(
     (Join-Path $repo 'src/FluentCode/Motion/FluentMotionPolicy.cs')
     (Join-Path $repo 'src/FluentCode/Motion/FluentMotionBindings.cs')
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCodePage.Notices.Policy.cs')
 )
 $testSource = Join-Path $PSScriptRoot 'Program.cs'
 Write-Output "Evidence directory: $output"
