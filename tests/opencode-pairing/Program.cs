@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentCode.Services.OpenCode;
 
-internal static class Program
+internal static partial class Program
 {
     private const string Code = "single_use_TEST-code_123";
     private const string Secret = "test-only-password:密 码";
@@ -22,7 +22,16 @@ internal static class Program
         Console.WriteLine("PASS explicit JSON exchange: no credentials, Basic/opencode result, redacted diagnostics");
         await ErrorsAndCancellation();
         Console.WriteLine("PASS error/HTML/redirect/cancellation/timeout handling, no retries or secret leakage");
-        Console.WriteLine($"3 groups passed; {_assertions} assertions; fake handlers only, no sockets.");
+        await CreateCodeRequest();
+        Console.WriteLine("PASS create code: POST api/pair, no body, auth header per mode, parsing, redaction");
+        await CreateCodeErrors();
+        Console.WriteLine("PASS create code errors: protocol/401/404/405/transport/timeout/cancel wording, no retries or leakage");
+        LinkComposition();
+        Console.WriteLine("PASS link composition per connection kind, parser round trip");
+        CustomOrigins();
+        TimeText();
+        Console.WriteLine("PASS custom origins and time text");
+        Console.WriteLine($"7 groups passed; {_assertions} assertions; fake handlers only, no sockets.");
     }
 
     private static void ParseBoundaries()

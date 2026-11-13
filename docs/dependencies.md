@@ -28,6 +28,14 @@ Later merged dictionaries win duplicate-key lookups. The actual Toolkit PRI conf
 
 The MSIX check asserts this merge order, verifies both Generic XBFs in the primary PRI, and verifies the Win2D DLLs and harvested activation classes. These checks establish source/resource provenance and package completeness. Settings cards in Light, Dark and HighContrast, and application startup/resource initialization, still need visual/runtime verification on the desktop.
 
+## Net.Codecrete.QrCodeGenerator 3.2.1
+
+Encodes the pairing link shown by “连接其他设备”. MIT, no dependencies, `net6.0` and `netstandard2.0` assets, actively released (3.0.0 in May 2026, 3.2.1 in September 2026). The licence text ships as `licenses/qrcodegenerator-LICENSE.txt`.
+
+QRCoder 1.8.1 was the other candidate. Its `net6.0` dependency group brings `System.Drawing.Common` 6.0.0 and `Microsoft.Win32.SystemEvents` 6.0.0, which the application graph does not otherwise contain.
+
+Only `QrCode.EncodeText` and `QrCode.ToOutlines` are used. The application draws the outline polygons as one XAML path, so no bitmap, GDI+ or SVG code path is involved. The build confirms the assembly restores and publishes; whether a phone camera reads the rendered code still needs a desktop check.
+
 ## Intentional holds
 
 - SkiaSharp and its views/native-assets/HarfBuzz bindings stay at 3.119.2. Stable LiveCharts 2.0.5 and Mapsui WinUI 5.1.0 target this ecosystem; Mapsui's SkiaSharp 4 support is a beta and does not establish stable WinUI support.

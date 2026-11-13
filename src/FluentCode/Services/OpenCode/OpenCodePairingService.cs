@@ -184,3 +184,27 @@ public sealed class OpenCodePairingService : IDisposable
             throw new OpenCodeConfigurationException("配对 HttpClient 不得设置默认请求头或凭据。");
     }
 }
+
+// 与解析器放在同一个文件：多个测试运行器按文件名排除本文件，链接拼接必须和它一起进出编译。
+public static partial class OpenCodePairingLinks
+{
+    /// <summary>
+    /// 拼出 <c>origin/auth/connect/code</c> 并用现有解析器复核：FluentCode 展示的链接必须是它自己会接受的链接。
+    /// 失败抛 <see cref="OpenCodeConfigurationException"/>（文本不含配对码）。
+    /// </summary>
+    public static string Compose(string origin, OpenCodePairingCode code)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        if (!TryNormalizeOrigin(origin, out var normalized, out var error)) throw new OpenCodeConfigurationException(error);
+        if (!IsValidCode(code.Code)) throw new OpenCodeConfigurationException("配对码格式无效；未生成链接。");
+        var link = normalized + "/auth/connect/" + code.Code;
+        var parsed = OpenCodePairingService.Parse(link);
+        if (!string.Equals(parsed.BaseUrl, normalized, StringComparison.Ordinal)
+            || !string.Equals(parsed.ExchangeUri.AbsoluteUri, link, StringComparison.Ordinal))
+        {
+            throw new OpenCodeConfigurationException("这个地址无法组成有效的配对链接。");
+        }
+
+        return link;
+    }
+}

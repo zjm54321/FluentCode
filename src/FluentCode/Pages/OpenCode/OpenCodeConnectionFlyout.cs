@@ -62,7 +62,7 @@ internal static class OpenCodeConnectionFlyout
     internal static string PluginKey(int index, OpenCodePluginInfo plugin) => "plugin:" + index + ":" + PluginName(plugin);
 
     internal static FrameworkElement Build(OpenCodeConnectionDetails details, Action? refresh,
-        string? selected = null, Action<string?>? select = null, Action<string, OpenCodeMcpRequest>? mcp = null)
+        string? selected = null, Action<string?>? select = null, Action<string, OpenCodeMcpRequest>? mcp = null, Action? pair = null)
     {
         ArgumentNullException.ThrowIfNull(details);
         var root = new StackPanel { Spacing = 16, Width = 320 };
@@ -75,7 +75,7 @@ internal static class OpenCodeConnectionFlyout
         }
         else
         {
-            BuildList(root, details, refresh, select);
+            BuildList(root, details, refresh, select, pair);
         }
 
         return new ScrollViewer
@@ -91,13 +91,22 @@ internal static class OpenCodeConnectionFlyout
     // 列表页
     // ------------------------------------------------------------------
 
-    private static void BuildList(StackPanel root, OpenCodeConnectionDetails details, Action? refresh, Action<string?>? select)
+    private static void BuildList(StackPanel root, OpenCodeConnectionDetails details, Action? refresh, Action<string?>? select, Action? pair)
     {
         var (server, serverRows) = OpenCodeSessionInsightsView.Section("服务", details.ServerInfo.State, "OpenCodeConnectionServer");
         var version = details.ServerInfo.Version is { Length: > 0 } v ? v : null;
         serverRows.Children.Add(Row("OpenCodeConnectionServer.Row", "OpenCode", version,
             DotIndicator(details.ServerDotKey, details.StatusText), ServerKey, select,
             "OpenCode 服务：" + details.StatusText + (version is not null ? "，版本 " + version : "")));
+        if (pair is not null)
+        {
+            // 只在服务已连接时出现：生成一次性配对链接与二维码（对话框，不在浮层里显示配对码）。
+            var button = ActionButton("OpenCodeConnectionPairDevice", "\uE8EA", "连接其他设备…", enabled: true, accent: false, pair);
+            button.HorizontalAlignment = HorizontalAlignment.Left;
+            AutomationProperties.SetName(button, "连接其他设备：生成配对链接和二维码");
+            serverRows.Children.Add(button);
+        }
+
         root.Children.Add(server);
 
         if (details.CapabilitiesUnavailableReason is { } reason)
