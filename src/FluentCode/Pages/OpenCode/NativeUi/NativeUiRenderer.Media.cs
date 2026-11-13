@@ -33,28 +33,18 @@ internal sealed partial class NativeUiRenderer
         var player = new MediaPlayer { AutoPlay = false }; var transport = new MediaTransportControls { IsCompact = false };
         var element = new MediaPlayerElement { AreTransportControlsEnabled = true, AutoPlay = false, TransportControls = transport, Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Stretch };
         element.SetMediaPlayer(player); var status = NativeUiComponentTheme.Text("点击后加载到卡片；不会自动播放。", true);
-        // WinUI 3's MediaTransportControls has no full-window button (the FullWindow button and states are removed from
-        // its template and MediaPlayerElement.IsFullWindow is disabled at the framework level), so this stays a card
-        // button — but it shows the state and uses the framework's own FullScreen/BackToWindow symbols.
-        var fullWindowIcon = new SymbolIcon(); var fullWindowText = new TextBlock();
-        var fullWindow = new Button { Visibility = Visibility.Collapsed, Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { fullWindowIcon, fullWindowText } } };
-        void FullWindowLabel(bool on)
-        {
-            fullWindowIcon.Symbol = on ? Symbol.BackToWindow : Symbol.FullScreen;
-            fullWindowText.Text = on ? "退出全窗口" : "全窗口播放";
-            AutomationProperties.SetName(fullWindow, fullWindowText.Text);
-        }
-        FullWindowLabel(false);
-        fullWindow.Click += (_, _) => { element.IsFullWindow = !element.IsFullWindow; FullWindowLabel(element.IsFullWindow); };
-        var panel = new StackPanel { Spacing = 8, Children = { title, url, load, element, fullWindow, status } }; var visual = new Visual(panel);
+        // No full-window control: Windows App SDK 2.6.5 compiles IsFullWindow handling out
+        // (#if false // DISABLE_FULL_WINDOW): https://github.com/microsoft/microsoft-ui-xaml,
+        // branch winui3/release/2.6.5, src/dxaml/xcp/dxaml/lib/MediaPlayerElement_partial.cpp:257-263, 370-383.
+        var panel = new StackPanel { Spacing = 8, Children = { title, url, load, element, status } }; var visual = new Visual(panel);
         var gate = new NativeUiLoadGate(); CancellationTokenSource? pending = null; InMemoryRandomAccessStream? stream = null; MediaSource? media = null; var version = 0;
         void Stop()
         {
             version++; pending?.Cancel(); pending?.Dispose(); pending = null; player.Pause(); player.Source = null;
-            media?.Dispose(); media = null; stream?.Dispose(); stream = null; element.IsFullWindow = false; FullWindowLabel(false);
-            element.Visibility = fullWindow.Visibility = Visibility.Collapsed;
+            media?.Dispose(); media = null; stream?.Dispose(); stream = null;
+            element.Visibility = Visibility.Collapsed;
         }
-        player.MediaOpened += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) status.Text = "已加载 · 使用原生播放控件；视频可切换全窗口。"; });
+        player.MediaOpened += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) status.Text = "已加载 · 使用原生播放控件。"; });
         player.MediaFailed += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) { status.Text = "媒体无法播放；请检查格式、编码或地址后重试。"; load.IsEnabled = true; } });
         void OnUnloaded(object sender, RoutedEventArgs args) { if (!visual.Disposed) player.Pause(); }
         element.Unloaded += OnUnloaded;
@@ -69,7 +59,6 @@ internal sealed partial class NativeUiRenderer
                 var loaded = await AssetStream(asset.Bytes); if (visual.Disposed || generation != version) { loaded.Dispose(); return; }
                 stream = loaded; media = MediaSource.CreateFromStream(stream, asset.ContentType); player.Source = media;
                 element.Visibility = Visibility.Visible; load.Content = "重新加载"; status.Text = "媒体已加载；点击原生播放按钮开始。";
-                fullWindow.Visibility = type == "Video" ? Visibility.Visible : Visibility.Collapsed;
             }
             catch (OperationCanceledException) { }
             catch (Exception) { if (!visual.Disposed && generation == version) status.Text = "加载失败；仅支持 HTTPS 与系统支持的媒体格式（最大 128 MB）。"; }
@@ -103,8 +92,10 @@ internal sealed partial class NativeUiRenderer
             try { flip.Items.Clear(); flip.Visibility = pager.Visibility = Visibility.Collapsed; pager.NumberOfPages = -1; pager.SelectedPageIndex = 0; }
             finally { navigating = false; }
         }
-        // Both directions are guarded: a FlipView with no items reports index -1, which a PipsPager cannot hold
-        // (one pip is always selected), and a reset must not echo back into the FlipView.
+        // Both directions are guarded: an empty FlipView reports -1, but PipsPager clamps negative selection to 0;
+        // NumberOfPages = 0 clears all pips. A reset must not echo back into the FlipView. Source:
+        // https://github.com/microsoft/microsoft-ui-xaml, branch winui3/release/2.6.5,
+        // src/controls/dev/PipsPager/PipsPager.cpp:310-346, 418-446.
         flip.SelectionChanged += (_, _) =>
         {
             if (navigating || visual.Disposed) return;
@@ -142,14 +133,13 @@ internal sealed partial class NativeUiRenderer
                         // inspected without leaving the card.
                         var scroller = new ScrollViewer { Content = full, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Enabled, ZoomMode = ZoomMode.Enabled, MinZoomFactor = .5f, MaxZoomFactor = 4f, MaxHeight = 720 };
                         viewer = new ContentDialog { XamlRoot = panel.XamlRoot, Title = alt, CloseButtonText = "关闭", FullSizeDesired = true, Content = scroller };
-                        var leases = new List<IDisposable>();
-                        void Suppress(DependencyObject root)
+                        NativeUiAirspace? airspace = null;
+                        try
                         {
-                            if (root is OpenCodePersistentPtyRenderer terminal) { leases.Add(terminal.SuppressAirspace(snapshot: true)); return; }
-                            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) Suppress(VisualTreeHelper.GetChild(root, i));
+                            airspace = NativeUiAirspace.Begin(panel.XamlRoot?.Content, snapshot: true);
+                            await viewer.ShowAsync();
                         }
-                        if (panel.XamlRoot?.Content is { } root) Suppress(root);
-                        try { await viewer.ShowAsync(); } finally { foreach (var lease in leases) lease.Dispose(); viewer = null; }
+                        finally { airspace?.Dispose(); viewer = null; }
                     };
                     flip.Items.Add(new StackPanel { Spacing = 4, Children = { open, NativeUiComponentTheme.Text(alt, true) } });
                 }

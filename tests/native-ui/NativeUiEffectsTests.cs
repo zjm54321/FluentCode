@@ -17,6 +17,7 @@ internal static class NativeUiEffectsTests
 
     internal static void Run(string repo, Action<bool, string> require)
     {
+        CommentScannerTests(require);
         var folder = Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi");
         var adapter = File.ReadAllText(Path.Combine(folder, Adapter));
         var content = File.ReadAllText(Path.Combine(folder, "NativeUiRenderer.Content.cs"));
@@ -211,10 +212,10 @@ internal static class NativeUiEffectsTests
         require(radio.Contains("host.Items.Add(new RadioButton { Content = tileLabel, Tag = choice.Value });", StringComparison.Ordinal)
             && radio.Contains("var tileLabel = new StackPanel { Spacing = NativeUiTheme.Gap(1) };", StringComparison.Ordinal),
             "The items stay RadioButton with their label and description, so the cards style is unchanged");
-        require(radio.Contains("if (host.SelectedIndex >= current.Length) return;", StringComparison.Ordinal)
-            && radio.Contains("if (value == NativeUiValues.Text(Field(radioVisual, key, \"value\", label))) return;", StringComparison.Ordinal)
-            && radio.Contains("SetField(radioVisual, key, \"value\", label, value);", StringComparison.Ordinal),
-            "A new selection commits its value at the same moment, and the host's own echo of the applied value is dropped instead of re-rendering the card");
+        var radioChange = Slice(radio, "host.SelectionChanged += (_, _) =>", "radios = host;");
+        require(radioChange.Contains("if (host.SelectedIndex >= 0 && host.SelectedIndex < current.Length)", StringComparison.Ordinal)
+            && Regex.IsMatch(radioChange, @"if \(value != NativeUiValues.Text\(Field\(radioVisual, key, ""value"", label\)\)\)\s+SetField\(radioVisual, key, ""value"", label, value\);"),
+            "A valid selection commits only a changed field value, so the host's applied-value echo does not re-render the card");
         require(radio.Contains("if (label.Length > 0) host.Header = NativeUiComponentTheme.Text(label);", StringComparison.Ordinal),
             "The group label is the host header, so the group keeps its UIA name");
         require(radio.Contains("pills = new Segmented { SelectionMode = ListViewSelectionMode.Single };", StringComparison.Ordinal),
@@ -224,9 +225,10 @@ internal static class NativeUiEffectsTests
             && radio.Contains("host.Loaded += (_, _) => FitTiles();", StringComparison.Ordinal)
             && radio.Contains("radios = host; radioPanel.Children.Add(host); FitTiles();", StringComparison.Ordinal),
             "A card tile keeps filling the group's width, and it follows a narrower card instead of only growing");
-        require(radio.Contains("if (!radioVisual.Disposed) StyleCards();", StringComparison.Ordinal)
+        require(Regex.IsMatch(radioChange, @"SetField\(radioVisual, key, ""value"", label, value\);\s*\}\s*if \(!radioVisual.Disposed\) StyleCards\(\);")
+            && !radioChange.Contains("if (value ==", StringComparison.Ordinal)
             && radio.Contains("foreach (var tile in radios.Items.OfType<RadioButton>()) NativeUiTheme.RadioCard(tile);", StringComparison.Ordinal),
-            "The cards style is repainted on a real selection change, from the state the host owns");
+            "Every selection change repaints the checked-state cards, even when options share a value or selection is cleared");
     }
 
     /// <summary>The text between two case labels of one renderer file.</summary>
@@ -238,10 +240,99 @@ internal static class NativeUiEffectsTests
         return end < 0 ? source[start..] : source[start..end];
     }
 
-    /// <summary>The source with comments removed, so a guard can never be satisfied by prose alone.</summary>
+    /// <summary>Removes C# comments, preserving literals and token/line boundaries for source guards.</summary>
     private static string Code(string source)
     {
-        var withoutBlocks = Regex.Replace(source, @"/\*.*?\*/", "", RegexOptions.Singleline);
-        return Regex.Replace(withoutBlocks, @"//[^\n]*", "");
+        // Keep this scanner and its executed cases in sync with tests/fluent-motion/Program.cs
+        // and tests/opencode-composer-hookup/PickerEscape.cs; each runner compiles its own copy.
+        var code = new System.Text.StringBuilder(source.Length);
+        var index = 0;
+        while (index < source.Length)
+        {
+            if (source[index] == '/' && index + 1 < source.Length && source[index + 1] == '/')
+            {
+                code.Append(' '); index += 2;
+                while (index < source.Length && source[index] is not '\r' and not '\n') index++;
+                continue;
+            }
+            if (source[index] == '/' && index + 1 < source.Length && source[index + 1] == '*')
+            {
+                code.Append(' '); index += 2;
+                while (index < source.Length)
+                {
+                    if (source[index] == '*' && index + 1 < source.Length && source[index + 1] == '/') { index += 2; break; }
+                    if (source[index] is '\r' or '\n') code.Append(source[index]);
+                    index++;
+                }
+                continue;
+            }
+            if (source[index] is '"' or '\'')
+            {
+                var start = index; var quote = source[index];
+                var verbatim = quote == '"' && ((index > 0 && source[index - 1] == '@')
+                    || (index > 1 && source[index - 1] == '$' && source[index - 2] == '@'));
+                var delimiterLength = 1;
+                if (quote == '"' && !verbatim)
+                    while (start + delimiterLength < source.Length && source[start + delimiterLength] == '"') delimiterLength++;
+                if (delimiterLength >= 3)
+                {
+                    index += delimiterLength;
+                    while (index < source.Length)
+                    {
+                        if (source[index] != '"') { index++; continue; }
+                        var quotes = 1;
+                        while (index + quotes < source.Length && source[index + quotes] == '"') quotes++;
+                        index += quotes;
+                        if (quotes == delimiterLength) break;
+                    }
+                }
+                else
+                {
+                    index++;
+                    while (index < source.Length)
+                    {
+                        var current = source[index++];
+                        if (!verbatim && current == '\\' && index < source.Length) { index++; continue; }
+                        if (current != quote) continue;
+                        if (verbatim && index < source.Length && source[index] == '"') { index++; continue; }
+                        break;
+                    }
+                }
+                code.Append(source, start, index - start);
+                continue;
+            }
+            code.Append(source[index++]);
+        }
+        return code.ToString();
+    }
+
+    private static void CommentScannerTests(Action<bool, string> require)
+    {
+        void Literal(string source, string name)
+        {
+            require(Code(source + " // discard DevWinUI") == source + "  ", name + ": preserves literal and following code, removes line comment");
+            require(Code(source + " /* discard DevWinUI */") == source + "  ", name + ": preserves literal and following code, removes block comment");
+        }
+        Literal("var url = \"https://example.test\"; DevWinUI.After();", "URL before same-line vendor code");
+        Literal("var text = \"/* DevWinUI */\"; DevWinUI.After();", "Block marker inside a string");
+        Literal("var type = \"DevWinUI.Widget\";", "Vendor type named only inside a string remains a reference");
+        Literal("var slash = '/'; var quote = '\"'; var apostrophe = '\\''; var backslash = '\\\\'; DevWinUI.After();", "Char literals with slash, quote, escaped apostrophe and backslash");
+        foreach (var prefix in new[] { "", "$" })
+            Literal("var text = " + prefix + "\"\\\"/* DevWinUI */ // kept\\\"\"; DevWinUI.After();", prefix + " regular string with escaped quotes");
+        foreach (var prefix in new[] { "@", "$@", "@$" })
+        {
+            Literal("var text = " + prefix + "\"https://host/\"\"/* DevWinUI */ // kept\"\"\"; DevWinUI.After();", prefix + " verbatim string with doubled quotes");
+            Literal("var text = " + prefix + "\"\"\"/* DevWinUI */ // kept\"\"\"; DevWinUI.After();", prefix + " verbatim string starting with a doubled quote, not a raw delimiter");
+        }
+        foreach (var count in new[] { 3, 4, 5 })
+            foreach (var prefix in new[] { "", "$$" })
+            {
+                var delimiter = new string('"', count);
+                Literal("var text = " + prefix + delimiter + "\nhttps://host/ " + new string('"', count - 1)
+                    + " /* DevWinUI */ // kept\n" + delimiter + "; DevWinUI.After();", prefix + " raw string with " + count + "-quote delimiters");
+            }
+        require(Code("var first = 1; // DevWinUI\r\n/* DevWinUI\ncomment */ var second = 2;")
+            == "var first = 1;  \r\n \n var second = 2;", "Real vendor comments disappear while line boundaries and following code survive");
+        require(Code("one/* DevWinUI */two") == "one two", "Removing a comment never joins two code tokens");
     }
 }

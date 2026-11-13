@@ -118,7 +118,10 @@ internal static class NativeUiCommunityEffects
         {
             if (_limit is not null) { _limit.Tick -= OnLimit; _limit.Stop(); _limit = null; }
             if (_cannon is { } cannon) { cannon.AnimationCompleted -= OnCompleted; _cannon = null; }
-            _band.Children.Clear(); // Removing it runs the control's own unload cleanup: Draw/Update detached, canvas released.
+            // DevWinUI 10.9.1 Unloaded detaches Draw/Update and removes the canvas from the visual tree:
+            // https://github.com/ghost1372/DevWinUI, commit 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e,
+            // dev/DevWinUI/Controls/Win2DAndComposition/ConfettiCannon/ConfettiCannon.cs:49-70.
+            _band.Children.Clear();
             _band.Height = 0;
         }
 
@@ -253,7 +256,9 @@ internal static class NativeUiCommunityEffects
         /// <summary>
         /// The shimmer bar. It wears the app's shared skeleton style when that style is present — lane F declares it in
         /// the next wave, and this file must keep working before that, so an absent key falls back to the library's own
-        /// default. Shimmer initialises its composition only once it loads, so one is built only where it will animate.
+        /// default. OnApplyTemplate and Loaded try composition initialization even for an inactive Shimmer, so static
+        /// rows use Borders instead. Source: https://github.com/ghost1372/DevWinUI,
+        /// commit 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e, dev/DevWinUI/Controls/Native/Others/Shimmer.cs:65-83.
         /// </summary>
         private static Shimmer Shimmer()
         {

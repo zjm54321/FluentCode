@@ -234,10 +234,14 @@
                 Controls/CommunityTextBadge.cs 构造，或按 CONTRACT-F.md 直接引用这里的键。
 
                 几何取舍（见 CONTRACT-F.md「几何」）：
-                - 库模板自带 <Border x:Name="SeverityBorder"> 一圈 1 DIP 的严重度描边，且无法只靠 Setter 去掉。
-                  该描边承载色调：SystemFillColor*BackgroundBrush 的深色/浅色透明度很低（中性仅 #08FFFFFF），
-                  高对比度下更会退化成 SystemColorWindowColor（与页面同色）。因此两种几何都保留这 1 DIP 描边
-                  —— 这是相对旧 Border 徽标（无描边）唯一有意的差异，也是色调在高对比度下仍可辨识的前提。
+                - 库模板的 SeverityBorder 与 LabelBorder 是同一 Grid 中的同级边框，共用 BorderThickness。
+                  设为 0 可同时去掉两者的边框；只去掉严重度描边则要改模板。描边叠在标签边框上，不额外增加高度。
+                  两种几何都保留 1 DIP 描边，这是相对旧 Border 徽标（无描边）的有意差异。
+                - 中性色调映射到 DevWinUI Gray，深色/浅色底色为不透明的 #212830 / #f6f8fa，不是系统透明填充。
+                  高对比度下 Gray、Blue、Purple、Pink 都用 SystemColorWindowColor 填充和
+                  SystemColorWindowTextColor 描边/文字；描边保持轮廓对比，四种色调则靠标签文字区分。
+                  来源：https://github.com/ghost1372/DevWinUI，提交 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e，
+                  dev/DevWinUI/Themes/Styles/Controls/IssueLabel.xaml:7-83,182-187（DevWinUI 10.9.1）。
                 - 字号/字重/换行/裁切在 AppBadgeTitleTemplate 中统一定义；这里只管盒子。
                 - 不设置 Foreground：库模板按「是否本地设置 Foreground」在两个标题呈现器之间二选一，
                   设置它会绕过严重度配色（详见适配器注释）。
@@ -279,9 +283,13 @@
             <!--
                 流式骨架条（C20）：DevWinUI Shimmer 的盒子与圆角。库的扫光渐变颜色写死在 C#（深色加白 3~6% 透明，
                 浅色加黑 2.9~5.4% 透明）；底色是 ShimmerBackground → ControlAltFillColorTertiaryBrush，高对比度下
-                映射为 SystemColorWindowColor（= 页面底色）。所以**高对比度下整条会不可见**：调用方必须在
-                HighContrast（以及减少动效）时改设显式系统色背景，或直接回退静态 Border。
-                Shimmer 在 Unloaded 里释放合成资源、重新 Loaded 会重建，因此每次显示都要新建实例，不要长期缓存复用。
+                映射为 SystemColorWindowColor。模板仍绘制 Border；它是否与宿主融为一色取决于宿主背景。
+                调用方在 HighContrast（以及减少动效）时使用静态系统色 Border，而不是仅把 Shimmer 设为不活动。
+                IsActive=false 只停止动效；OnApplyTemplate 和 Loaded 仍会尝试初始化合成资源。
+                Unloaded 会释放合成资源，重新 Loaded 可重建；库并不要求每次显示都新建控件。
+                来源：https://github.com/ghost1372/DevWinUI，提交 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e，
+                dev/DevWinUI/Controls/Native/Others/Shimmer.cs:58-105 和
+                dev/DevWinUI/Themes/Styles/Controls/Shimmer.xaml:8-29（DevWinUI 10.9.1）。
             -->
             <Style x:Key="AppStreamingShimmerStyle" TargetType="dev:Shimmer"
                    BasedOn="{StaticResource DefaultShimmerStyle}">

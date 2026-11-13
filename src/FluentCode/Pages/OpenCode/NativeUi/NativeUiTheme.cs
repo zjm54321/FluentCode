@@ -631,7 +631,7 @@ internal static class NativeUiTheme
     // ---------------------------------------------------------------- notices & placeholder
 
     /// <summary>
-    /// Non-error: the inline "未支持：Type" chip. Error: a stock <see cref="InfoBar"/> at <see cref="InfoBarSeverity.Error"/>.
+    /// Non-error: the inline "未支持：Type" chip. Error: an <see cref="InfoBar"/> with the stock template and a polite error peer.
     /// </summary>
     internal static FrameworkElement Notice(string title, string message, bool error = false)
     {
@@ -645,23 +645,26 @@ internal static class NativeUiTheme
                 Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SubtleFillColorSecondaryBrush")),
             };
         }
-        // Card-level failure. The stock severity control draws the icon, the critical surface and the high-contrast
-        // colours, so no chrome is rebuilt here. The diagnostic can be 1,200 characters and must stay capped at three
-        // lines, which InfoBar.Message cannot express: the text goes in Content, where it trims like the card message
-        // did, while Title, the accessible name and the polite live setting stay on the bar itself.
+        // Card-level failure keeps InfoBar's stock icon, critical surface and high-contrast colours. Its stock Error
+        // peer uses ImportantAll, which LiveSetting.Polite does not override; our FrameworkElementAutomationPeer
+        // replaces that peer, so the stock notification is skipped. Source:
+        // https://github.com/microsoft/microsoft-ui-xaml, branch winui3/release/2.6.5,
+        // src/controls/dev/InfoBar/InfoBar.cpp:175-200 and src/controls/dev/InfoBar/InfoBarAutomationPeer.cpp:24-56.
+        // Long diagnostics stay capped at three lines in Content, which InfoBar.Message cannot express. Title,
+        // the accessible name and the polite live setting remain on the bar itself.
         var details = new TextBlock { Text = message }; Text(details, new("Caption", new Dictionary<string, object?>()));
         details.MaxLines = 3; details.TextTrimming = TextTrimming.CharacterEllipsis;
-        var bar = new InfoBar
+        var bar = new NativeUiErrorInfoBar
         {
             Severity = InfoBarSeverity.Error, IsClosable = false, IsIconVisible = true,
             Title = title, Content = details,
         };
         AutomationProperties.SetName(bar, title);
         AutomationProperties.SetLiveSetting(bar, AutomationLiveSetting.Polite);
-        // InfoBar announces when it opens, and it only has a UIA peer once it is in the tree, so the bar is
-        // opened on Loaded rather than in the initializer. Nothing is lost by starting closed: the notice is
-        // always its host's only child, so a collapsed bar adds no spacing gap before it opens.
-        bar.Loaded += (_, _) => bar.IsOpen = true;
+        // The old Border had a polite live setting but raised no event. Now Loaded opens the attached bar first,
+        // then requests one CurrentThenMostRecent notification, like an Informational InfoBar. The instance guard
+        // prevents a second Loaded from announcing again. Starting closed adds no gap: this is the host's only child.
+        bar.Loaded += (_, _) => { bar.IsOpen = true; bar.Announce(title, message); };
         Fit(bar, wide: false); return bar;
     }
     /// <summary>Streaming state: the card surface with a progress ring, the tool title and a pulsing skeleton.</summary>

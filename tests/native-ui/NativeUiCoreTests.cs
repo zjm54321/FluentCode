@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using FluentCode.Pages.OpenCode;
 using FluentCode.Services.NativeUi;
 
@@ -122,29 +123,57 @@ internal static class NativeUiCoreTests
             && components.Split("NativeUiAirspace.Track(").Length == 3,
             "Both Native UI flyouts (Popover and the URL confirmation) track their airspace through the shared helper");
         var walkCopies = Folder(NativeUiFolder)
-            .Where(file => Path.GetFileName(file) != "NativeUiAirspace.cs" && Path.GetFileName(file) != "NativeUiRenderer.Media.cs")
+            .Where(file => Path.GetFileName(file) != "NativeUiAirspace.cs")
             .SelectMany(file => File.ReadAllLines(file).Where(line => line.Contains("SuppressAirspace(", StringComparison.Ordinal)).Select(line => Path.GetFileName(file)))
             .Distinct().ToArray();
         Check(walkCopies.Length == 0,
-            "NativeUiRenderer.Media.cs (lane N2) is the only remaining inline airspace walk; N2 moves it onto the helper next wave: " + string.Join(",", walkCopies));
-        var mediaWalk = File.ReadAllLines(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Media.cs".Replace('/', Path.DirectorySeparatorChar)))
-            .Count(line => line.Contains("SuppressAirspace(", StringComparison.Ordinal));
-        Check(mediaWalk == 1, "The gallery dialog's single inline walk is still the only N2 site the contract has to replace");
+            "Only NativeUiAirspace.cs may take terminal suppression leases directly: " + string.Join(",", walkCopies));
+        var media = Source(NativeUiFolder + "/NativeUiRenderer.Media.cs");
+        Check(media.Contains("NativeUiAirspace? airspace = null;")
+            && Regex.IsMatch(media, @"try\s*\{\s*airspace = NativeUiAirspace.Begin\(panel.XamlRoot\?\.Content, snapshot: true\);\s*await viewer.ShowAsync\(\);\s*\}\s*finally\s*\{\s*airspace\?\.Dispose\(\); viewer = null;\s*\}"),
+            "The gallery captures shared airspace inside try, holds it across ShowAsync, and releases it and clears the viewer in finally");
 
-        // ---- C19: the error card is the stock InfoBar, keeping the polite announcement and the three-line cap ----
+        // ---- C19: stock InfoBar template, custom polite notification peer, once per instance, three-line cap ----
+        var errorBar = Source(NativeUiFolder + "/NativeUiErrorInfoBar.cs");
         Check(theme.Contains("internal static FrameworkElement Notice(string title, string message, bool error = false)"),
-            "The card notice returns a framework element so the stock bar can replace the hand-built Border");
-        Check(theme.Contains("Severity = InfoBarSeverity.Error, IsClosable = false, IsIconVisible = true,")
+            "The card notice still returns an ordinary framework element");
+        Check(theme.Contains("var bar = new NativeUiErrorInfoBar")
+            && theme.Contains("Severity = InfoBarSeverity.Error, IsClosable = false, IsIconVisible = true,")
             && theme.Contains("Title = title, Content = details,"),
-            "The card-level failure is a stock InfoBar at Error severity, not closable, with its icon");
-        Check(theme.Contains("bar.Loaded += (_, _) => bar.IsOpen = true;")
-            && theme.IndexOf("bar.Loaded += (_, _) => bar.IsOpen = true;", StringComparison.Ordinal) < theme.IndexOf("Fit(bar, wide: false); return bar;", StringComparison.Ordinal),
-            "The error bar opens once it is loaded, so the announcement happens with a live UIA peer, and the handler is attached before the bar reaches its host");
+            "The card-level failure remains an Error-severity InfoBar, not closable, with its icon and diagnostic content");
+        Check(errorBar.Contains("internal sealed partial class NativeUiErrorInfoBar : InfoBar")
+            && !Regex.IsMatch(errorBar, @"\b(?:Template|DefaultStyleKey|Style)\s*="),
+            "The error control remains an InfoBar and does not replace the base constructor's stock style key or template");
+        Check(errorBar.Contains("protected override AutomationPeer OnCreateAutomationPeer() => new ErrorPeer(this);")
+            && errorBar.Contains("private sealed partial class ErrorPeer : FrameworkElementAutomationPeer")
+            && errorBar.Contains("internal ErrorPeer(NativeUiErrorInfoBar owner) : base(owner) { }")
+            && errorBar.Contains("protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.StatusBar;")
+            && errorBar.Contains("protected override string GetClassNameCore() => \"InfoBar\";")
+            && !errorBar.Contains("base.OnCreateAutomationPeer()") && !Regex.IsMatch(errorBar, @"\bInfoBarAutomationPeer\s*\("),
+            "The custom framework-element peer reports StatusBar/InfoBar without creating the stock interrupting peer");
+        const string OpenAndAnnounce = "bar.Loaded += (_, _) => { bar.IsOpen = true; bar.Announce(title, message); };";
+        Check(theme.Contains(OpenAndAnnounce)
+            && theme.IndexOf(OpenAndAnnounce, StringComparison.Ordinal) < theme.IndexOf("Fit(bar, wide: false); return bar;", StringComparison.Ordinal),
+            "Loaded opens the attached bar before requesting its notification, and the handler is attached before hosting");
+        var announce = Between(errorBar, "internal void Announce(string title, string message)", "protected override AutomationPeer OnCreateAutomationPeer()");
+        Check(errorBar.Contains("private bool _announced;") && announce.Contains("if (_announced) return;")
+            && announce.IndexOf("if (_announced) return;", StringComparison.Ordinal) < announce.IndexOf("_announced = true;", StringComparison.Ordinal)
+            && announce.IndexOf("_announced = true;", StringComparison.Ordinal) < announce.IndexOf("RaiseNotificationEvent(", StringComparison.Ordinal)
+            && Regex.Matches(errorBar, @"\b_announced\s*=").Count == 1 && !Regex.IsMatch(errorBar, @"\b_announced\s*=\s*false\b")
+            && Occurrences(errorBar, "RaiseNotificationEvent(") == 1,
+            "An instance-owned, never-reset guard allows only one notification request even after a second Loaded");
+        Check(announce.Contains("FrameworkElementAutomationPeer.FromElement(this) ?? FrameworkElementAutomationPeer.CreatePeerForElement(this)")
+            && announce.Contains("peer?.RaiseNotificationEvent(AutomationNotificationKind.Other,")
+            && announce.Contains("AutomationNotificationProcessing.CurrentThenMostRecent, text, \"NativeUiErrorInfoBarOpened\"")
+            && !announce.Contains("AutomationNotificationProcessing.Important"),
+            "The single notification uses Other/CurrentThenMostRecent and a stable activity id, not Error's ImportantAll path");
+        Check(announce.Contains("var text = \"错误，\" + title + (message.Length is > 0 and <= 200 ? \"，\" + message : \"\");"),
+            "The notification includes error and title, plus only a non-empty diagnostic of at most 200 characters");
         Check(theme.Contains("details.MaxLines = 3; details.TextTrimming = TextTrimming.CharacterEllipsis;"),
             "A long card diagnostic still trims to three lines, as it did before the InfoBar");
         Check(theme.Contains("AutomationProperties.SetName(bar, title);")
             && theme.Contains("AutomationProperties.SetLiveSetting(bar, AutomationLiveSetting.Polite);"),
-            "The error bar keeps its accessible name and the polite announcement to screen readers");
+            "The error bar retains its accessible title and polite live metadata; the custom notification determines processing priority");
         Check(!theme.Contains("\\uEB90") && !theme.Contains("details.Margin = new Thickness(24, 0, 0, 0)")
             && !theme.Contains("(\"Background\", \"SystemFillColorCriticalBackgroundBrush\"), (\"BorderBrush\""),
             "The hand-built critical chrome and its raw status glyph are gone from the notice");
