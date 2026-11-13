@@ -30,7 +30,7 @@ internal sealed partial class OpenCodePairDeviceView
             {
                 OpenCodePairingAddressKind.Server => "使用已配置的服务地址。",
                 OpenCodePairingAddressKind.Lan =>
-                    "同一局域网的设备可以用这个地址，但前提是 OpenCode 服务不只监听本机（在 WSL 里运行 opencode service set hostname 0.0.0.0）。FluentCode 无法替你确认。",
+                    "同一局域网的设备可以用这个地址，前提是 OpenCode 服务不只监听本机。如需修改，在 WSL 里运行 opencode service set hostname 0.0.0.0（它会先停止服务），再运行 opencode service start。FluentCode 无法替你确认。",
                 _ => _connection == OpenCodePairingConnection.Ssh
                     ? "SSH 隧道只在这台电脑上可用。其他设备请选“自定义地址”，填它们能访问的地址。"
                     : "这个地址只能在这台电脑上打开。",
