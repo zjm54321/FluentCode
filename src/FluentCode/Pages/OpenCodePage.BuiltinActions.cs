@@ -380,7 +380,8 @@ public sealed partial class OpenCodePage
             ShowNativeTextCandidate(retained);
     }
 
-    // A notice only when the text could not go back into the input box; it carries the text so it can be copied.
+    // A notice only when the text could not go back into the input box. It shows the text so it stays in view;
+    // whether it can be copied from there is up to the notice's presentation. 恢复撤回 also brings the message back.
     private void ShowNativeTextCandidate(string text, bool undone = false)
     {
         if (!undone) { ShowMessage(InfoBarSeverity.Warning, "保留的文字候选（未写入草稿）", text); return; }
