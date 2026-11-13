@@ -28,6 +28,7 @@ public sealed partial class OpenCodePage
         // 计时器只在页面加载期间存在：这里按当前状态重新计时。
         RearmNoticeMessageTimer();
         ArmNoticeHint();
+        UpdateNoticeAirspace();
         if (_shellNoticeBar is not null) return;
         _shellNoticeBar = (XamlRoot?.Content as FrameworkElement)?.FindName("ShellNoticeBar") as InfoBar;
         if (_shellNoticeBar is null) return;
@@ -40,6 +41,7 @@ public sealed partial class OpenCodePage
     {
         if (IsLoaded) return;
         StopNoticeTimers();
+        ReleaseNoticeAirspace();
         if (_shellNoticeBar is null) return;
         _shellNoticeBar.UnregisterPropertyChangedCallback(InfoBar.IsOpenProperty, _shellNoticeOpenToken);
         _shellNoticeBar.SizeChanged -= Notices_BoundsChanged;
@@ -69,7 +71,11 @@ public sealed partial class OpenCodePage
         }
 
         double height = Math.Max(NoticeMinHeight, limit - rowTop - top - NoticeBottomGap);
-        if (NoticeLayer.Margin.Top != top) NoticeLayer.Margin = new Thickness(0, top, 0, 0);
+        if (NoticeLayer.Margin.Top != top)
+        {
+            NoticeLayer.Margin = new Thickness(0, top, 0, 0);
+            DispatcherQueue.TryEnqueue(UpdateNoticeAirspace);
+        }
         if (NoticeLayer.MaxHeight != height) NoticeLayer.MaxHeight = height;
     }
 

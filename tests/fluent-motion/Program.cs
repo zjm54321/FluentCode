@@ -444,5 +444,12 @@ internal static class Program
             "STATIC notices: timers use named Tick handlers that are removed when the page unloads");
         Check(timing.Contains("FluentMotion.SlideFadeIn(NoticeStack") && !timing.Contains("Storyboard") && !timing.Contains("FluentMotion.Bind("),
             "STATIC notices: the entrance goes through FluentMotion, so reduced motion shows the notice at once");
+        var airspace = StripComments(File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.Notices.Airspace.cs")));
+        Check(airspace.Contains("terminal.SuppressAirspace(snapshot: true)") && airspace.Contains("NoticeRectsOverlap(notices, bounds)")
+            && airspace.Contains("lease.Dispose()") && bounds.Contains("ReleaseNoticeAirspace();")
+            && !airspace.Contains("static readonly Dictionary") && !airspace.Contains("static Dictionary"),
+            "STATIC notices: a notice over the terminal HWND holds a snapshot lease only while it overlaps, released on close and unload");
+        Check(notices.Contains("UpdateNoticeAirspace();") && notices.Contains("InitializeNoticeAirspace();"),
+            "STATIC notices: every notice change re-evaluates the terminal overlap");
     }
 }

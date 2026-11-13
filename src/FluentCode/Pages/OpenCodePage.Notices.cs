@@ -27,6 +27,7 @@ public sealed partial class OpenCodePage
         WorkspaceGrid.RegisterPropertyChangedCallback(VisibilityProperty, OnNoticeSourceChanged);
         InitializeNoticeBounds();
         InitializeNoticeTiming();
+        InitializeNoticeAirspace();
         RefreshNoticeLayer();
     }
 
@@ -59,6 +60,9 @@ public sealed partial class OpenCodePage
         bool shown = hostShown && (ssh || permission || message || hint);
         NoticeLayer.Visibility = NoticeVisibility(shown);
         PlayNoticeEntrance(shown);
+        // 关闭时立即归还终端；打开时等这一轮布局完成后再按真实位置判断是否重叠。
+        UpdateNoticeAirspace();
+        if (shown) DispatcherQueue.TryEnqueue(UpdateNoticeAirspace);
         UpdateNoticeBounds();
     }
 }
