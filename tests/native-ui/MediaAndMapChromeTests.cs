@@ -139,8 +139,28 @@ internal static class MediaAndMapChromeTests
 
         // ---------------------------------------------------------------- renderer rules (source text)
         Check(mapSource.Contains("zoom = new ZoomInOutWidget") && mapSource.Contains("map.Widgets.Add(zoom)"), "Map chrome uses Mapsui's own zoom widget instead of a hand-built pair of buttons");
-        Check(mapSource.Contains("zoom.StrokeColor = MapPaint(\"border\", true); zoom.TextColor = MapPaint(\"ink\"); zoom.BackColor = MapPaint(\"canvas\", true);"),
-            "The zoom widget is repainted from the theme tokens on every re-render, so a theme switch reaches it");
+        // Zoom buttons are around the map, so they follow the theme, with an opaque fill and a frame that shows on
+        // any tile. Mapsui's renderer multiplies each colour's alpha by the widget's Opacity, 0.8 unless set.
+        Check(Math.Abs(new ZoomInOutWidget().Opacity - 0.8) < 1e-6, "Mapsui's zoom widget is translucent unless its opacity is set");
+        Check(Regex.IsMatch(mapSource, @"zoom = new ZoomInOutWidget \{[^}]*\bOpacity = 1 \}"), "The zoom buttons are drawn opaque");
+        Check(mapSource.Contains("var fill = Flatten(MapPaint(\"canvas\", true), MapEdgeColor);")
+            && mapSource.Contains("zoom.BackColor = fill; zoom.StrokeColor = Flatten(MapPaint(\"muted\"), fill); zoom.TextColor = Flatten(MapPaint(\"ink\"), fill);"),
+            "The zoom buttons are repainted from the theme on every re-render: page colour fill, text colours flattened onto it for the frame and the signs");
+        // The figures behind that choice, from the values of those tokens (microsoft/microsoft-ui-xaml, branch
+        // winui3/release/2.6.5, src/controls/dev/CommonStyles/Common_themeresources_any.xaml): SolidBackgroundFillColorBase
+        // #F3F3F3 / #202020 and TextFillColorSecondary #9E000000 / #C5FFFFFF. This is arithmetic on documented values,
+        // not a rendering: it shows the rule can hold, and what the hairline divider colour it replaces came to.
+        static (int R, int G, int B) Over((int R, int G, int B) top, double alpha, (int R, int G, int B) under)
+        { int Mix(int a, int b) => (int)Math.Round(a * alpha + b * (1 - alpha)); return (Mix(top.R, under.R), Mix(top.G, under.G), Mix(top.B, under.B)); }
+        var lightFill = (R: 243, G: 243, B: 243); var lightFrame = Over((0, 0, 0), 0x9E / 255d, lightFill);
+        var darkFill = (R: 32, G: 32, B: 32); var darkFrame = Over((255, 255, 255), 0xC5 / 255d, darkFill);
+        Check(Contrast(lightFrame, lightFill) >= 3 && tiles.All(tile => Contrast(lightFrame, tile.Colour) >= 3),
+            "Light theme: the frame reaches 3:1 against the button and against every tile colour: " + Ratio(Contrast(lightFrame, lightFill)) + ", " + string.Join(" / ", tiles.Select(tile => Ratio(Contrast(lightFrame, tile.Colour)))));
+        Check(Contrast(darkFrame, darkFill) >= 3 && tiles.All(tile => Contrast(darkFill, tile.Colour) >= 3),
+            "Dark theme: the fill reaches 3:1 against every tile colour and the frame against the fill: " + string.Join(" / ", tiles.Select(tile => Ratio(Contrast(darkFill, tile.Colour)))) + ", " + Ratio(Contrast(darkFrame, darkFill)));
+        var hairline = Over((0, 0, 0), 0x0F / 255d * 0.8, tiles[0].Colour);
+        Check(Contrast(hairline, tiles[0].Colour) < 1.2 && Contrast(lightFill, tiles[0].Colour) < 1.2,
+            "The divider colour at 0.8 opacity left a light button with no visible frame on land: " + Ratio(Contrast(hairline, tiles[0].Colour)) + " frame, " + Ratio(Contrast(lightFill, tiles[0].Colour)) + " fill");
         Check(mapSource.Contains("var pinFill = contrast ? Flatten(MapPaint(\"ink\"), edge) : MapPinColor;")
             && mapSource.Contains("var pinChosen = contrast ? Flatten(MapPaint(\"chart1\", true), edge) : MapChosenPinColor;")
             && mapSource.Contains("var edge = contrast ? Flatten(MapPaint(\"canvas\", true), MapEdgeColor) : MapEdgeColor;")
@@ -148,7 +168,8 @@ internal static class MediaAndMapChromeTests
             "On the tiles the fixed colours are used; only high contrast replaces them, with the system text, highlight and window colours");
         Check(mapSource.Contains("var contrast = MapHighContrast();") && mapSource.Contains("new Windows.UI.ViewManagement.AccessibilitySettings().HighContrast"),
             "High contrast is read from the system setting each time the map is painted");
-        Check(!mapSource.Contains("MapPaint(\"chart2\""), "Selection is not a second series colour");
+        Check(!mapSource.Contains("MapPaint(\"chart2\"") && !mapSource.Contains("MapPaint(\"border\""),
+            "Selection is not a second series colour, and nothing on the map is painted with the hairline divider colour");
         Check(mapSource.Contains("SymbolScale = chosen ? 1.3 : 1, Fill = new Mapsui.Styles.Brush(chosen ? pinChosen : pinFill), Outline = outline")
             && mapSource.Contains("foreach (var item in projected.OrderBy(place => S(place.Marker, \"label\") == selected))"),
             "The chosen pin is larger, has its own colour and is built last");

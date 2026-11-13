@@ -127,7 +127,16 @@ internal sealed partial class NativeUiRenderer
             var labelInk = contrast ? pinFill : MapLabelInkColor;
             var outline = new Pen(edge, 2);
             // Around the map: the zoom buttons follow the theme. A theme change re-renders the card and lands here.
-            if (zoom is not null) { zoom.StrokeColor = MapPaint("border", true); zoom.TextColor = MapPaint("ink"); zoom.BackColor = MapPaint("canvas", true); }
+            // The fill is the opaque page colour; the frame and the signs are the theme's secondary and primary text
+            // colours flattened onto it, so both keep their designed contrast with the button whatever tile is behind.
+            // Light theme: frame #5C5C5C on fill #F3F3F3 is 6.0:1, and 5.8 / 4.2 against land / water. Dark theme:
+            // fill #202020 is 14.2 / 10.2 against land / water, frame #CCCCCC on it 10.2. In high contrast all three
+            // tokens are system colours (window, window text) and opaque, so flattening changes nothing.
+            if (zoom is not null)
+            {
+                var fill = Flatten(MapPaint("canvas", true), MapEdgeColor);
+                zoom.BackColor = fill; zoom.StrokeColor = Flatten(MapPaint("muted"), fill); zoom.TextColor = Flatten(MapPaint("ink"), fill);
+            }
             var features = new List<IFeature>();
             // The chosen place is built last. A MemoryLayer draws its features in Id order whatever the list order is,
             // and Ids are handed out at construction (Mapsui/Mapsui, tag 5.1.0, Mapsui/Layers/MemoryLayer.cs
@@ -169,8 +178,10 @@ internal sealed partial class NativeUiRenderer
                 route = new MemoryLayer { Name = "地点顺序连线", Style = null }; points = new MemoryLayer { Name = "地点", Style = null };
                 map.Layers.Add(route); map.Layers.Add(points);
                 // The library's own +/- widget: it draws and handles taps inside the viewport, so it needs no XAML
-                // overlay and works without a wheel or a pinch. Features() paints it from the theme.
-                zoom = new ZoomInOutWidget { Orientation = MapOrientation.Vertical, HorizontalAlignment = MapHorizontal.Right, VerticalAlignment = MapVertical.Top, Margin = new MRect(8) };
+                // overlay and works without a wheel or a pinch. Features() paints it from the theme. Opacity is 1
+                // because the renderer multiplies every colour's alpha by it and the default is 0.8
+                // (Mapsui/Mapsui, tag 5.1.0, Mapsui.Rendering.Skia/SkiaWidgets/ZoomInOutWidgetRenderer.cs).
+                zoom = new ZoomInOutWidget { Orientation = MapOrientation.Vertical, HorizontalAlignment = MapHorizontal.Right, VerticalAlignment = MapVertical.Top, Margin = new MRect(8), Opacity = 1 };
                 map.Widgets.Add(zoom);
                 map.Tapped += (_, args) => { if (visual.Disposed || points is null) return; var feature = args.GetMapInfo(new ILayer[] { points }).Feature; if (feature?["label"] is string label) { SetField(visual, key, "selected", "", label); args.Handled = true; } };
                 control = new MapControl { Map = map, Height = Math.Clamp(N(visual.Model, "height", 320), 180, 640) };
