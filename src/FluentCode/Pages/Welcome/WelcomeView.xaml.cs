@@ -33,9 +33,6 @@ public sealed partial class WelcomeView : UserControl
         ActualThemeChanged += (_, _) => ApplyBloom();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
-        // 可视区高度 → 居中容器的最小高度：内容矮于可视区时正好撑满（居中、不出现滚动条），
-        // 高于可视区时由内容自身决定高度（顶端对齐、可滚动）。向下取整，避免小数缩放下多出不足 1 的滚动量。
-        Scroller.SizeChanged += (_, args) => CenterHost.MinHeight = Math.Floor(args.NewSize.Height);
     }
 
     /// <summary>标题栏可拖动区（欢迎态时由主窗口登记）。</summary>
