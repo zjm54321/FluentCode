@@ -159,6 +159,10 @@ internal static class Program
         PermissionDismissalFocus();
         await StuckImagePasteHookup();
         Console.WriteLine($"PASS: 5 production-linked page-partial groups, {checks} assertions ({first}/{second}/{third}/{fourth}/{checks-first-second-third-fourth}); real core/editor helpers, fake HTTP, WinUI/view/scheduler doubles; no live UI/service.");
+        // The suite calls this runner without switches, so the native-action (/undo, /redo, /models, /editor) and
+        // continuation groups run here too. -NativeOnly remains the short route to just those groups.
+        await NativeTests.Run();
+        await ContinuationTests.Run();
     }
     private static async Task StuckImagePasteHookup()
     {
