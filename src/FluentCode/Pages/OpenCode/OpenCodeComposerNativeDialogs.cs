@@ -254,6 +254,8 @@ internal static class OpenCodeRollbackConfirmationDialog
             var note = OpenCodeInteractionUi.StyledText(OpenCodeRollbackConfirmationState.RestoreFilesNote,
                 OpenCodeInteractionUi.CaptionSubtleStyleKey);
             note.Margin = new Thickness(28, 0, 0, 0); // Lines up with the box's label.
+            // A screen reader that reaches the box gets the risk with it, not only as a separate line.
+            AutomationProperties.SetHelpText(files, OpenCodeRollbackConfirmationState.RestoreFilesNote);
             var choice = new StackPanel { Spacing = 0 };
             choice.Children.Add(files);
             choice.Children.Add(note);
@@ -271,7 +273,7 @@ internal static class OpenCodeRollbackConfirmationDialog
             Content = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
             PrimaryButtonText = state.PrimaryText,
             CloseButtonText = "取消",
-            // Enter confirms only the plain case; otherwise focus and Enter land on 取消 (see ConfirmIsDefault).
+            // 撤回 is the default button (accent, Enter) only in the plain case; otherwise 取消 is (see ConfirmIsDefault).
             DefaultButton = state.ConfirmIsDefault ? ContentDialogButton.Primary : ContentDialogButton.Close,
             IsPrimaryButtonEnabled = state.CanConfirm,
             Style = OpenCodeInteractionUi.TryStyle("DefaultContentDialogStyle"),
@@ -298,7 +300,8 @@ internal static class OpenCodeRollbackConfirmationDialog
             TextTrimming = TextTrimming.CharacterEllipsis,
             IsTextSelectionEnabled = true,
         };
-        AutomationProperties.SetName(excerpt, "要撤回的消息");
+        // The name keeps the message itself: a bare label here would replace the text a screen reader reads.
+        AutomationProperties.SetName(excerpt, "要撤回的消息：" + text);
         return new Border
         {
             Child = excerpt,

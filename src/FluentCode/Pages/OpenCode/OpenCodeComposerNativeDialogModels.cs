@@ -249,10 +249,10 @@ internal sealed class OpenCodeRollbackConfirmationState
     internal bool CanConfirm => BlockingReason is null;
 
     /// <summary>
-    /// Enter confirms only the plain case: nothing to warn about, which 恢复撤回 can take back. With a caution on
-    /// screen 取消 is the default and confirming is a click. Decided when the prompt opens and fixed afterwards:
-    /// ticking file restoration is itself the deliberate step, and an Enter carried over from the input box or
-    /// the menu cannot tick it.
+    /// 撤回 is the default button only in the plain case: nothing to warn about, and 恢复撤回 can take it back.
+    /// With a caution on screen 取消 is the default. Decided when the prompt opens and fixed afterwards: the
+    /// accent does not jump between the buttons when the file box is ticked, and the box always starts unticked,
+    /// so restoring files takes a step of its own.
     /// </summary>
     internal bool ConfirmIsDefault => CanConfirm && Cautions().Count == 0;
 
