@@ -34,9 +34,18 @@ EditorSync 保留 baseline / input revision / 提交 ACK / reentrant predecessor
 - 紧凑宽度投影使用 `RichTextBlock` 的 `Paragraph` 承载 `InlineUIContainer`，不能放进 `TextBlock.Inlines`（WinUI 会返回 `E_INVALIDARG`）。芯片宽度读取已验证的规范位图尺寸，不在该投影中查询尚未布局的 TOM 对象。原生 patch 期间沿用上次完成的测量，`NativeLayoutReady` 后重新计算。
 - `OpenCodeComposerNativeGeometry` 在 TOM / 位图调用前验证有限、正值和 ascent ≤ height；布局 DIP 尺寸向上取整，避免正的小数被截为零。composer 安全预算为图像 4096 DIP、每边光栅 4096 px、段落 1638 pt（至少一个 twip），不是声明 TOM 的最大值。段落 points 转换只移除一次文字缩放。URL 位图在原始粘贴事务提交前准备；尺寸无效时原文作为一次普通文本粘贴，撤销一次即恢复。后续原生图片插入失败只显式降级失败 token 为其原始文本，保留其他 token 身份和选区方向；其他失败继续使用既有 held/recovery 流程。粘贴、芯片指针与布局回调边界只拦截 COM / 参数异常，不使用全局异常吞噬。
 
+## 待投递消息：排队 ⇄ 插入当前回合
+
+- 本客户端发送且服务端仍保留的用户输入可反复切换：排队行的“改为插入当前回合”与待投递气泡下方的“改为排队”。沿用悬停 / 键盘焦点 / 首次触摸显示按钮的交互；长消息的两行折叠不隐藏切换按钮。原生右键菜单仍保留。
+- 本页的持久接纳收据只证明消息来自本客户端，不证明仍待投递。切换先读取当前会话 inbox，再发送一次 `PATCH /api/session/{sessionID}/inbox/{inboxID}`，最后回读 inbox；只有实际列表的模式决定排队行 / 插入气泡，不把 204 当作更改或投递证明。
+- 已不在待投递列表、已经显示于对话记录、其他客户端的输入、处理中、服务端拒绝或结果未确认均给出简短提示。404 提示会话 / 消息不可用，409 提示服务端拒绝切换；两者仍尝试回读列表，不重试 PATCH。无法确认时不乐观修改，也不自动重试；后续列表显示请求的模式或条目已消失才解除该条目的未确认状态。确认空列表也会清理，而非当作未读取。
+- 输入框 Enter 仍直接插入当前回合，独立排队按钮仍只负责新的发送手势；本次修改不记忆或重设计输入框发送模式。
+
 ## 验证
 
 协议回归：`tests/opencode-composer/run.ps1`、`tests/opencode-composer-hookup/run.ps1`、`tests/opencode-session-return/run.ps1`、`tests/message-pagination/run.ps1`，均传新的 EvidenceRoot；编译 composer 的其他现有 runner 同样保留。
+
+待投递切换回归：`tests/opencode-queued-withdraw/run.ps1` 编译真实页面投递处理器、收据投影、排队行、待插入气泡和触摸显示逻辑，以假的 HTTP handler / 原生控件边界覆盖三次连续切换、仅收据投影、空列表清理、204 后模式未变、404 / 409、所有权与来源 / 会话隔离；不访问运行中的服务或启动桌面窗口。
 
 真实适配器 scratch harness 不注册到 run-suite，不构建或启动 FluentCode：
 
