@@ -363,7 +363,8 @@ public sealed partial class SettingsView : UserControl
         SettingsCards.Override(_navigation, "NavigationViewDefaultPaneBackground", transparent, includeHighContrast: false);
 
         // 窗格标题（原来手写的“设置”标题）：高对比度下用系统窗口文字色，随主题变化。
-        _navigation.PaneHeader = SettingsCards.Styled(new TextBlock { Text = "设置", Margin = new Thickness(28, 16, 0, 4) }, "SubtitleTextBlockStyle");
+        // 左缘 16 与下面分类图标的左缘对齐（标题、图标同一条线，文字另一条）；下方留 12，标题统领整个列表而不是贴在第一项上。
+        _navigation.PaneHeader = SettingsCards.Styled(new TextBlock { Text = "设置", Margin = new Thickness(16, 16, 0, 12) }, "SubtitleTextBlockStyle");
 
         for (int index = 0; index < _categories.Count; index++)
         {
