@@ -8,8 +8,8 @@ using Windows.Foundation;
 namespace FluentCode.Pages;
 
 /// <summary>
-/// 终端是原生子窗口，画在所有 XAML 之上。提示与终端重叠时，对该终端持有 SuppressAirspace 租约
-/// （保留最后一帧画面），提示移开或关闭后立即归还。浏览器是合成层承载的，XAML 本来就能盖住它。
+/// 终端是原生子窗口，画在所有 XAML 之上。需要用户处理的提示与终端重叠时，对该终端持有 SuppressAirspace 租约
+/// （保留最后一帧画面），提示移开或关闭后立即归还。被动提示从不要租约：见 OpenCodePage.Notices.Holds.cs。
 /// </summary>
 public sealed partial class OpenCodePage
 {
@@ -22,9 +22,10 @@ public sealed partial class OpenCodePage
         PersistentPtyOverlayHost.RegisterPropertyChangedCallback(VisibilityProperty, OnNoticeAirspaceSourceChanged);
     }
 
-    private void NoticeAirspace_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateNoticeAirspace();
+    // 终端出现、消失或提示栈改变大小：重新判断被动提示要不要让开，以及谁需要租约。
+    private void NoticeAirspace_SizeChanged(object sender, SizeChangedEventArgs e) => RefreshNoticeLayer();
 
-    private void OnNoticeAirspaceSourceChanged(DependencyObject sender, DependencyProperty property) => UpdateNoticeAirspace();
+    private void OnNoticeAirspaceSourceChanged(DependencyObject sender, DependencyProperty property) => RefreshNoticeLayer();
 
     private void ReleaseNoticeAirspace()
     {
@@ -32,17 +33,11 @@ public sealed partial class OpenCodePage
         _noticeAirspace.Clear();
     }
 
-    private void UpdateNoticeAirspace()
+    /// <summary>当前显示着的终端及其在 PageRoot 里的矩形；终端浮层没打开时为空。</summary>
+    private List<(OpenCodePersistentPtyRenderer Terminal, Rect Bounds)> NoticeTerminals()
     {
-        if (!IsLoaded || NoticeLayer.Visibility != Visibility.Visible
-            || PersistentPtyOverlayHost.Visibility != Visibility.Visible
-            || NoticeBoundsInPage(NoticeStack, inset: true) is not { } notices)
-        {
-            ReleaseNoticeAirspace();
-            return;
-        }
-
-        var covered = new HashSet<OpenCodePersistentPtyRenderer>();
+        var found = new List<(OpenCodePersistentPtyRenderer, Rect)>();
+        if (!IsLoaded || PersistentPtyOverlayHost.Visibility != Visibility.Visible) return found;
         var pending = new Stack<DependencyObject>();
         pending.Push(PersistentPtyOverlayHost);
         while (pending.Count > 0)
@@ -50,11 +45,39 @@ public sealed partial class OpenCodePage
             var node = pending.Pop();
             if (node is OpenCodePersistentPtyRenderer terminal)
             {
-                if (NoticeBoundsInPage(terminal, inset: false) is { } bounds && NoticeRectsOverlap(notices, bounds)) covered.Add(terminal);
+                if (NoticeBoundsInPage(terminal, inset: false) is { } bounds) found.Add((terminal, bounds));
                 continue;
             }
             int count = VisualTreeHelper.GetChildrenCount(node);
             for (int index = 0; index < count; index++) pending.Push(VisualTreeHelper.GetChild(node, index));
+        }
+        return found;
+    }
+
+    private static bool NoticeOverlaps(Rect a, Rect b)
+        => OpenCodeNoticePolicy.Overlaps(a.Left, a.Top, a.Right, a.Bottom, b.Left, b.Top, b.Right, b.Bottom);
+
+    /// <summary>只有需要用户处理的提示才向终端要租约；被动提示不在这里出现（它们重叠时根本不显示）。</summary>
+    private void UpdateNoticeAirspace()
+    {
+        var covered = new HashSet<OpenCodePersistentPtyRenderer>();
+        if (NoticeLayer.Visibility == Visibility.Visible)
+        {
+            var terminals = NoticeTerminals();
+            foreach (var (surface, kind) in new (FrameworkElement, OpenCodeNoticeKind)[]
+                     {
+                         (SshConnectionAlertSurface, OpenCodeNoticeKind.SshAlert),
+                         (PermissionBarSurface, OpenCodeNoticeKind.Permission),
+                         (MessageBarSurface, OpenCodeNoticeKind.Message),
+                     })
+            {
+                if (terminals.Count == 0) break;
+                if (surface.Visibility != Visibility.Visible || NoticeBoundsInPage(surface, inset: false) is not { } bounds) continue;
+                foreach (var (terminal, area) in terminals)
+                    if (OpenCodeNoticePolicy.TakesTerminal(kind, NoticeMessageErrorOrWarning, MessageBar.ActionButton is not null,
+                            NoticeOverlaps(bounds, area)))
+                        covered.Add(terminal);
+            }
         }
 
         foreach (var held in new List<OpenCodePersistentPtyRenderer>(_noticeAirspace.Keys))
@@ -76,7 +99,4 @@ public sealed partial class OpenCodePage
         }
         catch (ArgumentException) { return null; }
     }
-
-    private static bool NoticeRectsOverlap(Rect a, Rect b)
-        => a.Left < b.Right && b.Left < a.Right && a.Top < b.Bottom && b.Top < a.Bottom;
 }

@@ -48,15 +48,19 @@ public sealed partial class OpenCodePage
     {
         bool ssh = IsNoticeBarShown(SshConnectionAlert);
         bool permission = IsNoticeBarShown(PermissionBar);
-        bool message = IsNoticeBarShown(MessageBar);
-        bool hint = SessionStateHint.Visibility == Visibility.Visible && _noticeHintRevealed;
+        bool hostShown = SettingsTabHost.Visibility != Visibility.Visible
+            && WorkspaceGrid.Visibility == Visibility.Visible;
+        bool messageWanted = IsNoticeBarShown(MessageBar);
+        bool hintWanted = SessionStateHint.Visibility == Visibility.Visible && _noticeHintRevealed;
+        // 被动提示会盖到终端时先不显示（见 OpenCodePage.Notices.Holds.cs）。
+        UpdateNoticeHolds(hostShown && ssh, hostShown && permission, hostShown && messageWanted, hostShown && hintWanted);
+        bool message = messageWanted && !_noticeMessageHeld;
+        bool hint = hintWanted && !_noticeHintHeld;
         SshConnectionAlertSurface.Visibility = NoticeVisibility(ssh);
         PermissionBarSurface.Visibility = NoticeVisibility(permission);
         MessageBarSurface.Visibility = NoticeVisibility(message);
         SessionStateHintSurface.Visibility = NoticeVisibility(hint);
 
-        bool hostShown = SettingsTabHost.Visibility != Visibility.Visible
-            && WorkspaceGrid.Visibility == Visibility.Visible;
         bool shown = hostShown && (ssh || permission || message || hint);
         NoticeLayer.Visibility = NoticeVisibility(shown);
         PlayNoticeEntrance(shown);
