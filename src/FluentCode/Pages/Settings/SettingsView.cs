@@ -399,9 +399,10 @@ public sealed partial class SettingsView : UserControl
                 new Microsoft.UI.Xaml.Media.Animation.ContentThemeTransition { VerticalOffset = 12 },
             });
 
-        // 页尾的 32 留白放在被滚动的面板上，随内容一起滚动：滚到底才出现，平时内容一直铺到窗口下缘。
-        // 不能放进 ScrollViewer.Padding：那是视口四周的固定留边，会在窗口底部留下一条永远空白的带子，把下面的行切掉。
-        var right = new StackPanel { Padding = new Thickness(0, 0, 0, 32) };
+        // 页首的 20 与页尾的 32 留白放在被滚动的面板上，随内容一起滚动：在页首 / 滚到底时才出现，
+        // 其余时候内容一直铺到标签栏下缘和窗口下缘。
+        // 不能放进 ScrollViewer.Padding：那是视口四周的固定留边，会在窗口上下各留一条永远空白的带子，把行切掉。
+        var right = new StackPanel { Padding = new Thickness(0, 20, 0, 32) };
         right.Children.Add(_categoryTitle);
         right.Children.Add(_statusBar);
         right.Children.Add(_confirmPanel);
@@ -422,7 +423,7 @@ public sealed partial class SettingsView : UserControl
         {
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Padding = new Thickness(8, 20, 28, 0),
+            Padding = new Thickness(8, 0, 28, 0),
             Content = LeftAlignedColumn(right, 1000),
         };
         _navigation.Content = _categoryScroll;
