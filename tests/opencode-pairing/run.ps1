@@ -17,7 +17,7 @@ $arguments += Get-ChildItem (Join-Path $repo 'src/FluentCode/Services/OpenCode/*
 foreach ($name in @('OpenCodeInteractionGate.cs', 'OpenCodePageSource.cs', 'OpenCodeExecutionProjection.cs', 'NotificationInteractions.cs', 'NotificationArgumentCodec.cs', 'NotificationActivationInfo.cs', 'NotificationSource.cs')) {
     $arguments += '"' + (Join-Path $repo "src/FluentCode/Services/Notifications/$name") + '"'
 }
-$arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
+$arguments += Get-ChildItem (Join-Path $PSScriptRoot '*.cs') | ForEach-Object { '"' + $_.FullName + '"' }
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.txt')
