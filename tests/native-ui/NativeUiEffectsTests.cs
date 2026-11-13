@@ -63,6 +63,10 @@ internal static class NativeUiEffectsTests
             && adapter.Contains("ParticleCount = Particles / Columns", StringComparison.Ordinal)
             && adapter.Contains("for (var column = 0; column < Columns; column++)", StringComparison.Ordinal),
             "The particle count stays bounded at the previous 24, split across the band rather than added to");
+        require(adapter.Contains("=> new[] { \"info\", \"success\", \"warning\", \"purple\", \"pink\", \"danger\" }", StringComparison.Ordinal)
+            && adapter.Contains(".Select(tone => NativeUiTheme.Brush(tone, theme: _band.ActualTheme)).OfType<SolidColorBrush>().Select(brush => brush.Color).ToList();", StringComparison.Ordinal)
+            && !adapter.Contains("ChartColor", StringComparison.Ordinal),
+            "The burst cycles the six named tones as the card's theme paints them, not the chart series, whose sixth colour is grey");
         require(adapter.Contains("private const double BandWidth = 640;", StringComparison.Ordinal)
             && adapter.Contains("private const double BandHeight = 100;", StringComparison.Ordinal)
             && adapter.Contains("Clip = new RectangleGeometry { Rect = new(0, 0, BandWidth, BandHeight) }", StringComparison.Ordinal),

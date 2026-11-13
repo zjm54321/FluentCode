@@ -106,8 +106,14 @@ internal static class NativeUiCommunityEffects
             catch (Exception) { End(); } // No Win2D activation in this context: the card renders without confetti.
         }
 
+        /// <summary>
+        /// The six named tones the hand-rolled burst cycled through, in its order and as the card's theme paints them,
+        /// so the burst matches the status and category colours around it. A tone whose brush cannot be read is left
+        /// out; with none left the library falls back to its own colours.
+        /// </summary>
         private List<Windows.UI.Color> Palette()
-            => Enumerable.Range(0, 6).Select(index => NativeUiTheme.ChartColor(index, _band.ActualTheme)).ToList();
+            => new[] { "info", "success", "warning", "purple", "pink", "danger" }
+                .Select(tone => NativeUiTheme.Brush(tone, theme: _band.ActualTheme)).OfType<SolidColorBrush>().Select(brush => brush.Color).ToList();
 
         private void OnCompleted(object? sender, EventArgs args) => End();
         private void OnLimit(DispatcherQueueTimer sender, object args) => End();
