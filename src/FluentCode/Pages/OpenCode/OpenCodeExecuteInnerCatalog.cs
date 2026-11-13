@@ -29,6 +29,7 @@ internal static class OpenCodeExecuteInnerCatalog
         ["nixos.nix"] = new("查询 Nix", "code", "action query"),
         ["nixos.nix_versions"] = new("查询 Nix 版本", "code", "package version"),
         ["ast_grep_search"] = new("AST 搜索", "code", "pattern lang"),
+        ["ast_grep_replace"] = new("AST 替换", "code", "pattern rewrite"),
         ["task_result"] = new("获取子智能体结果", "agent", "task_id"),
         ["task_message"] = new("给子智能体发消息", "agent", "task_id message"),
         ["task_report"] = new("汇报", "agent", "kind message", "\uE8F2"),
@@ -36,6 +37,7 @@ internal static class OpenCodeExecuteInnerCatalog
         ["task_revive"] = new("恢复子智能体", "agent", "task_id prompt"),
         ["task_status"] = new("查看子智能体状态", "agent", "sessionID task_id"),
         ["wait_for_user"] = new("等待你的确认", "agent", "reason"),
+        ["task_reply"] = new("答复子智能体请求", "agent", "request_id reply"),
         ["pty_read"] = new("读取终端输出", "pty", "id pattern"),
         ["pty_write"] = new("写入终端输入", "pty", "id data"),
         ["pty_spawn"] = new("启动终端", "pty", "command args"),
@@ -70,6 +72,8 @@ internal static class OpenCodeExecuteInnerCatalog
         ["hermes_result"] = new("获取 Hermes 结果", "misc", "id waitSeconds"),
         ["image_gen_nano"] = new("生成图片（Nano）", "misc", "prompt aspect_ratio"),
         ["image_gen"] = new("生成图片", "misc", "prompt aspect_ratio"),
+        ["experimental_image_generate"] = new("生成图片", "misc", "prompt path", OpenCodeStepRunPresentation.ImageGlyph),
+        ["marketplace_inspect"] = new("查看插件市场", "misc", "action"),
     };
 
     // Exact catalog ids only: session/PTY operations must never inherit file semantics from a suffix.

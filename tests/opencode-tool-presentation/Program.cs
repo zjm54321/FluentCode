@@ -36,6 +36,7 @@ internal static partial class Program
         TooltipCopy(args[0]);
         TimelineLifecycle(args[0]);
         TimelineResourceContracts(args[0]);
+        ImageNoticeAndTool(args[0]);
         Console.WriteLine($"PASS {_checks} focused tool naming, glyph, OMO reports/controls/mention scopes, generic-detail, session-tool parsing, question/duration formatting, working-activity, step-summary, home-settings layout, header-affordance, preview theme/placement and unified running-indicator checks.");
     }
 

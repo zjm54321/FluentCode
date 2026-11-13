@@ -110,6 +110,7 @@ $commonHost = Join-Path $output 'ConversationView.NativeSurface.cs'
 $tests = @($commonHost, (Join-Path $PSScriptRoot 'OpenCodePage.TestHost.cs'), (Join-Path $PSScriptRoot 'ChildChat.TestHost.cs'), (Join-Path $PSScriptRoot 'Program.cs'), (Join-Path $PSScriptRoot 'SubagentCompletionNoticeTests.cs'), (Join-Path $PSScriptRoot 'PtyCompletionNoticeTests.cs'), (Join-Path $PSScriptRoot 'GroupFinalizeTests.cs'), (Join-Path $PSScriptRoot 'TranscriptMenuTests.cs'), (Join-Path $PSScriptRoot 'PopupRowTests.cs'))
 $tests += Join-Path $PSScriptRoot 'StreamingApplyTests.cs'
 $tests += Join-Path $PSScriptRoot 'SubagentUpdateTests.cs'
+$tests += Join-Path $PSScriptRoot 'ImageCompletionNoticeTests.cs'
 $tests += Join-Path $PSScriptRoot 'SwitchPerformanceTests.cs'
 $tests += Join-Path $PSScriptRoot 'TurnEndProjectionTests.cs'
 $assembly = Join-Path $output 'OpenCodeSessionReturnTests.dll'

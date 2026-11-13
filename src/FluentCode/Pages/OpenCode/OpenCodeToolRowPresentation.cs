@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using FluentCode.Services.OpenCode;
 
 namespace FluentCode.Pages.OpenCode;
@@ -30,6 +31,7 @@ internal enum OpenCodeToolKind
     Todo,
     Browser,
     Report,
+    Image,
 }
 
 /// <summary>工具行状态（严格来自 <see cref="OpenCodeToolStates.Read"/> 的四个已核实取值；其余为 Unknown）。</summary>
@@ -248,6 +250,10 @@ internal sealed class OpenCodeToolRowModel
     public string AccessibleName { get; init; } = string.Empty;
 
     public bool IsBackground { get; init; }
+    /// <summary>A picture file this row's own strict parse named (finished image job / restored original); shown with the row's pictures.</summary>
+    public string? ResultImagePath { get; init; }
+    /// <summary>The server's output text when <see cref="OutputText"/> was replaced because it only instructs the model; raw-data view only.</summary>
+    public string? RawOutputText { get; init; }
     public bool OpensTerminalView => Kind == OpenCodeToolKind.Shell && !string.IsNullOrEmpty(ShellId);
     public string? GlyphOverride { get; init; }
     public string? AgentName { get; init; }
@@ -260,9 +266,13 @@ internal sealed class OpenCodeToolRowModel
     public string ToolName { get; init; } = string.Empty;
     public JsonElement? State { get; init; }
     /// <summary>Raw id pill for unrecognised snake_case tools only; catalogued tools (session_*, pty_*) already show a real name.</summary>
+    internal const string ImageGenerateTool = "experimental_image_generate";
+    internal const string OriginalImageTool = "acp_read_original_image";
     public string RawToolLabel => ToolName.Contains('_', StringComparison.Ordinal)
-        && ToolName is not ("apply_patch" or "task_status" or "task_result" or "task_message" or "task_report" or "task_revive" or "task_cancel" or "wait_for_user" or "acp_status" or "search_context" or "acp_run")
+        && ToolName is not ("apply_patch" or "task_status" or "task_result" or "task_message" or "task_report" or "task_revive" or "task_cancel" or "wait_for_user" or "acp_status" or "search_context" or "acp_run"
+            or ImageGenerateTool or OriginalImageTool or "task_reply" or "codegraph_codegraph_explore" or "ast_grep_search" or "ast_grep_replace" or "marketplace_inspect")
         && OpenCodeExecuteInnerCatalog.FindNonFile(ToolName) is null
+        && OpenCodeBrowserToolPresentation.Action(ToolName) is null
         ? ToolName : string.Empty;
 }
 
@@ -339,6 +349,7 @@ internal static class OpenCodeToolRowPresentation
         "subagent" or "task" => OpenCodeToolKind.Subagent,
         "todowrite" or "todoread" => OpenCodeToolKind.Todo,
         "task_report" => OpenCodeToolKind.Report,
+        OpenCodeToolRowModel.ImageGenerateTool or OpenCodeToolRowModel.OriginalImageTool => OpenCodeToolKind.Image,
         _ => OpenCodeToolKind.Other,
     };
 
@@ -384,6 +395,10 @@ internal static class OpenCodeToolRowPresentation
         "honcho_create_conclusion" => "记录结论（Honcho）",
         "interview_submit_state" => "提交访谈状态",
         "invalid" => "无效的工具调用",
+        OpenCodeToolRowModel.ImageGenerateTool => "生成图片",
+        OpenCodeToolRowModel.OriginalImageTool => "查看原图",
+        "task_reply" => "答复子智能体请求",
+        "codegraph_codegraph_explore" => "探索代码关系",
         _ => DisplayRenamedTool(name),
     };
 
@@ -503,6 +518,12 @@ internal static class OpenCodeToolRowPresentation
         var reportKind = kind == OpenCodeToolKind.Report ? FirstString(input, "kind") : null;
         var reportMessage = kind == OpenCodeToolKind.Report ? FirstString(input, "message")?.Trim() : null;
         var reportDelivery = kind == OpenCodeToolKind.Report ? TaskReportDelivery(output) : null;
+        var toolId = part.Name?.Trim().ToLowerInvariant() ?? string.Empty;
+        var imageJob = toolId == OpenCodeToolRowModel.ImageGenerateTool;
+        string? resultImage = null;
+        string? rawOutput = null;
+        string? glyph = null;
+        IReadOnlyList<OpenCodeToolProperty>? shownInput = null;
         var fileOutputs = new List<string>();
         if (state?.Content is { } contents)
         {
@@ -697,6 +718,45 @@ internal static class OpenCodeToolRowPresentation
                 summary = answers.Count > 0 ? "已回答：" + string.Join("；", answers.Select(OpenCodeQuestionOption.Plain)) : "未回答";
                 break;
 
+            case OpenCodeToolKind.Image when imageJob:
+            {
+                // Server shape: input { prompt, path?, images?, model? }, metadata { path: <stem>, model, jobID }.
+                var prompt = FirstString(input, "prompt");
+                var references = StringItems(input, "images");
+                var finished = asyncCompletion is { Kind: OpenCodeAsyncCompletionKind.Image } done ? done : null;
+                resultImage = finished?.ImagePath;
+                var file = resultImage ?? FirstString(input, "path") ?? FirstString(metadata, "path");
+                var modelReference = finished?.Model ?? FirstString(metadata, "model") ?? FirstString(input, "model");
+                // `images` are sources to edit or style references; the request does not say which, so the title claims neither.
+                if (references.Count > 0) name = "按参考图生成";
+                var promptLine = OpenCodeDisplayText.Line((prompt ?? string.Empty).Split('\n', 2)[0]);
+                if (promptLine.Length > 120) promptLine = promptLine[..120] + "…";
+                var fileName = PathLeaf(file);
+                target = fileName.Length > 0 && promptLine.Length > 0 ? fileName + " · " + promptLine : fileName.Length > 0 ? fileName : promptLine;
+                summary = OpenCodeStepRunPresentation.ShortModel(modelReference);
+                var rows = new List<OpenCodeToolProperty>();
+                void Row(string key, string? value, OpenCodeToolPropertyKind propertyKind)
+                {
+                    if (!string.IsNullOrWhiteSpace(value)) rows.Add(new OpenCodeToolProperty(0, key, value!, propertyKind));
+                }
+                Row("提示词", prompt, prompt is { } text && (text.Contains('\n', StringComparison.Ordinal) || text.Length > 100) ? OpenCodeToolPropertyKind.Block : OpenCodeToolPropertyKind.Text);
+                for (var r = 0; r < references.Count; r++)
+                    Row(references.Count == 1 ? "参考图" : "参考图 " + (r + 1).ToString(CultureInfo.InvariantCulture), references[r], OpenCodeToolPropertyKind.Code);
+                Row("保存到", file, OpenCodeToolPropertyKind.Code);
+                Row("模型", OpenCodeDisplayText.Line(modelReference), OpenCodeToolPropertyKind.Text);
+                Row("任务 id", FirstString(metadata, "jobID"), OpenCodeToolPropertyKind.Code);
+                if (rows.Count > 0) shownInput = rows;
+                // The text output only tells the model not to poll; it is not the result. Kept for the raw-data view.
+                rawOutput = output;
+                output = null;
+                break;
+            }
+
+            case OpenCodeToolKind.Image:
+                target = FirstString(input, "ref") ?? string.Empty;
+                (summary, resultImage) = ReadOriginalImage(output);
+                break;
+
             case OpenCodeToolKind.Todo:
                 var todoSource = metadata is { } todoMeta && todoMeta.TryGetProperty("todos", out _) ? metadata : input;
                 if (todoSource is { } todoObject && todoObject.TryGetProperty("todos", out var todos) && todos.ValueKind == JsonValueKind.Array)
@@ -732,6 +792,45 @@ internal static class OpenCodeToolRowPresentation
                     if (part.Name is "task_status" or "task_cancel" && companion.Uncertain && status == OpenCodeToolRowStatus.Completed)
                         status = OpenCodeToolRowStatus.Unknown;
                 }
+                switch (toolId)
+                {
+                    case "task_reply":
+                        target = FirstString(input, "reply") switch { "once" => "允许一次", "always" => "始终允许", { } reply => OpenCodeDisplayText.Line(reply), _ => string.Empty };
+                        summary = output is null ? string.Empty
+                            : output.StartsWith("Replied ", StringComparison.Ordinal) ? "已答复"
+                            : output.TrimEnd().EndsWith("Nothing was replied.", StringComparison.Ordinal) || output.Contains(" Nothing was replied. ", StringComparison.Ordinal) ? "请求已不在，未答复"
+                            : string.Empty;
+                        glyph = OpenCodeStepRunPresentation.SubagentGlyph;
+                        break;
+                    case "codegraph_codegraph_explore":
+                        target = FirstString(input, "query") ?? string.Empty;
+                        if (output is not null && output.StartsWith("The project at ", StringComparison.Ordinal) && output.Contains(" isn't indexed with codegraph", StringComparison.Ordinal))
+                            summary = "项目未建立索引";
+                        glyph = "\uE721";
+                        break;
+                    case "marketplace_inspect":
+                        target = FirstString(input, "action") switch { "status" => "状态", "request_reload" => "请求重新加载", { } action => OpenCodeDisplayText.Line(action), _ => string.Empty };
+                        break;
+                    case "session_diff":
+                        target = FirstString(input, "file") ?? target;
+                        if (ReadInt(metadata, "files") is { } changed)
+                            summary = changed == 0 ? "没有文件改动" : changed.ToString(CultureInfo.InvariantCulture) + " 个文件"
+                                + (ReadInt(metadata, "additions") is { } plus && ReadInt(metadata, "deletions") is { } minus
+                                    ? " · +" + plus.ToString(CultureInfo.InvariantCulture) + " −" + minus.ToString(CultureInfo.InvariantCulture) : string.Empty);
+                        break;
+                    case "ast_grep_search":
+                    case "ast_grep_replace":
+                        target = OpenCodeDisplayText.Line(FirstString(input, "pattern"));
+                        if (toolId == "ast_grep_replace" && input is { } replace && replace.TryGetProperty("rewrite", out var rewrite) && rewrite.ValueKind == JsonValueKind.String)
+                        {
+                            target += " → " + (rewrite.GetString() is { Length: > 0 } replacement ? OpenCodeDisplayText.Line(replacement) : "（删除）");
+                            // Dry-run is the tool's default: only an explicit false writes files.
+                            summary = replace.TryGetProperty("dryRun", out var dry) && dry.ValueKind == JsonValueKind.False ? string.Empty : "试运行，未写入";
+                        }
+                        if (output is not null && output.StartsWith("Error: Could not start ", StringComparison.Ordinal)) summary = "工具无法启动";
+                        glyph = "\uE721";
+                        break;
+                }
                 break;
         }
 
@@ -742,6 +841,7 @@ internal static class OpenCodeToolRowPresentation
         var manualFallback = manualBackground && asyncCompletion is null && kind is OpenCodeToolKind.Shell or OpenCodeToolKind.Subagent
             && FirstString(metadata, "status") is null && status != OpenCodeToolRowStatus.Error;
         var background = manualBackground || asyncCompletion is not null || IsBackgroundPending(metadata)
+            || imageJob && FirstString(metadata, "jobID") is not null
             || metadata is { } backgroundMetadata && backgroundMetadata.TryGetProperty("background", out var metadataBackground) && metadataBackground.ValueKind == JsonValueKind.True
             || input is { } backgroundInput && backgroundInput.TryGetProperty("background", out var backgroundValue) && backgroundValue.ValueKind == JsonValueKind.True;
         if (asyncCompletion is { } completion)
@@ -750,7 +850,8 @@ internal static class OpenCodeToolRowPresentation
                 output = completion.Body;
             var stateText = OpenCodeStepRunPresentation.DescribeAsyncState(completion.State);
             summary = "后台" + stateText
-                + (completion.ExitCode is { } asyncExit ? " · 退出码 " + asyncExit.ToString(CultureInfo.InvariantCulture) : string.Empty);
+                + (completion.ExitCode is { } asyncExit ? " · 退出码 " + asyncExit.ToString(CultureInfo.InvariantCulture) : string.Empty)
+                + (imageJob && summary.Length > 0 ? " · " + summary : string.Empty);
             if (completion.ExitCode is { } completionExit)
             {
                 exitCode = completionExit;
@@ -763,8 +864,18 @@ internal static class OpenCodeToolRowPresentation
             if (status == OpenCodeToolRowStatus.Error)
             {
                 status = OpenCodeToolRowStatus.Error;
-                asyncError = "后台" + stateText;
+                // An image job's failure / cancellation text is the server's own sentence: show it as the error detail.
+                asyncError = imageJob && !string.IsNullOrWhiteSpace(completion.Body) ? completion.Body : "后台" + stateText;
+                // The row already leads with “失败”; keep only what adds to it (“已取消”), never the model name.
+                if (imageJob) summary = stateText == "失败" ? string.Empty : stateText;
             }
+        }
+        else if (imageJob && background && status == OpenCodeToolRowStatus.Completed)
+        {
+            // The call returns as soon as the job is queued. Only the notice reports how it ended, so this is neither
+            // "done" nor provably still running (a restarted server never sends one).
+            status = OpenCodeToolRowStatus.Unknown;
+            summary = "已在后台开始" + (summary.Length > 0 ? " · " + summary : string.Empty);
         }
         else if ((manualFallback || IsBackgroundPending(metadata)) && status != OpenCodeToolRowStatus.Error)
         {
@@ -794,13 +905,15 @@ internal static class OpenCodeToolRowPresentation
         };
         if (kind == OpenCodeToolKind.Report && reportDelivery is not null && status == OpenCodeToolRowStatus.Unknown)
             statusText = "已排队 · 主会话尚未确认处理";
+        if (imageJob && background && asyncCompletion is null && status == OpenCodeToolRowStatus.Unknown)
+            statusText = "已在后台开始，等待完成通知";
 
         string? errorText = null;
         if (status == OpenCodeToolRowStatus.Error)
         {
             errorText = asyncError ?? DescribeError(state?.Error);
             name = "失败 · " + name;
-            summary = DescribeRowError(state?.Error, errorText);
+            if (!imageJob || asyncCompletion is null) summary = DescribeRowError(state?.Error, errorText);
             if (kind == OpenCodeToolKind.Browser) summary = OpenCodeBrowserToolPresentation.Failure(errorText);
         }
 
@@ -816,6 +929,13 @@ internal static class OpenCodeToolRowPresentation
             ? BuildProperties(inputElement)
             : Array.Empty<OpenCodeToolProperty>();
         var outputProperties = TryParseStructuredOutput(output);
+        if (shownInput is not null) inputProperties = shownInput;
+        if (imageJob && background && rawOutput is not null && status != OpenCodeToolRowStatus.Error)
+        {
+            var result = asyncCompletion is null ? "已交给后台生成。完成通知到达后，图片会显示在这里。"
+                : resultImage is null && asyncCompletion.IsSuccess ? "已完成，但完成通知里没有可用的图片路径。" : null;
+            if (result is not null) outputProperties = new[] { new OpenCodeToolProperty(0, "结果", result, OpenCodeToolPropertyKind.Text) };
+        }
         if (kind == OpenCodeToolKind.Report)
         {
             inputProperties = new[]
@@ -888,15 +1008,55 @@ internal static class OpenCodeToolRowPresentation
             RawStateProperties = rawStateProperties,
             AccessibleName = accessible.ToString(),
             IsBackground = background,
+            ResultImagePath = resultImage,
+            RawOutputText = rawOutput,
             GlyphOverride = part.Name == "task_message" ? OpenCodeStepRunPresentation.SubagentGlyph
                 : kind == OpenCodeToolKind.Report ? reportKind == "escalation" ? "\uE7BA" : "\uE8F2"
-                : OpenCodeExecuteInnerCatalog.FindNonFile(part.Name ?? string.Empty)?.Glyph,
+                : OpenCodeExecuteInnerCatalog.FindNonFile(part.Name ?? string.Empty)?.Glyph ?? glyph,
             AgentName = agentName,
             IsEscalation = reportKind == "escalation",
             ToolName = part.Name?.Trim() ?? string.Empty,
             State = part.State,
         };
         return fileIndex is { } index ? BuildFileRow(model, index) : model;
+    }
+
+    private static List<string> StringItems(JsonElement? element, string name)
+    {
+        var items = new List<string>();
+        if (element is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(name, out var list) && list.ValueKind == JsonValueKind.Array)
+            foreach (var item in list.EnumerateArray())
+                if (items.Count < 8 && item.ValueKind == JsonValueKind.String && item.GetString() is { Length: > 0 } text) items.Add(text);
+        return items;
+    }
+
+    private static string PathLeaf(string? path)
+    {
+        var value = (path ?? string.Empty).Replace('\\', '/').TrimEnd('/');
+        return OpenCodeDisplayText.Line(value[(value.LastIndexOf('/') + 1)..]);
+    }
+
+    private static readonly Regex OriginalImageRestored = new(
+        @"^Original image for m\d+ restored \((\d{1,6})x(\d{1,6}), ([0-9.]+ ?[KMG]?B), image/[a-z0-9.+-]+\)\. Local copy: (/[^\r\n]*?\.(?:png|jpe?g|webp|gif))\. ",
+        RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+
+    /// <summary>
+    /// billion-context's two verified replies: “Original image for mN restored (WxH, size, mime). Local copy: &lt;absolute file&gt;. …”
+    /// and “acp_read_original_image: no original image stored for mN …”. Anything else: no summary, no picture.
+    /// </summary>
+    internal static (string Summary, string? Path) ReadOriginalImage(string? output)
+    {
+        if (output is null) return (string.Empty, null);
+        if (output.StartsWith("acp_read_original_image: no original image stored for ", StringComparison.Ordinal)) return ("原图已不在", null);
+        try
+        {
+            var match = OriginalImageRestored.Match(output);
+            if (!match.Success) return (string.Empty, null);
+            var path = match.Groups[4].Value;
+            foreach (var ch in path) if (char.IsControl(ch)) return (string.Empty, null);
+            return (match.Groups[1].Value + " × " + match.Groups[2].Value + " · " + match.Groups[3].Value, path);
+        }
+        catch (RegexMatchTimeoutException) { return (string.Empty, null); }
     }
 
     // PT1: per-file data stays per-file in every state; the state is not evidence of a successful change.

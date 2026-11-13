@@ -26,6 +26,7 @@ internal static partial class Program
         SubagentCompletionNotices();
         SubagentUpdates();
         PtyCompletionNotices();
+        ImageCompletionNotices();
         GroupFinalizesWhenFollowed();
         TranscriptMessageMenus();
         PendingImageBubbles();
