@@ -75,7 +75,11 @@ internal sealed record OpenCodeToolRowChrome(
 
     /// <summary>Right-side summary: failure label first, then the existing summary (if any).</summary>
     internal string ComposeSummary(string summary)
-        => FailureLabel is null ? summary : string.IsNullOrEmpty(summary) || summary == "出错" ? FailureLabel : FailureLabel + " · " + summary;
+        => FailureLabel is null ? summary
+            : string.IsNullOrEmpty(summary) || summary == "出错" ? FailureLabel
+            // A completion notice whose state is already “失败” must not read “失败 · 失败”.
+            : summary == FailureLabel || summary.StartsWith(FailureLabel + " · ", StringComparison.Ordinal) ? summary
+            : FailureLabel + " · " + summary;
 }
 
 /// <summary>

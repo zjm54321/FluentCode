@@ -126,6 +126,11 @@ internal static partial class Program
         Check(OpenCodeStepRunPresentation.TryReadAsyncCompletion(ImageNotice("cancelled", cancelledBody), out var cancelled)
             && OpenCodeStepRunPresentation.DescribeAsyncCompletion(cancelled) is { Summary: "已取消", Status: OpenCodeToolRowStatus.Error } cancelledRow
             && cancelledRow.DetailText == cancelledBody && cancelledRow.ImagePath is null, "image.cancelled-state");
+        var failureChrome = OpenCodeToolRowChrome.For(OpenCodeToolRowStatus.Error);
+        Check(failureChrome.ComposeSummary(failedRow.Summary) == "失败" && failureChrome.ComposeSummary("失败 · 退出码 1") == "失败 · 退出码 1"
+            && failureChrome.ComposeSummary("已取消") == "失败 · 已取消" && failureChrome.ComposeSummary("") == "失败" && failureChrome.ComposeSummary("出错") == "失败"
+            && failureChrome.ComposeSummary("后台失败") == "失败 · 后台失败" && OpenCodeToolRowChrome.For(OpenCodeToolRowStatus.Completed).ComposeSummary("失败") == "失败",
+            "image.failed-notice-row-does-not-repeat-the-failure-word");
         // A state that claims completion wording but is not "completed" never yields a picture.
         Check(OpenCodeStepRunPresentation.TryReadAsyncCompletion(ImageNotice("error", ImageDone), out var lying) && lying.ImagePath is null
             && OpenCodeStepRunPresentation.DescribeAsyncCompletion(lying) is { Status: OpenCodeToolRowStatus.Error, ImagePath: null }, "image.picture-only-when-completed");
