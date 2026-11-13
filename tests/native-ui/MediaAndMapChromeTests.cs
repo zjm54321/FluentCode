@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Mapsui;
 using Mapsui.Extensions;
@@ -108,13 +109,16 @@ internal static class MediaAndMapChromeTests
             "The optional Baidu source keeps its own selection and disposal path");
 
         var mediaSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Media.cs"));
-        // C33: stock media element and transport controls, click-to-load, explicit full-window toggle.
+        // C33: stock media element and transport controls, click-to-load, in-card playback only.
         Check(mediaSource.Contains("new MediaTransportControls { IsCompact = false }") && mediaSource.Contains("AreTransportControlsEnabled = true")
             && mediaSource.Contains("new MediaPlayer { AutoPlay = false }") && mediaSource.Contains("AutoPlay = false, TransportControls = transport"),
             "Video/Audio keep the stock MediaPlayerElement with its own transport controls and no autoplay");
-        Check(mediaSource.Contains("element.IsFullWindow = !element.IsFullWindow"), "The explicit full-window toggle is preserved");
-        Check(mediaSource.Contains("Symbol.BackToWindow") && mediaSource.Contains("Symbol.FullScreen"),
-            "The full-window button uses the framework's own full screen/back-to-window symbols and reports its state");
+        Check(!Regex.IsMatch(mediaSource, @"\bIsFullWindow\s*="),
+            "No code writes IsFullWindow, whose handling is compiled out in Windows App SDK 2.6.5");
+        Check(!mediaSource.Contains("fullWindow") && !mediaSource.Contains("FullWindowLabel")
+            && !mediaSource.Contains("Symbol.BackToWindow") && !mediaSource.Contains("Symbol.FullScreen")
+            && !mediaSource.Contains("全窗口") && mediaSource.Contains("已加载 · 使用原生播放控件。"),
+            "No full-window button, icon/label helper or unsupported full-window status sentence remains");
         Check(!mediaSource.Contains("IsFullWindowButtonVisible"),
             "No dependency on MediaTransportControls.IsFullWindowButtonVisible, which this WinUI version does not have");
         Check(mediaSource.Contains("load.Content = \"点击加载\"") && mediaSource.Contains("|| !gate.Request()) return;")
@@ -122,8 +126,9 @@ internal static class MediaAndMapChromeTests
             "Media still loads only after an explicit click on an allowed HTTPS source");
         Check(mediaSource.Contains("element.Unloaded -= OnUnloaded; Stop(); element.SetMediaPlayer(null); player.Dispose();"),
             "Media still detaches the player and the unload callback before disposal");
-        Check(mediaSource.Contains("element.IsFullWindow = false; FullWindowLabel(false);"),
-            "Reloading or unloading resets both the full-window state and its button label");
+        Check(mediaSource.Contains("media?.Dispose(); media = null; stream?.Dispose(); stream = null;")
+            && mediaSource.Contains("element.Visibility = Visibility.Collapsed;"),
+            "Reloading or disposing still releases the media buffers and hides the in-card player");
 
         // C34: FlipView + PipsPager + zoomable full-size viewer.
         Check(mediaSource.Contains("new PipsPager") && mediaSource.Contains("pager.NumberOfPages = flip.Items.Count")

@@ -206,7 +206,9 @@ internal static class Program
                 && composerSource.Contains("snapshot.HasDraft") && !composerSource.Contains("SendPromptGuardedAsync"), "Native UI only enters the normal guarded composer, preserving drafts");
             Require(composerSource.Contains("OnNativeUiBrowserRequested") && composerSource.Contains("IsSameMessageBinding(binding.SessionId, binding.Directory)") && composerSource.Contains("GetBrowserWorkspace(binding.SessionId)") && composerSource.Contains("workspace.OpenPage(args.Url)"), "YouTube requests enter the existing origin/session-guarded in-app browser workspace");
             var nativeMediaSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Media.cs"));
-            Require(nativeMediaSource.Contains("player.Pause()") && nativeMediaSource.Contains("AutoPlay = false") && nativeMediaSource.Contains("element.IsFullWindow = !element.IsFullWindow") && !nativeMediaSource.Contains("WebView2"), "Native media has explicit full-window support, pause/disposal and no embedded browser");
+            Require(nativeMediaSource.Contains("player.Pause()") && nativeMediaSource.Contains("AutoPlay = false")
+                && !nativeMediaSource.Contains("element.IsFullWindow") && !nativeMediaSource.Contains("fullWindow")
+                && !nativeMediaSource.Contains("全窗口") && !nativeMediaSource.Contains("WebView2"), "Native media stays in-card with pause/disposal, no disabled full-window control and no embedded browser");
             Require(nativeMediaSource.Contains("element.Unloaded -= OnUnloaded; Stop(); element.SetMediaPlayer(null); player.Dispose();") && nativeMediaSource.Contains("if (!visual.Disposed) player.Pause();"), "Native media detaches the player and unload callback before disposal");
             Require(nativeMediaSource.Contains("new ContentDialog") && nativeMediaSource.Contains("Stretch = Stretch.None")
                 && nativeMediaSource.Contains("NativeUiAirspace.Begin(panel.XamlRoot?.Content, snapshot: true)")

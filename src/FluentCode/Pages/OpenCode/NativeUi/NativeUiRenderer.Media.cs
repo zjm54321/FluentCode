@@ -33,28 +33,17 @@ internal sealed partial class NativeUiRenderer
         var player = new MediaPlayer { AutoPlay = false }; var transport = new MediaTransportControls { IsCompact = false };
         var element = new MediaPlayerElement { AreTransportControlsEnabled = true, AutoPlay = false, TransportControls = transport, Visibility = Visibility.Collapsed, HorizontalAlignment = HorizontalAlignment.Stretch };
         element.SetMediaPlayer(player); var status = NativeUiComponentTheme.Text("点击后加载到卡片；不会自动播放。", true);
-        // WinUI 3's MediaTransportControls has no full-window button (the FullWindow button and states are removed from
-        // its template and MediaPlayerElement.IsFullWindow is disabled at the framework level), so this stays a card
-        // button — but it shows the state and uses the framework's own FullScreen/BackToWindow symbols.
-        var fullWindowIcon = new SymbolIcon(); var fullWindowText = new TextBlock();
-        var fullWindow = new Button { Visibility = Visibility.Collapsed, Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { fullWindowIcon, fullWindowText } } };
-        void FullWindowLabel(bool on)
-        {
-            fullWindowIcon.Symbol = on ? Symbol.BackToWindow : Symbol.FullScreen;
-            fullWindowText.Text = on ? "退出全窗口" : "全窗口播放";
-            AutomationProperties.SetName(fullWindow, fullWindowText.Text);
-        }
-        FullWindowLabel(false);
-        fullWindow.Click += (_, _) => { element.IsFullWindow = !element.IsFullWindow; FullWindowLabel(element.IsFullWindow); };
-        var panel = new StackPanel { Spacing = 8, Children = { title, url, load, element, fullWindow, status } }; var visual = new Visual(panel);
+        // No full-window control: Windows App SDK 2.6.5 compiles IsFullWindow handling out
+        // (upstream-winui/MPE__winui3_release_2.6.5.cpp:257-263, 370-383; DISABLE_FULL_WINDOW).
+        var panel = new StackPanel { Spacing = 8, Children = { title, url, load, element, status } }; var visual = new Visual(panel);
         var gate = new NativeUiLoadGate(); CancellationTokenSource? pending = null; InMemoryRandomAccessStream? stream = null; MediaSource? media = null; var version = 0;
         void Stop()
         {
             version++; pending?.Cancel(); pending?.Dispose(); pending = null; player.Pause(); player.Source = null;
-            media?.Dispose(); media = null; stream?.Dispose(); stream = null; element.IsFullWindow = false; FullWindowLabel(false);
-            element.Visibility = fullWindow.Visibility = Visibility.Collapsed;
+            media?.Dispose(); media = null; stream?.Dispose(); stream = null;
+            element.Visibility = Visibility.Collapsed;
         }
-        player.MediaOpened += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) status.Text = "已加载 · 使用原生播放控件；视频可切换全窗口。"; });
+        player.MediaOpened += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) status.Text = "已加载 · 使用原生播放控件。"; });
         player.MediaFailed += (_, _) => panel.DispatcherQueue.TryEnqueue(() => { if (!visual.Disposed) { status.Text = "媒体无法播放；请检查格式、编码或地址后重试。"; load.IsEnabled = true; } });
         void OnUnloaded(object sender, RoutedEventArgs args) { if (!visual.Disposed) player.Pause(); }
         element.Unloaded += OnUnloaded;
@@ -69,7 +58,6 @@ internal sealed partial class NativeUiRenderer
                 var loaded = await AssetStream(asset.Bytes); if (visual.Disposed || generation != version) { loaded.Dispose(); return; }
                 stream = loaded; media = MediaSource.CreateFromStream(stream, asset.ContentType); player.Source = media;
                 element.Visibility = Visibility.Visible; load.Content = "重新加载"; status.Text = "媒体已加载；点击原生播放按钮开始。";
-                fullWindow.Visibility = type == "Video" ? Visibility.Visible : Visibility.Collapsed;
             }
             catch (OperationCanceledException) { }
             catch (Exception) { if (!visual.Disposed && generation == version) status.Text = "加载失败；仅支持 HTTPS 与系统支持的媒体格式（最大 128 MB）。"; }
