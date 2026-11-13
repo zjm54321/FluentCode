@@ -50,6 +50,7 @@ internal static class NativeTests
         internal string Default = ModelInfo;
         internal string History = "{\"data\":[{\"id\":\"msg_idle\",\"type\":\"idle\",\"time\":{\"created\":3},\"outcome\":\"succeeded\"}," + User("newer", 2) + "," + User("older", 1) + "],\"cursor\":{\"next\":null}}";
         internal Func<HttpRequestMessage, Task<HttpResponseMessage>>? Mutation;
+        internal Action<string>? OnGet;
         internal Fixture()
         {
             OpenCodeClient Create() => new(new HttpClient(Http, false), new() { BaseUrl = "https://offline.invalid", AuthenticationMode = OpenCodeAuthenticationMode.None }, true);
@@ -57,7 +58,7 @@ internal static class NativeTests
             Client = Create(); Source = new("native-" + Guid.NewGuid(), 7, Create); Page = new(Source, Client);
             OpenCodeModelPickerDialog.Next = p => Task.FromResult(new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, p));
             OpenCodeVariantPickerDialog.Next = p => Task.FromResult(new OpenCodeModelPickerResult(OpenCodeModelPickerOutcome.Cancelled, null, p));
-            OpenCodeRollbackConfirmationDialog.Next = p => Task.FromResult(new OpenCodeRollbackConfirmationResult(OpenCodeRollbackOutcome.Confirmed, p, false, true));
+            OpenCodeRollbackConfirmationDialog.Next = p => Task.FromResult(new OpenCodeRollbackConfirmationResult(OpenCodeRollbackOutcome.Confirmed, p, false));
             OpenCodeDraftEditorDialog.Next = (_, _) => Task.FromResult(new OpenCodeDraftEditorResult(OpenCodeDraftEditorOutcome.Cancelled, null));
             OpenCodeComposerContinuationDialog.Next = p => Task.FromResult(new OpenCodeContinuationResult(OpenCodeContinuationOutcome.Cancelled, p));
         }
@@ -80,6 +81,7 @@ internal static class NativeTests
                 if (path.EndsWith("/interrupt")) return Task.FromResult(Program.Json("{\"interrupted\":true}"));
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
             }
+            OnGet?.Invoke(path);
             var json = path switch {
                 "/api/command" => "{\"data\":[{\"name\":\"models\",\"description\":\"collision\"}]}",
                 "/api/model" => "{\"location\":{\"directory\":\"/synthetic\"},\"data\":[" + Catalog + "]}",
@@ -278,8 +280,223 @@ internal static class NativeTests
             Check(f.Page.Snapshot.Text == "keep native combo draft" && f.Page.Working == 0, "native ComboBox preserves draft and never starts a send");
         }
     }
+    // r20-U: what the one prompt says and confirms (WinUI-free state; the dialog only renders it).
+    private static void RollbackPromptModel()
+    {
+        object text = new(), files = new();
+        var plain = new OpenCodeRollbackPreviewPresentation(OpenCodeRollbackKind.Undo, "newer text", 0,
+            false, false, true, text) { FilesIdentity = files };
+        var state = new OpenCodeRollbackConfirmationState(plain);
+        Check(OpenCodeRollbackConfirmationState.RequiresPrompt(plain) && state.CanConfirm && state.ConfirmIsDefault
+            && state.Cautions().Count == 0 && state.OffersFileRestoration && !state.RestoreFiles,
+            "plain undo: one light prompt, nothing to warn about, files off by default");
+        Check(ReferenceEquals(state.Confirm().ConfirmedIdentity, text), "unticked undo confirms the text-only preview");
+        state.SetRestoreFiles(true);
+        Check(state.RestoreFiles && ReferenceEquals(state.Confirm().ConfirmedIdentity, files)
+            && ReferenceEquals(state.Confirm().Preview, plain), "ticked undo confirms the with-files preview of the same prompt");
+        var noFiles = new OpenCodeRollbackConfirmationState(plain with { FilesIdentity = null });
+        noFiles.SetRestoreFiles(true);
+        Check(!noFiles.OffersFileRestoration && !noFiles.RestoreFiles && ReferenceEquals(noFiles.Confirm().ConfirmedIdentity, text),
+            "file restoration cannot be chosen when its preview was not prepared");
+        Check(OpenCodeRollbackConfirmationState.ConfirmWithoutPrompt(plain).Outcome == OpenCodeRollbackOutcome.Cancelled,
+            "undo is never confirmed without its prompt");
+        var references = new OpenCodeRollbackConfirmationState(plain with { TargetHasNonTextReferences = true });
+        Check(references.CanConfirm && !references.ConfirmIsDefault && references.Cautions().Single() == references.TextOnlyNote
+            && references.TextOnlyNote!.Contains("只有文字"), "non-text references are told in the same prompt, without a second tick");
+        var unknownReferences = new OpenCodeRollbackConfirmationState(plain with { ReferencesIncomplete = true });
+        Check(unknownReferences.TextOnlyNote is { } unknownNote && unknownNote != references.TextOnlyNote && unknownNote.Contains("只有文字"),
+            "unknown references are stated as unknown, not as absent");
+        var draft = new OpenCodeRollbackConfirmationState(plain with { DraftEmpty = false });
+        Check(draft.BlockingReason is not null && !draft.CanConfirm && !draft.ConfirmIsDefault
+            && draft.Confirm() is { Outcome: OpenCodeRollbackOutcome.Cancelled, ConfirmedIdentity: null }, "a non-empty draft still blocks undo");
+        var redo = plain with { Kind = OpenCodeRollbackKind.Redo, TargetText = null, FilesIdentity = null };
+        var direct = OpenCodeRollbackConfirmationState.ConfirmWithoutPrompt(redo);
+        Check(!OpenCodeRollbackConfirmationState.RequiresPrompt(redo) && direct.Outcome == OpenCodeRollbackOutcome.Confirmed && !direct.RestoreFiles
+            && ReferenceEquals(direct.Preview, redo) && ReferenceEquals(direct.ConfirmedIdentity, text),
+            "plain redo needs no prompt and confirms exactly the preview just read");
+        var redoFiles = redo with { PriorStageFileCount = 2 };
+        var risky = new OpenCodeRollbackConfirmationState(redoFiles);
+        Check(OpenCodeRollbackConfirmationState.RequiresPrompt(redoFiles) && !risky.ConfirmIsDefault && risky.Cautions().Single() == risky.FileEffectNote
+            && risky.FileEffectNote!.Contains("2 个文件")
+            && OpenCodeRollbackConfirmationState.ConfirmWithoutPrompt(redoFiles).Outcome == OpenCodeRollbackOutcome.Cancelled,
+            "redo that changes files back still asks once and says how many");
+        var further = new OpenCodeRollbackConfirmationState(plain with { PriorStageFileCount = 1 });
+        Check(further.CanConfirm && !further.ConfirmIsDefault && further.Cautions().Single() == further.FileEffectNote
+            && further.FileEffectNote != risky.FileEffectNote && further.FileEffectNote!.Contains("不管是否勾选“" + OpenCodeRollbackConfirmationState.RestoreFilesLabel + "”"),
+            "a further undo after one that restored files says those files are rewritten whether or not the box is ticked");
+    }
+    // r20-U: one undo asks once. On 9ef16e2 ticking "同时恢复文件" re-opened the same dialog (dialogs=2).
+    private static async Task SingleRollbackPrompt()
+    {
+        using var f = new Fixture();
+        var opens = 0;
+        OpenCodeRollbackPreviewPresentation? shown = null;
+        OpenCodeRollbackConfirmationDialog.Next = p =>
+        {
+            opens++; shown = p;
+            return Task.FromResult(new OpenCodeRollbackConfirmationResult(OpenCodeRollbackOutcome.Confirmed, p, true));
+        };
+        await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo"); await f.Page.RunNative();
+        Check(opens == 1, $"undo with file restoration asks exactly once (dialogs={opens})");
+        Check(shown!.Identity is SessionControlPreview { Request.Files: false } textOnly
+            && shown!.FilesIdentity is SessionControlPreview { Request.Files: true } withFiles
+            && textOnly.Target?.Id == "msg_newer" && withFiles.Target?.Fingerprint == textOnly.Target?.Fingerprint
+            && withFiles.State.Fingerprint == textOnly.State.Fingerprint && withFiles.Fingerprint != textOnly.Fingerprint,
+            "both choices of the one prompt were read beforehand for the same target, each with its own fingerprint");
+        Check(f.Http.Posts == 1 && f.LastMutationBody == "{\"messageID\":\"msg_newer\",\"files\":true}",
+            "the with-files choice confirmed in that one dialog is the one executed");
+        Check(f.Page.Snapshot.Text == "newer text" && f.Page.Messages.Count == 0,
+            "a successful undo shows its result in the input box, with no notice: " + string.Join(";", f.Page.Messages));
+    }
+    private static Task<OpenCodeRollbackConfirmationResult> Confirm(OpenCodeRollbackPreviewPresentation p, bool files = false)
+        => Task.FromResult(new OpenCodeRollbackConfirmationResult(OpenCodeRollbackOutcome.Confirmed, p, files));
+    // What the installed kernel leaves staged: every undo in a git project carries a snapshot; the file list is
+    // filled only when that undo restored files, and only those entries are rewritten by a redo or a further undo.
+    private const string SnapshotOnlyStage = "{\"messageID\":\"msg_newer\",\"snapshot\":\"snap\",\"files\":[]}";
+    private const string FileStage = "{\"messageID\":\"msg_newer\",\"snapshot\":\"snap\",\"files\":["
+        + "{\"file\":\"a.txt\",\"patch\":\"\",\"additions\":1,\"deletions\":0,\"status\":\"modified\"}]}";
+    // r20-U: the plain cases are as light as they can responsibly be, and say nothing afterwards.
+    private static async Task PlainRollbackPrompts()
+    {
+        using (var f = new Fixture())
+        {
+            var opens = 0;
+            OpenCodeRollbackConfirmationDialog.Next = p => { opens++; return Confirm(p); };
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo"); await f.Page.RunNative();
+            Check(opens == 1 && f.Http.Posts == 1 && f.LastMutationBody == "{\"messageID\":\"msg_newer\",\"files\":false}"
+                && f.Page.Snapshot.Text == "newer text" && f.Page.Messages.Count == 0,
+                $"plain undo: one prompt, files left alone, text back in the input box, no notice (dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
+        }
+        using (var f = new Fixture())
+        {
+            f.Stage = "{\"messageID\":\"msg_newer\"}";
+            var opens = 0;
+            OpenCodeRollbackConfirmationDialog.Next = p => { opens++; return Confirm(p); };
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Redo, "redo"); await f.Page.RunNative();
+            Check(opens == 0 && f.Http.Posts == 1 && f.LastMutationPath == "/api/session/ses_test/revert" && f.Stage is null
+                && f.Page.Messages.Count == 0,
+                $"plain redo: no prompt and no notice (dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
+        }
+        using (var f = new Fixture())
+        {
+            f.Stage = SnapshotOnlyStage;
+            var opens = 0;
+            OpenCodeRollbackConfirmationDialog.Next = p => { opens++; return Confirm(p); };
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Redo, "redo"); await f.Page.RunNative();
+            Check(opens == 0 && f.Http.Posts == 1 && f.Stage is null && f.Page.Messages.Count == 0,
+                $"redo of an undo that kept a snapshot but changed no file is still plain (dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
+        }
+        using (var f = new Fixture())
+        {
+            f.Stage = FileStage;
+            var opens = 0; OpenCodeRollbackPreviewPresentation? shown = null;
+            OpenCodeRollbackConfirmationDialog.Next = p => { opens++; shown = p; return Confirm(p); };
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Redo, "redo"); await f.Page.RunNative();
+            Check(opens == 1 && shown is { Kind: OpenCodeRollbackKind.Redo, PriorStageFileCount: 1, FilesIdentity: null }
+                && f.Http.Posts == 1 && f.Stage is null && f.Page.Messages.Count == 0,
+                $"redo after an undo that changed files asks once (dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
+        }
+        using (var f = new Fixture())
+        {
+            // A further undo while the staged one restored a file: still one prompt, now with the file caution.
+            f.Stage = FileStage;
+            var opens = 0; OpenCodeRollbackPreviewPresentation? shown = null;
+            OpenCodeRollbackConfirmationDialog.Next = p => { opens++; shown = p; return Confirm(p); };
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo"); await f.Page.RunNative();
+            Check(opens == 1 && shown is { Kind: OpenCodeRollbackKind.Undo, PriorStageFileCount: 1, FilesIdentity: not null }
+                && new OpenCodeRollbackConfirmationState(shown!) is { FileEffectNote: not null, ConfirmIsDefault: false }
+                && f.Http.Posts == 1 && f.LastMutationBody == "{\"messageID\":\"msg_older\",\"files\":false}"
+                && f.Page.Snapshot.Text == "older text" && f.Page.Messages.Count == 0,
+                $"a further undo after one that restored files: one prompt with the file caution (dialogs={opens}, body={f.LastMutationBody}, text={f.Page.Snapshot.Text}, notices={string.Join(";", f.Page.Messages)})");
+        }
+        using (var f = new Fixture())
+        {
+            f.History = f.History.Replace("\"text\":\"newer text\"", "\"text\":\"newer text\",\"agents\":[{\"name\":\"agent\"}]");
+            var opens = 0; OpenCodeRollbackPreviewPresentation? shown = null;
+            OpenCodeRollbackConfirmationDialog.Next = p => { opens++; shown = p; return Confirm(p); };
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo"); await f.Page.RunNative();
+            Check(opens == 1 && shown is { TargetHasNonTextReferences: true }
+                && new OpenCodeRollbackConfirmationState(shown!).TextOnlyNote is not null
+                && f.Http.Posts == 1 && f.Page.Snapshot.Text == "newer text" && f.Page.Messages.Count == 0,
+                $"a message with references: the same single prompt says only text comes back (dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
+        }
+    }
+    // r20-U: a notice appears only when the rollback did not happen or its outcome is unknown; it never implies success.
+    private static async Task RollbackOutcomeNotices()
+    {
+        using (var f = new Fixture())
+        {
+            f.Mutation = _ => Task.FromResult(new HttpResponseMessage((HttpStatusCode)409)
+            {
+                Content = new StringContent("{\"_tag\":\"SessionBusyError\",\"message\":\"not echoed\",\"sessionID\":\"ses_test\"}",
+                    System.Text.Encoding.UTF8, "application/json"),
+            });
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo"); await f.Page.RunNative();
+            Check(f.Http.Posts == 1 && f.Page.Messages.Count == 1 && f.Page.Messages[0].StartsWith("服务器拒绝了撤回", StringComparison.Ordinal)
+                && !f.Page.Messages[0].Contains("not echoed") && f.Page.Snapshot.Text.Length == 0,
+                "a refusal is one plain notice: no retry, no server text, no draft write: " + string.Join(";", f.Page.Messages));
+            using var lease = await OpenCodeInteractionGate.Shared.EnterAsync(f.Source.Identity, "ses_test");
+            Check(lease.GetSessionControlProtection() is null, "a verified refusal releases its protection");
+        }
+        using (var f = new Fixture())
+        {
+            f.Mutation = _ => Task.FromException<HttpResponseMessage>(new HttpRequestException("synthetic lost rollback response"));
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo"); await f.Page.RunNative();
+            Check(f.Http.Posts == 1 && f.Page.Messages.Count == 1 && f.Page.Messages[0].StartsWith("撤回结果未知", StringComparison.Ordinal)
+                && f.Page.Messages[0].Contains("不会自动重试") && f.Page.Snapshot.Text.Length == 0,
+                "an unknown outcome is said as unknown: one notice, no retry, nothing written back: " + string.Join(";", f.Page.Messages));
+            using var lease = await OpenCodeInteractionGate.Shared.EnterAsync(f.Source.Identity, "ses_test");
+            Check(lease.GetSessionControlProtection() is not null, "an unknown outcome keeps its protection");
+        }
+        using (var f = new Fixture())
+        {
+            OpenCodeRollbackConfirmationDialog.Next = p =>
+            {
+                f.Stage = "{\"messageID\":\"msg_newer\"}"; // Another client moved the undo point while the prompt was open.
+                return Confirm(p);
+            };
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo"); await f.Page.RunNative();
+            Check(f.Http.Posts == 0 && f.Page.Messages.Count == 1 && f.Page.Messages[0].StartsWith("没有撤回", StringComparison.Ordinal)
+                && f.Page.Snapshot.Text.Length == 0,
+                "a session that changed while the prompt was open is not rolled back to another target: " + string.Join(";", f.Page.Messages));
+        }
+        using (var f = new Fixture())
+        {
+            // A confirmation that carries a copy of the prompt, not the instance that was shown.
+            OpenCodeRollbackConfirmationDialog.Next = p => Confirm(p with { FilesIdentity = p.Identity }, files: true);
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo"); await f.Page.RunNative();
+            Check(f.Http.Posts == 0 && f.Page.Snapshot.Text.Length == 0, "a confirmation that is not for the exact prompt shown is never executed");
+        }
+        using (var f = new Fixture())
+        {
+            // A choice the prompt never offered: 恢复 has no with-files preview, so there is nothing to execute.
+            f.Stage = FileStage;
+            OpenCodeRollbackConfirmationDialog.Next = p => Confirm(p, files: true);
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Redo, "redo"); await f.Page.RunNative();
+            Check(f.Http.Posts == 0 && f.Stage is not null && f.Page.Messages.Count == 1
+                && f.Page.Messages[0].StartsWith("没有恢复", StringComparison.Ordinal),
+                "a choice without a prepared preview is refused, never mapped onto another preview: " + string.Join(";", f.Page.Messages));
+        }
+        using (var f = new Fixture())
+        {
+            var opens = 0; var stateReads = 0;
+            OpenCodeRollbackConfirmationDialog.Next = p => { opens++; return Confirm(p); };
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo");
+            // Each preview reads the session state twice (first and last). The undo point moves right before the
+            // with-files preview starts, so both previews are internally consistent and disagree with each other.
+            f.OnGet = path => { if (path == "/api/session/ses_test" && ++stateReads == 3) f.Stage = "{\"messageID\":\"msg_newer\"}"; };
+            await f.Page.RunNative();
+            Check(stateReads == 4 && opens == 0 && f.Http.Posts == 0 && f.Page.Messages.Count == 1
+                && f.Page.Messages[0].StartsWith("没有撤回", StringComparison.Ordinal),
+                $"two previews that disagree are never offered in one prompt (reads={stateReads}, dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
+        }
+    }
     private static async Task RestorationAndOwnership()
     {
+        RollbackPromptModel();
+        await SingleRollbackPrompt();
+        await PlainRollbackPrompts();
+        await RollbackOutcomeNotices();
         foreach (var lateEdit in new[] { false, true })
         {
             using var f = new Fixture();

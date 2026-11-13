@@ -227,94 +227,109 @@ internal static class OpenCodeModelPickerDialog
     }
 }
 
+/// <summary>
+/// The one prompt of a 撤回 / 恢复: a compact confirmation in the shape of the app's other dialogs (delete session,
+/// continue sending). It shows the message that goes back to the input box, one sentence about what happens, the
+/// opt-in file restoration, and caution lines only when a fact calls for one. Both undo choices (text only / with
+/// files) were read before it opened, so the result names the confirmed one and no second prompt follows.
+/// </summary>
 internal static class OpenCodeRollbackConfirmationDialog
 {
     internal static async Task<OpenCodeRollbackConfirmationResult> ShowAsync(XamlRoot? owner, OpenCodeRollbackPreviewPresentation preview)
     {
         ArgumentNullException.ThrowIfNull(preview);
-        if (owner is null) return new(OpenCodeRollbackOutcome.OwnerUnavailable, null, false, false);
+        if (owner is null) return new(OpenCodeRollbackOutcome.OwnerUnavailable, null, false);
         var state = new OpenCodeRollbackConfirmationState(preview);
         var undo = preview.Kind == OpenCodeRollbackKind.Undo;
-        var body = new StackPanel { Spacing = 10, MinWidth = 360, MaxWidth = 540 };
-        body.Children.Add(OpenCodeInteractionUi.Caption(preview.SessionLabel, 0.75));
-        if (undo && !string.IsNullOrEmpty(preview.TargetText))
-        {
-            body.Children.Add(OpenCodeInteractionUi.Caption("将放回输入框的文字" + (preview.TargetLabel is { } l ? "（" + l + "）" : string.Empty) + "：", 0.85));
-            var excerpt = new TextBlock
-            {
-                Text = preview.TargetText,
-                TextWrapping = TextWrapping.Wrap,
-                MaxLines = 8,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                IsTextSelectionEnabled = true,
-            };
-            body.Children.Add(new Border
-            {
-                Child = excerpt,
-                Padding = new Thickness(10, 8, 10, 8),
-                CornerRadius = new CornerRadius(6),
-                BorderThickness = new Thickness(1),
-                Style = OpenCodeInteractionUi.TryStyle("OpenCodeSubtleCardChromeStyle"),
-            });
-        }
-        var warnings = new StackPanel { Spacing = 4 };
-        foreach (var w in state.Warnings())
-        {
-            var line = new Grid { ColumnSpacing = 6 };
-            line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            var icon = new FontIcon { Glyph = "\uE7BA", FontSize = 12, Margin = new Thickness(0, 2, 0, 0), VerticalAlignment = VerticalAlignment.Top,
-                Style = OpenCodeInteractionUi.TryStyle("OpenCodeCautionIconStyle") };
-            var text = OpenCodeInteractionUi.Caption(w, 0.85);
-            Grid.SetColumn(text, 1);
-            line.Children.Add(icon);
-            line.Children.Add(text);
-            warnings.Children.Add(line);
-        }
-        AutomationProperties.SetName(warnings, "风险说明");
-        body.Children.Add(warnings);
-        var dialog = new ContentDialog
-        {
-            XamlRoot = owner,
-            Title = undo ? "撤回最近一条消息？" : "恢复已撤回的消息？",
-            Content = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
-            PrimaryButtonText = undo ? "撤回" : "恢复",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Close, // A risky action is never the default.
-            Style = OpenCodeInteractionUi.TryStyle("DefaultContentDialogStyle"),
-        };
+        var body = new StackPanel { Spacing = 12, MinWidth = 320, MaxWidth = 480 };
+        if (undo && !string.IsNullOrEmpty(preview.TargetText)) body.Children.Add(Excerpt(preview.TargetText));
+        body.Children.Add(OpenCodeInteractionUi.StyledText(state.Summary, OpenCodeInteractionUi.BodyStyleKey));
         if (state.OffersFileRestoration)
         {
-            var files = new CheckBox { Content = "同时恢复文件（使用服务器快照；默认不恢复）", IsChecked = false };
+            // Off by default. The risk sits under the box all the time: read before ticking, and no layout jump.
+            var files = new CheckBox { Content = OpenCodeRollbackConfirmationState.RestoreFilesLabel, IsChecked = false };
             AutomationProperties.SetAutomationId(files, "OpenCodeRollbackRestoreFiles");
             files.Checked += (_, _) => state.SetRestoreFiles(true);
             files.Unchecked += (_, _) => state.SetRestoreFiles(false);
-            body.Children.Add(files);
+            var note = OpenCodeInteractionUi.StyledText(OpenCodeRollbackConfirmationState.RestoreFilesNote,
+                OpenCodeInteractionUi.CaptionSubtleStyleKey);
+            note.Margin = new Thickness(28, 0, 0, 0); // Lines up with the box's label.
+            // A screen reader that reaches the box gets the risk with it, not only as a separate line.
+            AutomationProperties.SetHelpText(files, OpenCodeRollbackConfirmationState.RestoreFilesNote);
+            var choice = new StackPanel { Spacing = 0 };
+            choice.Children.Add(files);
+            choice.Children.Add(note);
+            body.Children.Add(choice);
         }
-        if (state.RequiresTextOnlyAcknowledgment)
-        {
-            var ack = new CheckBox { Content = "我知道只会恢复文字，引用的文件、智能体或技能不会恢复", IsChecked = false };
-            AutomationProperties.SetAutomationId(ack, "OpenCodeRollbackTextOnly");
-            ack.Checked += (_, _) => { state.SetTextOnlyAcknowledged(true); dialog.IsPrimaryButtonEnabled = state.CanConfirm; };
-            ack.Unchecked += (_, _) => { state.SetTextOnlyAcknowledged(false); dialog.IsPrimaryButtonEnabled = state.CanConfirm; };
-            body.Children.Add(ack);
-        }
+        var cautions = state.Cautions();
+        foreach (var caution in cautions)
+            body.Children.Add(CautionLine(caution, caution == state.TextOnlyNote ? "OpenCodeRollbackTextOnly" : null));
         if (state.BlockingReason is { } reason)
+            body.Children.Add(OpenCodeInteractionUi.StyledText(reason, OpenCodeInteractionUi.QuestionCautionStyleKey));
+        var dialog = new ContentDialog
         {
-            var blocked = OpenCodeInteractionUi.Caption(reason, 0.9);
-            blocked.Style = OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.QuestionCautionStyleKey);
-            body.Children.Add(blocked);
-        }
-        dialog.IsPrimaryButtonEnabled = state.CanConfirm;
+            XamlRoot = owner,
+            Title = state.Title,
+            Content = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
+            PrimaryButtonText = state.PrimaryText,
+            CloseButtonText = "取消",
+            // 撤回 is the default button (accent, Enter) only in the plain case; otherwise 取消 is (see ConfirmIsDefault).
+            DefaultButton = state.ConfirmIsDefault ? ContentDialogButton.Primary : ContentDialogButton.Close,
+            IsPrimaryButtonEnabled = state.CanConfirm,
+            Style = OpenCodeInteractionUi.TryStyle("DefaultContentDialogStyle"),
+        };
+        AutomationProperties.SetAutomationId(dialog, "OpenCodeRollbackDialog");
         try
         {
-            var result = await dialog.ShowAsync();
-            return result == ContentDialogResult.Primary ? state.Confirm() : new(OpenCodeRollbackOutcome.Cancelled, null, false, false);
+            return await dialog.ShowAsync() == ContentDialogResult.Primary ? state.Confirm()
+                : new(OpenCodeRollbackOutcome.Cancelled, null, false);
         }
         catch (Exception)
         {
-            return new(OpenCodeRollbackOutcome.OwnerUnavailable, null, false, false);
+            return new(OpenCodeRollbackOutcome.OwnerUnavailable, null, false); // e.g. another dialog is already open.
         }
+    }
+
+    private static Border Excerpt(string text)
+    {
+        var excerpt = new TextBlock
+        {
+            Text = text,
+            TextWrapping = TextWrapping.Wrap,
+            MaxLines = 4,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            IsTextSelectionEnabled = true,
+        };
+        // The name keeps the message itself: a bare label here would replace the text a screen reader reads.
+        AutomationProperties.SetName(excerpt, "要撤回的消息：" + text);
+        return new Border
+        {
+            Child = excerpt,
+            Padding = new Thickness(12, 8, 12, 8),
+            CornerRadius = new CornerRadius(6),
+            BorderThickness = new Thickness(1),
+            Style = OpenCodeInteractionUi.TryStyle("OpenCodeSubtleCardChromeStyle"),
+        };
+    }
+
+    private static Grid CautionLine(string text, string? automationId)
+    {
+        var line = new Grid { ColumnSpacing = 8 };
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        line.Children.Add(new FontIcon
+        {
+            Glyph = "\uE7BA",
+            FontSize = 14,
+            Margin = new Thickness(0, 3, 0, 0),
+            VerticalAlignment = VerticalAlignment.Top,
+            Style = OpenCodeInteractionUi.TryStyle("OpenCodeCautionIconStyle"),
+        });
+        var label = OpenCodeInteractionUi.StyledText(text, OpenCodeInteractionUi.BodyStyleKey);
+        if (automationId is not null) AutomationProperties.SetAutomationId(label, automationId);
+        Grid.SetColumn(label, 1);
+        line.Children.Add(label);
+        return line;
     }
 }
 

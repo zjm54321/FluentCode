@@ -273,38 +273,47 @@ public sealed partial class OpenCodePage
         var read = await _sessionControls.PreviewAsync(owner.Origin, new(kind), owner.Draft,
             o => CanStartNativeAction(owner, o), ct);
         if (!CanStartNativeAction(owner, owner.Origin)) return;
-        if (read.Preview is not { } preview) { ReportNativeControlStatus(read.Status); return; }
-        var shown = new OpenCodeRollbackPreviewPresentation(undo ? OpenCodeRollbackKind.Undo : OpenCodeRollbackKind.Redo,
-            owner.Origin.SessionId, preview.Target?.Text, preview.Target?.Id, preview.State.Revert is not null,
-            preview.PriorStageMayHaveFileEffects, preview.Target?.HasNonTextReferences == true,
-            preview.Target is { ReferencesComplete: false }, owner.Draft.Empty, preview);
-        _nativeDialogPending = true;
-        OpenCodeRollbackConfirmationResult confirmation;
-        try { confirmation = await OpenCodeRollbackConfirmationDialog.ShowAsync(XamlRoot, shown); }
-        finally { _nativeDialogPending = false; }
-        if (!CanStartNativeAction(owner, owner.Origin) || confirmation.Outcome != OpenCodeRollbackOutcome.Confirmed
-            || !ReferenceEquals(confirmation.Preview, shown)
-            || undo && (shown.TargetHasNonTextReferences || shown.ReferencesIncomplete) && !confirmation.TextOnlyAcknowledged) return;
-        if (undo && confirmation.RestoreFiles)
+        if (read.Preview is not { } preview) { ReportRollbackStatus(undo, read.Status, draftEmpty: owner.Draft.Empty); return; }
+        // One prompt covers both choices: the with-files preview is a read, so prepare it BEFORE the dialog
+        // opens. Both must describe the same session state and the same target; if they do not, the session
+        // changed between the two reads and nothing is asked or executed.
+        SessionControlPreview? filesPreview = null;
+        if (undo)
         {
-            // Files changes the opaque backend preview. Prepare that exact choice, then require a NEW
-            // confirmation. Never forge a fingerprint, nor silently retarget after the first click.
             var fileRead = await _sessionControls.PreviewAsync(owner.Origin, new(kind, Files: true), owner.Draft,
                 o => CanStartNativeAction(owner, o), ct);
             if (!CanStartNativeAction(owner, owner.Origin)) return;
-            if (fileRead.Preview is not { } filesPreview || filesPreview.State.Fingerprint != preview.State.Fingerprint
-                || filesPreview.Target?.Fingerprint != preview.Target?.Fingerprint)
-            { ReportNativeControlStatus(SessionControlStatus.ConfirmationRequired); return; }
-            preview = filesPreview;
-            shown = shown with { Identity = preview };
+            if (fileRead.Preview is not { } candidate)
+            { ReportRollbackStatus(undo, fileRead.Status, draftEmpty: owner.Draft.Empty); return; }
+            if (candidate.State.Fingerprint != preview.State.Fingerprint
+                || candidate.Target?.Fingerprint != preview.Target?.Fingerprint)
+            { ReportRollbackStatus(undo, SessionControlStatus.ConfirmationRequired); return; }
+            filesPreview = candidate;
+        }
+        // Files are rewritten by a clear/move only for the entries of the stage's file list (the installed kernel
+        // restores exactly revert.files); a stage that merely holds a snapshot changes none, so it is not a caution.
+        var shown = new OpenCodeRollbackPreviewPresentation(undo ? OpenCodeRollbackKind.Undo : OpenCodeRollbackKind.Redo,
+            preview.Target?.Text, preview.State.Revert?.FileCount ?? 0, preview.Target?.HasNonTextReferences == true,
+            preview.Target is { ReferencesComplete: false }, owner.Draft.Empty, preview) { FilesIdentity = filesPreview };
+        OpenCodeRollbackConfirmationResult confirmation;
+        if (!OpenCodeRollbackConfirmationState.RequiresPrompt(shown))
+            // Plain 恢复: nothing to choose and nothing at risk, so the gesture confirms the preview just read.
+            confirmation = OpenCodeRollbackConfirmationState.ConfirmWithoutPrompt(shown);
+        else
+        {
             _nativeDialogPending = true;
             try { confirmation = await OpenCodeRollbackConfirmationDialog.ShowAsync(XamlRoot, shown); }
             finally { _nativeDialogPending = false; }
-            if (!CanStartNativeAction(owner, owner.Origin) || confirmation.Outcome != OpenCodeRollbackOutcome.Confirmed
-                || !ReferenceEquals(confirmation.Preview, shown) || !confirmation.RestoreFiles
-                || (shown.TargetHasNonTextReferences || shown.ReferencesIncomplete) && !confirmation.TextOnlyAcknowledged)
-            { ReportNativeControlStatus(SessionControlStatus.ConfirmationRequired); return; }
         }
+        if (!CanStartNativeAction(owner, owner.Origin) || confirmation.Outcome != OpenCodeRollbackOutcome.Confirmed
+            || !ReferenceEquals(confirmation.Preview, shown)) return;
+        // Execute exactly the preview the dialog confirmed: the with-files one only when that box was ticked there.
+        // It is the same object that was read before the dialog; nothing is re-read into it, forged or swapped.
+        var restoreFiles = undo && confirmation.RestoreFiles;
+        if (confirmation.ConfirmedIdentity is not SessionControlPreview confirmed
+            || !ReferenceEquals(confirmed, restoreFiles ? filesPreview : preview) || confirmed.Request.Files != restoreFiles)
+        { ReportRollbackStatus(undo, SessionControlStatus.ConfirmationRequired); return; }
+        preview = confirmed;
         var result = await _sessionControls.ConfirmAsync(preview, owner.OperationId, owner.Draft,
             o => CanStartNativeAction(owner, o), o => OwnsNativeOperation(owner, o), ct);
         if (!CanPublishNativeOperation(owner)) return;
@@ -318,20 +327,23 @@ public sealed partial class OpenCodePage
                 _messageHistoryNeedsState = true;
                 await RefreshMessagesAsync(explicitRefresh: true);
             }
-            if (CanPublishNativeOperation(owner)) ReportNativeControlStatus(result.Status);
+            if (CanPublishNativeOperation(owner)) ReportRollbackStatus(undo, result.Status, result.Error);
             return;
         }
         ApplyNativeHistoryChange(owner, undo ? preview.Target!.Id : null, result.Observed);
         if (undo && result.Restoration is { } restoration)
         {
-            if (!TryApplyNativeText(owner, restoration.Text)) ShowNativeTextCandidate(restoration.Text);
+            // The text back in the input box is the visible result; a notice would only repeat it.
+            if (TryApplyNativeText(owner, restoration.Text))
+                Motion.ActionFeedback.Announce(Composer, restoration.Text.Length == 0 ? "已撤回" : "已撤回，文字已放回输入框");
+            else ShowNativeTextCandidate(restoration.Text, undone: true);
         }
         else if (undo)
         {
             // Acceptance without a matched observed boundary does not authorize automatic restoration.
-            ShowNativeTextCandidate(preview.Target!.Text ?? string.Empty);
+            ShowNativeTextCandidate(preview.Target!.Text ?? string.Empty, undone: true);
         }
-        else Motion.ActionFeedback.Announce(Composer, "撤回状态已清除，输入框内容保持不变");
+        else Motion.ActionFeedback.Announce(Composer, "已恢复撤回的消息，输入框内容不变");
         await RefreshMessagesAsync(explicitRefresh: true);
     }
 
@@ -368,9 +380,12 @@ public sealed partial class OpenCodePage
             ShowNativeTextCandidate(retained);
     }
 
-    private void ShowNativeTextCandidate(string text)
+    // A notice only when the text could not go back into the input box; it carries the text so it can be copied.
+    private void ShowNativeTextCandidate(string text, bool undone = false)
     {
-        ShowMessage(InfoBarSeverity.Warning, "保留的文字候选（未写入草稿）", text);
+        if (!undone) { ShowMessage(InfoBarSeverity.Warning, "保留的文字候选（未写入草稿）", text); return; }
+        if (text.Length == 0) { Motion.ActionFeedback.Announce(Composer, "已撤回"); return; }
+        ShowMessage(InfoBarSeverity.Warning, "已撤回，文字没有放回输入框", text);
     }
 
     private void ReportNativeControlStatus(SessionControlStatus status)
@@ -384,6 +399,34 @@ public sealed partial class OpenCodePage
             SessionControlStatus.DefinitivelyRejected => "服务器明确拒绝了此次操作；草稿保持不变。",
             _ => "当前来源、执行状态或保护不允许操作；草稿保持不变。",
         });
+
+    // 撤回 / 恢复: at most one notice, and only when it did not happen or its outcome is not known.
+    // Nothing here implies success, and nothing is retried.
+    private void ReportRollbackStatus(bool undo, SessionControlStatus status, SessionControlErrorKind? error = null,
+        bool draftEmpty = true)
+    {
+        var verb = undo ? "撤回" : "恢复";
+        var (title, message) = status switch
+        {
+            SessionControlStatus.OutcomeUnknown => (verb + "结果未知",
+                "没有收到服务器的确认，不确定是否已" + verb + "。不会自动重试，会话的保护也不会自动解除；请先核对会话内容。"),
+            SessionControlStatus.DefinitivelyRejected => ("服务器拒绝了" + verb, error switch
+            {
+                SessionControlErrorKind.Unauthorized => "认证没有通过，请检查连接设置。会话没有变化。",
+                SessionControlErrorKind.SessionNotFound => "找不到这个会话或它的目录。",
+                SessionControlErrorKind.MessageNotFound => "这条消息已不存在。会话没有变化。",
+                SessionControlErrorKind.SessionBusy => "会话正在运行，请等它结束后再试。",
+                _ => "会话没有变化。",
+            }),
+            SessionControlStatus.ConfirmationRequired => ("没有" + verb, "会话内容刚刚有变化，请再试一次。"),
+            SessionControlStatus.InsufficientHistory => ("没有" + verb, "会话历史没有读全，无法确定要" + verb + "的消息。"),
+            SessionControlStatus.NothingToUndo => ("没有撤回", "这个会话里没有可以撤回的消息。"),
+            SessionControlStatus.NoStage => ("没有恢复", "当前没有已撤回的消息。"),
+            _ => ("暂时无法" + verb, undo && !draftEmpty ? "输入框里还有内容，请先发送或清空。"
+                : "会话正在运行、有待处理的请求，或连接不可用。请稍后再试。"),
+        };
+        ShowMessage(InfoBarSeverity.Warning, title, message);
+    }
 
     private void ApplyNativeHistoryChange(NativeActionOwner owner, string? boundary, SessionControlState? observed)
     {
