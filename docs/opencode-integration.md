@@ -64,6 +64,14 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 - 主会话的合成文本 `<subagent-update id="uuid" kind="progress|escalation">` 包含 `From @agent (session child-id):` 与完整消息，末尾附有 `SLIM_INTERNAL_INITIATOR` 标记。有效更新以“汇报进度 / 上报问题”为行名，后接与子智能体行相同的显示名及消息摘要，复用现有子会话导航，并作为中性提示行折入相邻处理过程分组；不作为回合边界、不改变分组运行 / 终态或成功计数。缺少或异常的 UUID、类型、来源、子会话或闭合标签，以及空白 / 超长消息，回退为同样折入分组的通用内部消息。
 - `task_status` / `task_cancel` 同时读取 V2 `sessionID` 和旧 `task_id`，复用已知子会话的智能体 / 标题。缺失、未知、`(unconfirmed)` 或明确不确定的状态不作为终态成功；不根据自由文本推断子任务完成。
 
+### 图片生成工具与完成通知
+
+- `experimental_image_generate` 的输入为 `prompt`、可选 `path`、可选 `images`（1–8 个，待修改的原图或风格参考，请求中不区分）和可选 `model`；调用立即返回，`metadata` 为 `{ path: 不带扩展名的路径, model, jobID }`，文本输出只是告诉模型“不要轮询”的说明。工具行名为“生成图片”（带 `images` 时为“按参考图生成”），目标是“文件名 · 提示词首行”，摘要带模型名。调用返回不等于图片已生成：未收到通知时行状态为“已在后台开始”，不显示为完成，也不显示为仍在运行。那段说明不当作结果显示，只在“原始数据”里保留。
+- 结果由一条 `synthetic` 通知给出：`metadata` 为 `{ source: "experimental_image_generate", jobID, state, path }`，正文为 `<image id="jobID" state="…">…</image>`。客户端只按 `source` + `jobID` + `state` 识别，正文相同但元数据不符或缺失的消息保持普通消息。`state` 为 `completed`、`error`、`cancelled`（运行中不发通知），分别显示“已完成”“失败”“已取消”；失败和取消的正文是服务端原话，按纯文本显示在详情里，不解析。
+- 图片路径只取自 `completed` 通知正文第一行 `Image request finished. Saved image: <绝对路径> (<provider/model>).`：外层 `id` 须与 `jobID` 相同，路径须是绝对路径、不含控制字符、扩展名为 `.png` / `.jpg` / `.webp` / `.gif` 之一，且去掉扩展名后等于 `metadata.path`。任一条不满足时通知照常显示，但不带图片，不猜扩展名。
+- 图片在详情浮层里显示（悬停预览、点击打开大图），走与其他工具图片相同的会话文件读取：打开详情时才读取，离开即取消，上限 10 MiB，读取失败在图片下方说明原因。通知按 `jobID` 关联原调用：两者相邻时只保留调用行，它显示终态和图片；中间隔了回答时通知另起一行“图片生成（后台）”。
+- 其余新增呈现：`acp_read_original_image`“查看原图”（目标为消息引用，摘要为尺寸与大小，图片取自输出中 `Local copy:` 的绝对路径）、`task_reply`“答复子智能体请求”、`codegraph_codegraph_explore`“探索代码关系”；`marketplace_inspect`、`session_diff`、`ast_grep_search`、`ast_grep_replace` 补充了目标与摘要。摘要只来自已核实的输出形态，认不出时留空。
+
 ### 附件规范（Attachments）
 在发送 Prompt 时，客户端支持挂载文件附件：
 - **数量限制**：单次请求最多 10 个附件。
