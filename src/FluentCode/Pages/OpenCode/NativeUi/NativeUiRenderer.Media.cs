@@ -142,14 +142,13 @@ internal sealed partial class NativeUiRenderer
                         // inspected without leaving the card.
                         var scroller = new ScrollViewer { Content = full, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Enabled, ZoomMode = ZoomMode.Enabled, MinZoomFactor = .5f, MaxZoomFactor = 4f, MaxHeight = 720 };
                         viewer = new ContentDialog { XamlRoot = panel.XamlRoot, Title = alt, CloseButtonText = "关闭", FullSizeDesired = true, Content = scroller };
-                        var leases = new List<IDisposable>();
-                        void Suppress(DependencyObject root)
+                        NativeUiAirspace? airspace = null;
+                        try
                         {
-                            if (root is OpenCodePersistentPtyRenderer terminal) { leases.Add(terminal.SuppressAirspace(snapshot: true)); return; }
-                            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) Suppress(VisualTreeHelper.GetChild(root, i));
+                            airspace = NativeUiAirspace.Begin(panel.XamlRoot?.Content, snapshot: true);
+                            await viewer.ShowAsync();
                         }
-                        if (panel.XamlRoot?.Content is { } root) Suppress(root);
-                        try { await viewer.ShowAsync(); } finally { foreach (var lease in leases) lease.Dispose(); viewer = null; }
+                        finally { airspace?.Dispose(); viewer = null; }
                     };
                     flip.Items.Add(new StackPanel { Spacing = 4, Children = { open, NativeUiComponentTheme.Text(alt, true) } });
                 }

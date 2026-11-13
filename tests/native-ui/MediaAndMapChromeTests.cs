@@ -135,8 +135,10 @@ internal static class MediaAndMapChromeTests
             "A single-image gallery does not show a pager that carries no information");
         Check(mediaSource.Contains("ZoomMode = ZoomMode.Enabled") && mediaSource.Contains("MinZoomFactor") && mediaSource.Contains("MaxZoomFactor"),
             "The full-size viewer zooms with Ctrl+wheel or pinch, bounded so the image cannot be lost");
-        Check(mediaSource.Contains("Stretch = Stretch.None") && mediaSource.Contains("new ContentDialog") && mediaSource.Contains("terminal.SuppressAirspace(snapshot: true)"),
-            "The full-size viewer keeps the original image size, the modal dialog and its airspace suppression");
+        Check(mediaSource.Contains("Stretch = Stretch.None") && mediaSource.Contains("new ContentDialog")
+            && mediaSource.Contains("NativeUiAirspace.Begin(panel.XamlRoot?.Content, snapshot: true)")
+            && mediaSource.Contains("finally { airspace?.Dispose(); viewer = null; }") && !mediaSource.Contains("SuppressAirspace("),
+            "The full-size viewer keeps the original image size and modal dialog, with shared airspace released in finally");
         Check(mediaSource.Contains("new ScrollViewer") && mediaSource.Contains("HorizontalScrollMode = ScrollMode.Enabled"),
             "The full-size viewer still scrolls in both directions");
         Check(mediaSource.Contains("NativeUiMediaPolicy.Https(NativeUiValues.Text(item.GetValueOrDefault(\"src\"))")

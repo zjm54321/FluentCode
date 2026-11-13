@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using FluentCode.Pages.OpenCode;
 using FluentCode.Services.NativeUi;
 
@@ -122,14 +123,15 @@ internal static class NativeUiCoreTests
             && components.Split("NativeUiAirspace.Track(").Length == 3,
             "Both Native UI flyouts (Popover and the URL confirmation) track their airspace through the shared helper");
         var walkCopies = Folder(NativeUiFolder)
-            .Where(file => Path.GetFileName(file) != "NativeUiAirspace.cs" && Path.GetFileName(file) != "NativeUiRenderer.Media.cs")
+            .Where(file => Path.GetFileName(file) != "NativeUiAirspace.cs")
             .SelectMany(file => File.ReadAllLines(file).Where(line => line.Contains("SuppressAirspace(", StringComparison.Ordinal)).Select(line => Path.GetFileName(file)))
             .Distinct().ToArray();
         Check(walkCopies.Length == 0,
-            "NativeUiRenderer.Media.cs (lane N2) is the only remaining inline airspace walk; N2 moves it onto the helper next wave: " + string.Join(",", walkCopies));
-        var mediaWalk = File.ReadAllLines(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Media.cs".Replace('/', Path.DirectorySeparatorChar)))
-            .Count(line => line.Contains("SuppressAirspace(", StringComparison.Ordinal));
-        Check(mediaWalk == 1, "The gallery dialog's single inline walk is still the only N2 site the contract has to replace");
+            "Only NativeUiAirspace.cs may take terminal suppression leases directly: " + string.Join(",", walkCopies));
+        var media = Source(NativeUiFolder + "/NativeUiRenderer.Media.cs");
+        Check(media.Contains("NativeUiAirspace? airspace = null;")
+            && Regex.IsMatch(media, @"try\s*\{\s*airspace = NativeUiAirspace.Begin\(panel.XamlRoot\?\.Content, snapshot: true\);\s*await viewer.ShowAsync\(\);\s*\}\s*finally\s*\{\s*airspace\?\.Dispose\(\); viewer = null;\s*\}"),
+            "The gallery captures shared airspace inside try, holds it across ShowAsync, and releases it and clears the viewer in finally");
 
         // ---- C19: the error card is the stock InfoBar, keeping the polite announcement and the three-line cap ----
         Check(theme.Contains("internal static FrameworkElement Notice(string title, string message, bool error = false)"),
