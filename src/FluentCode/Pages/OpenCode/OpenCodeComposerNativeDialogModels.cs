@@ -277,10 +277,14 @@ internal sealed class OpenCodeRollbackConfirmationState
         ? "无法确认这条消息是否带有文件、智能体或技能引用。放回输入框的只有文字。"
         : "这条消息带有文件、智能体或技能引用。放回输入框的只有文字，这些引用需要重新添加。";
 
-    /// <summary>The staged undo changed files, and this rollback rewrites them. Null when it does not apply.</summary>
+    /// <summary>
+    /// The staged undo restored files, and this rollback rewrites them. Null when it does not apply. A further undo
+    /// rewrites them whether or not restoration is ticked (the server first puts them back as they were before the
+    /// staged undo, then applies the new restoration on top), so the line must not read as if ticking kept edits.
+    /// </summary>
     internal string? FileEffectNote => Preview.PriorStageFileCount <= 0 ? null
         : Preview.Kind == OpenCodeRollbackKind.Undo
-            ? $"上一次撤回同时恢复了 {Preview.PriorStageFileCount} 个文件。这次如果不勾选“{RestoreFilesLabel}”，它们会变回那次撤回之前的样子，你在这之后对它们的修改会丢失。"
+            ? $"上一次撤回同时恢复了 {Preview.PriorStageFileCount} 个文件。这次不管是否勾选“{RestoreFilesLabel}”，这些文件都会被再次改写，你在那之后对它们的修改会丢失。不勾选时，它们变回上一次撤回之前的样子。"
             : $"撤回时同时恢复了 {Preview.PriorStageFileCount} 个文件。恢复后它们会变回撤回之前的样子，你在这之后对它们的修改会丢失。";
 
     /// <summary>Caution lines, in display order. Empty in the plain case: nothing risky, nothing to read.</summary>

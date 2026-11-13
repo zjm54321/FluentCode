@@ -322,8 +322,8 @@ internal static class NativeTests
             "redo that changes files back still asks once and says how many");
         var further = new OpenCodeRollbackConfirmationState(plain with { PriorStageFileCount = 1 });
         Check(further.CanConfirm && !further.ConfirmIsDefault && further.Cautions().Single() == further.FileEffectNote
-            && further.FileEffectNote != risky.FileEffectNote && further.FileEffectNote!.Contains(OpenCodeRollbackConfirmationState.RestoreFilesLabel),
-            "a further undo after one that restored files says those files change again unless restored");
+            && further.FileEffectNote != risky.FileEffectNote && further.FileEffectNote!.Contains("不管是否勾选“" + OpenCodeRollbackConfirmationState.RestoreFilesLabel + "”"),
+            "a further undo after one that restored files says those files are rewritten whether or not the box is ticked");
     }
     // r20-U: one undo asks once. On 9ef16e2 ticking "同时恢复文件" re-opened the same dialog (dialogs=2).
     private static async Task SingleRollbackPrompt()
@@ -395,6 +395,19 @@ internal static class NativeTests
             Check(opens == 1 && shown is { Kind: OpenCodeRollbackKind.Redo, PriorStageFileCount: 1, FilesIdentity: null }
                 && f.Http.Posts == 1 && f.Stage is null && f.Page.Messages.Count == 0,
                 $"redo after an undo that changed files asks once (dialogs={opens}, notices={string.Join(";", f.Page.Messages)})");
+        }
+        using (var f = new Fixture())
+        {
+            // A further undo while the staged one restored a file: still one prompt, now with the file caution.
+            f.Stage = FileStage;
+            var opens = 0; OpenCodeRollbackPreviewPresentation? shown = null;
+            OpenCodeRollbackConfirmationDialog.Next = p => { opens++; shown = p; return Confirm(p); };
+            await f.Page.StageNative(OpenCodeComposerClientActionKind.Undo, "undo"); await f.Page.RunNative();
+            Check(opens == 1 && shown is { Kind: OpenCodeRollbackKind.Undo, PriorStageFileCount: 1, FilesIdentity: not null }
+                && new OpenCodeRollbackConfirmationState(shown!) is { FileEffectNote: not null, ConfirmIsDefault: false }
+                && f.Http.Posts == 1 && f.LastMutationBody == "{\"messageID\":\"msg_older\",\"files\":false}"
+                && f.Page.Snapshot.Text == "older text" && f.Page.Messages.Count == 0,
+                $"a further undo after one that restored files: one prompt with the file caution (dialogs={opens}, body={f.LastMutationBody}, text={f.Page.Snapshot.Text}, notices={string.Join(";", f.Page.Messages)})");
         }
         using (var f = new Fixture())
         {
