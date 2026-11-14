@@ -96,6 +96,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
     /// <summary>
     /// 用最新 inbox 快照重绘；null 或空表示无排队条目（视图折叠）。
     /// <paramref name="canWithdraw"/> 判定某条目是否显示“撤回”（页面只对本页发出的用户输入返回 true）。
+    /// <paramref name="canChangeDelivery"/> 判定是否显示“改为插入当前回合”（页面对服务端仍列出的任一条用户输入返回 true，不限发送方）。
     /// </summary>
     internal void Apply(IReadOnlyList<OpenCodeInboxItem>? items, Func<OpenCodeInboxItem, bool>? canWithdraw = null,
         Func<OpenCodeInboxItem, bool>? canChangeDelivery = null)

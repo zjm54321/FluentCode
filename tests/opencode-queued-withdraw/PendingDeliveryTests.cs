@@ -5,6 +5,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentCode.Pages;
+using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -18,7 +19,9 @@ internal static partial class Program
         foreach (var (name, run) in new (string, Func<Task>)[]
         {
             ("pending inbox round trip", DeliveryRoundTrip),
-            ("visible keyboard/touch steer switch", SteerSwitchControl),
+            ("always-visible steer switch beside the bubble", SteerSwitchControl),
+            ("another client's message switches both ways", ForeignDeliverySwitch),
+            ("right-click entries of a pending bubble", SteerMenuEntries),
             ("receipt-projected steer switch", ReceiptProjectedSwitch),
             ("empty inbox retires uncertainty", EmptyInboxRetiresUncertainty),
             ("unchanged 204 is visibly unconfirmed", UnchangedDeliveryIsUnconfirmed),
@@ -34,9 +37,12 @@ internal static partial class Program
         Check(failures.Count == 0, "pending-delivery regressions failed: " + string.Join(", ", failures));
     }
 
-    private static async Task<OpenCodePage> DeliveryPage(FakeServer server, OpenCodeClient client, bool owned = true)
+    // owned: false = nothing was sent, admitted or acknowledged by this page (another client's message, or this
+    // client's own after a restart or session switch). width = transcript width the view reports before any row exists.
+    private static async Task<OpenCodePage> DeliveryPage(FakeServer server, OpenCodeClient client, bool owned = true, double width = 0)
     {
         var page = new OpenCodePage(client, Session);
+        page.Conversation.ActualWidth = width;
         if (owned) page.Own(Inbox);
         page.Publish(await client.GetInboxAsync(Session, CancellationToken.None));
         server.Calls.Clear(); server.Queries.Clear(); server.Bodies.Clear(); server.Auth.Clear();
@@ -60,24 +66,115 @@ internal static partial class Program
         Check(server.Bodies.Where(b => b is not null).SequenceEqual(new[] { "{\"delivery\":\"steer\"}", "{\"delivery\":\"queue\"}", "{\"delivery\":\"steer\"}" }), "both delivery directions use the exact API contract");
     }
 
+    private static Button? SteerSwitch(OpenCodePage page) => Descendants(page.Conversation).OfType<Button>()
+        .SingleOrDefault(b => AutomationProperties.GetAutomationId(b) == "OpenCodeAdmittedSteerQueue." + Inbox);
+    private static Button? QueueButton(OpenCodePage page, string prefix) => Descendants(page.Queue).OfType<Button>()
+        .SingleOrDefault(b => AutomationProperties.GetAutomationId(b) == prefix + Inbox);
+    private static int Patches(FakeServer server) => server.Calls.Count(c => c.StartsWith("PATCH"));
+
     private static async Task SteerSwitchControl()
     {
+        var text = new string('长', 200);
         var server = new FakeServer();
-        server.Inbox.Add(UserItem(Inbox, new string('长', 200), 1000) with { Delivery = "steer" });
+        server.Inbox.Add(UserItem(Inbox, text, 1000) with { Delivery = "steer" });
         using var client = server.Client();
-        var page = await DeliveryPage(server, client);
-        var button = Descendants(page.Conversation).OfType<Button>().SingleOrDefault(b => AutomationProperties.GetAutomationId(b) == "OpenCodeAdmittedSteerQueue." + Inbox);
-        Check(button is not null, "pending bubble has a native visible/revealable queue button, not just a context menu");
-        Check(button!.Content?.ToString() == "改为排队" && button.IsTabStop, "native queue button has a label and keyboard focus");
-        var row = page.Conversation.Children.Single();
-        Check(button.Opacity == 0 && !button.IsHitTestVisible, "unrevealed action cannot be hit invisibly");
-        row.Touch();
-        Check(button.Opacity == 1 && button.IsHitTestVisible, "first touch reveals and latches the action");
-        row.MouseExit(); row.Focus();
-        Check(button.Opacity == 1 && button.IsHitTestVisible, "keyboard focus reveals the action");
+        var page = await DeliveryPage(server, client, width: 1000);
+        var row = (ContentControl)page.Conversation.Children.Single();
+        var layout = (Grid)row.Content!;
+        var button = SteerSwitch(page);
+        Check(button is not null, "pending bubble has a native queue button, not just a context menu");
+        Check(button!.Content is FontIcon { Glyph: "\uE823", FontSize: 16 } && button.Width == 32 && button.Height == 32
+            && button.Padding == new Thickness(0) && button.Style?.Key == "SubtleButtonStyle",
+            "icon only: the composer's queue clock at its 32px size, in the stock borderless subtle-button style");
+        Check(button.AutomationName == "改为排队：" + text && button.ToolTip as string == "改为排队",
+            "tooltip is the plain action name; the Narrator name adds which message it moves");
+        Check(!Descendants(row).OfType<TextBlock>().Any(t => t.Text is "改为排队" or "插入当前回合"),
+            "no caption or text button is left under the bubble");
+        var bubble = (FrameworkElement)layout.Children[1];
+        Check(layout.Children.Count == 2 && ReferenceEquals(layout.Children[0], button)
+            && Grid.GetColumn(button) == 0 && Grid.GetColumn(bubble) == 1
+            && layout.ColumnDefinitions.Select(c => c.Width).SequenceEqual(new[] { new GridLength(1, GridUnitType.Star), GridLength.Auto })
+            && button.HorizontalAlignment == HorizontalAlignment.Right && button.VerticalAlignment == VerticalAlignment.Top,
+            "the switch takes the free space left of the bubble, in the bubble's own row: nothing is stacked below it");
+        Check(bubble.MaxWidth == 720, "the bubble starts at its usual 72% of the transcript, so the auto column never measures a long message on one line");
+        Check(button.IsTabStop && button.Visibility == Visibility.Visible && button.Opacity == 1 && button.IsHitTestVisible,
+            "visible and keyboard reachable without hover, focus or touch");
+        row.Touch(); row.MouseExit(); row.Focus(); row.Blur();
+        Check(button.Visibility == Visibility.Visible && button.Opacity == 1 && button.IsHitTestVisible, "pointer and focus changes neither hide nor reveal it");
         Check(!Ancestors(button).OfType<ContentControl>().Any(parent => parent.MaxHeight == 40), "long-message collapse does not clip the switching control");
+        page.Queue.IsWithdrawBusy = true;
+        Check(!button.IsEnabled && button.Visibility == Visibility.Visible, "a running inbox action disables the switch in place");
+        page.Queue.IsWithdrawBusy = false;
+        Check(button.IsEnabled, "the switch is usable again once the action ends");
         await page.Click(button);
         Check(page.Queue.HasItems && page.Conversation.PendingIds.Count == 0, "visible button routes into real delivery handler");
+
+        var unsized = new FakeServer { PatchChangesDelivery = false };
+        unsized.Inbox.Add(UserItem(Inbox, "未确认", 1000) with { Delivery = "steer" });
+        using var unsizedClient = unsized.Client();
+        var early = await DeliveryPage(unsized, unsizedClient);
+        var earlyLayout = (Grid)((ContentControl)early.Conversation.Children.Single()).Content!;
+        Check(((FrameworkElement)earlyLayout.Children[1]).MaxWidth is > 0 and < 480, "a transcript that was never laid out still gives the bubble a finite starting width");
+        await early.Click(SteerSwitch(early)!);
+        Check(early.UncertainChanges == 1 && early.Conversation.PendingIds.Contains(Inbox)
+            && SteerSwitch(early)!.Visibility == Visibility.Collapsed && earlyLayout.Children.Count == 2,
+            "an unconfirmed switch hides only the button; the bubble keeps its place in the row");
+    }
+
+    private static async Task ForeignDeliverySwitch()
+    {
+        var server = new FakeServer();
+        server.Inbox.Add(UserItem(Inbox, "其他客户端排队", 1000));
+        server.Inbox.Add(new Item("msg_synthetic", "synthetic", "{}", 900));
+        using var client = server.Client();
+        var page = await DeliveryPage(server, client, owned: false);
+        var listed = page.InboxSnapshot!.Single(item => item.Id == Inbox);
+        Check(page.CanChange(listed) && !page.CanWithdraw(listed), "a server-listed user input is switchable with no local send record; withdrawal stays with its sender");
+        Check(!page.CanChange(page.InboxSnapshot!.Single(item => item.Id == "msg_synthetic")), "server-generated inbox work is still not switchable");
+        var toSteer = QueueButton(page, "OpenCodePendingDelivery.");
+        Check(toSteer is not null && QueueButton(page, "OpenCodeQueuedPromptWithdraw.") is null, "another client's queued row offers the switch and no 撤回");
+        await page.Click(toSteer!);
+        Check(Patches(server) == 1 && server.Bodies.Last(b => b is not null) == "{\"delivery\":\"steer\"}"
+            && page.Conversation.PendingIds.Contains(Inbox) && !page.Queue.HasItems,
+            "queued by another client -> 插入当前回合 with one PATCH, confirmed by the re-read");
+        Check(server.Calls.First().StartsWith("GET") && server.Calls.Last().StartsWith("GET"), "the server's inbox is read before and after the PATCH");
+        var toQueue = SteerSwitch(page);
+        Check(toQueue is { IsEnabled: true } && toQueue.Visibility == Visibility.Visible, "another client's pending bubble offers the queue button");
+        await page.Click(toQueue!);
+        Check(Patches(server) == 2 && server.Bodies.Last(b => b is not null) == "{\"delivery\":\"queue\"}"
+            && page.Queue.HasItems && page.Conversation.PendingIds.Count == 0,
+            "steered by another client -> 排队 with one PATCH, confirmed by the re-read");
+        Check(page.Notices.Count == 0 && page.UncertainChanges == 0, "no refusal, warning or leftover uncertainty for a message this client did not send");
+        await page.Change("msg_synthetic", "steer");
+        Check(Patches(server) == 2 && page.Notices.Any(n => n.Contains("不是用户输入")), "a non-user item is refused after the fresh read, without a PATCH");
+    }
+
+    private static async Task SteerMenuEntries()
+    {
+        var server = new FakeServer();
+        server.Inbox.Add(UserItem(Inbox, "右键切换", 1000) with { Delivery = "steer" });
+        using var client = server.Client();
+        var foreign = await DeliveryPage(server, client, owned: false);
+        var menu = foreign.Conversation.Children.Single().ContextFlyout as OpenCodeMessageMenuProbe;
+        Check(menu is not null && ReferenceEquals(menu, foreign.Conversation.TextMenu(Inbox)) && menu.Text() == "右键切换",
+            "right-click on the bubble and on its text open the one menu, which still copies the message");
+        var entries = menu!.Actions().ToArray();
+        Check(entries.Length == 1 && entries[0] is { Label: "改为排队", Glyph: "\uE823", Enabled: true }
+            && entries[0].AutomationId == "OpenCodeAdmittedSteerDelivery." + Inbox,
+            "another client's pending message: the menu offers 改为排队 under the button's icon, and no 撤回 it could not honour");
+        await foreign.Run(entries[0].Run);
+        Check(Patches(server) == 1 && foreign.Queue.HasItems && foreign.Conversation.PendingIds.Count == 0, "the menu entry runs the same delivery handler as the button");
+
+        var ownServer = new FakeServer();
+        ownServer.Inbox.Add(UserItem(Inbox, "本页发送", 1000) with { Delivery = "steer" });
+        using var ownClient = ownServer.Client();
+        var own = await DeliveryPage(ownServer, ownClient);
+        var ownMenu = (OpenCodeMessageMenuProbe)own.Conversation.Children.Single().ContextFlyout!;
+        Check(ownMenu.Actions().Select(e => e.Label + ":" + e.Enabled).SequenceEqual(new[] { "改为排队:True", "撤回:True" }),
+            "this page's own pending message keeps both entries");
+        own.Queue.IsWithdrawBusy = true;
+        Check(ownMenu.Actions().Select(e => e.Label + ":" + e.Enabled).SequenceEqual(new[] { "改为排队:False", "撤回:False" }),
+            "entries read the busy state when the menu opens");
     }
 
     private static async Task ReceiptProjectedSwitch()
@@ -89,12 +186,12 @@ internal static partial class Program
         page.Admit(new() { Id = Inbox, SessionId = Session, Type = "user", Delivery = "steer", Payload = new() { Text = "收据先于列表" } });
         Check(page.Conversation.PendingIds.Contains(Inbox) && page.InboxSnapshot is null, "receipt projects a pending bubble before any inbox snapshot");
         await page.Change(Inbox, "queue");
-        Check(server.Calls.Count(c => c.StartsWith("PATCH")) == 1 && page.Queue.HasItems, "receipt-owned steer item can switch without snapshot membership or pending-ack list");
+        Check(server.Calls.Count(c => c.StartsWith("PATCH")) == 1 && page.Queue.HasItems, "a receipt-projected steer item can switch before any inbox snapshot lists it");
         Check(server.Calls.First().StartsWith("GET") && server.Calls.Last().StartsWith("GET"), "receipt switch verifies pending state before PATCH and publishes only the post-read");
         page.Publish(Array.Empty<OpenCodeInboxItem>(), trimAcknowledgements: true);
         server.Calls.Clear(); server.Queries.Clear(); server.Bodies.Clear(); server.Auth.Clear();
         await page.Change(Inbox, "steer");
-        Check(page.Conversation.PendingIds.Contains(Inbox), "current receipt still proves ownership after an acknowledgement-list race");
+        Check(page.Conversation.PendingIds.Contains(Inbox), "a racing empty snapshot does not block the switch: the fresh server read decides");
     }
 
     private static async Task EmptyInboxRetiresUncertainty()
@@ -153,15 +250,12 @@ internal static partial class Program
     private static async Task DeliveryGuardFeedback()
     {
         var server = new FakeServer();
-        server.Inbox.Add(UserItem(Inbox, "其他客户端", 1000));
+        server.Inbox.Add(UserItem(Inbox, "防护反馈", 1000));
         using var client = server.Client();
-        var page = await DeliveryPage(server, client, owned: false);
+        var page = await DeliveryPage(server, client);
+        page.SetBusy(true);
         await page.Change(Inbox, "steer");
-        Check(page.Notices.Any(n => n.Contains("不是本客户端发送")) && server.Calls.Count == 0, "foreign item is refused with an ownership explanation and no network calls");
-        page.Own(Inbox); page.SetBusy(true);
-        var before = page.Notices.Count;
-        await page.Change(Inbox, "steer");
-        Check(page.Notices.Count > before && server.Calls.Count == 0, "overlapping action gets a busy explanation");
+        Check(page.Notices.Count == 1 && server.Calls.Count == 0, "overlapping action gets a busy explanation");
         page.SetBusy(false); server.Inbox.Clear();
         await page.Change(Inbox, "steer");
         Check(page.Notices.Any(n => n.Contains("已不在待投递列表")) && !server.Calls.Any(c => c.StartsWith("PATCH")), "fresh absence explains delivery/removal without a futile PATCH");

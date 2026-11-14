@@ -1,5 +1,6 @@
 // Inert WinUI/page boundaries only. Delivery handlers, receipt projection, list rendering,
 // pending-steer rendering, touch reveal, HTTP transport and ownership predicates are production source.
+// The stubs record layout inputs (columns, sizes, style keys, tooltips); nothing here measures or draws.
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -62,6 +63,7 @@ namespace FluentCode.Pages
 
         internal void Own(string id) => _pendingAckIds.Add(id);
         internal bool CanChange(OpenCodeInboxItem item) => CanUpdatePendingDelivery(item);
+        internal bool CanWithdraw(OpenCodeInboxItem item) => CanWithdrawQueued(item);
         internal void Admit(OpenCodeInboxUser receipt) => OnComposerPromptAdmitted(_selectedSessionId!, receipt);
         internal void Publish(IReadOnlyList<OpenCodeInboxItem> inbox, bool trimAcknowledgements = false)
         {
@@ -75,6 +77,7 @@ namespace FluentCode.Pages
         internal void SetBusy(bool busy) => _queuedWithdrawInFlight = busy;
         internal Task Change(string id, string delivery) => Dispatch(() => _queuedPromptsView.RequestDeliveryChange(new(id, delivery)));
         internal Task Click(Button button) => Dispatch(button.RaiseClick);
+        internal Task Run(Action action) => Dispatch(action);
 
         // Async-void event completion is tracked by its actual synchronization-context operations,
         // not sleeps or busy-flag sampling (which can precede the final view update).
@@ -112,11 +115,13 @@ namespace FluentCode.Pages.OpenCode
         internal bool ContainsRenderedMessage(string id) => _renderedUserMessageIds.Contains(id);
         internal IReadOnlyList<string> PendingIds => _steerOrder.Where(id => ReferenceEquals(_steerRows[id].Element.Parent, this)).ToArray();
         internal void Delivered(string id) { _renderedUserMessageIds.Add(id); ReconcileSteerRows(); }
+        internal object? TextMenu(string id) => _steerRows[id].Presenter.TextContextFlyout;
     }
     internal static class OpenCodeInteractionUi
     {
         internal const string BodyStyleKey = "body", CaptionSubtleStyleKey = "caption-subtle", CaptionStyleKey = "caption";
         internal static TextBlock StyledText(string text, string key, bool selectable = false) => new() { Text = text };
+        internal static Style? TryStyle(string key) => new(key);
     }
     internal enum OpenCodeRichTextStyle { Body }
     internal sealed class OpenCodeRichTextPresenter
@@ -148,9 +153,15 @@ namespace FluentCode.Pages.OpenCode
         internal bool Enabled { get; init; }
         internal string? AutomationId { get; init; }
     }
+    // Inert menu: keeps the production delegates so a test can open it and run an entry headlessly.
+    internal sealed class OpenCodeMessageMenuProbe(Func<string?> text, Func<IEnumerable<OpenCodeContextCommand>> actions)
+    {
+        internal Func<string?> Text => text;
+        internal Func<IEnumerable<OpenCodeContextCommand>> Actions => actions;
+    }
     internal static class OpenCodeMessageContextMenu
     {
-        internal static object Create(Func<string?> text, Func<IEnumerable<OpenCodeContextCommand>> actions) => new object();
+        internal static OpenCodeMessageMenuProbe Create(Func<string?> text, Func<IEnumerable<OpenCodeContextCommand>> actions) => new(text, actions);
     }
 }
 
@@ -169,9 +180,13 @@ namespace Microsoft.UI.Xaml
     public enum VerticalAlignment { Stretch, Top, Center, Bottom }
     public enum TextWrapping { NoWrap, Wrap }
     public enum TextTrimming { CharacterEllipsis }
-    public enum GridUnitType { Star }
-    public readonly record struct GridLength(double Value, GridUnitType Unit = GridUnitType.Star) { public static GridLength Auto => new(0); }
-    public readonly record struct Thickness(double Left, double Top, double Right, double Bottom);
+    public enum GridUnitType { Auto, Pixel, Star }
+    public readonly record struct GridLength(double Value, GridUnitType Unit = GridUnitType.Pixel) { public static GridLength Auto => new(1, GridUnitType.Auto); }
+    public readonly record struct Thickness(double Left, double Top, double Right, double Bottom)
+    {
+        public Thickness(double uniform) : this(uniform, uniform, uniform, uniform) { }
+    }
+    public sealed class Style(string key) { public string Key => key; }
     public sealed class RoutedEventArgs : EventArgs { }
     public class UIElement
     {
@@ -181,6 +196,8 @@ namespace Microsoft.UI.Xaml
         public bool IsHitTestVisible { get; set; } = true;
         public object? ContextFlyout { get; set; }
         internal string AutomationId = "", AutomationName = "";
+        internal object? ToolTip;
+        internal int Column;
         public event EventHandler<Input.PointerRoutedEventArgs>? PointerEntered;
         public event EventHandler<Input.PointerRoutedEventArgs>? PointerExited;
         public event EventHandler<RoutedEventArgs>? GotFocus;
@@ -195,7 +212,12 @@ namespace Microsoft.UI.Xaml
         public HorizontalAlignment HorizontalAlignment { get; set; }
         public VerticalAlignment VerticalAlignment { get; set; }
         public double MaxHeight { get; set; }
+        public double MaxWidth { get; set; } = double.PositiveInfinity;
+        public double Width { get; set; } = double.NaN;
+        public double Height { get; set; } = double.NaN;
+        public double ActualWidth { get; set; } // Never laid out here: 0 unless a test supplies a transcript width.
         public Thickness Margin { get; set; }
+        public Style? Style { get; set; }
     }
 }
 namespace Microsoft.UI.Xaml.Controls
@@ -221,7 +243,8 @@ namespace Microsoft.UI.Xaml.Controls
     {
         public double ColumnSpacing { get; set; }
         public List<ColumnDefinition> ColumnDefinitions { get; } = new();
-        public static void SetColumn(UIElement child, int column) { }
+        public static void SetColumn(UIElement child, int column) => child.Column = column;
+        public static int GetColumn(UIElement child) => child.Column;
     }
     public sealed class ColumnDefinition { public GridLength Width { get; set; } }
     public class StackPanel : Panel { public double Spacing { get; set; } public Orientation Orientation { get; set; } }
@@ -260,13 +283,15 @@ namespace Microsoft.UI.Xaml.Controls
         public TextTrimming TextTrimming { get; set; }
         public int MaxLines { get; set; }
     }
+    public sealed class FontIcon : FrameworkElement { public string Glyph { get; set; } = ""; public double FontSize { get; set; } }
     public class Button : ContentControl
     {
+        public Thickness Padding { get; set; }
         public bool IsEnabled { get; set; } = true;
         public event EventHandler<RoutedEventArgs>? Click;
         internal void RaiseClick() { if (IsEnabled) Click?.Invoke(this, new()); }
     }
-    public static class ToolTipService { public static void SetToolTip(UIElement element, object tooltip) { } }
+    public static class ToolTipService { public static void SetToolTip(UIElement element, object tooltip) => element.ToolTip = tooltip; }
 }
 namespace Microsoft.UI.Xaml.Automation
 {
