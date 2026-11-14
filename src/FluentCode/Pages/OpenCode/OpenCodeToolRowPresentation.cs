@@ -34,7 +34,11 @@ internal enum OpenCodeToolKind
     Image,
 }
 
-/// <summary>工具行状态（严格来自 <see cref="OpenCodeToolStates.Read"/> 的四个已核实取值；其余为 Unknown）。</summary>
+/// <summary>
+/// 工具行状态（严格来自 <see cref="OpenCodeToolStates.Read"/> 的四个已核实取值；其余为 Unknown）。
+/// Cancelled 不是服务端的工具状态：它只由结构化的取消信号得出（后台任务通知的 <c>state == "cancelled"</c>，
+/// 或图片生成调用的 <c>error.type == "aborted"</c>），表示“被叫停”，不是失败。
+/// </summary>
 internal enum OpenCodeToolRowStatus
 {
     Unknown,
@@ -42,6 +46,7 @@ internal enum OpenCodeToolRowStatus
     Running,
     Completed,
     Error,
+    Cancelled,
 }
 
 /// <summary>
@@ -49,6 +54,8 @@ internal enum OpenCodeToolRowStatus
 /// An unrecovered tool failure paints the entire row red — tinted critical background, 1px critical border,
 /// critical kind icon, name, target and a textual "失败" label — instead of a lone small red X on the right.
 /// Null keys mean "default appearance". Failed tool results are never projected as recovered.
+/// A cancelled row is the opposite of that alarm: no tint, no border, no "失败" label and no status glyph; its name
+/// and target use the secondary text brush and its kind icon the tertiary one, the same pair a finished row recedes to.
 /// </summary>
 internal sealed record OpenCodeToolRowChrome(
     bool IsFailure,
@@ -64,14 +71,20 @@ internal sealed record OpenCodeToolRowChrome(
     internal const string CriticalBackgroundKey = "SystemFillColorCriticalBackgroundBrush";
     internal const string SecondaryIconKey = "TextFillColorSecondaryBrush";
     internal const string FailureText = "失败";
+    /// <summary>The one word a cancelled row shows; never prefixed with <see cref="FailureText"/>.</summary>
+    internal const string CancelledText = "已取消";
 
     private static readonly OpenCodeToolRowChrome Failure = new(true, CriticalBackgroundKey, CriticalKey, 1, CriticalKey, CriticalKey, false, FailureText);
     private static readonly OpenCodeToolRowChrome Normal = new(false, null, null, 0, SecondaryIconKey, null, true, null);
     private static readonly OpenCodeToolRowChrome Caution = new(false, null, null, 0, "SystemFillColorCautionBrush", "SystemFillColorCautionBrush", true, null);
+    private static readonly OpenCodeToolRowChrome Cancelled = new(false, null, null, 0,
+        OpenCodeProcessedSummaryStyle.IconBrushKey, OpenCodeProcessedSummaryStyle.LabelBrushKey, false, null);
 
     /// <summary>Chrome for a row status (null = chip without status).</summary>
     internal static OpenCodeToolRowChrome For(OpenCodeToolRowStatus? status, bool escalation = false)
-        => status == OpenCodeToolRowStatus.Error ? Failure : escalation ? Caution : Normal;
+        => status == OpenCodeToolRowStatus.Error ? Failure
+            : status == OpenCodeToolRowStatus.Cancelled ? Cancelled
+            : escalation ? Caution : Normal;
 
     /// <summary>Right-side summary: failure label first, then the existing summary (if any).</summary>
     internal string ComposeSummary(string summary)
@@ -300,6 +313,13 @@ internal sealed record OpenCodeQuestionFallback(string Title, string StatusText,
 /// </summary>
 internal static class OpenCodeToolRowPresentation
 {
+    /// <summary>Row title of an image request that was given reference images (the user's wording, verbatim).</summary>
+    internal const string ImageWithReferencesName = "带参考图生成";
+
+    /// <summary><c>state.error.type</c> the server stores when the user's stop interrupts a tool call.</summary>
+    private const string AbortedErrorType = "aborted";
+    private const string CancelledText = OpenCodeToolRowChrome.CancelledText;
+
     // Parts are immutable SSE/REST snapshots. Weak keys release cached data with the history;
     // completion/background/file identity remain part of the presentation revision.
     private sealed class ToolModels
@@ -731,13 +751,20 @@ internal static class OpenCodeToolRowPresentation
                 resultImage = finished?.ImagePath;
                 var file = resultImage ?? FirstString(input, "path") ?? FirstString(metadata, "path");
                 var modelReference = finished?.Model ?? FirstString(metadata, "model") ?? FirstString(input, "model");
-                // `images` are sources to edit or style references; the request does not say which, so the title claims neither.
-                if (references.Count > 0) name = "按参考图生成";
+                // `images` are sources to edit or style references; the request does not say which, so the title only
+                // says that reference images were given.
+                if (references.Count > 0) name = ImageWithReferencesName;
+                // The user stopped the turn while the call was still being handed over: nothing went wrong.
+                if (status == OpenCodeToolRowStatus.Error && string.Equals(state?.Error?.Type, AbortedErrorType, StringComparison.Ordinal))
+                {
+                    status = OpenCodeToolRowStatus.Cancelled;
+                    summary = CancelledText;
+                }
                 var promptLine = OpenCodeDisplayText.Line((prompt ?? string.Empty).Split('\n', 2)[0]);
                 if (promptLine.Length > 120) promptLine = promptLine[..120] + "…";
                 var fileName = PathLeaf(file);
                 target = fileName.Length > 0 && promptLine.Length > 0 ? fileName + " · " + promptLine : fileName.Length > 0 ? fileName : promptLine;
-                summary = OpenCodeStepRunPresentation.ShortModel(modelReference);
+                if (status != OpenCodeToolRowStatus.Cancelled) summary = OpenCodeStepRunPresentation.ShortModel(modelReference);
                 var rows = new List<OpenCodeToolProperty>();
                 void Row(string key, string? value, OpenCodeToolPropertyKind propertyKind)
                 {
@@ -861,17 +888,19 @@ internal static class OpenCodeToolRowPresentation
                 exitCode = completionExit;
             }
 
-            status = completion.IsFailure || completion.ExitCode is { } asyncCode && asyncCode != 0
-                ? OpenCodeToolRowStatus.Error
-                : completion.IsRunning ? OpenCodeToolRowStatus.Running
-                : completion.IsSuccess ? OpenCodeToolRowStatus.Completed : OpenCodeToolRowStatus.Unknown;
+            status = completion.RowStatus;
             if (status == OpenCodeToolRowStatus.Error)
             {
-                status = OpenCodeToolRowStatus.Error;
-                // An image job's failure / cancellation text is the server's own sentence: show it as the error detail.
+                // An image job's failure text is the server's own sentence: show it as the error detail.
                 asyncError = imageJob && !string.IsNullOrWhiteSpace(completion.Body) ? completion.Body : "后台" + stateText;
-                // The row already leads with “失败”; keep only what adds to it (“已取消”), never the model name.
+                // The row already leads with “失败”; keep only what adds to it, never the model name.
                 if (imageJob) summary = stateText == "失败" ? string.Empty : stateText;
+            }
+            else if (status == OpenCodeToolRowStatus.Cancelled)
+            {
+                // Called off, not broken: the one word says it all. A recorded exit code is still a fact worth keeping.
+                summary = CancelledText
+                    + (completion.ExitCode is { } cancelledExit ? " · 退出码 " + cancelledExit.ToString(CultureInfo.InvariantCulture) : string.Empty);
             }
         }
         else if (imageJob && background && status == OpenCodeToolRowStatus.Completed)
@@ -892,8 +921,16 @@ internal static class OpenCodeToolRowPresentation
             var recorded = FirstString(metadata, "status")?.ToLowerInvariant();
             status = recorded == "exited" && exitCode.HasValue ? exitCode == 0 ? OpenCodeToolRowStatus.Completed : OpenCodeToolRowStatus.Error
                 : recorded is "completed" or "succeeded" or "success" or "done" ? OpenCodeToolRowStatus.Completed
+                // Same rule as a completion notice: a cancelled job is neutral, except a subagent's (its own design).
+                : recorded is "cancelled" or "canceled" && kind != OpenCodeToolKind.Subagent ? OpenCodeToolRowStatus.Cancelled
                 : recorded is "error" or "failed" or "killed" or "cancelled" ? OpenCodeToolRowStatus.Error : OpenCodeToolRowStatus.Unknown;
-            summary = status == OpenCodeToolRowStatus.Completed ? "后台已完成" : status == OpenCodeToolRowStatus.Error ? "后台失败" : "后台状态未提供";
+            summary = status switch
+            {
+                OpenCodeToolRowStatus.Completed => "后台已完成",
+                OpenCodeToolRowStatus.Error => "后台失败",
+                OpenCodeToolRowStatus.Cancelled => CancelledText,
+                _ => "后台状态未提供",
+            };
         }
 
         if (background && kind == OpenCodeToolKind.Shell)
@@ -905,6 +942,7 @@ internal static class OpenCodeToolRowPresentation
             OpenCodeToolRowStatus.Running => background ? "后台运行中" : "运行中",
             OpenCodeToolRowStatus.Completed => "已完成",
             OpenCodeToolRowStatus.Error => "出错",
+            OpenCodeToolRowStatus.Cancelled => CancelledText,
             _ => "状态未识别",
         };
         if (kind == OpenCodeToolKind.Report && reportDelivery is not null && status == OpenCodeToolRowStatus.Unknown)
@@ -934,7 +972,11 @@ internal static class OpenCodeToolRowPresentation
             : Array.Empty<OpenCodeToolProperty>();
         var outputProperties = TryParseStructuredOutput(output);
         if (shownInput is not null) inputProperties = shownInput;
-        if (imageJob && background && rawOutput is not null && status != OpenCodeToolRowStatus.Error)
+        if (imageJob && status == OpenCodeToolRowStatus.Cancelled)
+        {
+            outputProperties = new[] { new OpenCodeToolProperty(0, "结果", "已取消，没有生成图片。", OpenCodeToolPropertyKind.Text) };
+        }
+        else if (imageJob && background && rawOutput is not null && status != OpenCodeToolRowStatus.Error)
         {
             var result = asyncCompletion is null ? "已交给后台生成。完成通知到达后，图片会显示在这里。"
                 : resultImage is null && asyncCompletion.IsSuccess ? "已完成，但完成通知里没有可用的图片路径。" : null;
@@ -977,7 +1019,8 @@ internal static class OpenCodeToolRowPresentation
             accessible.Append("，新增 ").Append(aa.ToString(CultureInfo.InvariantCulture)).Append(" 行删除 ")
                 .Append(dd.ToString(CultureInfo.InvariantCulture)).Append(" 行");
         }
-        else if (summary.Length > 0)
+        // A cancelled row's summary is its status word; say “已取消” once.
+        else if (summary.Length > 0 && !(status == OpenCodeToolRowStatus.Cancelled && summary == statusText))
         {
             accessible.Append('，').Append(summary);
         }

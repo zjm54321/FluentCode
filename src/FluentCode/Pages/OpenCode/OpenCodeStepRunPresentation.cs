@@ -66,7 +66,7 @@ internal sealed record OpenCodeAsyncCompletion(
     string? ImagePath = null,
     string? Model = null)
 {
-    /// <summary>状态表示失败 / 中止（error / failed / killed / timeout / cancelled / interrupted）。</summary>
+    /// <summary>状态表示没有成功结束（error / failed / killed / timeout / cancelled / interrupted）。</summary>
     public bool IsFailure => State.ToLowerInvariant() is "error" or "failed" or "killed" or "timeout" or "cancelled" or "canceled" or "interrupted" or "aborted";
 
     /// <summary>状态表示仍在运行。</summary>
@@ -75,6 +75,23 @@ internal sealed record OpenCodeAsyncCompletion(
     /// <summary>状态表示成功完成（且退出码缺失或为 0）。</summary>
     public bool IsSuccess => State.ToLowerInvariant() is "completed" or "succeeded" or "success" or "done" && ExitCode is null or 0
         || Kind == OpenCodeAsyncCompletionKind.Pty && State == "exited" && ExitCode == 0;
+
+    /// <summary>
+    /// The server's own terminal state says the job was called off (<c>cancelled</c>). That is a decision, not a fault,
+    /// so rows show it as a neutral “已取消”. Read from the structured state only, never from the notice's wording.
+    /// </summary>
+    public bool IsCancelled => State.ToLowerInvariant() is "cancelled" or "canceled";
+
+    /// <summary>
+    /// Row status for this notice, shared by the notice chip and the call row it settles.
+    /// A cancelled job is <see cref="OpenCodeToolRowStatus.Cancelled"/> even when it also carries a non-zero exit code.
+    /// A cancelled subagent keeps its own design (amber “已取消” notice, launch row counted as failed), so it stays Error.
+    /// </summary>
+    internal OpenCodeToolRowStatus RowStatus
+        => IsCancelled && Kind != OpenCodeAsyncCompletionKind.Subagent ? OpenCodeToolRowStatus.Cancelled
+            : IsFailure || ExitCode is { } code && code != 0 ? OpenCodeToolRowStatus.Error
+            : IsRunning ? OpenCodeToolRowStatus.Running
+            : IsSuccess ? OpenCodeToolRowStatus.Completed : OpenCodeToolRowStatus.Unknown;
 }
 
 /// <summary>A queued child update, never a completion notification or parent processing receipt.</summary>
@@ -559,11 +576,7 @@ internal static class OpenCodeStepRunPresentation
         if (completion.ExitCode is { } exit) summary += " · 退出码 " + exit.ToString(CultureInfo.InvariantCulture);
         var image = completion.Kind == OpenCodeAsyncCompletionKind.Image;
         if (image && ShortModel(completion.Model) is { Length: > 0 } shortModel) summary += " · " + shortModel;
-        OpenCodeToolRowStatus status = completion.IsFailure || completion.ExitCode is { } e && e != 0
-            ? OpenCodeToolRowStatus.Error
-            : completion.IsRunning
-                ? OpenCodeToolRowStatus.Running
-                : completion.IsSuccess ? OpenCodeToolRowStatus.Completed : OpenCodeToolRowStatus.Unknown;
+        var status = completion.RowStatus;
 
         var properties = new List<OpenCodeToolProperty>();
         void Add(string key, string? value, OpenCodeToolPropertyKind kind)

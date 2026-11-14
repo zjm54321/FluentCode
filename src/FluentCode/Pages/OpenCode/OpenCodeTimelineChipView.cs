@@ -177,6 +177,7 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
             {
                 OpenCodeToolRowStatus.Completed => ("已完成", OpenCodeToolTheme.Success),
                 OpenCodeToolRowStatus.Error => ("出错", OpenCodeToolTheme.Critical),
+                OpenCodeToolRowStatus.Cancelled => (OpenCodeToolRowChrome.CancelledText, OpenCodeToolTheme.TextSecondary),
                 OpenCodeToolRowStatus.Running or OpenCodeToolRowStatus.Streaming => ("运行中", (string?)null),
                 _ => (string.Empty, (string?)null),
             };
@@ -287,7 +288,8 @@ internal sealed class OpenCodeTimelineChipView : IOpenCodeDetailContentSource
         _label.Text = content.Name;
         _targetText.Text = _completionNotice && content.Target.Length > 0 ? "· " + content.Target : content.Target;
         _targetText.Visibility = content.Target.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        // B14: unrecovered failure = whole-row red semantic instead of a lone red X.
+        // B14: unrecovered failure = whole-row red semantic instead of a lone red X. A cancelled row is plain grey:
+        // its chrome carries the secondary text key and hides the status glyph, so no branch below paints it red.
         var chrome = OpenCodeToolRowChrome.For(content.Status, content.IsEscalation);
         var summary = chrome.IsFailure ? chrome.ComposeSummary(content.Summary) : content.Summary;
         _summaryText.Text = summary;
