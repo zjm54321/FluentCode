@@ -304,14 +304,14 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             VerticalAlignment = VerticalAlignment.Center,
             MaxWidth = 220,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            Style = ThemedForeground("TextBlock", "AccentTextFillColorPrimaryBrush"),
+            Style = OpenCodeInteractionUi.TryStyle("OpenCodeAccentTextStyle"),
         };
         AppFonts.Apply(_commandChipText, AppFontSlot.Monospace); // Long-lived: follows live font changes.
         _commandChipRemove = ChipRemoveButton("OpenCodeComposerRemoveCommand");
         _commandChipRemove.Click += (_, _) => Raise(CommandRemoved);
         var commandChipRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         commandChipRow.Children.Add(new FontIcon { Glyph = "\uE945", FontSize = 12, // Same lightning as the + menu's 命令. VerticalAlignment = VerticalAlignment.Center,
-            Style = ThemedForeground("FontIcon", "AccentTextFillColorPrimaryBrush") });
+            Style = OpenCodeInteractionUi.TryStyle("OpenCodeAccentFontIconStyle") });
         commandChipRow.Children.Add(_commandChipText);
         commandChipRow.Children.Add(_commandChipRemove);
         _commandChip = new Border
@@ -319,7 +319,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             CornerRadius = new CornerRadius(4),
             Padding = new Thickness(10, 3, 3, 3),
             BorderThickness = new Thickness(1),
-            Style = ThemedBorder("SystemFillColorAttentionBackgroundBrush", "AccentFillColorDefaultBrush"),
+            Style = OpenCodeInteractionUi.TryStyle("OpenCodeComposerCommandChipChromeStyle"),
             Child = commandChipRow,
             VerticalAlignment = VerticalAlignment.Center, // Attachment tiles are taller than text chips.
             Visibility = Visibility.Collapsed,
@@ -351,7 +351,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             CornerRadius = new CornerRadius(4),
             Padding = new Thickness(10, 3, 3, 3),
             BorderThickness = new Thickness(1),
-            Style = ThemedBorder("SubtleFillColorSecondaryBrush", "ControlStrokeColorDefaultBrush"),
+            Style = OpenCodeInteractionUi.TryStyle("OpenCodeComposerIntentChipChromeStyle"),
             Child = intentRow,
             VerticalAlignment = VerticalAlignment.Center,
             Visibility = Visibility.Collapsed,
@@ -476,7 +476,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         {
             CornerRadius = new CornerRadius(8),
             BorderThickness = new Thickness(1),
-            Style = ThemedBorder("LayerFillColorDefaultBrush", "CardStrokeColorDefaultBrush"),
+            Style = OpenCodeInteractionUi.TryStyle("OpenCodeComposerPopupChromeStyle"),
             Child = menuStack,
         };
         AutomationProperties.SetAutomationId(_menu, "OpenCodeComposerCatalog");
@@ -879,9 +879,9 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             _limitLevel = level;
             (_limitIcon.Glyph, _limitIcon.Style) = level switch
             {
-                OpenCodeComposerAttachmentLimitLevel.Over => ("\uEB90", ThemedForeground("FontIcon", "SystemFillColorCriticalBrush")),
+                OpenCodeComposerAttachmentLimitLevel.Over => ("\uEB90", OpenCodeInteractionUi.TryStyle("OpenCodeCriticalFontIconStyle")),
                 OpenCodeComposerAttachmentLimitLevel.Full => ("\uE7BA", OpenCodeInteractionUi.TryStyle("OpenCodeCautionIconStyle")),
-                _ => ("\uEC61", ThemedForeground("FontIcon", "SystemFillColorSuccessBrush")),
+                _ => ("\uEC61", OpenCodeInteractionUi.TryStyle("OpenCodeSuccessFontIconStyle")),
             };
         }
         if (details == _limitDetails) return; // An open tooltip survives unrelated renders.
@@ -1311,7 +1311,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         {
             CornerRadius = new CornerRadius(8),
             BorderThickness = new Thickness(1),
-            Style = ThemedBorder("LayerFillColorDefaultBrush", "CardStrokeColorDefaultBrush"),
+            Style = OpenCodeInteractionUi.TryStyle("OpenCodeComposerPopupChromeStyle"),
             Child = stack,
         };
         AutomationProperties.SetAutomationId(_mentionPanel, "OpenCodeComposerMention");
@@ -1708,15 +1708,13 @@ internal sealed partial class OpenCodeComposerView : StackPanel
             Padding = new Thickness(5, 0, 5, 1),
             BorderThickness = new Thickness(emphasised ? 1 : 0),
             VerticalAlignment = VerticalAlignment.Center,
-            Style = native
-                ? ThemedBorder("AccentFillColorSecondaryBrush", "AccentFillColorDefaultBrush")
-                : ThemedBorder("ControlFillColorSecondaryBrush", "ControlStrokeColorDefaultBrush"),
+            Style = OpenCodeInteractionUi.TryStyle(native ? "OpenCodeComposerNativeOriginChromeStyle" : "OpenCodeComposerSecondaryChipChromeStyle"),
             Child = new TextBlock
             {
                 Text = native ? "FluentCode" : "服务器",
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center,
-                Style = ThemedForeground("TextBlock", native ? "TextOnAccentFillColorPrimaryBrush" : "TextFillColorSecondaryBrush"),
+                Style = OpenCodeInteractionUi.TryStyle(native ? "OpenCodeTextOnAccentStyle" : "OpenCodeSecondaryTextStyle"),
             },
         };
         AutomationProperties.SetAccessibilityView(badge, AccessibilityView.Raw); // The row/chip name already says it.
@@ -1901,7 +1899,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
                 Glyph = OpenCodeComposerInputPolicy.GlyphForMime(a.Mime),
                 FontSize = 18,
                 VerticalAlignment = VerticalAlignment.Center,
-                Style = ThemedForeground("FontIcon", "TextFillColorSecondaryBrush"),
+                Style = OpenCodeInteractionUi.TryStyle("OpenCodeSecondaryFontIconStyle"),
             });
             face.Children.Add(label);
             var file = new Border
@@ -1910,7 +1908,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
                 Padding = new Thickness(12, 0, 28, 0),
                 CornerRadius = new CornerRadius(8),
                 BorderThickness = new Thickness(1),
-                Style = ThemedBorder("ControlFillColorSecondaryBrush", "ControlStrokeColorDefaultBrush"),
+                Style = OpenCodeInteractionUi.TryStyle("OpenCodeComposerSecondaryChipChromeStyle"),
                 Child = face,
             };
             AutomationProperties.SetAutomationId(file, "OpenCodeComposerAttachmentFile");
@@ -2106,7 +2104,7 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         _statusIcon.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
         _statusIcon.Glyph = glyph;
         _statusIcon.Style = tone == "caution" ? OpenCodeInteractionUi.TryStyle("OpenCodeCautionIconStyle")
-            : ThemedForeground("FontIcon", "TextFillColorSecondaryBrush");
+            : OpenCodeInteractionUi.TryStyle("OpenCodeSecondaryFontIconStyle");
         _statusBar.Style = OpenCodeInteractionUi.TryStyle(tone == "caution" ? "OpenCodeCautionBadgeStyle" : "OpenCodeSubtleSurfaceStyle");
         AutomationProperties.SetName(_statusBar, text);
     }
@@ -2151,12 +2149,6 @@ internal sealed partial class OpenCodeComposerView : StackPanel
         t.IsTextSelectionEnabled = false;
         return t;
     }
-
-    private static Style? ThemedBorder(string background, string border)
-        => OpenCodeThemedXaml.BrushStyle("Border", ("Background", background), ("BorderBrush", border));
-
-    private static Style? ThemedForeground(string targetType, string foreground)
-        => OpenCodeThemedXaml.BrushStyle(targetType, ("Foreground", foreground));
 
     private static void Place(Grid grid, FrameworkElement element, int column)
     {

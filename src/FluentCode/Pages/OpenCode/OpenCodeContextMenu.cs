@@ -54,7 +54,8 @@ internal static class OpenCodeContextMenu
 
     internal static Flyout Create(Func<FlyoutBase, IReadOnlyList<OpenCodeContextCommand?>> build)
     {
-        var flyout = new Flyout { FlyoutPresenterStyle = PresenterStyle(), ShouldConstrainToRootBounds = false };
+        // The menu surface uses the MenuFlyoutPresenter resources, so it is indistinguishable from a stock MenuFlyout.
+        var flyout = new Flyout { FlyoutPresenterStyle = OpenCodeInteractionUi.TryStyle("OpenCodeContextMenuFlyoutPresenterStyle"), ShouldConstrainToRootBounds = false };
         // The stock MenuFlyoutPresenter background (MenuFlyoutPresenterBackground = DesktopAcrylicTransparentBrush in
         // WinUI 1.8) is transparent on purpose: stock menus draw their acrylic with a system backdrop on the windowed
         // popup. Our surface uses the same brushes, so it must also carry the backdrop or it renders see-through.
@@ -116,7 +117,7 @@ internal static class OpenCodeContextMenu
             var accelerator = new TextBlock
             {
                 Text = key, FontSize = 12, Margin = new Thickness(20, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
-                Style = Themed("TextBlock", "Foreground", command.Enabled ? "TextFillColorSecondaryBrush" : "TextFillColorDisabledBrush"),
+                Style = OpenCodeInteractionUi.TryStyle(command.Enabled ? "OpenCodeSecondaryTextStyle" : "OpenCodeDisabledTextStyle"),
             };
             Grid.SetColumn(accelerator, 2);
             grid.Children.Add(accelerator);
@@ -145,7 +146,7 @@ internal static class OpenCodeContextMenu
                 var divider = new Rectangle
                 {
                     Width = 1, Height = 20, VerticalAlignment = VerticalAlignment.Center,
-                    Style = Themed("Rectangle", "Fill", "DividerStrokeColorDefaultBrush"),
+                    Style = OpenCodeInteractionUi.TryStyle("OpenCodeContextMenuDividerRectangleStyle"),
                 };
                 Grid.SetColumn(divider, grid.ColumnDefinitions.Count - 1);
                 grid.Children.Add(divider);
@@ -214,52 +215,11 @@ internal static class OpenCodeContextMenu
             icon.RenderTransform = new ScaleTransform { ScaleX = -1 };
         }
         // Icon only: the label keeps the theme text colour so the disabled state still reads correctly.
-        if (command.Critical && command.Enabled) icon.Style = Themed("FontIcon", "Foreground", "SystemFillColorCriticalBrush");
+        if (command.Critical && command.Enabled) icon.Style = OpenCodeInteractionUi.TryStyle("OpenCodeCriticalFontIconStyle");
         return icon;
     }
 
     private const string Xmlns = "xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"";
-    [ThreadStatic] private static Dictionary<string, Style?>? _styles;
-
-    // ThemeResource setters so colours follow light/dark/high-contrast changes.
-    private static Style? Themed(string type, string property, string key)
-    {
-        _styles ??= new Dictionary<string, Style?>(StringComparer.Ordinal);
-        var cacheKey = type + "|" + property + "|" + key;
-        if (_styles.TryGetValue(cacheKey, out var cached)) return cached;
-        Style? style = null;
-        try
-        {
-            style = (Style)XamlReader.Load("<Style " + Xmlns + " TargetType=\"" + type + "\"><Setter Property=\"" + property
-                + "\" Value=\"{ThemeResource " + key + "}\" /></Style>");
-        }
-        catch (Exception) { }
-        return _styles[cacheKey] = style;
-    }
-
-    // The menu surface uses the MenuFlyoutPresenter resources, so it is indistinguishable from a stock MenuFlyout.
-    private static Style? PresenterStyle()
-    {
-        _styles ??= new Dictionary<string, Style?>(StringComparer.Ordinal);
-        if (_styles.TryGetValue("presenter", out var cached)) return cached;
-        Style? style = null;
-        try
-        {
-            style = (Style)XamlReader.Load("<Style " + Xmlns + " TargetType=\"FlyoutPresenter\" BasedOn=\"{StaticResource DefaultFlyoutPresenterStyle}\">"
-                + "<Setter Property=\"Padding\" Value=\"0\" />"
-                + "<Setter Property=\"MinWidth\" Value=\"0\" /><Setter Property=\"MinHeight\" Value=\"0\" /><Setter Property=\"MaxWidth\" Value=\"480\" />"
-                + "<Setter Property=\"Background\" Value=\"{ThemeResource MenuFlyoutPresenterBackground}\" />"
-                + "<Setter Property=\"BorderBrush\" Value=\"{ThemeResource MenuFlyoutPresenterBorderBrush}\" />"
-                + "<Setter Property=\"BorderThickness\" Value=\"1\" />"
-                + "<Setter Property=\"CornerRadius\" Value=\"{ThemeResource OverlayCornerRadius}\" />"
-                + "<Setter Property=\"FontFamily\" Value=\"{ThemeResource ContentControlThemeFontFamily}\" />"
-                + "<Setter Property=\"ScrollViewer.HorizontalScrollMode\" Value=\"Disabled\" />"
-                + "<Setter Property=\"ScrollViewer.HorizontalScrollBarVisibility\" Value=\"Disabled\" />"
-                + "</Style>");
-        }
-        catch (Exception) { }
-        return _styles["presenter"] = style;
-    }
 
     // Lightweight styling: Button states mapped to MenuFlyoutItem's subtle fills (transparent rest, subtle hover/press).
     // Brushes over ThemeResource *colours*: a StaticResource alias inside a theme dictionary would freeze the brush of

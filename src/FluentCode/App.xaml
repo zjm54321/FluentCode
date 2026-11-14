@@ -312,8 +312,9 @@
 
             <!-- ============================================================================================
                  P1 共享契约（CONTRACT-F.md）—— 以下键由 F 发布，其它 lane 只消费，不得就地再定义一个同名变体。
-                 全部为「同值抽取」：定义与各消费点当前的 XamlReader 字符串逐项一致，不含运行时输入。
+                 全部为「同值抽取」：定义与各消费点迁移前的 XamlReader 字符串逐项一致，不含运行时输入。
                  圆角一律引用内置 OverlayCornerRadius(8)/ControlCornerRadius(4)，不再写死数字。
+                 每个键都必须有消费点（tests/fluent-motion 逐键检查）；没人用的键直接删，不留着备用。
                  ============================================================================================ -->
 
             <!-- 右侧快捷入口的 ToggleButton 框（浏览器入口 + 终端入口同值：V 与 B 各自请求了一份相同定义，此处合并为一个键）。
@@ -328,7 +329,8 @@
             </Style>
 
             <!-- 浮层 FlyoutPresenter 模板内部 ScrollViewer 的视口对齐（终端浮层与浏览器浮层同值，合并为一个键）。
-                 只作为消费方作用域内的隐式 ScrollViewer 样式使用（presenter.Resources），不得并入应用级隐式样式。 -->
+                 只作为消费方作用域内的隐式 ScrollViewer 样式使用（presenter.Resources），不得并入应用级隐式样式。
+                 消费方用一行 <Style TargetType="ScrollViewer" BasedOn="{StaticResource 本键}"/> 把它变成该作用域的隐式样式。 -->
             <Style x:Key="OpenCodeOverlayViewportScrollViewerStyle" TargetType="ScrollViewer"
                    BasedOn="{StaticResource DefaultScrollViewerStyle}">
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -347,10 +349,12 @@
                 <Setter Property="Background" Value="{ThemeResource SmokeFillColorDefaultBrush}" />
             </Style>
 
-            <!-- 拾取器弹出层：圆角/字体来自主题，内边距与最小宽度为 0；MaxWidth 依赖锚点宽度，必须由消费方按实例派生。 -->
+            <!-- 拾取器弹出层的固定部分：主题圆角、4 内边距、最小宽度 0，不设 BasedOn（与迁移前的内联样式一致）。
+                 字体与 MaxWidth 不在这里：迁移前字体在每次打开时重新取 AppBodyFontFamily，这一点原样保留在
+                 OpenCodePickerFlyout 的按次派生样式里（共享样式的 Setter 在运行期换字体后是否跟随，没有验证过，所以不搬）；
+                 MaxWidth 依赖锚点宽度，同样按实例派生。 -->
             <Style x:Key="OpenCodePickerFlyoutPresenterStyle" TargetType="FlyoutPresenter">
                 <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
-                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
                 <Setter Property="Padding" Value="4" />
                 <Setter Property="MinWidth" Value="0" />
             </Style>
@@ -432,7 +436,8 @@
                 <Setter Property="Background" Value="{ThemeResource AcrylicInAppFillColorDefaultBrush}" />
                 <Setter Property="BorderBrush" Value="{ThemeResource FlyoutBorderThemeBrush}" />
             </Style>
-            <!-- 浏览器浮层工具条 ToggleButton：无边框的 36x32 图标按钮；悬停/按下/禁用别名留在各宿主作用域。 -->
+            <!-- 浏览器浮层工具条 ToggleButton：无边框的 36x32 图标按钮；悬停/按下/禁用别名留在各宿主作用域。
+                 与视口样式一样，由宿主用一行 BasedOn 本键的隐式样式引入（ApplyToolToggleStyle）。 -->
             <Style x:Key="OpenCodeBrowserToolToggleStyle" TargetType="ToggleButton"
                    BasedOn="{StaticResource DefaultToggleButtonStyle}">
                 <Setter Property="Background" Value="{ThemeResource SubtleFillColorTransparentBrush}" />
@@ -441,13 +446,8 @@
                 <Setter Property="Height" Value="32" />
                 <Setter Property="Padding" Value="0" />
             </Style>
-            <!-- 预览表格列头：可选中复制的正文模板；列头的原生模板与状态保持不变。 -->
-            <DataTemplate x:Key="OpenCodeBrowserPreviewTableHeaderTemplate">
-                <TextBlock Text="{Binding}" TextWrapping="Wrap" IsTextSelectionEnabled="True"
-                           FontFamily="{ThemeResource AppBodyFontFamily}" />
-            </DataTemplate>
 
-            <!-- 代理树：分组图标与 11px 说明文字（用户自选正文字体经 ContentControlThemeFontFamily 生效）。 -->
+            <!-- 代理树：分组图标与 11px 说明文字。说明文字不设 FontFamily，沿用所在位置继承到的字体（与迁移前的内联元素一致）。 -->
             <Style x:Key="OpenCodeAgentTreeAccentIconStyle" TargetType="FontIcon">
                 <Setter Property="Foreground" Value="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                 <Setter Property="FontSize" Value="14" />
@@ -455,7 +455,6 @@
             <Style x:Key="OpenCodeAgentTreeCaptionTextStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="11" />
                 <Setter Property="Foreground" Value="{ThemeResource TextFillColorTertiaryBrush}" />
-                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
                 <Setter Property="TextWrapping" Value="NoWrap" />
                 <Setter Property="TextTrimming" Value="CharacterEllipsis" />
                 <Setter Property="VerticalAlignment" Value="Center" />

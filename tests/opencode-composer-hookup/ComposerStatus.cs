@@ -28,7 +28,6 @@ internal sealed partial class ComposerStatusHost
     private bool _picking;
     private bool _composing;
     private int _sideQuestionPending;
-    private static object ThemedForeground(string control, string key) => (control, key);
 
     internal static void Run()
     {
@@ -97,7 +96,7 @@ internal sealed partial class ComposerStatusHost
             "unknown outcome uses the existing caution background resource and caution icon");
         tones.RenderStatus(idle with { Note = "服务器未接纳提交；草稿已保留。" }, true, false);
         Program.Check(Equals(tones._statusBar.Style, "OpenCodeSubtleSurfaceStyle")
-            && Equals(tones._statusIcon.Style, ("FontIcon", "TextFillColorSecondaryBrush")),
+            && Equals(tones._statusIcon.Style, "OpenCodeSecondaryFontIconStyle"),
             "same status row returns to the existing neutral surface and icon without stale caution styling");
         tones._sync = new() { State = OpenCodeComposerInputState.HeldUnbound };
         tones.RenderStatus(idle, true, false);

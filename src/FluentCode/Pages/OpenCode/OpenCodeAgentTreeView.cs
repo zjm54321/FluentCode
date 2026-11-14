@@ -280,7 +280,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var icon = agentName is null
-            ? (FontIcon)XamlReader.Load("<FontIcon xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Foreground=\"{ThemeResource AccentTextFillColorPrimaryBrush}\" FontSize=\"14\" />")
+            ? new FontIcon { Style = OpenCodeInteractionUi.TryStyle("OpenCodeAgentTreeAccentIconStyle") }
             : OpenCodeAgentIconTheme.Create(agentName, color);
         icon.Glyph = glyph;
         content.Children.Add(key == "shell" ? OpenCodeQuickAccessStyle.TerminalIcon(14, "AccentTextFillColorPrimaryBrush") : icon);
@@ -325,11 +325,7 @@ internal sealed class OpenCodeAgentTreeView : UserControl
     }
 
     private static TextBlock Caption(string text)
-    {
-        var caption = (TextBlock)XamlReader.Load("<TextBlock xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" FontSize=\"11\" Foreground=\"{ThemeResource TextFillColorTertiaryBrush}\" TextWrapping=\"NoWrap\" TextTrimming=\"CharacterEllipsis\" VerticalAlignment=\"Center\" />");
-        caption.Text = text;
-        return caption;
-    }
+        => new() { Text = text, Style = OpenCodeInteractionUi.TryStyle("OpenCodeAgentTreeCaptionTextStyle") };
 
     private static Grid Row(string title, string subtitle, OpenCodeTreeStatus status, object tag, OpenCodeTreeAgent? agent = null)
     {

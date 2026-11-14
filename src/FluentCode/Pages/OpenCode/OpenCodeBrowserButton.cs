@@ -5,7 +5,6 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Windows.System;
 using Windows.UI.Core;
@@ -36,8 +35,7 @@ internal sealed class OpenCodeBrowserButton : Grid
         _toggle.Content = icon;
         // The WSL explorer uses DefaultButtonStyle + transparent background. Keep that same
         // native frame, padding and corner geometry on the native ToggleButton template.
-        _toggle.Style = (Style)XamlReader.Load(
-            "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource ButtonBorderBrush}\"/><Setter Property=\"BorderThickness\" Value=\"{ThemeResource ButtonBorderThemeThickness}\"/><Setter Property=\"CornerRadius\" Value=\"{ThemeResource ControlCornerRadius}\"/></Style>");
+        _toggle.Style = OpenCodeInteractionUi.TryStyle("OpenCodeQuickAccessToggleButtonStyle");
         // Native ToggleButton chrome with subtle checked states, never the stock accent-filled state.
         Services.Appearance.ThemeResources.Aliases(_toggle,
             ("ToggleButtonBackgroundChecked", "SubtleFillColorSecondaryBrush"),

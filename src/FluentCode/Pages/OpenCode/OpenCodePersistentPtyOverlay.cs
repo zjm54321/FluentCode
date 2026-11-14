@@ -21,7 +21,7 @@ internal sealed class OpenCodePersistentPtyOverlay : Grid
 
     internal OpenCodePersistentPtyOverlay()
     {
-        var smoke = new Border(); Theme(smoke, "Background", "SmokeFillColorDefaultBrush");
+        var smoke = new Border { Style = OpenCodeInteractionUi.TryStyle("OpenCodeOverlaySmokeStyle") };
         smoke.Tapped += (_, _) => CloseRequested?.Invoke(this, EventArgs.Empty);
         Children.Add(smoke);
         _presenter = new FlyoutPresenter
@@ -37,12 +37,12 @@ internal sealed class OpenCodePersistentPtyOverlay : Grid
         ScrollViewer.SetHorizontalScrollMode(_presenter, ScrollMode.Disabled);
         ScrollViewer.SetHorizontalScrollBarVisibility(_presenter, ScrollBarVisibility.Disabled);
         // The presenter template's ScrollViewer defaults to Left/Top; stretch it so the terminal fills the card.
+        // The setters are the shared OpenCodeOverlayViewportScrollViewerStyle; this only makes it implicit for this presenter.
         _presenter.Resources = (ResourceDictionary)XamlReader.Load(
-            "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ScrollViewer\" BasedOn=\"{StaticResource DefaultScrollViewerStyle}\"><Setter Property=\"HorizontalContentAlignment\" Value=\"Stretch\"/><Setter Property=\"VerticalContentAlignment\" Value=\"Stretch\"/></Style></ResourceDictionary>");
+            "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ScrollViewer\" BasedOn=\"{StaticResource OpenCodeOverlayViewportScrollViewerStyle}\"/></ResourceDictionary>");
         _presenter.CornerRadius = new CornerRadius(8);
         _presenter.BorderThickness = new Thickness(OpenCodeBrowserOverlayLayout.BorderWidth);
-        _presenter.Style = (Style)XamlReader.Load(
-            "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"FlyoutPresenter\" BasedOn=\"{StaticResource DefaultFlyoutPresenterStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SolidBackgroundFillColorTertiaryBrush}\"/></Style>");
+        _presenter.Style = OpenCodeInteractionUi.TryStyle("OpenCodeOverlayFlyoutPresenterStyle");
         _card.Children.Add(_presenter);
         _card.Children.Add(_freeze);
         Children.Add(_card);
@@ -75,8 +75,4 @@ internal sealed class OpenCodePersistentPtyOverlay : Grid
     }
 
     internal void SetSurfaceSize(double width, double height) { _presenter.Width = width; _presenter.Height = height; }
-
-    private static void Theme(FrameworkElement target, string property, string key)
-        => target.Style = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\""
-            + target.GetType().Name + "\"><Setter Property=\"" + property + "\" Value=\"{ThemeResource " + key + "}\"/></Style>");
 }
