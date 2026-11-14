@@ -45,6 +45,11 @@ QRCoder 1.8.1 was the other candidate. Its `net6.0` dependency group brings `Sys
 
 Only `QrCode.EncodeText` and `QrCode.ToOutlines` are used. The application draws the outline polygons as one XAML path, so no bitmap, GDI+ or SVG code path is involved. The build confirms the assembly restores and publishes; whether a phone camera reads the rendered code still needs a desktop check.
 
+## Vendored icon paths (no package)
+
+- Issue and pull-request state glyphs on link chips (`Pages/OpenCode/OpenCodeLinkChipView.Status.cs`): seven 16 px Octicons outlines (`issue-opened`, `issue-closed`, `skip`, `git-pull-request`, `git-pull-request-draft`, `git-merge`, `git-pull-request-closed`), MIT, © GitHub, https://github.com/primer/octicons. Pinned to npm `@primer/octicons` **19.42.0**: on 2026-11-14 each vendored path was parsed and compared with `build/svg/<name>-16.svg` of that version, and all seven have the same sub-paths, segments and coordinates to within 0.004 px. The strings in the source are a minified rewrite, not the upstream text, so a text diff against upstream is expected. Re-vendor by comparing against the pinned version, then update the pin here and in the source comment.
+- The GitHub mark in `Pages/OpenCode/OpenCodeLinkChipView.cs` does not match the `mark-github` outline shipped in 19.42.0 and is not covered by this pin.
+
 ## Intentional holds
 
 - SkiaSharp and its views/native-assets/HarfBuzz bindings stay at 3.119.2. Stable LiveCharts 2.0.5 and Mapsui WinUI 5.1.0 target this ecosystem; Mapsui's SkiaSharp 4 support is a beta and does not establish stable WinUI support.
