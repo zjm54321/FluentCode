@@ -128,7 +128,8 @@ namespace FluentCode.Pages.OpenCode
     {
         internal FrameworkElement Element { get; } = new TextBlock();
         internal (int Images, int Pdfs) AttachmentCounts { get; set; }
-        internal object? TextContextFlyout { get; set; }
+        // Like the real presenter, the menu lands on the rendered text itself.
+        internal object? TextContextFlyout { get => Element.ContextFlyout; set => Element.ContextFlyout = value; }
         internal void Render(string? text, OpenCodeRichTextStyle style) => ((TextBlock)Element).Text = text ?? string.Empty;
     }
     internal sealed class OpenCodeUserAttachmentsView : IDisposable

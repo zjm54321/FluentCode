@@ -22,6 +22,8 @@ internal static partial class Program
             ("always-visible steer switch beside the bubble", SteerSwitchControl),
             ("another client's message switches both ways", ForeignDeliverySwitch),
             ("right-click entries of a pending bubble", SteerMenuEntries),
+            ("always-visible steer switch in the queue row", QueueSwitchControl),
+            ("right-click entries of a queued row", QueueMenuEntries),
             ("receipt-projected steer switch", ReceiptProjectedSwitch),
             ("empty inbox retires uncertainty", EmptyInboxRetiresUncertainty),
             ("unchanged 204 is visibly unconfirmed", UnchangedDeliveryIsUnconfirmed),
@@ -175,6 +177,124 @@ internal static partial class Program
         own.Queue.IsWithdrawBusy = true;
         Check(ownMenu.Actions().Select(e => e.Label + ":" + e.Enabled).SequenceEqual(new[] { "改为排队:False", "撤回:False" }),
             "entries read the busy state when the menu opens");
+    }
+
+    private static Grid QueueRow(OpenCodePage page, string id) => Descendants(page.Queue).OfType<Grid>()
+        .Single(g => AutomationProperties.GetAutomationId(g) == "OpenCodeQueuedPrompt." + id);
+    private static bool Shown(Button button) => button.Visibility == Visibility.Visible && button.Opacity == 1 && button.IsHitTestVisible;
+
+    private static async Task QueueSwitchControl()
+    {
+        var text = "排队中的第一条";
+        var server = new FakeServer();
+        server.Inbox.Add(UserItem(Inbox, text, 1000));
+        server.Inbox.Add(UserItem("msg_other", "排队中的第二条", 1100));
+        using var client = server.Client();
+        var page = await DeliveryPage(server, client);
+        var row = QueueRow(page, Inbox);
+        var button = QueueButton(page, "OpenCodePendingDelivery.");
+        Check(button is not null && ReferenceEquals(button!.Parent, row), "a queued row keeps its switch under the existing AutomationId");
+        Check(button!.Content is FontIcon { Glyph: "\uE724", FontSize: 16 } && button.Width == 32 && button.Height == 32
+            && button.Padding == new Thickness(0) && button.Style?.Key == "SubtleButtonStyle",
+            "icon only: the composer's send glyph, in the same 32px borderless subtle button as the bubble's queue clock");
+        var clock = "\uE823";
+        Check(((FontIcon)button.Content!).Glyph != clock, "the two directions use different icons");
+        Check(button.AutomationName == "改为插入当前回合：" + text && button.ToolTip as string == "改为插入当前回合",
+            "tooltip is the plain action name; the Narrator name adds which queued message it moves");
+        var second = Descendants(page.Queue).OfType<Button>().Single(b => AutomationProperties.GetAutomationId(b) == "OpenCodePendingDelivery.msg_other");
+        Check(second.AutomationName == "改为插入当前回合：排队中的第二条" && second.AutomationName != button.AutomationName,
+            "several queued entries have distinguishable names");
+        Check(!Descendants(row).OfType<TextBlock>().Any(t => t.Text is "改为插入当前回合" or "当前回合结束后发送")
+            && !Descendants(row).OfType<Button>().Any(b => b.Content is string label && label.Contains("插入")),
+            "no text button or caption is left for the switch");
+        Check(Grid.GetColumn(button) == 2 && row.ColumnDefinitions[2].Width == new GridLength(32)
+            && row.ColumnDefinitions[1].Width == new GridLength(1, GridUnitType.Star)
+            && button.VerticalAlignment == VerticalAlignment.Center,
+            "the switch has a fixed 32px slot beside the message, centred on the row");
+        Check(button.IsTabStop && Shown(button), "visible and keyboard reachable without hover, focus or touch");
+        var withdraw = QueueButton(page, "OpenCodeQueuedPromptWithdraw.");
+        Check(withdraw is { Opacity: 0, IsHitTestVisible: false, Content: "撤回" } && Grid.GetColumn(withdraw) == 3,
+            "this page's own entry keeps 撤回, which cannot be hit while it is hidden");
+        row.Touch();
+        Check(Shown(withdraw!) && Shown(button), "the first touch on the row reveals 撤回; the switch was never hidden");
+        row.MouseExit();
+        Check(!withdraw!.IsHitTestVisible && withdraw.Opacity == 0 && Shown(button), "leaving the row hides 撤回 again, not the switch");
+        row.Focus(); row.Blur();
+        Check(Shown(button), "pointer and focus changes neither hide nor reveal the switch");
+        var requests = 0;
+        page.Queue.DeliveryChangeRequested += (_, _) => requests++;
+        page.Queue.IsWithdrawBusy = true;
+        Check(!button.IsEnabled && !second.IsEnabled && Shown(button), "a running inbox action disables every switch in place");
+        button.RaiseClick();
+        Check(requests == 0, "a disabled switch requests nothing");
+        page.Queue.IsWithdrawBusy = false;
+        Check(button.IsEnabled && second.IsEnabled, "the switches are usable again once the action ends");
+        await page.Click(button);
+        Check(Patches(server) == 1 && server.Bodies.Last(b => b is not null) == "{\"delivery\":\"steer\"}"
+            && requests == 1 && page.Conversation.PendingIds.SequenceEqual(new[] { Inbox }) && page.Queue.HasItems,
+            "the icon routes this entry, and only this entry, into the real delivery handler");
+        Check(Descendants(page.Queue).OfType<Button>().Count(b => AutomationProperties.GetAutomationId(b).StartsWith("OpenCodePendingDelivery.")) == 1,
+            "the other entry stays queued with its own switch");
+
+        var attachmentOnly = new FakeServer();
+        attachmentOnly.Inbox.Add(UserItem(Inbox, "", 1000));
+        using var attachmentClient = attachmentOnly.Client();
+        var bare = await DeliveryPage(attachmentOnly, attachmentClient);
+        Check(QueueButton(bare, "OpenCodePendingDelivery.")?.AutomationName == "改为插入当前回合：附件消息", "an entry without text is still named");
+
+        var stuck = new FakeServer { PatchChangesDelivery = false };
+        stuck.Inbox.Add(UserItem(Inbox, "未确认", 1000));
+        using var stuckClient = stuck.Client();
+        var unconfirmed = await DeliveryPage(stuck, stuckClient);
+        var before = QueueRow(unconfirmed, Inbox);
+        var widths = before.ColumnDefinitions.Select(c => c.Width).ToArray();
+        await unconfirmed.Click(QueueButton(unconfirmed, "OpenCodePendingDelivery.")!);
+        var after = QueueRow(unconfirmed, Inbox);
+        Check(unconfirmed.UncertainChanges == 1 && QueueButton(unconfirmed, "OpenCodePendingDelivery.") is null,
+            "an unconfirmed switch removes the button: the page's server-state rule decides, not the view");
+        Check(after.ColumnDefinitions.Select(c => c.Width).SequenceEqual(widths)
+            && !after.Children.Any(child => Grid.GetColumn(child) == 2),
+            "the slot stays reserved and empty, so the message keeps its width when the switch goes away");
+    }
+
+    private static async Task QueueMenuEntries()
+    {
+        var server = new FakeServer();
+        server.Inbox.Add(UserItem(Inbox, "右键插入", 1000));
+        using var client = server.Client();
+        var foreign = await DeliveryPage(server, client, owned: false);
+        var row = QueueRow(foreign, Inbox);
+        var menu = row.ContextFlyout as OpenCodeMessageMenuProbe;
+        Check(menu is not null && menu.Text() == "右键插入", "right-click on a queued row opens the shared message menu, which copies the message");
+        Check(ReferenceEquals(Descendants(row).OfType<TextBlock>().Single(t => t.Text == "右键插入").ContextFlyout, menu),
+            "right-click on the row's text opens the same menu");
+        var entries = menu!.Actions().ToArray();
+        Check(entries.Length == 1 && entries[0] is { Label: "改为插入当前回合", Glyph: "\uE724", Enabled: true }
+            && entries[0].AutomationId == "OpenCodeQueuedPromptMenuDelivery." + Inbox,
+            "the menu offers 改为插入当前回合 under the button's icon");
+        var requests = 0;
+        foreign.Queue.DeliveryChangeRequested += (_, _) => requests++;
+        foreign.Queue.IsWithdrawBusy = true;
+        Check(menu.Actions().Single() is { Enabled: false }, "the entry reads the busy state when the menu opens, like the button");
+        entries[0].Run();
+        Check(requests == 0, "an entry of a menu opened earlier does nothing while an inbox action runs");
+        foreign.Queue.IsWithdrawBusy = false;
+        await foreign.Run(entries[0].Run);
+        Check(requests == 1 && Patches(server) == 1 && foreign.Conversation.PendingIds.Contains(Inbox) && !foreign.Queue.HasItems,
+            "the menu entry runs the same delivery handler as the button");
+        Check(menu.Actions().Single() is { Enabled: false }, "a menu left over from a replaced row is inert");
+        entries[0].Run();
+        Check(requests == 1, "and its entry requests nothing");
+
+        var stuck = new FakeServer { PatchChangesDelivery = false };
+        stuck.Inbox.Add(UserItem(Inbox, "未确认", 1000));
+        using var stuckClient = stuck.Client();
+        var blocked = await DeliveryPage(stuck, stuckClient);
+        await blocked.Change(Inbox, "steer");
+        var blockedMenu = (OpenCodeMessageMenuProbe)QueueRow(blocked, Inbox).ContextFlyout!;
+        Check(QueueButton(blocked, "OpenCodePendingDelivery.") is null
+            && !blockedMenu.Actions().Any(e => e.Label == "改为插入当前回合"),
+            "an entry that cannot be switched offers the action neither as a button nor in the menu");
     }
 
     private static async Task ReceiptProjectedSwitch()
