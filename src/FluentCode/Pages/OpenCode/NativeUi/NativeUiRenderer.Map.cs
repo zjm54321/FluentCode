@@ -174,7 +174,8 @@ internal sealed partial class NativeUiRenderer
                 else
                 { tiles = new(context); tiles.Failed += TileFailed; source = new CardTileSource(context, tiles); }
                 var map = new Map(); NativeUiMapTileSchema.ConfigureMap(map, source.Schema);
-                map.Layers.Add(new TileLayer(source) { Name = "底图" });
+                // The credit is shown once, by the chip added below, so the base layer does not draw its own.
+                map.Layers.Add(NativeUiMapProviders.ShowCreditInCardOnly(new TileLayer(source) { Name = "底图" }));
                 route = new MemoryLayer { Name = "地点顺序连线", Style = null }; points = new MemoryLayer { Name = "地点", Style = null };
                 map.Layers.Add(route); map.Layers.Add(points);
                 // The library's own +/- widget: it draws and handles taps inside the viewport, so it needs no XAML
@@ -187,8 +188,9 @@ internal sealed partial class NativeUiRenderer
                 control = new MapControl { Map = map, Height = Math.Clamp(N(visual.Model, "height", 320), 180, 640) };
                 AutomationProperties.SetName(control, "交互地图，可平移和缩放；右上角可放大和缩小"); AutomationProperties.SetAutomationId(control, "NativeUiLoadedMap");
                 attribution.Text = NativeUiMapProviders.Attribution(context.Settings);
-                // The chip follows the theme like every other card surface; Mapsui also draws the enabled layer's own
-                // attribution widget, so the credit stays visible even if this chip is covered.
+                // The only credit on the map, and a licence condition of every provider: it is added with the map and
+                // removed with it (StopMap), and nothing else is placed in this corner. The chip follows the theme like
+                // every other card surface and wraps a long custom credit instead of cutting it.
                 var credit = new Border { Child = attribution, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Opacity = .95 };
                 credit.Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SolidBackgroundFillColorBaseBrush"));
                 host.Children.Add(control); host.Children.Add(credit); host.Visibility = fit.Visibility = Visibility.Visible;

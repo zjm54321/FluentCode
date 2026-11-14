@@ -9,6 +9,8 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using FluentCode.Models;
+using FluentCode.Services.NativeUi;
 using Mapsui;
 using Mapsui.Extensions;
 using Mapsui.Layers;
@@ -74,14 +76,59 @@ internal static class MediaAndMapChromeTests
             for (var i = 0; i < 400 && map.Navigator.UpdateAnimations(); i++) await Task.Delay(5);
             Check(Math.Abs(map.Navigator.Viewport.Resolution - 1000) < 1e-9,
                 "Zoom-out restores the previous resolution: " + map.Navigator.Viewport.Resolution.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
 
-            // The attribution widget the library draws for an enabled layer is a separate visible copy at the bottom right.
-            var layer = new MemoryLayer { Name = "底图" };
-            layer.Attribution.Text = "© OpenStreetMap contributors";
-            map.Layers.Add(layer);
-            var credit = map.GetWidgetsOfMapAndLayers().OfType<IWidget>().Where(widget => !ReferenceEquals(widget, zoom)).ToArray();
-            Check(credit.Any(widget => widget is HyperlinkWidget { Text: "© OpenStreetMap contributors" }),
-                "Mapsui exposes every enabled layer's attribution widget to the renderer as well as to the card overlay");
+        // ---------------------------------------------------------------- C30: one credit per map, the card's chip
+        // Showing the credit with the tiles is a licence condition of every provider. The card shows it once, in a
+        // XAML chip, and switches the base layer's own widget off. The production helper that does so runs here
+        // against the real library, for every provider in the enum, so one added later cannot arrive without a credit.
+        var credits = new Dictionary<NativeUiMapProvider, string>
+        {
+            [NativeUiMapProvider.OpenStreetMap] = "© OpenStreetMap contributors",
+            [NativeUiMapProvider.AMap] = "© 高德地图 / AMap",
+            [NativeUiMapProvider.Baidu] = "© 百度地图",
+            [NativeUiMapProvider.TianDiTu] = "© 天地图 · 国家地理信息公共服务平台",
+            [NativeUiMapProvider.Custom] = "© 示例图源 Example Tiles",
+        };
+        foreach (var provider in Enum.GetValues<NativeUiMapProvider>())
+        {
+            var expected = credits.GetValueOrDefault(provider) ?? "";
+            var settings = provider == NativeUiMapProvider.Custom
+                ? new NativeUiMapSettings { Provider = provider, CustomTileUrlTemplate = "https://tiles.example/{z}/{x}/{y}.png", CustomAttribution = expected }
+                : new NativeUiMapSettings { Provider = provider };
+            var credit = NativeUiMapProviders.Attribution(settings);
+            Check(expected.Length > 0 && settings.ValidationError() is null && credit == expected,
+                "The chip's text for " + provider + " is that provider's credit: \"" + credit + "\"");
+
+            using var creditMap = new Map();
+            creditMap.Navigator.SetSize(800, 320);
+            // A base layer as a TileLayer leaves its constructor: the tile source's credit copied into its widget.
+            var baseLayer = new MemoryLayer { Name = "底图" };
+            baseLayer.Attribution.Text = credit; baseLayer.Attribution.Url = "";
+            creditMap.Layers.Add(baseLayer);
+            // Where the library puts that widget once a frame has been drawn: bottom right, 2 px in.
+            baseLayer.Attribution.UpdateEnvelope(170, 18, 800, 320);
+            var corner = new ScreenPosition(790, 310);
+            Check(WidgetInput.GetWidgetsAtPosition(corner, creditMap).Contains(baseLayer.Attribution),
+                "Before the card steps in, the library's own credit is live in the bottom right corner for " + provider);
+
+            var returned = NativeUiMapProviders.ShowCreditInCardOnly(baseLayer);
+            // Enabled is what the Skia widget renderer skips on, and what the map filters its widget list by.
+            Check(ReferenceEquals(returned, baseLayer) && !baseLayer.Attribution.Enabled
+                && !creditMap.GetWidgetsOfMapAndLayers().OfType<HyperlinkWidget>().Any(),
+                "The library has no credit of its own left to draw for " + provider);
+            Check(!WidgetInput.GetWidgetsAtPosition(corner, creditMap).Any(),
+                "Nothing of the library's answers a tap in that corner any more for " + provider);
+            Check(baseLayer.Enabled && baseLayer.Attribution.Text == credit,
+                "The layer still draws its tiles and still states whose they are for " + provider);
+        }
+        // Tiles and credit go together: a custom source without a credit is refused before a tile is asked for.
+        {
+            var uncredited = new NativeUiMapSettings { Provider = NativeUiMapProvider.Custom, CustomTileUrlTemplate = "https://tiles.example/{z}/{x}/{y}.png", CustomAttribution = " " };
+            var refused = false;
+            try { NativeUiMapProviders.TileUrl(uncredited, 2, 1, 3); } catch (InvalidOperationException) { refused = true; }
+            Check(string.IsNullOrWhiteSpace(NativeUiMapProviders.Attribution(uncredited)) && uncredited.ValidationError() is not null && refused,
+                "A custom tile source without a credit never gets a tile URL");
         }
 
         // ---------------------------------------------------------------- map colours: the rule, recomputed
@@ -183,12 +230,32 @@ internal static class MediaAndMapChromeTests
         Check(mapSource.Contains("private MapColor MapPaint(") && mapSource.Contains("ComponentBrush(token, background)"),
             "Map colours are resolved from the same brush helper every other native card component uses");
         Check(mapSource.Contains("FontFamily = NativeUiTheme.MapLabelFont"), "Map labels keep the shared CJK-capable font");
-        // C30: neither attribution copy is removed until the on-screen duplicate check says which one is visible.
-        Check(mapSource.Contains("public Attribution Attribution => new(NativeUiMapProviders.Attribution(context.Settings), \"\")")
-            && mapSource.Contains("attribution.Text = NativeUiMapProviders.Attribution(context.Settings)"),
-            "Both attribution copies (layer widget and card overlay) are still in place");
+        // C30: the chip is the one credit on the map. Every tile layer the card creates goes through the helper
+        // exercised above, and the chip is given the provider's text and joins the map in the same step.
+        Check(mapSource.Split("new TileLayer(").Length >= 2
+            && mapSource.Split("new TileLayer(").Length == mapSource.Split("NativeUiMapProviders.ShowCreditInCardOnly(new TileLayer(").Length,
+            "Every tile layer the card creates has the library's own credit switched off");
+        Check(mapSource.Contains("attribution.Text = NativeUiMapProviders.Attribution(context.Settings);")
+            && mapSource.Contains("host.Children.Add(control); host.Children.Add(credit);"),
+            "The chip carries the provider's credit and is laid over the map together with it");
         Check(!mapSource.Contains("Microsoft.UI.Colors.White") && mapSource.Contains("SolidBackgroundFillColorBaseBrush"),
             "The attribution chip follows the theme instead of a hard-coded white background");
+        // Legible on the light tiles. The chip is the page colour with caption text in the secondary text colour
+        // (the same two tokens as the zoom buttons' fill and frame above), and the whole chip is slightly see-through,
+        // so both mix with whatever the map shows beneath. 4.5:1 is the WCAG AA figure for text of this size. Like
+        // the figures above this is arithmetic on the tokens' documented values, not a rendering.
+        var chip = Regex.Match(mapSource, @"var credit = new Border \{[^}]*\bOpacity = ([0-9.]+) \}");
+        var chipOpacity = chip.Success ? double.Parse(chip.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
+        Check(chip.Success && mapSource.Contains("var attribution = NativeUiComponentTheme.Text(\"\", true);"),
+            "The chip's opacity and its caption text style can be read from the renderer");
+        // Beneath the chip: the four tile colours, then the darkest and the lightest thing a map can show.
+        var beneath = tiles.Select(tile => tile.Colour).Append((0, 0, 0)).Append((255, 255, 255)).ToArray();
+        foreach (var (theme, plate, ink) in new[] { ("light", lightFill, lightFrame), ("dark", darkFill, darkFrame) })
+        {
+            var ratios = beneath.Select(under => Contrast(Over(ink, chipOpacity, under), Over(plate, chipOpacity, under))).ToArray();
+            Check(ratios.All(ratio => ratio >= 4.5),
+                "The credit reads at 4.5:1 or better on its chip whatever the map shows beneath, " + theme + " theme: " + string.Join(" / ", ratios.Select(Ratio)));
+        }
         Check(mapSource.Contains("baiduTiles = new(context); baiduTiles.Failed += TileFailed; source = baiduTiles;")
             && mapSource.Contains("baiduTiles?.Dispose(); baiduTiles = null;"),
             "The optional Baidu source keeps its own selection and disposal path");
