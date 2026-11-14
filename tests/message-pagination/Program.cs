@@ -19,7 +19,7 @@ internal static partial class Program
 
     private static async Task HomeRootActions()
     {
-        Check(new OpenCodePage().TestHomeProtectedProjection(), "protected Home status reaches attention projection without fabricating PendingAction or displaying success");
+        Check(new OpenCodePage().TestHomeProtectedProjection(), "protected Home status keeps its warning without fabricating PendingAction or attention membership");
         foreach (var action in new[] { OpenCodeHomeSessionAction.Delete, OpenCodeHomeSessionAction.Rename, OpenCodeHomeSessionAction.Archive })
         {
             var backend = new HomeBackend(); using var client = backend.CreateClient(); var page = new OpenCodePage();
@@ -310,6 +310,7 @@ internal static partial class Program
             }
             foreach (var (name, run) in new (string, Func<Task>)[]
             {
+                ("Home attention truth table: observed completion, durable-only unread, questions, permissions and protection", HomeAttentionTruthTable),
                 ("Home native/global metadata, loaded depth, visible/reconnect repair, shared flight and backoff", () => HomeRefreshRegressions()),
                 ("Home native row/ring/grid identity, viewport/focus, open menu, project ring and calendar", () => { HomeViewRefreshRegressions(); return Task.CompletedTask; }),
                 ("PF2 independent refresh reads share one round-trip; unknown/canceled display snapshots stay fenced", ParallelRefreshReads),

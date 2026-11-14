@@ -39,6 +39,9 @@ public sealed record OpenCodeHomeProject(OpenCodeHomeProjectKey Key, string Disp
 public sealed record OpenCodeHomeStatus(bool? Working = null, bool? PendingAction = null,
     bool IsUnread = false, string? Outcome = null)
 {
+    /// <summary>The displayed completion matches this client's outcome and idle watermark observed during this run;
+    /// durable metadata alone can be unread without being an observed completion.</summary>
+    public bool IsCompletionObserved { get; init; }
     public bool? QuestionPending { get; init; }
     public bool MutationProtected { get; init; }
     public double? CompletedAt { get; init; }
@@ -66,9 +69,11 @@ public sealed record OpenCodeHomeSessionRow(OpenCodeHomeSession Session, string 
         or OpenCodeHomeTone.NeedsAction or OpenCodeHomeTone.QuestionBlocked);
     public bool ShowStatusIndicator => !ShowUnreadIndicator;
 
-    /// <summary>需要你处理：被提问阻塞，或已结束但尚未查看。仍在运行的旧完成未读不算“已结束”。</summary>
-    public bool NeedsAttention => Session.Status?.MutationProtected == true || Tone == OpenCodeHomeTone.QuestionBlocked
-        || IsUnread && Tone is not (OpenCodeHomeTone.Working or OpenCodeHomeTone.WorkingNeedsAction);
+    /// <summary>需要你处理：等待回答或权限批准，或本次运行中观察到结束但尚未查看。
+    /// 历史未读及操作保护本身不入组；仍在运行的旧完成未读不算“已结束”。</summary>
+    public bool NeedsAttention => Session.Status is { } status
+        && (status.QuestionPending == true || status.PendingAction == true
+            || status.IsCompletionObserved && IsUnread && status.Working != true);
 }
 
 /// <summary>Pure display projection; never creates catalog entries, changes session records, or infers activity.</summary>
@@ -90,6 +95,7 @@ public static class OpenCodeHomeProjection
         return new(state?.Working, state?.PendingAction,
             completion is not null && (viewed is null || completion.IdleWatermark > viewed), completion?.Outcome ?? info.Outcome)
         {
+            IsCompletionObserved = state?.Completion is { } observed && completion == observed,
             QuestionPending = state?.QuestionPending,
             MutationProtected = state?.MutationProtected == true,
             CompletedAt = completion?.IdleWatermark,
