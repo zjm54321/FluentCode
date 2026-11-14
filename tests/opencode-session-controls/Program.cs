@@ -30,6 +30,7 @@ internal static class Program
         await Wire(); Console.WriteLine("PASS group 1: strict wire, model alias/variant/default/null, typed errors, guarded zero HTTP.");
         await Controls(); Console.WriteLine("PASS group 2: authoritative history, preview/confirmation/source, acceptance vs refresh, fail-closed protection.");
         await GateAndContinuation(); Console.WriteLine("PASS group 3: exact lease and paired continuation, existing request isolation, one prompt/zero explicit commit.");
+        await ContinuationWithoutAsking(); Console.WriteLine("PASS group 3b: a prompt after a files-free undo the page was showing is permitted unasked; every other stage, kind or observation still asks or is refused.");
         await Background(); Console.WriteLine("PASS group 4: session background wire, rejection/unknown gate and guarded origin.");
         await RootManagement(); Console.WriteLine("PASS group 5: real V2 root delete/rename, exact guard, rejection/unknown and stale metadata.");
         await PersistentSelections(); Console.WriteLine("PASS group 6: persistent subsequent-turn model/variant selection, authoritative accepted state and typed model rejection.");
@@ -505,6 +506,141 @@ internal static class Program
         Check(coordinator.CompleteContinuation(permitted.Permit!, held, operation, NotificationInteractionStatus.Succeeded,
             NotificationInteractionStatus.Succeeded, Current) && held.CanControlSession(), "exact paired acceptance settlement");
         await ReviewUnstagedPolicy();
+    }
+
+    // r21-K: sending after an undo. The coordinator, not the page, decides when no question is needed.
+    private const string PlainStage = "{\"messageID\":\"msg_a\"}";
+    private const string SnapshotStage = "{\"messageID\":\"msg_a\",\"snapshot\":\"snap\",\"files\":[]}";
+    private const string FileStage = "{\"messageID\":\"msg_a\",\"snapshot\":\"snap\",\"files\":["
+        + "{\"file\":\"a.txt\",\"patch\":\"\",\"additions\":1,\"deletions\":0,\"status\":\"modified\"}]}";
+    private static async Task ContinuationWithoutAsking()
+    {
+        const ComposerSubmissionKind prompt = ComposerSubmissionKind.Prompt;
+        // The one fact behind "restored files": the stage's file list, not the presence of a snapshot.
+        var snapshotOnly = new SessionControlRevert("msg_a", null, true, 0, new string('A', 64));
+        var withFiles = snapshotOnly with { FileCount = 2 };
+        Check(snapshotOnly.MayHaveFileEffects && !SessionControlContinuationRule.RestoredFiles(snapshotOnly)
+            && SessionControlContinuationRule.RestoredFileCount(snapshotOnly) == 0
+            && SessionControlContinuationRule.RestoredFiles(withFiles) && SessionControlContinuationRule.RestoredFileCount(withFiles) == 2
+            && !SessionControlContinuationRule.RestoredFiles(null) && SessionControlContinuationRule.RestoredFileCount(null) == 0,
+            "restored files = revert.files is not empty; a snapshot alone restored nothing");
+
+        foreach (var stage in new[] { PlainStage, SnapshotStage })
+        {
+            using var server = new Server { Stage = stage }; var gate = new OpenCodeInteractionGate();
+            var coordinator = new OpenCodeSessionControlCoordinator(gate);
+            var origin = server.Origin() with { ObservedStage = new("msg_a") };
+            using var held = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
+            var ready = await coordinator.PrepareContinuationAsync(origin, held, Empty, null, Current, sends: prompt);
+            Check(ready.Status == SessionControlStatus.Ready && ready.RequiredConsent is null && ready.Permit is { } permit
+                && permit.Stage.MessageId == "msg_a" && permit.Stage.Fingerprint == ready.State!.Revert!.Fingerprint
+                && ReferenceEquals(permit.Origin, origin) && permit.Draft == Empty && server.Mutations == 0,
+                "prompt after a files-free undo that was on screen: permitted without consent, bound to the stage just read");
+            Check(held.GetSessionControlProtection() is null && held.GetComposerSubmissionProtection() is null,
+                "preparing installs no protection");
+            // The permit is the same capability a confirmed send gets: exact lease, exact draft, one use, paired settlement.
+            using var client = server.Client(); var operation = Guid.NewGuid();
+            Check(!coordinator.TryStartContinuation(ready.Permit!, held, operation, new("another-draft", false), prompt, Current,
+                () => throw new Exception("wrong draft started")), "the unasked permit still needs the exact draft");
+            var again = await coordinator.PrepareContinuationAsync(origin, held, Empty, null, Current, sends: prompt);
+            await client.SendPromptGuardedAsync(origin.SessionId, "continue", null,
+                send => coordinator.TryStartContinuation(again.Permit!, held, operation, Empty, prompt, Current, send), default);
+            Check(server.Mutations == 1 && server.Requests.Count(r => r.Path.EndsWith("/prompt")) == 1
+                && !server.Requests.Any(r => r.Path.EndsWith("/commit"))
+                && held.GetSessionControlProtection()?.Kind == SessionControlKind.RevertContinuation
+                && held.GetSessionControlProtection()?.TargetFingerprint == again.Permit!.Stage.Fingerprint,
+                "one prompt POST, no commit call, and the stage it commits is recorded under the lease");
+            Check(!coordinator.TryStartContinuation(again.Permit!, held, operation, Empty, prompt, Current, () => throw new Exception("duplicate")), "one-use permit");
+            Check(coordinator.CompleteContinuation(again.Permit!, held, operation, NotificationInteractionStatus.Succeeded,
+                NotificationInteractionStatus.Succeeded, Current) && held.CanControlSession(), "accepted prompt settles both protections");
+        }
+
+        // Anything else found by the fresh read asks, exactly as before: the required consent names the stage read now.
+        foreach (var (name, stage, observed, sends) in new (string, string, SessionControlObservedStage?, ComposerSubmissionKind?)[]
+        {
+            ("undo restored files", FileStage, new("msg_a"), prompt),
+            ("server command", PlainStage, new("msg_a"), ComposerSubmissionKind.Command),
+            ("kind not stated", PlainStage, new("msg_a"), null),
+            ("another client undid further", "{\"messageID\":\"msg_z\"}", new("msg_a"), prompt),
+            ("page was showing no undo", PlainStage, new(null), prompt),
+            ("page had not read the undo state", PlainStage, null, prompt),
+        })
+        {
+            using var server = new Server { Stage = stage }; var gate = new OpenCodeInteractionGate();
+            var coordinator = new OpenCodeSessionControlCoordinator(gate);
+            var origin = server.Origin() with { ObservedStage = observed };
+            using var held = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
+            var asked = await coordinator.PrepareContinuationAsync(origin, held, Empty, null, Current, sends: sends);
+            var read = asked.State?.Revert?.Fingerprint;
+            Check(asked.Status == SessionControlStatus.ConfirmationRequired && asked.Permit is null && read is not null
+                && asked.RequiredConsent is { } consent && consent.StageFingerprint == read
+                && consent.DraftFingerprint == Empty.Fingerprint && ReferenceEquals(consent.Origin, origin) && server.Mutations == 0,
+                name + ": not committed silently; asks about the stage just read");
+            var confirmed = await coordinator.PrepareContinuationAsync(origin, held, Empty, asked.RequiredConsent, Current, sends: sends);
+            Check(confirmed.Status == SessionControlStatus.Ready && confirmed.Permit?.Stage.Fingerprint == read,
+                name + ": the answer to that question permits that stage");
+        }
+
+        using (var server = new Server { Stage = FileStage })
+        {
+            var gate = new OpenCodeInteractionGate(); var coordinator = new OpenCodeSessionControlCoordinator(gate);
+            var origin = server.Origin() with { ObservedStage = new("msg_a") };
+            using var held = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
+            var asked = await coordinator.PrepareContinuationAsync(origin, held, Empty, null, Current, sends: prompt);
+            // While the question is open the undo is replaced by a plain one at the same message.
+            server.Stage = PlainStage;
+            var stale = await coordinator.PrepareContinuationAsync(origin, held, Empty, asked.RequiredConsent, Current, sends: prompt);
+            Check(stale.Status == SessionControlStatus.ConfirmationRequired && stale.Permit is null
+                && stale.RequiredConsent != asked.RequiredConsent,
+                "an answer given for another stage is never swapped for the no-ask rule: it asks again");
+            Check((await coordinator.PrepareContinuationAsync(origin, held, new("typed-more", false), asked.RequiredConsent, Current, sends: prompt)).Permit is null,
+                "nor is an answer given for another draft");
+        }
+
+        // The guards that do not depend on consent hold on the unasked path too.
+        using (var server = new Server { Stage = PlainStage })
+        {
+            var gate = new OpenCodeInteractionGate(); var coordinator = new OpenCodeSessionControlCoordinator(gate);
+            var origin = server.Origin() with { ObservedStage = new("msg_a") };
+            using (var wrong = await gate.EnterAsync(origin.Source.Identity, "ses_other"))
+                Check((await coordinator.PrepareContinuationAsync(origin, wrong, Empty, null, Current, sends: prompt)).Status == SessionControlStatus.Blocked
+                    && server.Requests.Count == 0, "a lease for another session is refused before any read");
+            using (var held = await gate.EnterAsync(origin.Source.Identity, origin.SessionId))
+            {
+                int reads = server.Requests.Count;
+                var lost = await coordinator.PrepareContinuationAsync(origin, held, Empty, null, _ => false, sends: prompt);
+                Check(lost.Permit is null && lost.State is null && server.Requests.Count == reads, "no start authority: no read, no permit");
+                held.BeginMutation("frm_unrelated", NotificationNavigationKind.Form);
+                held.CompleteMutation(NotificationInteractionStatus.OutcomeUnknown);
+                var blocked = await coordinator.PrepareContinuationAsync(origin, held, Empty, null, Current, sends: prompt);
+                Check(blocked.Status == SessionControlStatus.Blocked && blocked.Permit is null && blocked.RequiredConsent is null,
+                    "an unresolved earlier request refuses a send that would commit an undo; it is not turned into a question");
+            }
+        }
+        using (var server = new Server { Stage = PlainStage })
+        {
+            var gate = new OpenCodeInteractionGate(); var coordinator = new OpenCodeSessionControlCoordinator(gate);
+            var origin = server.Origin() with { ObservedStage = new("msg_a") };
+            using var held = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
+            var earlier = Guid.NewGuid();
+            held.BeginSessionControl(earlier, SessionControlKind.StageRevert, new string('C', 64));
+            held.CompleteSessionControl(earlier, NotificationInteractionStatus.OutcomeUnknown);
+            int reads = server.Requests.Count;
+            Check((await coordinator.PrepareContinuationAsync(origin, held, Empty, null, Current, sends: prompt)).Status == SessionControlStatus.Blocked
+                && server.Requests.Count == reads && held.GetSessionControlProtection()?.OperationId == earlier,
+                "an undo whose outcome is unknown refuses the send before any read and stays protected");
+        }
+        using (var server = new Server { Stage = PlainStage, FailRefresh = true })
+        {
+            var gate = new OpenCodeInteractionGate(); var coordinator = new OpenCodeSessionControlCoordinator(gate);
+            var origin = server.Origin() with { ObservedStage = new("msg_a") };
+            server.Mutations = 1; // FailRefresh answers 500 to the state read from now on.
+            using var held = await gate.EnterAsync(origin.Source.Identity, origin.SessionId);
+            var unreadable = await coordinator.PrepareContinuationAsync(origin, held, Empty, null, Current, sends: prompt);
+            Check(unreadable.Status == SessionControlStatus.ConfirmationRequired && unreadable.State is null
+                && unreadable.RequiredConsent is null && unreadable.Permit is null,
+                "a stage that cannot be read is never treated as plain or as absent: no permit and nothing to consent to");
+        }
     }
 
     private static async Task ReviewSettlementOwnership()
