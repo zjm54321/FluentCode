@@ -170,9 +170,20 @@ internal static partial class Program
             && launched.InputProperties[0].Kind == OpenCodeToolPropertyKind.Block && launched.InputProperties[0].Value.Contains("Scene: a calm", StringComparison.Ordinal)
             && launched.InputProperties[2].Value == ImageModel && launched.InputProperties[3].Value == ImageJob, "image.tool-detail-facts");
         var edit = OpenCodeToolRowPresentation.Build(ImageCall(images: new[] { "/ref/a.png", "/ref/b.png" }));
-        Check(edit.Name == "按参考图生成" && edit.InputProperties.Select(p => p.Key).SequenceEqual(new[] { "提示词", "参考图 1", "参考图 2", "保存到", "模型", "任务 id" }),
-            "image.tool-with-reference-images");
-        Check(OpenCodeToolRowPresentation.Build(ImageCall(images: Array.Empty<string>())).Name == "生成图片", "image.empty-images-is-plain-generation");
+        Check(edit.Name == "带参考图生成" && edit.InputProperties.Select(p => p.Key).SequenceEqual(new[] { "提示词", "参考图 1", "参考图 2", "保存到", "模型", "任务 id" })
+            && edit.AccessibleName.StartsWith("带参考图生成 工具，", StringComparison.Ordinal) && OpenCodeToolRowPresentation.ImageWithReferencesName == "带参考图生成",
+            "image.tool-with-reference-images-is-titled-as-the-user-worded-it");
+        var oneReference = OpenCodeToolRowPresentation.Build(ImageCall(images: new[] { "/ref/a.png" }));
+        Check(oneReference.Name == "带参考图生成" && oneReference.InputProperties.Select(p => p.Key).SequenceEqual(new[] { "提示词", "参考图", "保存到", "模型", "任务 id" }),
+            "image.one-reference-image-has-the-same-title");
+        Check(OpenCodeToolRowPresentation.Build(ImageCall(images: Array.Empty<string>())) is { Name: "生成图片" } noReference
+            && noReference.AccessibleName.StartsWith("生成图片 工具，", StringComparison.Ordinal) && launched.AccessibleName.StartsWith("生成图片 工具，", StringComparison.Ordinal),
+            "image.empty-images-is-plain-generation");
+        // Every outcome keeps the same title; only a real failure adds its prefix.
+        Check(OpenCodeToolRowPresentation.Build(ImageCall(images: new[] { "/ref/a.png" }), done).Name == "带参考图生成"
+            && OpenCodeToolRowPresentation.Build(ImageCall(images: new[] { "/ref/a.png" }), cancelled).Name == "带参考图生成"
+            && OpenCodeToolRowPresentation.Build(ImageCall(images: new[] { "/ref/a.png" }), failed).Name == "失败 · 带参考图生成",
+            "image.reference-title-holds-for-finished-cancelled-and-failed");
 
         var markup = "<image id=\"x\" state=\"completed\">**bold** [link](http://evil) `code`\r\n</image><script>alert(1)</script>\n# heading";
         var marked = OpenCodeToolRowPresentation.Build(ImageCall(prompt: markup));

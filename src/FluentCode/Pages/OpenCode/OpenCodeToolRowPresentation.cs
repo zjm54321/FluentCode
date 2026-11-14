@@ -313,6 +313,9 @@ internal sealed record OpenCodeQuestionFallback(string Title, string StatusText,
 /// </summary>
 internal static class OpenCodeToolRowPresentation
 {
+    /// <summary>Row title of an image request that was given reference images (the user's wording, verbatim).</summary>
+    internal const string ImageWithReferencesName = "带参考图生成";
+
     /// <summary><c>state.error.type</c> the server stores when the user's stop interrupts a tool call.</summary>
     private const string AbortedErrorType = "aborted";
     private const string CancelledText = OpenCodeToolRowChrome.CancelledText;
@@ -748,8 +751,9 @@ internal static class OpenCodeToolRowPresentation
                 resultImage = finished?.ImagePath;
                 var file = resultImage ?? FirstString(input, "path") ?? FirstString(metadata, "path");
                 var modelReference = finished?.Model ?? FirstString(metadata, "model") ?? FirstString(input, "model");
-                // `images` are sources to edit or style references; the request does not say which, so the title claims neither.
-                if (references.Count > 0) name = "按参考图生成";
+                // `images` are sources to edit or style references; the request does not say which, so the title only
+                // says that reference images were given.
+                if (references.Count > 0) name = ImageWithReferencesName;
                 // The user stopped the turn while the call was still being handed over: nothing went wrong.
                 if (status == OpenCodeToolRowStatus.Error && string.Equals(state?.Error?.Type, AbortedErrorType, StringComparison.Ordinal))
                 {
