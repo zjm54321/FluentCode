@@ -1,15 +1,16 @@
-// LANE N1: contract guards for the Native UI effects adapter (C13 celebration, C20 skeleton bars, C12 flip) and for
+// Contract guards for the Native UI effects adapter (C13 celebration, C20 skeleton bars, C12 flip) and for
 // the renderer call sites that consume it. The adapter itself is WinUI code and cannot be instantiated headlessly, so
 // its lifetime, cancellation and motion-policy rules are pinned as structural guards over the production sources, the
 // same way the other WinUI-touching suites in this repository do it. Nothing here opens a window.
+// The one part that is executed is the flashcard's turn order (FlipStateTests): that state is WinUI-free.
 //
-// The cancellation and stale-completion tests below are deliberately order-sensitive: they pin that a burst removed by
-// the duration limit, by unload, by disposal or by a superseding burst cannot leave its animated canvas in the tree,
-// and that a flip whose completion arrives after a newer flip (or after disposal) paints nothing.
+// The cancellation tests below are deliberately order-sensitive: they pin that a burst removed by the duration limit,
+// by unload, by disposal or by a superseding burst cannot leave its animated canvas in the tree.
 using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using FluentCode.Pages.OpenCode;
 
 internal static class NativeUiEffectsTests
 {
@@ -150,22 +151,19 @@ internal static class NativeUiEffectsTests
             && statics.Length == 2,
             "Its statics are immutable value data only (found: " + string.Join(" | ", statics) + ")");
 
-        // ---------------------------------------------------------------- C12: flip supersession and reduced motion
+        // ---------------------------------------------------------------- C12: the flashcard's face
 
-        require(adapter.Contains("if (_target == flipped) { if (_displayed == flipped) _render?.Invoke(flipped); return; }", StringComparison.Ordinal),
-            "Re-reporting the current face repaints it without replaying the flip");
-        require(adapter.Contains("Play(++_generation, flipped); // A newer flip supersedes any flip still in flight.", StringComparison.Ordinal),
-            "A newer flip supersedes a flip that is still in flight");
-        require(adapter.Contains("if (_disposed || generation != _generation || _displayed == flipped) return;", StringComparison.Ordinal),
-            "A completion that a newer flip superseded paints nothing");
-        require(adapter.Contains("_disposed = true; ++_generation; _render = null;", StringComparison.Ordinal),
-            "Disposal invalidates the in-flight generation and drops the render callback, so a late completion is inert");
-        require(adapter.Contains("if (!FluentMotion.Enabled) FluentMotion.Settle(_host);", StringComparison.Ordinal),
-            "Reduced motion settles the host, so the flip never leaves a half-rotated card");
-        require(adapter.Contains("private void Play(int generation, bool flipped)", StringComparison.Ordinal)
-            && adapter.Contains("with this generation at the midpoint", StringComparison.Ordinal)
-            && adapter.Contains("the only place the next wave changes", StringComparison.Ordinal),
-            "The flip keeps one animation seam for the next wave, and it already receives the supersession generation");
+        FlipStateTests(require);
+        var flipEffect = Slice(adapter, "internal sealed class FlipEffect", "private sealed class SkeletonHost");
+        require(flipEffect.Contains("private readonly NativeUiFlipState _state = new();", StringComparison.Ordinal)
+            && flipEffect.Contains("_render?.Invoke(_state.Shown);", StringComparison.Ordinal)
+            && Regex.Matches(Code(flipEffect), @"_render\?\.Invoke\(").Count == 1,
+            "The flashcard paints the face its state shows, from one place, on every report");
+        require(flipEffect.Contains("var step = _state.Request(flipped, animate: false);", StringComparison.Ordinal),
+            "The face changes in the frame of the report: the adapter starts no turn");
+        require(flipEffect.Contains("if (_disposed) return;", StringComparison.Ordinal)
+            && flipEffect.Contains("_disposed = true; _render = null;", StringComparison.Ordinal),
+            "Disposal drops the render callback, so a report arriving after it paints nothing");
 
         // ---------------------------------------------------------------- C12/C13 call sites
 
@@ -248,6 +246,116 @@ internal static class NativeUiEffectsTests
             && !radioChange.Contains("if (value ==", StringComparison.Ordinal)
             && radio.Contains("foreach (var tile in radios.Items.OfType<RadioButton>()) NativeUiTheme.RadioCard(tile);", StringComparison.Ordinal),
             "Every selection change repaints the checked-state cards, even when options share a value or selection is cleared");
+    }
+
+    /// <summary>
+    /// C12: the order of a flashcard turn, executed against the state the effects adapter is driven by. Nothing here
+    /// reads source text: each line calls the production type and checks what it answers.
+    /// </summary>
+    private static void FlipStateTests(Action<bool, string> require)
+    {
+        const NativeUiFlipState.Step Paint = NativeUiFlipState.Step.Paint, TurnAway = NativeUiFlipState.Step.TurnAway,
+            TurnBack = NativeUiFlipState.Step.TurnBack, Settle = NativeUiFlipState.Step.Settle;
+        const NativeUiFlipState.Leg Rest = NativeUiFlipState.Leg.Rest, Away = NativeUiFlipState.Leg.Away, Back = NativeUiFlipState.Leg.Back;
+        // A card that already shows its front, with motion allowed.
+        static NativeUiFlipState Front() { var state = new NativeUiFlipState(); state.Request(false, animate: true); return state; }
+
+        foreach (var animate in new[] { false, true })
+            foreach (var face in new[] { false, true })
+            {
+                var first = new NativeUiFlipState();
+                require(!first.Shown && first.Phase == Rest, "A fresh flashcard shows its front and is at rest");
+                require(first.Request(face, animate) == Paint && first.Shown == face && first.Wanted == face && first.Phase == Rest && first.Generation == 0,
+                    "A card's first face is painted without a turn, a restored back face included (face " + face + ", motion " + animate + ")");
+            }
+
+        var still = new NativeUiFlipState(); still.Request(false, animate: false);
+        require(still.Request(true, animate: false) == Settle && still.Shown && still.Phase == Rest,
+            "With motion off the new face shows in the frame of the report");
+        require(still.Request(true, animate: false) == Paint && still.Shown, "An unchanged report repaints the face on screen");
+        require(still.Request(false, animate: false) == Settle && !still.Shown && still.Phase == Rest, "With motion off the card flips back the same way");
+
+        var card = Front();
+        require(card.Request(true, animate: true) == TurnAway && !card.Shown && card.Wanted && card.Phase == Away,
+            "A turn starts away from the viewer with the old face still showing");
+        var away = card.Generation;
+        require(card.Request(true, animate: true) == Paint && !card.Shown && card.Phase == Away && card.Generation == away,
+            "A refresh during the away leg repaints the old face and leaves the leg alone");
+        require(!card.Landed(away) && card.Phase == Away && !card.Shown, "A landing cannot end an away leg");
+        require(card.Midpoint(away) && card.Shown && card.Phase == Back && card.Generation != away,
+            "At edge-on the wanted face becomes the shown one and the back leg takes a new generation");
+        var back = card.Generation;
+        require(!card.Midpoint(away) && !card.Midpoint(back) && card.Shown && card.Phase == Back && card.Generation == back,
+            "The midpoint counts once: reported again it changes nothing");
+        require(card.Request(true, animate: true) == Paint && card.Shown && card.Generation == back, "A refresh during the back leg repaints the new face");
+        require(card.Landed(back) && card.Phase == Rest && card.Shown, "Landing ends the turn on the wanted face");
+        require(!card.Landed(back) && !card.Midpoint(back) && !card.Landed(card.Generation) && card.Phase == Rest && card.Shown,
+            "A completion reported twice, by the animation and by its time limit, counts once");
+
+        var undone = Front(); undone.Request(true, animate: true); var undoneAway = undone.Generation;
+        require(undone.Request(false, animate: true) == TurnBack && !undone.Shown && undone.Phase == Back && undone.Generation != undoneAway,
+            "Taking a turn back before edge-on turns the card back with the face it never stopped showing");
+        require(!undone.Midpoint(undoneAway) && !undone.Shown && undone.Phase == Back, "The away leg that was taken back completes into nothing: no face is swapped");
+        require(undone.Landed(undone.Generation) && !undone.Shown && undone.Phase == Rest, "The card that was taken back lands on its original face");
+
+        var again = Front(); again.Request(true, animate: true); again.Midpoint(again.Generation); var againBack = again.Generation;
+        require(again.Request(false, animate: true) == TurnAway && again.Shown && again.Phase == Away && again.Generation != againBack,
+            "A new flip during the back leg turns away again, still showing the face that was coming in");
+        require(!again.Landed(againBack) && again.Phase == Away, "The back leg that was superseded lands into nothing");
+        require(again.Midpoint(again.Generation) && !again.Shown && again.Landed(again.Generation) && again.Phase == Rest,
+            "The second turn swaps at its own midpoint and lands on the front");
+
+        var halted = Front(); halted.Request(true, animate: true); var haltedAway = halted.Generation;
+        require(halted.Halt() && halted.Shown && halted.Phase == Rest && halted.Generation != haltedAway,
+            "Halting an away leg shows the wanted face at once and reports that the face changed");
+        require(!halted.Midpoint(haltedAway) && !halted.Landed(haltedAway) && halted.Shown && halted.Phase == Rest, "A completion arriving after a halt changes nothing");
+        var haltedGeneration = halted.Generation;
+        require(!halted.Halt() && halted.Generation == haltedGeneration, "Halting a card at rest does nothing");
+        var haltedBack = Front(); haltedBack.Request(true, animate: true); haltedBack.Midpoint(haltedBack.Generation); var haltedBackLeg = haltedBack.Generation;
+        require(!haltedBack.Halt() && haltedBack.Shown && haltedBack.Phase == Rest && !haltedBack.Landed(haltedBackLeg),
+            "Halting a back leg ends it without a repaint: the wanted face is already on screen");
+
+        var switched = Front(); switched.Request(true, animate: true); var switchedAway = switched.Generation;
+        require(switched.Request(false, animate: false) == Settle && !switched.Shown && switched.Phase == Rest && !switched.Midpoint(switchedAway),
+            "A flip reported with motion off ends a turn in flight on the face it asks for");
+
+        // Twenty thousand reports, completions (current and stale) and halts in a fixed pseudo-random order.
+        var walk = Front(); var asked = false; var random = new Random(12611); string? broken = null;
+        for (var index = 0; index < 20000 && broken is null; index++)
+        {
+            void Hold(bool holds, string rule) { if (!holds) broken ??= rule + " (step " + index + ")"; }
+            var shown = walk.Shown; var phase = walk.Phase; var generation = walk.Generation;
+            switch (random.Next(6))
+            {
+                case 0:
+                    asked = !asked; var turn = walk.Request(asked, animate: true);
+                    Hold(turn == (phase == Away ? TurnBack : TurnAway) && walk.Shown == shown && walk.Generation > generation, "an animated flip never changes the face in the frame of the report");
+                    break;
+                case 1:
+                    asked = !asked;
+                    Hold(walk.Request(asked, animate: false) == Settle && walk.Shown == asked && walk.Phase == Rest && walk.Generation > generation, "a flip with motion off settles on the wanted face");
+                    break;
+                case 2:
+                    Hold(walk.Request(asked, random.Next(2) == 0) == Paint && walk.Shown == shown && walk.Phase == phase && walk.Generation == generation, "an unchanged report only repaints");
+                    break;
+                case 3:
+                    var stale = generation - 1 - random.Next(3);
+                    Hold(!walk.Midpoint(stale) && !walk.Landed(stale) && walk.Shown == shown && walk.Phase == phase && walk.Generation == generation, "a stale completion changes nothing");
+                    break;
+                case 4:
+                    if (phase == Away) Hold(walk.Midpoint(generation) && walk.Shown == asked && walk.Phase == Back, "the current away leg swaps the face at its midpoint");
+                    else if (phase == Back) Hold(walk.Landed(generation) && walk.Shown == shown && walk.Phase == Rest, "the current back leg lands without touching the face");
+                    else Hold(!walk.Midpoint(generation) && !walk.Landed(generation) && walk.Generation == generation, "a card at rest has no completion to accept");
+                    break;
+                default:
+                    Hold(walk.Halt() == (shown != asked) && walk.Phase == Rest, "a halt reports a change of face exactly when there was one");
+                    break;
+            }
+            Hold(walk.Wanted == asked, "the wanted face is the last one reported");
+            Hold(walk.Phase == Away ? walk.Shown != asked : walk.Shown == asked, "only an away leg shows the face that was not asked for");
+            Hold(walk.Generation >= generation, "generations never go back");
+        }
+        require(broken is null, "The flip keeps its rules over 20,000 reports, completions and halts in a fixed pseudo-random order (first broken: " + broken + ")");
     }
 
     /// <summary>The text between two case labels of one renderer file.</summary>

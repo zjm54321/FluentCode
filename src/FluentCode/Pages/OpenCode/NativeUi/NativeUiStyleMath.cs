@@ -6,8 +6,8 @@ using System.Linq;
 
 namespace FluentCode.Pages.OpenCode;
 
-// WinUI-free colour, length, flex and icon rules shared by the renderer and the
-// native-ui test runner (tests/native-ui/run.ps1 compiles this file directly).
+// WinUI-free colour, length, flex and icon rules, and the flashcard's turn order (NativeUiFlipState, below),
+// shared by the renderer and the native-ui test runner (tests/native-ui/run.ps1 compiles this file directly).
 internal static class NativeUiStyleMath
 {
     // #rgb, #rrggbb or #aarrggbb; the catalog's only raw colour form (no CSS functions are parsed).
@@ -107,4 +107,72 @@ internal static class NativeUiStyleMath
         ["sun"] = "\uE706", ["user-plus"] = "\uE8FA", ["calendar-plus"] = "\uE787", ["circle"] = "\uEA3A", ["dices"] = "\uE7FC", ["hourglass"] = "\uE916",
         ["newspaper"] = "\uE7BC", ["at-sign"] = "\uE715",
     };
+}
+
+/// <summary>
+/// C12: which face a flashcard shows and where its turn is. It lives in this file because the native-ui runner
+/// compiles this file, so the order of a turn is executed by tests instead of being read from source.
+/// A turn has two legs: away to edge-on with the old face still showing, then back with the new one. The face
+/// changes between the legs and never during one.
+/// </summary>
+internal sealed class NativeUiFlipState
+{
+    internal enum Leg { Rest, Away, Back }
+    /// <summary>What a report asks of the caller, besides painting <see cref="Shown"/>.</summary>
+    internal enum Step { Paint, TurnAway, TurnBack, Settle }
+    private bool? _shown; // Null until the first report: a card's first face is painted without a turn.
+    /// <summary>The face on screen. False is the front, which is what a fresh card shows.</summary>
+    internal bool Shown => _shown is true;
+    /// <summary>The face the model asked for last.</summary>
+    internal bool Wanted { get; private set; }
+    internal Leg Phase { get; private set; }
+    /// <summary>
+    /// Names the leg in flight. Every start, reversal, midpoint, landing and halt takes a new one, so a completion
+    /// that arrives late matches nothing.
+    /// </summary>
+    internal int Generation { get; private set; }
+
+    /// <summary>
+    /// The model reports the face it wants. An unchanged report only repaints: mid-turn that is still the old face,
+    /// which keeps it alive until the midpoint. A changed one turns the card, or settles on the new face at once when
+    /// <paramref name="animate"/> is false. A report that takes back a turn still on its way out turns the card back
+    /// with the face it never stopped showing.
+    /// </summary>
+    internal Step Request(bool wanted, bool animate)
+    {
+        if (_shown is null) { _shown = Wanted = wanted; return Step.Paint; }
+        if (wanted == Wanted) return Step.Paint;
+        Wanted = wanted; Generation++;
+        if (!animate) { _shown = wanted; Phase = Leg.Rest; return Step.Settle; }
+        Phase = wanted == _shown ? Leg.Back : Leg.Away;
+        return Phase == Leg.Back ? Step.TurnBack : Step.TurnAway;
+    }
+
+    /// <summary>The away leg reached edge-on: the wanted face becomes the shown one. False when that leg was superseded.</summary>
+    internal bool Midpoint(int generation)
+    {
+        if (generation != Generation || Phase != Leg.Away) return false;
+        _shown = Wanted; Phase = Leg.Back; Generation++;
+        return true;
+    }
+
+    /// <summary>The back leg reached face-on. False when that leg was superseded.</summary>
+    internal bool Landed(int generation)
+    {
+        if (generation != Generation || Phase != Leg.Back) return false;
+        Phase = Leg.Rest; Generation++;
+        return true;
+    }
+
+    /// <summary>
+    /// Ends a turn where it is: the wanted face shows and nothing is in flight. True when that changed the face on
+    /// screen, which the caller then has to paint.
+    /// </summary>
+    internal bool Halt()
+    {
+        if (Phase == Leg.Rest) return false;
+        var changed = _shown != Wanted;
+        _shown = Wanted; Phase = Leg.Rest; Generation++;
+        return changed;
+    }
 }

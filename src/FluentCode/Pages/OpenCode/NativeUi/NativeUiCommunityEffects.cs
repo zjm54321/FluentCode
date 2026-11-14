@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// LANE N1: the one place in Native UI that touches DevWinUI effect controls and library animation calls.
+// The one place in Native UI that touches DevWinUI effect controls and library animation calls.
 // Callers pass app-level inputs and receive ordinary WinUI elements; no DevWinUI type appears in this surface
-// or in renderer state. Lifetime rules and the caller contract: /tmp/opencode/selfdrawn-audit/CONTRACT-N1-effects.md.
+// or in renderer state. Each effect states its own lifetime rules below.
 // APIs checked against DevWinUI 10.9.1 (source at commit 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e) and WinUI 2.6.5.
 using System;
 using System.Collections.Generic;
@@ -26,8 +26,8 @@ internal static class NativeUiCommunityEffects
     /// </summary>
     internal static CelebrationEffect Celebration() => new();
     /// <summary>
-    /// C12: the flashcard flip entry point. Today it swaps the face in the same frame; the Toolkit AnimationBuilder
-    /// sequence lands inside the flip's own animation seam in the next wave, without changing this contract.
+    /// C12: the flashcard's face. The face changes in the frame of the report; the turn between two faces is not
+    /// animated.
     /// </summary>
     internal static FlipEffect Flip(FrameworkElement host, Action<bool> renderFace) => new(host, renderFace);
     /// <summary>
@@ -151,59 +151,34 @@ internal static class NativeUiCommunityEffects
     }
 
     /// <summary>
-    /// C12. The flashcard flip. It owns the displayed face and the generation that supersedes a flip still in flight,
-    /// so the next wave inserts the animation sequence into <see cref="Play"/> alone.
+    /// C12. The flashcard's face. Which face shows, and the order of a turn, are kept by
+    /// <see cref="NativeUiFlipState"/>, which the native-ui tests execute; this class paints what it says.
     /// </summary>
     internal sealed class FlipEffect : IDisposable
     {
         private readonly FrameworkElement _host;
+        private readonly NativeUiFlipState _state = new();
         private Action<bool>? _render;
-        private bool? _target;
-        private bool? _displayed;
-        private int _generation;
         private bool _disposed;
 
         internal FlipEffect(FrameworkElement host, Action<bool> renderFace) { _host = host; _render = renderFace; }
 
-        /// <summary>The face the adapter has painted. False is the front face, which is what a fresh card shows.</summary>
-        internal bool Displayed => _displayed is true;
-
         /// <summary>
-        /// Reports the face the model wants and takes over painting. An unchanged request repaints that face (reactive
-        /// refresh); a changed one swaps it, or, once the animation lands, rotates it and swaps at the midpoint. A flip
-        /// that a newer request superseded never paints its face.
+        /// Reports the face the model wants and paints the face that shows. Every report paints, so a reactive
+        /// refresh reaches the face on screen. The face changes in the frame of the report, for both motion settings.
         /// </summary>
         internal void Request(bool flipped)
         {
             if (_disposed) return;
-            if (_target == flipped) { if (_displayed == flipped) _render?.Invoke(flipped); return; }
-            _target = flipped;
-            Play(++_generation, flipped); // A newer flip supersedes any flip still in flight.
-        }
-
-        /// <summary>
-        /// The animation seam, and the only place the next wave changes. Today it swaps the face in this frame for both
-        /// motion settings; with the animation it rotates <see cref="_host"/> 90° out on the Y axis, calls
-        /// <see cref="Complete"/> with this generation at the midpoint, then rotates 90° in. Reduced motion always takes
-        /// the immediate path.
-        /// </summary>
-        private void Play(int generation, bool flipped)
-        {
-            if (!FluentMotion.Enabled) FluentMotion.Settle(_host);
-            Complete(generation, flipped);
-        }
-
-        /// <summary>Swaps the face unless a newer request superseded this flip.</summary>
-        internal void Complete(int generation, bool flipped)
-        {
-            if (_disposed || generation != _generation || _displayed == flipped) return;
-            _displayed = flipped; _render?.Invoke(flipped);
+            var step = _state.Request(flipped, animate: false);
+            if (step == NativeUiFlipState.Step.Settle && !FluentMotion.Enabled) FluentMotion.Settle(_host);
+            _render?.Invoke(_state.Shown);
         }
 
         public void Dispose()
         {
             if (_disposed) return;
-            _disposed = true; ++_generation; _render = null; // A completion arriving after disposal paints nothing.
+            _disposed = true; _render = null; // A report arriving after disposal paints nothing.
             FluentMotion.Settle(_host);
         }
     }
