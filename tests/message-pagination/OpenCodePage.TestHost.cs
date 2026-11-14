@@ -245,7 +245,7 @@ namespace FluentCode.Pages
             var session = new FluentCode.Pages.OpenCode.OpenCodeHomeSession(new("runtime-a", "/work"), info, status);
             return status?.MutationProtected == true && status.PendingAction == false
                 && FluentCode.Pages.OpenCode.OpenCodeHomeProjection.Classify(session) == FluentCode.Pages.OpenCode.OpenCodeHomeTone.NeedsAction
-                && new FluentCode.Pages.OpenCode.OpenCodeHomeSessionRow(session, "title", "project", FluentCode.Pages.OpenCode.OpenCodeHomeTone.NeedsAction,
+                && !new FluentCode.Pages.OpenCode.OpenCodeHomeSessionRow(session, "title", "project", FluentCode.Pages.OpenCode.OpenCodeHomeTone.NeedsAction,
                     FluentCode.Pages.OpenCode.OpenCodeHomeDateGroup.Today, null).NeedsAttention;
         }
         internal string? TestHomeStatus => _homeSessionsMessage ?? _homeMessage;

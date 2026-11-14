@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using FluentCode.Pages;
 using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
@@ -17,6 +18,9 @@ internal static partial class Program
             => new(project, new() { Id = id, Title = id, Location = new() { Directory = project.Directory }, Time = new() { Created = 1, Updated = updated } }, status);
         OpenCodeHomeSnapshot Snapshot(long revision, params OpenCodeHomeSession[] sessions)
             => new(revision, [new(project, "project")], sessions);
+        OpenCodeHomeStatus? ObservedCompletion(string id, double completedAt)
+            => OpenCodePage.TestAdaptHomeStatus(new(id, false, false, false, new("succeeded", completedAt), null,
+                OpenCodeStateUnknownReason.None), new() { Id = id });
 
         {
             var view = new OpenCodeHomeView();
@@ -31,10 +35,24 @@ internal static partial class Program
                 && ReferenceEquals(grid.Children[1], title) && ReferenceEquals(grid.Children[3], time),
                 "home.row-identity: live DTO refresh retains the container/grid/labels/feedback host and running ring");
             check(((TextBlock)title).Text == "live title" && time.Text == "进行中", "home.row-live-values: retained native labels still update");
-            view.TestSnapshot(Snapshot(3, active with { Status = new(Working: false, IsUnread: true, Outcome: "succeeded") { CompletedAt = now } }));
-            check(ReferenceEquals(owner.Content, grid) && badges.Children[1].Visibility == Visibility.Visible
-                && ((FrameworkElement)host.Content!).Visibility == Visibility.Collapsed && time.Text != "进行中",
+            view.TestSnapshot(Snapshot(3, active with { Status = ObservedCompletion("ses_running", now) }));
+            check(ReferenceEquals(view.TestItem("ses_running"), owner) && ReferenceEquals(owner.Content, grid)
+                && badges.Children[1].Visibility == Visibility.Visible
+                && ((FrameworkElement)host.Content!).Visibility == Visibility.Collapsed && time.Text != "进行中"
+                && owner.Tag is OpenCodeHomeSessionRow { NeedsAttention: true },
                 "home.row-terminal: completion updates the same row to one unread dot instead of a frozen ring/label");
+        }
+        {
+            var view = new OpenCodeHomeView(); var completedAt = now - TimeSpan.FromDays(24).TotalMilliseconds;
+            var history = Session("ses_history", completedAt);
+            view.TestSnapshot(Snapshot(1, history));
+            var owner = view.TestItem("ses_history"); var grid = (Grid)owner.Content!;
+            var info = history.Info with { Outcome = "failed", Time = history.Info.Time! with { Idle = completedAt } };
+            view.TestSnapshot(Snapshot(2, history with { Info = info, Status = OpenCodePage.TestAdaptHomeStatus(null, info) }));
+            check(ReferenceEquals(view.TestItem("ses_history"), owner) && ReferenceEquals(owner.Content, grid)
+                && owner.Tag is OpenCodeHomeSessionRow { NeedsAttention: false, ShowUnreadIndicator: true, DateGroup: OpenCodeHomeDateGroup.Earlier }
+                && ((Grid)grid.Children[0]).Children[1].Visibility == Visibility.Visible,
+                "home.row-history-unread: durable-only completion refresh keeps the native row and unread dot in its ordinary date group");
         }
         {
             var view = new OpenCodeHomeView();
@@ -42,10 +60,10 @@ internal static partial class Program
             view.TestSnapshot(Snapshot(1, a, b)); view.TestOffset = 80;
             var owner = view.TestItem("ses_B"); owner.Focus(FocusState.Keyboard);
             var top = view.TestTop(owner);
-            var attention = b with { Status = new(Working: false, IsUnread: true, Outcome: "succeeded") { CompletedAt = now } };
+            var attention = b with { Status = ObservedCompletion("ses_B", now) };
             view.TestSnapshot(Snapshot(2, a, attention));
             check(ReferenceEquals(view.TestItem("ses_B"), owner) && ReferenceEquals(FocusManager.Current, owner)
-                && owner.FocusState == FocusState.Keyboard,
+                && owner.FocusState == FocusState.Keyboard && owner.Tag is OpenCodeHomeSessionRow { NeedsAttention: true },
                 "home.row-focus: moving a newly completed attention row restores its exact native keyboard owner");
             check(Math.Abs(view.TestTop(owner) - top) < 0.01,
                 "home.viewport-anchor: date/attention reordering preserves the first visible container's viewport position");

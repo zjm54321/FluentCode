@@ -13,16 +13,101 @@ using FluentCode.Services.OpenCode;
 
 internal static partial class Program
 {
+    private static Task HomeAttentionTruthTable()
+    {
+        var now = new DateTimeOffset(2026, 11, 14, 12, 0, 0, TimeSpan.Zero);
+        var completedAt = now.AddDays(-24).ToUnixTimeMilliseconds();
+        var project = new OpenCodeHomeProjectKey("home-source", "/project/worktree");
+        var info = new OpenCodeSessionInfo { Id = "ses_attention", Outcome = "succeeded",
+            Time = new() { Updated = completedAt, Idle = completedAt, Viewed = completedAt - 1 } };
+        var noCompletion = info with { Outcome = null, Time = new() { Updated = completedAt } };
+        var completion = new OpenCodeCompletionMark("succeeded", completedAt);
+        OpenCodeSessionUiState State(bool? working = false, bool? pending = false, bool? question = false,
+            bool mutationProtected = false, OpenCodeCompletionMark? mark = null, double? viewed = null)
+            => new(info.Id!, working, pending, mutationProtected, mark, viewed, OpenCodeStateUnknownReason.None)
+                { QuestionPending = question };
+        var cases = new (string Name, OpenCodeSessionUiState? State, OpenCodeSessionInfo Info,
+            bool Attention, bool Unread, bool Dot, OpenCodeHomeTone Tone)[]
+        {
+            ("unobserved", null, noCompletion, false, false, false, OpenCodeHomeTone.Unknown),
+            ("durable-succeeded", null, info, false, true, true, OpenCodeHomeTone.Succeeded),
+            ("durable-failed", null, info with { Outcome = "failed" }, false, true, true, OpenCodeHomeTone.Failed),
+            ("durable-interrupted", null, info with { Outcome = "interrupted" }, false, true, true, OpenCodeHomeTone.Interrupted),
+            ("durable-viewed", null, info with { Time = info.Time! with { Viewed = completedAt } },
+                false, false, false, OpenCodeHomeTone.Succeeded),
+            ("state-without-completion", State(), info, false, true, true, OpenCodeHomeTone.Succeeded),
+            ("tracked-succeeded", State(mark: completion), info, true, true, true, OpenCodeHomeTone.Succeeded),
+            ("tracked-failed", State(mark: new("failed", completedAt)), info with { Outcome = "failed" },
+                true, true, true, OpenCodeHomeTone.Failed),
+            ("tracked-interrupted", State(mark: new("interrupted", completedAt)), info with { Outcome = "interrupted" },
+                true, true, true, OpenCodeHomeTone.Interrupted),
+            ("tracked-viewed", State(mark: completion, viewed: completedAt), info,
+                false, false, false, OpenCodeHomeTone.Succeeded),
+            ("newer-durable-completion", State(mark: completion, viewed: completedAt),
+                info with { Time = new() { Updated = completedAt + 1, Idle = completedAt + 1, Viewed = completedAt } },
+                false, true, true, OpenCodeHomeTone.Succeeded),
+            ("newer-tracked-completion", State(mark: new("succeeded", completedAt + 1)), info,
+                true, true, true, OpenCodeHomeTone.Succeeded),
+            ("different-durable-outcome", State(mark: completion), info with { Outcome = "failed" },
+                false, true, true, OpenCodeHomeTone.Failed),
+            ("question-idle", State(question: true), noCompletion, true, false, false, OpenCodeHomeTone.QuestionBlocked),
+            ("question-working", State(working: true, pending: null, question: true), noCompletion,
+                true, false, false, OpenCodeHomeTone.QuestionBlocked),
+            ("permission-idle", State(pending: true), noCompletion, true, false, false, OpenCodeHomeTone.NeedsAction),
+            ("permission-working", State(working: true, pending: true), noCompletion,
+                true, false, false, OpenCodeHomeTone.WorkingNeedsAction),
+            ("working", State(working: true), noCompletion, false, false, false, OpenCodeHomeTone.Working),
+            ("working-old-unread", State(working: true, mark: completion), info,
+                false, true, false, OpenCodeHomeTone.Working),
+            ("protected-only", State(mutationProtected: true), noCompletion,
+                false, false, false, OpenCodeHomeTone.NeedsAction),
+            ("protected-viewed", State(mutationProtected: true, mark: completion, viewed: completedAt), info,
+                false, false, false, OpenCodeHomeTone.NeedsAction),
+            ("protected-working-old-unread", State(working: true, mutationProtected: true, mark: completion), info,
+                false, true, false, OpenCodeHomeTone.NeedsAction),
+            ("unknown-working-tracked-completion", State(working: null, mark: completion), info,
+                true, true, true, OpenCodeHomeTone.Succeeded),
+            ("unknown-facts", State(working: null, pending: null, question: null), noCompletion,
+                false, false, false, OpenCodeHomeTone.Unknown),
+        };
+        foreach (var item in cases)
+        {
+            var status = OpenCodePage.TestAdaptHomeStatus(item.State, item.Info);
+            var session = new OpenCodeHomeSession(project, item.Info, status);
+            var row = OpenCodeHomeProjection.Rows(new(1, [], [session]), null, null, now, TimeZoneInfo.Utc).Single();
+            Check(row.NeedsAttention == item.Attention, "home.attention-" + item.Name + ": attention membership matches the agreed rule");
+            Check(row.IsUnread == item.Unread && row.ShowUnreadIndicator == item.Dot && row.ShowStatusIndicator == !item.Dot
+                && row.Tone == item.Tone, "home.indicators-" + item.Name + ": unread, dot and existing tone stay independent of grouping");
+            Check(item.Attention || row.DateGroup == OpenCodeHomeDateGroup.Earlier,
+                "home.date-group-" + item.Name + ": ordinary historical rows retain their real date group");
+        }
+        var history = new OpenCodeHomeSession(project, info with { Id = "ses_history" }, OpenCodePage.TestAdaptHomeStatus(null, info));
+        var observed = new OpenCodeHomeSession(project, info with { Id = "ses_observed" }, OpenCodePage.TestAdaptHomeStatus(State(mark: completion), info));
+        var today = new OpenCodeHomeSession(project, noCompletion with { Id = "ses_today", Time = new() { Updated = now.ToUnixTimeMilliseconds() } });
+        var ordered = OpenCodeHomeProjection.Rows(new(1, [], [history, today, observed]), null, null, now, TimeZoneInfo.Utc);
+        Check(ordered.Select(row => row.Session.Info.Id).SequenceEqual(new[] { "ses_observed", "ses_today", "ses_history" }),
+            "home.attention-order: observed completion leads; durable-only unread remains in the ordinary date-sorted list");
+        return Task.CompletedTask;
+    }
+
     private static async Task HomeRefreshRegressions(Action<bool, string>? check = null)
     {
         check ??= Check;
         var durable = new OpenCodeSessionInfo { Id = "ses_unopened", Outcome = "failed", Time = new() { Updated = 200, Idle = 200, Viewed = 100 } };
         var mark = OpenCodePage.TestAdaptHomeStatus(null, durable);
-        check(mark is { IsUnread: true, Outcome: "failed", CompletedAt: 200 }, "home.unopened-completion: durable outcome/idle/viewed reaches Home without notification tracking");
+        OpenCodeHomeSessionRow Row(OpenCodeHomeStatus? status, OpenCodeSessionInfo info)
+            => OpenCodeHomeProjection.Rows(new(1, [], [new(new("home-source", "/project/worktree"), info, status)]),
+                null, null, DateTimeOffset.UtcNow, TimeZoneInfo.Utc).Single();
+        check(mark is { IsUnread: true, Outcome: "failed", CompletedAt: 200 }
+            && Row(mark, durable) is { NeedsAttention: false, ShowUnreadIndicator: true },
+            "home.unopened-completion: durable unread keeps its dot without notification tracking or attention grouping");
         var viewed = new OpenCodeSessionUiState("ses_unopened", false, false, false, new("failed", 200), 200, OpenCodeStateUnknownReason.None);
         check(OpenCodePage.TestAdaptHomeStatus(viewed, durable)?.IsUnread == false, "home.viewed-monotonic: an accepted local viewed receipt beats older server metadata");
-        check(OpenCodePage.TestAdaptHomeStatus(viewed, durable with { Outcome = "succeeded", Time = new() { Updated = 300, Idle = 300, Viewed = 200 } })
-            is { IsUnread: true, Outcome: "succeeded", CompletedAt: 300 }, "home.newer-completion: fresh metadata replaces an older app completion watermark");
+        var newer = durable with { Outcome = "succeeded", Time = new() { Updated = 300, Idle = 300, Viewed = 200 } };
+        var newerStatus = OpenCodePage.TestAdaptHomeStatus(viewed, newer);
+        check(newerStatus is { IsUnread: true, Outcome: "succeeded", CompletedAt: 300 }
+            && !Row(newerStatus, newer).NeedsAttention,
+            "home.newer-completion: fresh metadata replaces an older app completion watermark without borrowing its observation provenance");
 
         using (var server = new HomeRefreshServer())
         using (var client = server.CreateClient())
