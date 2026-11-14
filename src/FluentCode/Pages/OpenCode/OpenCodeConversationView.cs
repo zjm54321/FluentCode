@@ -619,12 +619,25 @@ public sealed class OpenCodeConversationView : StackPanel
         internal readonly StackPanel Content = new() { Spacing = 4 };
         internal readonly OpenCodeRichTextPresenter Presenter = new();
         internal readonly OpenCodeUserAttachmentsView Attachments = new();
-        internal readonly StackPanel Layout = new() { Spacing = 4 };
-        internal readonly StackPanel Actions = new() { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
-        internal readonly Button DeliveryButton = new() { Content = "改为排队", VerticalAlignment = VerticalAlignment.Center };
+        // [switch | bubble]: the switch uses the free space left of the right-aligned bubble, so the row is exactly as
+        // tall as the bubble and nothing moves when the switch hides or the message is delivered.
+        internal readonly Grid Layout = new() { ColumnSpacing = 4 };
+        // Icon only, always visible: the composer's own 当前回合结束后发送 clock at the same size, borderless like the
+        // bubble's chevron so it stays quiet beside the message and only dims (no grey box) while a switch is running.
+        internal readonly Button DeliveryButton = new()
+        {
+            Content = new FontIcon { Glyph = QueueGlyph, FontSize = 16 },
+            Width = 32, Height = 32, Padding = new Thickness(0),
+            Margin = new Thickness(0, 3, 0, 0), // Centred on a one-line bubble; stays on the first line of a taller one.
+            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
+            Style = OpenCodeInteractionUi.TryStyle("SubtleButtonStyle"),
+        };
         internal string Signature = string.Empty;
         internal JsonElement? RenderedPayload;
     }
+    private const string QueueGlyph = "\uE823";
+    // One wording for the button's tooltip, the start of its Narrator name and the menu entry.
+    private const string QueueSwitchLabel = "改为排队";
     private readonly Dictionary<string, SteerRow> _steerRows = new(StringComparer.Ordinal);
     private readonly List<string> _steerOrder = new();
     private readonly HashSet<string> _renderedUserMessageIds = new(StringComparer.Ordinal);
@@ -658,19 +671,19 @@ public sealed class OpenCodeConversationView : StackPanel
                     row = new SteerRow { Item = item };
                     row.Content.Children.Add(row.Presenter.Element);
                     var bubble = new OpenCodeUserBubbleView(row.Content, delivered: false, attachments: row.Attachments.Element);
+                    // An Auto column measures at unlimited width, and the bubble caps itself (72% of its parent) only
+                    // once loaded. Start from the same share so a long message never lays out on one line first.
+                    bubble.Element.MaxWidth = (ActualWidth > 0 ? ActualWidth : 480) * 0.72;
+                    row.Layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    row.Layout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                    Grid.SetColumn(bubble.Element, 1);
+                    row.Layout.Children.Add(row.DeliveryButton); // Beside the bubble, so its two-line text clip never hides it.
                     row.Layout.Children.Add(bubble.Element);
-                    row.Actions.Children.Add(OpenCodeInteractionUi.StyledText("插入当前回合", OpenCodeInteractionUi.CaptionSubtleStyleKey));
-                    row.Actions.Children.Add(row.DeliveryButton);
-                    row.Layout.Children.Add(row.Actions); // Outside the bubble's two-line text clip, including for long messages.
                     row.Element.Content = row.Layout;
                     var actionRow = row;
                     row.DeliveryButton.Click += (_, _) => RequestSteerDeliveryChange(actionRow);
                     AutomationProperties.SetAutomationId(row.DeliveryButton, "OpenCodeAdmittedSteerQueue." + id);
-                    OpenCodeTouchInput.WireReveal(row.Element, visible =>
-                    {
-                        actionRow.DeliveryButton.Opacity = visible ? 1 : 0;
-                        actionRow.DeliveryButton.IsHitTestVisible = visible;
-                    });
+                    ToolTipService.SetToolTip(row.DeliveryButton, QueueSwitchLabel);
                     AutomationProperties.SetAutomationId(row.Element, "OpenCodeAdmittedSteer." + id);
                     _steerRows[id] = row;
                 }
@@ -692,11 +705,7 @@ public sealed class OpenCodeConversationView : StackPanel
     public void SetPendingSteerBusy(bool busy)
     {
         _steerBusy = busy; // Read when a steer menu opens and re-checked when its action runs.
-        foreach (var row in _steerRows.Values)
-        {
-            row.DeliveryButton.IsEnabled = !busy;
-            ToolTipService.SetToolTip(row.DeliveryButton, busy ? "正在处理待投递消息" : "当前回合结束后发送");
-        }
+        foreach (var row in _steerRows.Values) row.DeliveryButton.IsEnabled = !busy;
     }
 
     private bool CurrentSteer(SteerRow row) => !_steerBusy && row.Item.SessionId == _steerSession
@@ -710,7 +719,8 @@ public sealed class OpenCodeConversationView : StackPanel
         var change = _canChangeSteerDelivery?.Invoke(item) == true;
         row.DeliveryButton.Visibility = change ? Visibility.Visible : Visibility.Collapsed;
         row.DeliveryButton.IsEnabled = !_steerBusy;
-        AutomationProperties.SetName(row.DeliveryButton, "改为排队：" + (OpenCodeQueuedPromptsView.ReadText(item.Payload) ?? "附件消息"));
+        // Several messages can be pending at once, so the name says which one this button moves.
+        AutomationProperties.SetName(row.DeliveryButton, QueueSwitchLabel + "：" + (OpenCodeQueuedPromptsView.ReadText(item.Payload) is { Length: > 0 } text ? text : "附件消息"));
         var signature = withdraw + "|" + change;
         var samePayload = row.RenderedPayload is { } previous && item.Payload is { } current
             ? JsonElement.DeepEquals(previous, current) : row.RenderedPayload is null && item.Payload is null;
@@ -750,18 +760,20 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private IEnumerable<OpenCodeContextCommand> SteerActions(SteerRow row)
     {
-        if (_canChangeSteerDelivery?.Invoke(row.Item) == true || _canWithdrawSteer?.Invoke(row.Item) == true)
-        {
-            var id = row.Item.Id;
-            yield return new("改为排队", "\uE8FD", () =>
+        var id = row.Item.Id;
+        var change = _canChangeSteerDelivery?.Invoke(row.Item) == true;
+        var withdraw = _canWithdrawSteer?.Invoke(row.Item) == true;
+        if (change || withdraw)
+            yield return new(QueueSwitchLabel, QueueGlyph, () =>
             {
                 RequestSteerDeliveryChange(row);
-            }) { Enabled = CurrentSteer(row) && _canChangeSteerDelivery?.Invoke(row.Item) == true, AutomationId = "OpenCodeAdmittedSteerDelivery." + id };
+            }) { Enabled = CurrentSteer(row) && change, AutomationId = "OpenCodeAdmittedSteerDelivery." + id };
+        // 撤回 is offered only where it can work (this page's own message), like the queue row's 撤回 button.
+        if (withdraw)
             yield return new("撤回", "\uE7A7", () =>
             {
                 if (CurrentSteer(row) && _canWithdrawSteer?.Invoke(row.Item) == true) PendingSteerWithdrawRequested?.Invoke(this, row.Item.Id!);
-            }) { Enabled = CurrentSteer(row) && _canWithdrawSteer?.Invoke(row.Item) == true, AutomationId = "OpenCodeAdmittedSteerWithdraw." + id };
-        }
+            }) { Enabled = CurrentSteer(row), AutomationId = "OpenCodeAdmittedSteerWithdraw." + id };
     }
 
     private void RequestSteerDeliveryChange(SteerRow row)
