@@ -13,7 +13,7 @@ namespace FluentCode.Pages.OpenCode;
 /// </summary>
 /// <remarks>
 /// 数据来自页面已有的 <c>GET /api/session/{id}/inbox</c> 读取（条目仍在 inbox = 尚未投递）。
-/// 本页发出的用户输入每行有原生“撤回”按钮（AutomationId <c>OpenCodeQueuedPromptWithdraw.{id}</c>）：
+/// 本页发出的用户输入每行常驻一个只有图标的“撤回”按钮（AutomationId <c>OpenCodeQueuedPromptWithdraw.{id}</c>），右键菜单提供同一项：
 /// 视图只发出 <see cref="WithdrawRequested"/>；DELETE、新鲜复查与是否恢复到输入框由页面经
 /// <see cref="OpenCodeQueuedPromptWithdrawal"/> 判定（204 不能证明撤回成功，绝不自动重发）。
 /// 可切换的条目每行常驻一个只有图标的“改为插入当前回合”按钮（AutomationId <c>OpenCodePendingDelivery.{id}</c>），
@@ -53,6 +53,9 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
     private const string SteerGlyph = "\uE724";
     // One wording for the button's tooltip, the start of its Narrator name and the menu entry.
     private const string SteerSwitchLabel = "改为插入当前回合";
+    // Segoe Fluent "Undo": the glyph every 撤回 menu entry in the app uses (OpenCodeMessageContextMenu, the pending bubble).
+    private const string WithdrawGlyph = "\uE7A7";
+    private const string WithdrawLabel = "撤回";
 
     /// <summary>用户点击某行“撤回”（参数为 inbox 条目 id）。</summary>
     internal event EventHandler<string>? WithdrawRequested;
@@ -195,35 +198,34 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
     private FrameworkElement CreateRow(string id, string text, string delivery, bool withdrawable, bool changeable, int number, OpenCodeInboxItem item)
     {
         // Transparent (not null) background: the whole row, gaps included, takes right-click / press-and-hold for the
-        // row's menu and is the touch target that reveals 撤回.
-        var grid = new Grid { ColumnSpacing = 12, Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent) };
+        // row's menu.
+        // [number | message | 撤回 | switch]: both actions are icon-only, always visible and in fixed 32px slots 4px
+        // apart, so they line up down the list and the message keeps its width whichever of them an entry offers.
+        // The switch, which nearly every entry has, takes the edge; 撤回 (this page's own messages only) sits inside
+        // it, so an entry without 撤回 has no hole at the end of the row.
+        var grid = new Grid { ColumnSpacing = 4, Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        // Fixed slot for the delivery switch: the message keeps its width and wrapping whether or not the switch is shown.
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(32) });
 
-        Button? withdraw = null;
         if (withdrawable)
         {
+            // Never hidden, so there is no invisible action a finger could fire. Same quiet 32px button as the switch.
             // The page morphs this acting button only after its fresh inbox/message read confirms withdrawal.
-            withdraw = new Button
+            var withdraw = new Button
             {
-                Content = "撤回",
-                VerticalAlignment = VerticalAlignment.Center,
+                Content = new FontIcon { Glyph = WithdrawGlyph, FontSize = 16 },
+                Width = 32, Height = 32, Padding = new Thickness(0),
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                Style = OpenCodeInteractionUi.TryStyle("SubtleButtonStyle"),
                 IsEnabled = !_withdrawBusy,
             };
             AutomationProperties.SetAutomationId(withdraw, "OpenCodeQueuedPromptWithdraw." + id);
             AutomationProperties.SetName(withdraw, "撤回待投递消息：" + text);
-            ToolTipService.SetToolTip(withdraw, "撤回");
-            withdraw.Click += (_, _) =>
-            {
-                if (!_withdrawBusy)
-                {
-                    WithdrawRequested?.Invoke(this, id);
-                }
-            };
-            Grid.SetColumn(withdraw, 3);
+            ToolTipService.SetToolTip(withdraw, WithdrawLabel);
+            withdraw.Click += (_, _) => RequestWithdraw(id);
+            Grid.SetColumn(withdraw, 2);
             grid.Children.Add(withdraw);
             _withdrawButtons.Add(withdraw);
         }
@@ -235,7 +237,8 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         var attachments = new OpenCodeUserAttachmentsView();
         attachments.Update(files, !string.IsNullOrEmpty(rawText));
         _attachments.Add(attachments);
-        var body = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        // 12px between the number, the message and the actions; the two actions themselves sit 4px apart.
+        var body = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) };
         body.Children.Add(presenter.Element);
         body.Children.Add(attachments.Element);
         ToolTipService.SetToolTip(body, text);
@@ -249,7 +252,7 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         {
             // Icon only, always visible: the counterpart of the pending bubble's 改为排队 clock, with the same 32px
             // size and borderless stock style, so the two directions read as a pair. It only dims while an inbox
-            // action is running. When the entry cannot be switched the slot stays empty and nothing else moves.
+            // action is running. When the entry cannot be switched its slot stays empty and nothing else moves.
             var change = new Button
             {
                 Content = new FontIcon { Glyph = SteerGlyph, FontSize = 16 },
@@ -263,30 +266,25 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
             // Several entries can be queued at once, so the name says which one this button moves.
             AutomationProperties.SetName(change, SteerSwitchLabel + "：" + (rawText is { Length: > 0 } ? rawText : "附件消息"));
             ToolTipService.SetToolTip(change, SteerSwitchLabel);
-            Grid.SetColumn(change, 2);
+            Grid.SetColumn(change, 3);
             grid.Children.Add(change);
             _deliveryButtons.Add(change);
         }
 
         // Same shared menu shape as transcript messages and the pending bubble: copy row on the text, then this
         // entry's own actions. Native context input covers right-click, Shift+F10 / Menu key and touch press-and-hold.
-        var menu = OpenCodeMessageContextMenu.Create(() => rawText, actions: () => RowActions(grid, id, changeable));
+        var menu = OpenCodeMessageContextMenu.Create(() => rawText, actions: () => RowActions(grid, id, changeable, withdrawable));
         presenter.TextContextFlyout = menu;
         grid.ContextFlyout = menu;
-
-        // A hidden 撤回 is not hit-testable, so a finger can never fire it while invisible; the first touch on the
-        // row reveals (and keeps) it. Keyboard focus still reaches it and reveals it. The switch is never hidden.
-        if (withdraw is { } hidden)
-            OpenCodeTouchInput.WireReveal(grid, visible => { hidden.Opacity = visible ? 1 : 0; hidden.IsHitTestVisible = visible; });
 
         AutomationProperties.SetAutomationId(grid, "OpenCodeQueuedPrompt." + id);
         AutomationProperties.SetName(grid, text + "，" + DescribeDelivery(delivery));
         return grid;
     }
 
-    // Read when the menu opens and re-checked when an entry runs. The entry follows the button: offered only for an
-    // entry that can be switched, unavailable while an inbox action is running or once the row has been replaced.
-    private IEnumerable<OpenCodeContextCommand> RowActions(Grid row, string id, bool changeable)
+    // Read when the menu opens and re-checked when an entry runs. The entries follow the buttons: each is offered only
+    // where its button is, and is unavailable while an inbox action is running or once the row has been replaced.
+    private IEnumerable<OpenCodeContextCommand> RowActions(Grid row, string id, bool changeable, bool withdrawable)
     {
         bool Current() => !_withdrawBusy && _list.Items.Contains(row);
         if (changeable)
@@ -294,6 +292,12 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
             {
                 if (Current()) RequestDeliveryChange(new(id, OpenCodeDeliveryModes.Steer));
             }) { Enabled = Current(), AutomationId = "OpenCodeQueuedPromptMenuDelivery." + id };
+        // 撤回 only where it can work (this page's own message), like the pending bubble's menu.
+        if (withdrawable)
+            yield return new(WithdrawLabel, WithdrawGlyph, () =>
+            {
+                if (Current()) RequestWithdraw(id);
+            }) { Enabled = Current(), AutomationId = "OpenCodeQueuedPromptMenuWithdraw." + id };
     }
 }
 

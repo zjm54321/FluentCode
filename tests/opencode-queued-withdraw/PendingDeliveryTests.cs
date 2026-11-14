@@ -24,6 +24,8 @@ internal static partial class Program
             ("right-click entries of a pending bubble", SteerMenuEntries),
             ("always-visible steer switch in the queue row", QueueSwitchControl),
             ("right-click entries of a queued row", QueueMenuEntries),
+            ("always-visible withdraw icon in the queue row", QueueWithdrawControl),
+            ("touch reveal helper", TouchRevealHelper),
             ("receipt-projected steer switch", ReceiptProjectedSwitch),
             ("empty inbox retires uncertainty", EmptyInboxRetiresUncertainty),
             ("unchanged 204 is visibly unconfirmed", UnchangedDeliveryIsUnconfirmed),
@@ -207,19 +209,12 @@ internal static partial class Program
         Check(!Descendants(row).OfType<TextBlock>().Any(t => t.Text is "改为插入当前回合" or "当前回合结束后发送")
             && !Descendants(row).OfType<Button>().Any(b => b.Content is string label && label.Contains("插入")),
             "no text button or caption is left for the switch");
-        Check(Grid.GetColumn(button) == 2 && row.ColumnDefinitions[2].Width == new GridLength(32)
-            && row.ColumnDefinitions[1].Width == new GridLength(1, GridUnitType.Star)
+        Check(Grid.GetColumn(button) == 3 && row.ColumnDefinitions[3].Width == new GridLength(32)
+            && row.ColumnDefinitions[1].Width == new GridLength(1, GridUnitType.Star) && row.ColumnDefinitions.Count == 4
             && button.VerticalAlignment == VerticalAlignment.Center,
-            "the switch has a fixed 32px slot beside the message, centred on the row");
+            "the switch has a fixed 32px slot at the end of the row, centred on it");
         Check(button.IsTabStop && Shown(button), "visible and keyboard reachable without hover, focus or touch");
-        var withdraw = QueueButton(page, "OpenCodeQueuedPromptWithdraw.");
-        Check(withdraw is { Opacity: 0, IsHitTestVisible: false, Content: "撤回" } && Grid.GetColumn(withdraw) == 3,
-            "this page's own entry keeps 撤回, which cannot be hit while it is hidden");
-        row.Touch();
-        Check(Shown(withdraw!) && Shown(button), "the first touch on the row reveals 撤回; the switch was never hidden");
-        row.MouseExit();
-        Check(!withdraw!.IsHitTestVisible && withdraw.Opacity == 0 && Shown(button), "leaving the row hides 撤回 again, not the switch");
-        row.Focus(); row.Blur();
+        row.Touch(); row.MouseExit(); row.Focus(); row.Blur();
         Check(Shown(button), "pointer and focus changes neither hide nor reveal the switch");
         var requests = 0;
         page.Queue.DeliveryChangeRequested += (_, _) => requests++;
@@ -253,8 +248,97 @@ internal static partial class Program
         Check(unconfirmed.UncertainChanges == 1 && QueueButton(unconfirmed, "OpenCodePendingDelivery.") is null,
             "an unconfirmed switch removes the button: the page's server-state rule decides, not the view");
         Check(after.ColumnDefinitions.Select(c => c.Width).SequenceEqual(widths)
-            && !after.Children.Any(child => Grid.GetColumn(child) == 2),
+            && !after.Children.Any(child => Grid.GetColumn(child) == 3),
             "the slot stays reserved and empty, so the message keeps its width when the switch goes away");
+    }
+
+    private static async Task QueueWithdrawControl()
+    {
+        var text = "本页发出";
+        var server = new FakeServer();
+        server.Inbox.Add(UserItem(Inbox, text, 1000));
+        server.Inbox.Add(UserItem("msg_other", "其他客户端发出", 1100));
+        using var client = server.Client();
+        var page = await DeliveryPage(server, client);
+        var row = QueueRow(page, Inbox);
+        var withdraw = QueueButton(page, "OpenCodeQueuedPromptWithdraw.");
+        var change = QueueButton(page, "OpenCodePendingDelivery.")!;
+        Check(withdraw is not null && ReferenceEquals(page.Queue.WithdrawButton(Inbox), withdraw) && ReferenceEquals(withdraw!.Parent, row),
+            "this page's own entry keeps 撤回 under the existing AutomationId, where the page looks it up for its feedback");
+        Check(withdraw!.Content is FontIcon { Glyph: "\uE7A7", FontSize: 16 } && withdraw.Width == 32 && withdraw.Height == 32
+            && withdraw.Padding == new Thickness(0) && withdraw.Style?.Key == "SubtleButtonStyle",
+            "icon only: the app's 撤回 arrow in the same 32px borderless button as the switch");
+        Check(withdraw.AutomationName == "撤回待投递消息：" + text && withdraw.ToolTip as string == "撤回", "tooltip and Narrator name are unchanged");
+        Check(!Descendants(row).OfType<Button>().Any(b => b.Content is string) && !Descendants(row).OfType<TextBlock>().Any(t => t.Text == "撤回"),
+            "no worded button is left in the row");
+        Check(Grid.GetColumn(withdraw) == 2 && Grid.GetColumn(change) == 3 && row.ColumnSpacing == 4
+            && row.ColumnDefinitions.Select(c => c.Width).SequenceEqual(new[] { new GridLength(24), new GridLength(1, GridUnitType.Star), new GridLength(32), new GridLength(32) })
+            && withdraw.VerticalAlignment == VerticalAlignment.Center && change.VerticalAlignment == VerticalAlignment.Center,
+            "number, message, 撤回, switch: the two icons sit side by side in fixed slots, centred on the row");
+        Check(withdraw.IsTabStop && Shown(withdraw), "visible and reachable at rest: there is no hidden action for a finger to hit");
+        row.Touch(); row.MouseExit(); row.Focus(); row.Blur();
+        Check(Shown(withdraw) && Shown(change), "pointer and focus changes neither hide nor reveal the row's actions");
+
+        var other = QueueRow(page, "msg_other");
+        Check(!Descendants(other).OfType<Button>().Any(b => AutomationProperties.GetAutomationId(b).StartsWith("OpenCodeQueuedPromptWithdraw."))
+            && !other.Children.Any(child => Grid.GetColumn(child) == 2)
+            && Grid.GetColumn(Descendants(other).OfType<Button>().Single()) == 3,
+            "another client's entry gets no 撤回: that slot is empty and its switch still ends the row");
+        Check(other.ColumnDefinitions.Select(c => c.Width).SequenceEqual(row.ColumnDefinitions.Select(c => c.Width)),
+            "rows with and without 撤回 share one column layout, so the icons line up down the list");
+
+        var requested = new List<string>();
+        page.Queue.WithdrawRequested += (_, id) => requested.Add(id);
+        page.Queue.IsWithdrawBusy = true;
+        Check(!withdraw.IsEnabled && Shown(withdraw), "a running inbox action disables 撤回 in place");
+        withdraw.RaiseClick();
+        Check(requested.Count == 0, "a disabled 撤回 requests nothing");
+        page.Queue.IsWithdrawBusy = false;
+        withdraw.RaiseClick();
+        Check(withdraw.IsEnabled && requested.SequenceEqual(new[] { Inbox }), "a click asks the page to withdraw exactly this entry");
+
+        var menu = (OpenCodeMessageMenuProbe)row.ContextFlyout!;
+        var entries = menu.Actions().ToArray();
+        Check(entries.Select(e => e.Label + ":" + e.Glyph + ":" + e.Enabled).SequenceEqual(new[] { "改为插入当前回合:\uE724:True", "撤回:\uE7A7:True" })
+            && entries[1].AutomationId == "OpenCodeQueuedPromptMenuWithdraw." + Inbox,
+            "this page's own entry: the menu offers both actions under the buttons' icons");
+        Check(((OpenCodeMessageMenuProbe)other.ContextFlyout!).Actions().Select(e => e.Label).SequenceEqual(new[] { "改为插入当前回合" }),
+            "another client's entry: no 撤回 in the menu either");
+        page.Queue.IsWithdrawBusy = true;
+        Check(menu.Actions().All(e => !e.Enabled), "both entries read the busy state when the menu opens");
+        entries[1].Run();
+        Check(requested.Count == 1, "an entry of a menu opened earlier does nothing while an inbox action runs");
+        page.Queue.IsWithdrawBusy = false;
+        entries[1].Run();
+        Check(requested.SequenceEqual(new[] { Inbox, Inbox }), "the menu entry raises the same withdraw request as the button");
+        page.Publish(Array.Empty<OpenCodeInboxItem>());
+        entries[1].Run();
+        Check(requested.Count == 2 && menu.Actions().All(e => !e.Enabled), "a menu left over from a removed row is inert");
+    }
+
+    // The queue row no longer hides anything, but other views still do (browser strip, tool rows): keep the shared
+    // helper's contract covered here, where its real source is compiled.
+    private static Task TouchRevealHelper()
+    {
+        var host = new Grid();
+        var states = new List<bool>();
+        OpenCodeTouchInput.WireReveal(host, states.Add);
+        Check(states.SequenceEqual(new[] { false }), "hover-revealed actions start hidden");
+        host.MouseEnter();
+        Check(states[^1], "mouse hover reveals");
+        host.MouseExit();
+        Check(!states[^1], "mouse exit hides");
+        host.Touch();
+        Check(states[^1], "the first touch reveals, so a finger never has to hit an invisible target");
+        host.TouchExit();
+        Check(states[^1], "lifting the finger keeps the actions");
+        host.MouseExit();
+        Check(!states[^1], "a later mouse exit returns to hover-only");
+        host.Focus();
+        Check(states[^1], "keyboard focus reveals");
+        host.Blur();
+        Check(!states[^1], "losing focus hides");
+        return Task.CompletedTask;
     }
 
     private static async Task QueueMenuEntries()
