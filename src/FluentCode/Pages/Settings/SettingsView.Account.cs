@@ -39,12 +39,12 @@ public sealed partial class SettingsView
         AutomationProperties.SetName(_pairButton, "生成配对链接和二维码");
         _pairButton.Click += async (_, _) => await PairDeviceAsync();
 
-        // 连接表单与欢迎页共用；这里不再手工套一层 Border 卡片，改用与其余分类同一套 SettingsCard 行：
-        // 标题行 “OpenCode 连接” + 整行铺满的表单（保持表单始终可见，不做点击展开）。
-        var form = SettingsCards.Row("\uE77B", "OpenCode 连接", _connectionView);
+        // 连接表单与欢迎页共用；在设置里放进一张卡片。组标题“OpenCode 连接”在卡片外上方（与“主题”“文字”同一写法），
+        // 表单从卡片左边缘起排，不放进带图标的标题行里：那样整块表单会被推到标题文字的缩进之后，左侧空出一条。
+        var form = SettingsCards.Panel(new Border { Padding = new Thickness(16, 14, 16, 16), Child = _connectionView });
         AutomationProperties.SetAutomationId(form, "SettingsOpenCodeConnectionCard");
         var panel = new StackPanel { Spacing = SettingsCards.GroupSpacing };
-        panel.Children.Add(SettingsCards.Group(null, form));
+        panel.Children.Add(SettingsCards.Group("OpenCode 连接", form));
         panel.Children.Add(SettingsCards.Group(null,
             SettingsCards.Card("\uE8EA", "连接其他设备", "生成一次性链接和二维码，让手机、另一台电脑或浏览器连到这个 OpenCode 服务", _pairButton)));
         panel.Children.Add(SettingsCards.Group(null,
