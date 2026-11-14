@@ -3768,7 +3768,7 @@ internal sealed class OpenCodeQuestionAnchorHost : StackPanel
             CornerRadius = new CornerRadius(4),
             BorderThickness = new Thickness(3, 0, 0, 0),
         };
-        OpenCodeConversationView.ApplyStyle(_fallback, "OpenCodeQuestionFallbackChromeStyle");
+        OpenCodeConversationView.ApplyStyle(_fallback, "OpenCodeCardChromeStyle");
         Children.Add(_fallback);
     }
 
