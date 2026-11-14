@@ -78,16 +78,37 @@ internal sealed partial class NativeUiRenderer
                 formVisual.Apply = node => Sync(form, Children(P(node, "children"), key + "/children", depth + 1).Cast<UIElement>().ToArray()); return formVisual;
             case "Spacer": return new(new Border { MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Tag = "native-ui-spacer" });
             case "Carousel":
-                var track = new StackPanel { Orientation = Orientation.Horizontal }; var scroll = new ScrollViewer { Content = track, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Disabled };
+                // Comes to rest on item edges through the scroller's own snap points; NativeUiCarouselSnap says why the gap sits in
+                // the items' margins. The type is Optional on purpose. With a mandatory type the platform replaces every ChangeView
+                // target by a snap point inside the scrollable range (microsoft/microsoft-ui-xaml, tag winui3/release/2.6.5,
+                // src/dxaml/xcp/dxaml/lib/ScrollViewer_Partial.cpp, ScrollViewer::AdjustOffsetWithMandatorySnapPoints). The far end
+                // of the track is not an item edge, so the next button could then never show the last item completely. With an
+                // optional type that function does nothing, and the points only go to DirectManipulation, as places to come to
+                // rest for the input it handles. The scroll bar never consults them (ScrollViewer::HandleHorizontalScroll).
+                var track = new StackPanel { Orientation = Orientation.Horizontal }; var scroll = new ScrollViewer { Content = track, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Enabled, VerticalScrollMode = ScrollMode.Disabled, HorizontalSnapPointsType = SnapPointsType.Optional, HorizontalSnapPointsAlignment = Microsoft.UI.Xaml.Controls.Primitives.SnapPointsAlignment.Near };
                 var previous = new Button { Content = NativeUiTheme.Icon("chevron-left"), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Width = 32, Height = 32, Padding = new Thickness(0), Margin = new Thickness(4) };
                 var next = new Button { Content = NativeUiTheme.Icon("chevron-right"), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Width = 32, Height = 32, Padding = new Thickness(0), Margin = new Thickness(4) };
                 Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(previous, "上一组"); Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(next, "下一组");
-                var carousel = new Visual(new Grid { Children = { scroll, previous, next } });
+                var carousel = new Visual(new Grid { Children = { scroll, previous, next } }); var itemGap = 0d; var margins = new Dictionary<FrameworkElement, (Thickness Own, Thickness Given)>();
                 void Edges() { previous.Visibility = scroll.HorizontalOffset > 1 ? Visibility.Visible : Visibility.Collapsed; next.Visibility = scroll.ScrollableWidth - scroll.HorizontalOffset > 1 ? Visibility.Visible : Visibility.Collapsed; }
-                previous.Click += (_, _) => scroll.ChangeView(Math.Max(0, scroll.HorizontalOffset - scroll.ViewportWidth * .85), null, null);
-                next.Click += (_, _) => scroll.ChangeView(Math.Min(scroll.ScrollableWidth, scroll.HorizontalOffset + scroll.ViewportWidth * .85), null, null);
+                double[] Extents() => track.Children.Select(child => child.DesiredSize.Width).ToArray();
+                previous.Click += (_, _) => scroll.ChangeView(NativeUiCarouselSnap.Previous(Extents(), itemGap, scroll.HorizontalOffset, scroll.ViewportWidth), null, null);
+                next.Click += (_, _) => scroll.ChangeView(NativeUiCarouselSnap.Next(Extents(), itemGap, scroll.HorizontalOffset, scroll.ViewportWidth, scroll.ScrollableWidth), null, null);
                 scroll.ViewChanged += (_, _) => Edges(); scroll.SizeChanged += (_, _) => Edges();
-                carousel.Apply = node => { var items = Children(P(node, "children"), key + "/children", depth + 1).ToArray(); foreach (var item in items) item.Width = Math.Clamp(N(node, "itemWidth", 240), 80, 640); track.Spacing = NativeUiTheme.Gap(P(node, "gap")); Sync(track, items.Cast<UIElement>().ToArray()); Edges(); }; return carousel;
+                carousel.Apply = node =>
+                {
+                    var items = Children(P(node, "children"), key + "/children", depth + 1).ToArray(); var width = Math.Clamp(N(node, "itemWidth", 240), 80, 640); itemGap = NativeUiTheme.Gap(P(node, "gap"));
+                    foreach (var item in items)
+                    {
+                        // The gap follows every item, added to whatever margin the item set for itself; the track takes the last one back.
+                        var own = margins.TryGetValue(item, out var known) && item.Margin.Equals(known.Given) ? known.Own : item.Margin;
+                        var given = new Thickness(own.Left, own.Top, own.Right + itemGap, own.Bottom);
+                        item.Width = width; item.Margin = given; margins[item] = (own, given);
+                    }
+                    foreach (var gone in margins.Keys.Where(element => !items.Contains(element)).ToArray()) margins.Remove(gone);
+                    track.Margin = new Thickness(0, 0, -itemGap, 0); Sync(track, items.Cast<UIElement>().ToArray()); Edges();
+                };
+                return carousel;
             case "Popover":
                 var triggerContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var popoverContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) };
                 var trigger = new Button { Content = triggerContent }; var flyout = new Flyout { Content = popoverContent }; var popover = new Visual(trigger); trigger.Flyout = flyout;

@@ -302,6 +302,111 @@ internal static class MediaAndMapChromeTests
             && mediaSource.Contains(".Take(12)"),
             "Gallery sources are still validated per image and capped at twelve");
 
-        Console.WriteLine($"PASS lane N2 media/map chrome: Mapsui zoom widget, fixed on-map colours for light tiles, PipsPager and viewer zoom; {checks} checks");
+        // ---------------------------------------------------------------- C09: the carousel comes to rest on item edges
+        // The card's scroller uses the platform's snap points, and a horizontal StackPanel reports the running total of
+        // its children's desired widths as those points. The previous and next buttons page with the same totals, so
+        // this arithmetic decides where a carousel stops. It has no XAML types, so it runs here.
+        const double itemWidth = 240, itemGap = 12, slack = NativeUiCarouselSnap.Tolerance;
+        static double[] Track(int count, double width, double gap) => Enumerable.Repeat(width + gap, count).ToArray();
+        // The far end: everything the items take up, less the gap after the last one, less what the view shows.
+        static double FarEnd(double[] extents, double gap, double viewport) => Math.Max(0, extents.Sum() - gap - viewport);
+        // Press a button for as long as the card shows it (it hides a button within one unit of its end).
+        static List<double> Forward(double[] extents, double gap, double viewport)
+        {
+            var end = FarEnd(extents, gap, viewport); var stops = new List<double> { 0 };
+            while (end - stops[^1] > NativeUiCarouselSnap.Tolerance && stops.Count <= extents.Length + 2) stops.Add(NativeUiCarouselSnap.Next(extents, gap, stops[^1], viewport, end));
+            return stops;
+        }
+        static List<double> Backward(double[] extents, double gap, double viewport)
+        {
+            var stops = new List<double> { FarEnd(extents, gap, viewport) };
+            while (stops[^1] > NativeUiCarouselSnap.Tolerance && stops.Count <= extents.Length + 2) stops.Add(NativeUiCarouselSnap.Previous(extents, gap, stops[^1], viewport));
+            return stops;
+        }
+        var six = Track(6, itemWidth, itemGap); var ten = Track(10, itemWidth, itemGap);
+        Check(NativeUiCarouselSnap.Edges(six).SequenceEqual(new[] { 0d, 252, 504, 756, 1008, 1260 }),
+            "An item's edge is the total of the items and gaps before it, so the gap has to be part of what each item takes up");
+        Check(FarEnd(six, itemGap, 700) == 800 && Forward(six, itemGap, 700).SequenceEqual(new[] { 0d, 504, 800 }),
+            "Next pages to the first item that was cut off, then to the far end, where the last item is completely in view");
+        Check(Backward(six, itemGap, 700).SequenceEqual(new[] { 800d, 504, 0 }),
+            "Previous returns over the same item edges, back to the start");
+        Check(Forward(ten, itemGap, 700).SequenceEqual(new[] { 0d, 504, 1008, 1512, 1808 })
+            && Backward(ten, itemGap, 700).SequenceEqual(new[] { 1808d, 1512, 1008, 504, 0 }),
+            "A longer carousel pages a view at a time in both directions, always starting the view on an item");
+        Check(Forward(Track(3, itemWidth, itemGap), itemGap, 100).SequenceEqual(new[] { 0d, 252, 504, 644 })
+            && Backward(Track(3, itemWidth, itemGap), itemGap, 100).SequenceEqual(new[] { 644d, 504, 252, 0 }),
+            "A view narrower than one item still moves, one item for each press");
+        Check(NativeUiCarouselSnap.Next(ten, itemGap, 300, 700, 1808) == 1008 && NativeUiCarouselSnap.Previous(ten, itemGap, 300, 700) == 0
+            && NativeUiCarouselSnap.Next(six, itemGap, 300, 700, 800) == 800,
+            "From a position between items (a scroll bar drag, a pan that stopped short) the buttons go to an item edge or to the end");
+        Check(NativeUiCarouselSnap.Next(six, itemGap, 504 - slack / 2, 700, 800) == 800 && NativeUiCarouselSnap.Previous(six, itemGap, 504 + slack / 2, 700) == 0,
+            "An offset within the slack of an item edge counts as being on it, so a rounded offset does not cost an extra press");
+        Check(NativeUiCarouselSnap.Edges(Array.Empty<double>()).Length == 0 && NativeUiCarouselSnap.Next(Array.Empty<double>(), itemGap, 0, 700, 0) == 0
+            && NativeUiCarouselSnap.Previous(Array.Empty<double>(), itemGap, 0, 700) == 0,
+            "An empty carousel has nowhere to go and does not throw");
+
+        // The same rules for many shapes: every width the catalog allows, every gap, short and long tracks, narrow and
+        // wide views, and tracks with collapsed items (no extent). Stated as what a user needs, not as the formula.
+        var problems = new List<string>();
+        var shapes = new List<(string Name, double[] Extents, double Gap)>();
+        foreach (var width in new[] { 80d, 240, 333.3, 640 }) foreach (var gap in new[] { 0d, 12, 64 }) foreach (var count in new[] { 1, 2, 3, 7, 12 })
+            shapes.Add(($"{count}x{width}+{gap}", Track(count, width, gap), gap));
+        shapes.Add(("collapsed first, middle and last", new[] { 0d, 252, 252, 0, 252, 252, 252, 0 }, 12));
+        shapes.Add(("mixed widths", new[] { 92d, 652, 252, 345.3, 132, 652, 92 }, 12));
+        foreach (var (name, extents, gap) in shapes) foreach (var viewport in new[] { 60d, 300, 700, 1234.5 })
+        {
+            var edges = NativeUiCarouselSnap.Edges(extents); var end = FarEnd(extents, gap, viewport);
+            bool Seen(int item, double stop) => edges[item] >= stop - slack && edges[item] + extents[item] - gap <= stop + viewport + slack;
+            foreach (var (direction, stops) in new[] { ("next", Forward(extents, gap, viewport)), ("previous", Backward(extents, gap, viewport)) })
+            {
+                var scene = $"{name}, view {viewport}, {direction}";
+                if (stops.Count > extents.Length + 1) problems.Add($"{scene}: {stops.Count - 1} presses for {extents.Length} items");
+                for (var index = 1; index < stops.Count; index++)
+                {
+                    var moved = direction == "next" ? stops[index] - stops[index - 1] : stops[index - 1] - stops[index];
+                    if (!(moved > slack)) problems.Add($"{scene}: press {index} moved {moved}");
+                    if (stops[index] < 0 || stops[index] > end) problems.Add($"{scene}: press {index} left the track ({stops[index]})");
+                    if (!edges.Contains(stops[index]) && stops[index] != end) problems.Add($"{scene}: press {index} stopped between items ({stops[index]})");
+                }
+                var last = direction == "next" ? end : 0;
+                if (Math.Abs(stops[^1] - last) > slack) problems.Add($"{scene}: ended at {stops[^1]}, not {last}");
+                for (var item = 0; item < extents.Length; item++)
+                {
+                    if (extents[item] <= 0) continue;
+                    // An item that fits the view must be completely in view at some stop; a wider one must start a view.
+                    var shown = extents[item] - gap <= viewport ? stops.Any(stop => Seen(item, stop)) : stops.Any(stop => Math.Abs(stop - edges[item]) <= slack);
+                    if (!shown) problems.Add($"{scene}: item {item} is never shown");
+                }
+            }
+            // From anywhere on the track, not only from the stops above.
+            for (var offset = 0d; offset <= end; offset += 37.5)
+            {
+                var next = NativeUiCarouselSnap.Next(extents, gap, offset, viewport, end); var previous = NativeUiCarouselSnap.Previous(extents, gap, offset, viewport);
+                if (end - offset > slack && !(next > offset + slack && next <= end && (edges.Contains(next) || next == end))) problems.Add($"{name}, view {viewport}: next from {offset} gave {next}");
+                if (offset > slack && !(previous < offset - slack && previous >= 0 && edges.Contains(previous))) problems.Add($"{name}, view {viewport}: previous from {offset} gave {previous}");
+            }
+        }
+        Check(problems.Count == 0, "For every item width, gap, length and view width: each press moves, stays on the track, stops on an item edge or at an end, "
+            + "takes no more presses than there are items, and every item is shown" + (problems.Count == 0 ? "" : " -- " + string.Join("; ", problems.Take(4)) + $" ({problems.Count} in all)"));
+
+        var componentsSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Components.cs"));
+        var carouselSource = componentsSource[componentsSource.IndexOf("case \"Carousel\":", StringComparison.Ordinal)..componentsSource.IndexOf("case \"Popover\":", StringComparison.Ordinal)];
+        Check(carouselSource.Contains("HorizontalSnapPointsType = SnapPointsType.Optional") && carouselSource.Contains("SnapPointsAlignment.Near")
+            && carouselSource.Contains("new ScrollViewer { Content = track") && carouselSource.Contains("new StackPanel { Orientation = Orientation.Horizontal }"),
+            "The carousel snaps with the stock ScrollViewer and StackPanel; the type is optional because a mandatory type pulls the next button's ChangeView back from the far end");
+        Check(!carouselSource.Contains("track.Spacing") && carouselSource.Contains("own.Right + itemGap") && carouselSource.Contains("track.Margin = new Thickness(0, 0, -itemGap, 0)")
+            && carouselSource.Contains("child.DesiredSize.Width"),
+            "The gap is inside each item's margin, which the panel's snap points count, and not in StackPanel.Spacing, which they do not; the buttons read the same desired widths");
+        Check(carouselSource.Contains("NativeUiCarouselSnap.Previous(Extents(), itemGap, scroll.HorizontalOffset, scroll.ViewportWidth)")
+            && carouselSource.Contains("NativeUiCarouselSnap.Next(Extents(), itemGap, scroll.HorizontalOffset, scroll.ViewportWidth, scroll.ScrollableWidth)")
+            && !carouselSource.Contains(".85"),
+            "The previous and next buttons page to item edges instead of moving a fixed share of the view");
+        Check(carouselSource.Contains("previous.Visibility = scroll.HorizontalOffset > 1 ? Visibility.Visible : Visibility.Collapsed")
+            && carouselSource.Contains("next.Visibility = scroll.ScrollableWidth - scroll.HorizontalOffset > 1 ? Visibility.Visible : Visibility.Collapsed")
+            && carouselSource.Contains("SetName(previous, \"上一组\")") && carouselSource.Contains("SetName(next, \"下一组\")")
+            && carouselSource.Contains("scroll.ViewChanged += (_, _) => Edges(); scroll.SizeChanged += (_, _) => Edges();"),
+            "Each button is still a named stock Button that is shown only while there is something to page to on its side");
+
+        Console.WriteLine($"PASS lane N2 media/map chrome: Mapsui zoom widget, fixed on-map colours for light tiles, PipsPager and viewer zoom, carousel stops; {checks} checks");
     }
 }
