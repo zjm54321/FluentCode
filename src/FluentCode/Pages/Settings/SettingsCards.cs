@@ -91,15 +91,8 @@ internal static class SettingsCards
         Content = content,
     };
 
-    /// <summary>标题 + 整行内容（无描述）的卡片：内容占满整行，左侧与卡片标题文字对齐。</summary>
-    internal static SettingsCard Row(string glyph, string header, UIElement content)
-    {
-        var card = SubContent(content);
-        card.Header = header;
-        card.HeaderIcon = Icon(glyph);
-        AutomationProperties.SetName(card, header);
-        return card;
-    }
+    /// <summary>任意内容的卡片外框（如整块表单）：只有底色、描边和圆角，内容从卡片左边缘起排；标题用 <see cref="Group"/> 的组标题。</summary>
+    internal static Border Panel(Border content) => Styled(content, "AppSettingsCardStyle");
 
     /// <summary>
     /// 轻量样式覆盖：把某个主题资源键写进 <paramref name="scope"/> 自身的主题字典。

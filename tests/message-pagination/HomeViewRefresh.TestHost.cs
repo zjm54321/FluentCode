@@ -268,7 +268,7 @@ namespace FluentCode.Pages.OpenCode
         public OpenCodeHomeProjectKey? SelectedProject { get; set; }
         internal Func<long, OpenCodeHomeSession, OpenCodeHomeSessionAction, bool>? CanRequestSessionAction;
         internal event EventHandler<OpenCodeHomeSessionActionEventArgs>? SessionActionRequested;
-        private void RebuildChips() { } // Native SelectorBar/menu entrance is compile-checked by the app build.
+        private void RebuildChips() { } // The filter pill row and its menu entrance are compile-checked by the app build.
         private void MaybeLoadMore() { } // Transport/paging is tested by the source-linked page above.
         private void RequestMore() { }
         private static Style ThemeStyle(string type, (string Property, string Key) setter) => new() { Key = setter.Key };

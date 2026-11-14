@@ -84,7 +84,7 @@ FluentCode 支持运行时深浅主题即时切换，无需重启应用。
 - **卡片**：`SettingsCards.Card(图标, 标题, 说明, 控件)`，左侧 20 DIP 图标 · 标题 / 一行 Caption 说明 · 右侧控件；卡片宽度不足 476 DIP 时控件自动换到标题下方。卡片本身不可点击、不占 Tab 停靠点，键盘焦点直接进入右侧控件。
 - **可展开卡片**：`SettingsCards.Expander(...)`，标题行与卡片一致，可在标题行放控件（如字体框）；子项用 `SettingsCards.SubContent(内容)`，左缘对齐标题文字，分隔线、圆角与展开动画由工具包模板绘制。
 - **随状态变化的说明**：`Card(..., out note, ...)` / `Expander(..., out note, ...)` 返回说明 `TextBlock`，`SettingsCards.SetNote(note, 文字)` 为空时折叠。
-- **整块表单**（如账号与连接）改用与其余分类同一套行：`SettingsCards.Row(图标, 标题, 内容)` 把表单作为整行卡片内容承载，不再手工套一层 `Border` 卡片外框（B06 迁移后 `SettingsCards.Panel` 与 `AppSettingsCardStyle` 已删除）。
+- **整块表单**（如账号与连接）用 `SettingsCards.Panel` 的卡片外框（`AppSettingsCardStyle`，与 SettingsCard 同一画刷与圆角），标题用 `SettingsCards.Group("OpenCode 连接", …)` 的组标题放在卡片外上方，表单从卡片左边缘起排（内边距 16/14/16/16）。不要把整块表单放进带图标的 SettingsCard 标题行：表单会被推到标题文字的缩进之后，卡片左侧空出一条，标题也从组标题降成了行标题。1.2611.18 这样改过一次，用户看后要求改回（`tests/opencode-browser-settings` 有守卫）。
 - 画刷、悬停 / 禁用态与高对比度全部来自工具包模板的 ThemeResource，切换主题即时生效；卡片的 `AutomationProperties.Name` 取标题，未命名的右侧控件也会以标题作为无障碍名称。
 - 组标题为 BodyStrong；卡片间距 4 DIP，组间距 28 DIP；右侧下拉框 / 输入框最宽 280 DIP（`SettingsCards.Sized`）：卡片给得下时正好 280，窄卡片里控件换到标题下方后随那一列收窄，右缘和箭头留在卡片内。
 
@@ -100,6 +100,19 @@ FluentCode 支持运行时深浅主题即时切换，无需重启应用。
 - **终端**：只有需要用户处理的提示才可以打断终端——SSH 安全提示、权限条，以及错误 / 警告级或带操作按钮的消息。它们与终端原生窗口重叠时，对该终端持有 `SuppressAirspace(snapshot: true)` 租约（终端保留最后一帧，暂时不能输入），提示关闭或不再重叠后立即归还，终端原来有键盘焦点的话会拿回焦点。
 - **被动提示不打断终端**：没有按钮的“信息”消息和“状态未知”胶囊如果会盖到终端，就先不显示、不要租约、也不计时；终端关闭或不再重叠后才出现，从那时开始计时（胶囊只在那时状态仍未知才出现）。完全落在终端卡片标题区内、碰不到终端画面的被动提示照常显示。规则是纯逻辑 `OpenCodeNoticePolicy`（`Pages/OpenCodePage.Notices.Policy.cs`），由 `tests/fluent-motion` 逐种组合测试。
 - **写法不变**：`ShowMessage(InfoBarSeverity, string, string)` 和直接设置 `MessageBar` / `PermissionBar` 的代码照常使用；浮层只观察这些元素（`Pages/OpenCodePage.Notices*.cs`）。
+
+### 5.5 首页项目筛选（药丸）
+窄布局首页搜索框下方的项目筛选是一行实心药丸，不是 `SelectorBar`（`OpenCodeHomeView.RebuildChips`）：
+- **外观**：每个项目一个原生 `ToggleButton`，圆角 15、最小高度 30、内边距 12/4/12/5，间距 8；选中的那个整块填充强调色，其余为描边。右侧“…”按钮同样是药丸形，收纳放不下的项目和“添加项目”。
+- **为什么不用 `SelectorBar`**：筛选会隐藏会话，选中状态必须是这一行里最显眼的；`SelectorBar` 只有一条下划线，看起来像页面标签，还让这一行变高。1.2611.18 换过一次，用户看后要求改回（`tests/opencode-tool-presentation` 有守卫）。
+- **单选**：选中态每次按当前项目回填，再点已选中的药丸不会取消。药丸按项目就地复用，实时刷新不抢焦点。
+- **键盘与无障碍**：Tab 逐个经过，左右方向键和 Home / End 在药丸间移动，回车 / 空格选择。名称是项目名（“全部”读作“全部项目”），选中状态由按钮的开 / 关状态报给讲述人；高对比度用系统按钮配色。
+
+### 5.6 欢迎页光晕（固定蓝色）
+欢迎页卡片后面的光晕是固定的冷蓝色，不跟随 Windows 强调色（`WelcomeView.ApplyBloom`）：
+- **颜色**：径向渐变，中心在页面上方（0.5, 0.18），半径 0.6 × 0.55；深色主题 `#1C86DE` 不透明度 64/255，浅色主题 `#62CDFF` 不透明度 56/255，向透明过渡。
+- **为什么不跟随强调色**：这是铺满整页的底色。强调色是红、橙、黄时整页看起来像出错，真正的错误提示反而不显眼。1.2611.18 改成跟随强调色，用户看后要求改回（`tests/opencode-browser-settings` 有守卫）。按钮、链接等控件照常使用强调色。
+- **刷新**：只在页面加载和深浅主题切换时重画；颜色固定，不监听系统颜色变化。高对比度下整层关闭，背景保持系统窗口色。
 
 ---
 

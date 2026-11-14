@@ -84,7 +84,7 @@ public sealed class OpenCodeHomeView : UserControl
     private readonly Border _connectedDot = Dot(OpenCodeToolTheme.Success, 8);
     private readonly TextBlock _connectionText = new() { TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
     private readonly ScrollViewer _chipScroller = new() { Visibility = Visibility.Collapsed };
-    private readonly SelectorBar _chips = new() { VerticalAlignment = VerticalAlignment.Center };
+    private readonly StackPanel _chips = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
     private readonly Grid _chipRow = new() { ColumnSpacing = 8, Visibility = Visibility.Collapsed };
     private readonly Button _projectOverflow = new() { Content = "…", CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
     private readonly Dictionary<object, TextBlock> _headerCounts = new();
@@ -218,8 +218,7 @@ public sealed class OpenCodeHomeView : UserControl
         ScrollViewer.SetHorizontalScrollBarVisibility(_chipScroller, ScrollBarVisibility.Hidden);
         ScrollViewer.SetVerticalScrollMode(_chipScroller, ScrollMode.Disabled);
         ScrollViewer.SetVerticalScrollBarVisibility(_chipScroller, ScrollBarVisibility.Disabled);
-        AutomationProperties.SetName(_chips, "按项目筛选");
-        _chips.SelectionChanged += OnChipSelectionChanged;
+        _chips.KeyDown += OnChipKeyDown;
         SetIdentity(_chipScroller, "OpenCodeHomeProjectChips", "按项目筛选");
         _chipRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _chipRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -515,9 +514,10 @@ public sealed class OpenCodeHomeView : UserControl
     }
 
     /// <summary>
-    /// 窄宽度下的项目筛选：原生 <see cref="SelectorBar"/>（单选设计，自带选中胶囊、指针/键盘处理与
-    /// <c>SelectionItem</c> 无障碍模式），取代原来一组手工单选逻辑的 <c>ToggleButton</c> 药丸。
-    /// 仍然只放一行：放不下的项目继续由右侧“…”原生菜单（含“添加项目”）兜住，溢出行为不变。
+    /// 窄宽度下的项目筛选：一行实心药丸（<see cref="ToggleButton"/>），选中的那一个整块填充强调色，其余为描边。
+    /// 单选由这里维护：每次都按 <see cref="SelectedProject"/> 回填 <c>IsChecked</c>。
+    /// 药丸按 key 就地复用（文字、顺序、选中态原地更新），实时刷新时键盘焦点留在原来的药丸上。
+    /// 仍然只放一行：放不下的项目由右侧“…”原生菜单（含“添加项目”）兜住。
     /// </summary>
     private void RebuildChips()
     {
@@ -531,29 +531,23 @@ public sealed class OpenCodeHomeView : UserControl
             if (visible.Count == 5) visible.RemoveAt(4);
             visible.Add(selected);
         }
-        var previous = _refreshing;
-        _refreshing = true;
-        try
+        var desired = new List<(string Text, OpenCodeHomeProjectKey? Key)> { ("全部", null) };
+        desired.AddRange(visible.Select(project => (ProjectName(project), (OpenCodeHomeProjectKey?)project.Key)));
+        for (var index = 0; index < desired.Count; index++)
         {
-            var desired = new List<(string Text, OpenCodeHomeProjectKey? Key)> { ("全部", null) };
-            desired.AddRange(visible.Select(project => (ProjectName(project), (OpenCodeHomeProjectKey?)project.Key)));
-            for (var index = 0; index < desired.Count; index++)
+            var (text, key) = desired[index];
+            var chip = _chips.Children.OfType<ToggleButton>().FirstOrDefault(existing => Equals(existing.Tag, key));
+            if (chip is null) { chip = Chip(key); _chips.Children.Insert(index, chip); }
+            else
             {
-                var (text, key) = desired[index];
-                var item = _chips.Items.OfType<SelectorBarItem>().FirstOrDefault(item => Equals(item.Tag, key));
-                if (item is null) { item = Chip(text, key); _chips.Items.Insert(index, item); }
-                else
-                {
-                    item.Text = text;
-                    var old = _chips.Items.IndexOf(item);
-                    if (old != index) { _chips.Items.RemoveAt(old); _chips.Items.Insert(index, item); }
-                }
-                AutomationProperties.SetName(item, key is null ? "全部项目" : text);
+                var old = _chips.Children.IndexOf(chip);
+                if (old != index) _chips.Children.Move((uint)old, (uint)index);
             }
-            while (_chips.Items.Count > desired.Count) _chips.Items.RemoveAt(_chips.Items.Count - 1);
-            _chips.SelectedItem = _chips.Items.OfType<SelectorBarItem>().FirstOrDefault(item => Equals(item.Tag, SelectedProject));
+            chip.Content = text;
+            chip.IsChecked = key == SelectedProject;
+            AutomationProperties.SetName(chip, key is null ? "全部项目" : text);
         }
-        finally { _refreshing = previous; }
+        while (_chips.Children.Count > desired.Count) _chips.Children.RemoveAt(_chips.Children.Count - 1);
         var overflow = new MenuFlyout();
         foreach (var project in projects.Except(visible))
         {
@@ -575,32 +569,47 @@ public sealed class OpenCodeHomeView : UserControl
         _projectOverflow.Flyout = overflow;
     }
 
-    private SelectorBarItem Chip(string text, OpenCodeHomeProjectKey? key)
+    private ToggleButton Chip(OpenCodeHomeProjectKey? key)
     {
-        var chip = new SelectorBarItem { Text = text, Tag = key! };
-        AutomationProperties.SetName(chip, key is null ? "全部项目" : text);
+        var chip = new ToggleButton { Tag = key!, CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) };
         if (key is not null) ToolTipService.SetToolTip(chip, key.Directory);
+        chip.Click += (_, _) =>
+        {
+            if (key != SelectedProject) SelectProject(key, notify: true);
+            // 单选：再点已选中的药丸不取消选中；选不了的项目（已不在快照里）也不留下选中外观。
+            chip.IsChecked = key == SelectedProject;
+        };
         return chip;
     }
 
-    /// <summary>原生 SelectorBar 的单选结果（程序化回填 SelectedItem 时不重复通知，避免回环）。</summary>
-    private void OnChipSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    /// <summary>左右方向键在药丸之间移动焦点，Home / End 到两端；Tab 逐个经过，回车 / 空格选择（按钮自带）。</summary>
+    private void OnChipKeyDown(object sender, KeyRoutedEventArgs args)
     {
-        if (_refreshing || sender.SelectedItem is not SelectorBarItem item) return;
-        // 药丸行本身就是被点中的那一个，选中胶囊由控件自己更新，无需在事件回调里重建 Items（SelectorBar 会重入）。
-        SelectProject(item.Tag as OpenCodeHomeProjectKey, notify: true, rebuildChips: false);
+        if (args.KeyStatus.IsMenuKeyDown) return;
+        var chips = _chips.Children.OfType<ToggleButton>().ToList();
+        var current = chips.FindIndex(chip => chip.FocusState != FocusState.Unfocused);
+        if (current < 0) return;
+        var target = args.Key switch
+        {
+            VirtualKey.Left => current - 1,
+            VirtualKey.Right => current + 1,
+            VirtualKey.Home => 0,
+            VirtualKey.End => chips.Count - 1,
+            _ => -1,
+        };
+        if (target < 0 || target >= chips.Count) return;
+        if (target != current) chips[target].Focus(FocusState.Keyboard);
+        args.Handled = true;
     }
 
-    private void SelectProject(OpenCodeHomeProjectKey? key, bool notify) => SelectProject(key, notify, rebuildChips: true);
-
-    private void SelectProject(OpenCodeHomeProjectKey? key, bool notify, bool rebuildChips)
+    private void SelectProject(OpenCodeHomeProjectKey? key, bool notify)
     {
         if (key is not null && !_snapshot.Projects.Any(project => project.Key == key)) return;
         SelectedProject = key;
         _refreshing = true;
         try { _projects.SelectedItem = SelectedItemFor(key); }
         finally { _refreshing = false; }
-        if (rebuildChips) RebuildChips();
+        RebuildChips();
         RefreshSessions();
         if (notify) ProjectSelected?.Invoke(this, Context());
     }
