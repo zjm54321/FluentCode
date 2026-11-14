@@ -62,6 +62,7 @@ namespace FluentCode.Pages
 
         internal void Own(string id) => _pendingAckIds.Add(id);
         internal bool CanChange(OpenCodeInboxItem item) => CanUpdatePendingDelivery(item);
+        internal bool CanWithdraw(OpenCodeInboxItem item) => CanWithdrawQueued(item);
         internal void Admit(OpenCodeInboxUser receipt) => OnComposerPromptAdmitted(_selectedSessionId!, receipt);
         internal void Publish(IReadOnlyList<OpenCodeInboxItem> inbox, bool trimAcknowledgements = false)
         {

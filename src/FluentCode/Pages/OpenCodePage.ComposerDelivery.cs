@@ -27,15 +27,14 @@ public sealed partial class OpenCodePage
     private void InitializePendingDeliveryActions()
         => _queuedPromptsView.DeliveryChangeRequested += OnPendingDeliveryChangeRequested;
 
+    // Any user input the server still lists can change mode: the inbox records no sender and PATCH takes none,
+    // so this is decided from server state alone, not from what this page happened to send.
     private bool CanUpdatePendingDelivery(OpenCodeInboxItem item)
         => _pageActive && SourceReady && item.Type == OpenCodeInboxItemTypes.User && _source is { } source
             && _selectedSessionId is { } session && item.Id is { } id
             && item.SessionId == session && OpenCodeQueuedPromptWithdrawal.IsWithdrawableId(session, id)
-            && OwnsPendingDelivery(id) && !_conversationView.ContainsRenderedMessage(id)
+            && !_conversationView.ContainsRenderedMessage(id)
             && !_uncertainDelivery.ContainsKey((source, _sourceRevision, session, id));
-
-    private bool OwnsPendingDelivery(string inboxId)
-        => _pendingAckIds.Contains(inboxId) || OwnsAdmittedInboxItem(inboxId);
 
     private void ReconcilePendingDeliveryUpdates(IReadOnlyList<OpenCodeInboxItem>? inbox)
     {
@@ -99,11 +98,6 @@ public sealed partial class OpenCodePage
             ShowMessage(InfoBarSeverity.Warning, "无法更改投递方式", "未识别这条待投递消息或投递方式；未做更改。");
             return;
         }
-        if (!OwnsPendingDelivery(request.InboxId))
-        {
-            ShowMessage(InfoBarSeverity.Informational, "无法更改投递方式", "这条消息不是本客户端发送，未做更改。");
-            return;
-        }
         if (_conversationView.ContainsRenderedMessage(request.InboxId))
         {
             ShowMessage(InfoBarSeverity.Informational, "无法更改投递方式", "这条消息已经发送，无法再更改投递方式。");
@@ -138,7 +132,7 @@ public sealed partial class OpenCodePage
                 ShowMessage(InfoBarSeverity.Warning, "暂时无法更改", "会话中还有未确认的操作，请先核对操作结果。");
                 return;
             }
-            // A receipt proves local ownership, not that the item is still pending. Always preflight the server.
+            // The view's snapshot may be stale and says nothing about who sent the item. Always preflight the server.
             var before = await ReadPendingDeliveryInboxAsync(source, client, session, Current, token);
             if (before is null || !Current()) return;
             var item = before.FirstOrDefault(row => row.Id == request.InboxId && row.SessionId == session);

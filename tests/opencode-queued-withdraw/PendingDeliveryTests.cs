@@ -19,6 +19,7 @@ internal static partial class Program
         {
             ("pending inbox round trip", DeliveryRoundTrip),
             ("visible keyboard/touch steer switch", SteerSwitchControl),
+            ("another client's message switches both ways", ForeignDeliverySwitch),
             ("receipt-projected steer switch", ReceiptProjectedSwitch),
             ("empty inbox retires uncertainty", EmptyInboxRetiresUncertainty),
             ("unchanged 204 is visibly unconfirmed", UnchangedDeliveryIsUnconfirmed),
@@ -34,6 +35,8 @@ internal static partial class Program
         Check(failures.Count == 0, "pending-delivery regressions failed: " + string.Join(", ", failures));
     }
 
+    // owned: false = nothing was sent, admitted or acknowledged by this page (another client's message, or this
+    // client's own after a restart or session switch).
     private static async Task<OpenCodePage> DeliveryPage(FakeServer server, OpenCodeClient client, bool owned = true)
     {
         var page = new OpenCodePage(client, Session);
@@ -60,6 +63,12 @@ internal static partial class Program
         Check(server.Bodies.Where(b => b is not null).SequenceEqual(new[] { "{\"delivery\":\"steer\"}", "{\"delivery\":\"queue\"}", "{\"delivery\":\"steer\"}" }), "both delivery directions use the exact API contract");
     }
 
+    private static Button? SteerSwitch(OpenCodePage page) => Descendants(page.Conversation).OfType<Button>()
+        .SingleOrDefault(b => AutomationProperties.GetAutomationId(b) == "OpenCodeAdmittedSteerQueue." + Inbox);
+    private static Button? QueueButton(OpenCodePage page, string prefix) => Descendants(page.Queue).OfType<Button>()
+        .SingleOrDefault(b => AutomationProperties.GetAutomationId(b) == prefix + Inbox);
+    private static int Patches(FakeServer server) => server.Calls.Count(c => c.StartsWith("PATCH"));
+
     private static async Task SteerSwitchControl()
     {
         var server = new FakeServer();
@@ -80,6 +89,34 @@ internal static partial class Program
         Check(page.Queue.HasItems && page.Conversation.PendingIds.Count == 0, "visible button routes into real delivery handler");
     }
 
+    private static async Task ForeignDeliverySwitch()
+    {
+        var server = new FakeServer();
+        server.Inbox.Add(UserItem(Inbox, "其他客户端排队", 1000));
+        server.Inbox.Add(new Item("msg_synthetic", "synthetic", "{}", 900));
+        using var client = server.Client();
+        var page = await DeliveryPage(server, client, owned: false);
+        var listed = page.InboxSnapshot!.Single(item => item.Id == Inbox);
+        Check(page.CanChange(listed) && !page.CanWithdraw(listed), "a server-listed user input is switchable with no local send record; withdrawal stays with its sender");
+        Check(!page.CanChange(page.InboxSnapshot!.Single(item => item.Id == "msg_synthetic")), "server-generated inbox work is still not switchable");
+        var toSteer = QueueButton(page, "OpenCodePendingDelivery.");
+        Check(toSteer is not null && QueueButton(page, "OpenCodeQueuedPromptWithdraw.") is null, "another client's queued row offers the switch and no 撤回");
+        await page.Click(toSteer!);
+        Check(Patches(server) == 1 && server.Bodies.Last(b => b is not null) == "{\"delivery\":\"steer\"}"
+            && page.Conversation.PendingIds.Contains(Inbox) && !page.Queue.HasItems,
+            "queued by another client -> 插入当前回合 with one PATCH, confirmed by the re-read");
+        Check(server.Calls.First().StartsWith("GET") && server.Calls.Last().StartsWith("GET"), "the server's inbox is read before and after the PATCH");
+        var toQueue = SteerSwitch(page);
+        Check(toQueue is { IsEnabled: true } && toQueue.Visibility == Visibility.Visible, "another client's pending bubble offers the queue button");
+        await page.Click(toQueue!);
+        Check(Patches(server) == 2 && server.Bodies.Last(b => b is not null) == "{\"delivery\":\"queue\"}"
+            && page.Queue.HasItems && page.Conversation.PendingIds.Count == 0,
+            "steered by another client -> 排队 with one PATCH, confirmed by the re-read");
+        Check(page.Notices.Count == 0 && page.UncertainChanges == 0, "no refusal, warning or leftover uncertainty for a message this client did not send");
+        await page.Change("msg_synthetic", "steer");
+        Check(Patches(server) == 2 && page.Notices.Any(n => n.Contains("不是用户输入")), "a non-user item is refused after the fresh read, without a PATCH");
+    }
+
     private static async Task ReceiptProjectedSwitch()
     {
         var server = new FakeServer();
@@ -89,12 +126,12 @@ internal static partial class Program
         page.Admit(new() { Id = Inbox, SessionId = Session, Type = "user", Delivery = "steer", Payload = new() { Text = "收据先于列表" } });
         Check(page.Conversation.PendingIds.Contains(Inbox) && page.InboxSnapshot is null, "receipt projects a pending bubble before any inbox snapshot");
         await page.Change(Inbox, "queue");
-        Check(server.Calls.Count(c => c.StartsWith("PATCH")) == 1 && page.Queue.HasItems, "receipt-owned steer item can switch without snapshot membership or pending-ack list");
+        Check(server.Calls.Count(c => c.StartsWith("PATCH")) == 1 && page.Queue.HasItems, "a receipt-projected steer item can switch before any inbox snapshot lists it");
         Check(server.Calls.First().StartsWith("GET") && server.Calls.Last().StartsWith("GET"), "receipt switch verifies pending state before PATCH and publishes only the post-read");
         page.Publish(Array.Empty<OpenCodeInboxItem>(), trimAcknowledgements: true);
         server.Calls.Clear(); server.Queries.Clear(); server.Bodies.Clear(); server.Auth.Clear();
         await page.Change(Inbox, "steer");
-        Check(page.Conversation.PendingIds.Contains(Inbox), "current receipt still proves ownership after an acknowledgement-list race");
+        Check(page.Conversation.PendingIds.Contains(Inbox), "a racing empty snapshot does not block the switch: the fresh server read decides");
     }
 
     private static async Task EmptyInboxRetiresUncertainty()
@@ -153,15 +190,12 @@ internal static partial class Program
     private static async Task DeliveryGuardFeedback()
     {
         var server = new FakeServer();
-        server.Inbox.Add(UserItem(Inbox, "其他客户端", 1000));
+        server.Inbox.Add(UserItem(Inbox, "防护反馈", 1000));
         using var client = server.Client();
-        var page = await DeliveryPage(server, client, owned: false);
+        var page = await DeliveryPage(server, client);
+        page.SetBusy(true);
         await page.Change(Inbox, "steer");
-        Check(page.Notices.Any(n => n.Contains("不是本客户端发送")) && server.Calls.Count == 0, "foreign item is refused with an ownership explanation and no network calls");
-        page.Own(Inbox); page.SetBusy(true);
-        var before = page.Notices.Count;
-        await page.Change(Inbox, "steer");
-        Check(page.Notices.Count > before && server.Calls.Count == 0, "overlapping action gets a busy explanation");
+        Check(page.Notices.Count == 1 && server.Calls.Count == 0, "overlapping action gets a busy explanation");
         page.SetBusy(false); server.Inbox.Clear();
         await page.Change(Inbox, "steer");
         Check(page.Notices.Any(n => n.Contains("已不在待投递列表")) && !server.Calls.Any(c => c.StartsWith("PATCH")), "fresh absence explains delivery/removal without a futile PATCH");
