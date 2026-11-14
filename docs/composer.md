@@ -55,6 +55,22 @@ EditorSync 保留 baseline / input revision / 提交 ACK / reentrant predecessor
 
 提示框的文字和判断都在不依赖 WinUI 的 `OpenCodeRollbackConfirmationState` 里，由 `tests/opencode-composer-hookup/NativeActions.cs` 覆盖；该 runner 的默认运行包含这一组。
 
+### 撤回之后发送
+
+撤回之后发送下一条消息，服务器会让这次撤回成为最终结果：已撤回的消息被永久删除，撤回时恢复的文件保持当时的样子，“恢复撤回”不再可用。客户端不调用单独的 commit 接口，发送本身就是这一步。
+
+- 普通消息（含带附件的消息），且这次撤回没有恢复文件：直接发送，不提示。
+- 撤回恢复过文件（会话 `revert.files` 非空，和“恢复撤回”用的是同一个事实）：提示一次“发送这条消息？”，一句话说明已撤回的消息会被永久删除、恢复的 N 个文件保持现在的样子。默认按钮是“取消”；取消后什么都不变，仍然可以“恢复撤回”。
+- 服务器命令：即使没有恢复文件也提示一次“发送这条命令？”。原因是命令的 204 回复不能说明撤回是否已成为最终结果，客户端会保留这个会话的保护，之后不能发送、撤回或切换模型，直到重启 FluentCode；提示框里有一行说明这一点。
+- 发送时读到的撤回和页面上显示的不是同一次（其他窗口或设备又撤回了一条、页面还没读到这次撤回等）：不会按旧的认识直接发送，提示一次并用一行说明。
+- 会话状态读不出来，或者之前有一次操作的结果未知：不提示也不发送，和以前一样给出“未发送”通知。
+
+是否需要提示由 `OpenCodeSessionControlCoordinator.PrepareContinuationAsync` 决定（规则在 `SessionControlContinuationRule`），不是页面决定的：页面只把按下发送时显示的撤回位置（`SessionControlOrigin.ObservedStage`）和发送的种类交给它。它在持有会话租约的情况下重新读取会话状态，三个条件同时成立才放行：发送的是普通消息；读到的撤回没有恢复文件；读到的撤回就是页面当时显示的那一次。放行和确认后发送拿到的是同一种许可，都绑定在刚读到的那次撤回和当前草稿上，只能用一次。
+
+提示框的文字和默认按钮在不依赖 WinUI 的 `OpenCodeContinuationConfirmationState` 里，由 `tests/opencode-composer-hookup/ContinuationActions.cs` 覆盖；放行规则由 `tests/opencode-session-controls/Program.cs` 覆盖。
+
+撤回之后、发送之前，页面上没有专门的一行提示“有一次撤回还可以恢复”：被撤回的消息只是不再显示，消息菜单里的“恢复撤回”变为可用。
+
 ## 验证
 
 协议回归：`tests/opencode-composer/run.ps1`、`tests/opencode-composer-hookup/run.ps1`、`tests/opencode-session-return/run.ps1`、`tests/message-pagination/run.ps1`，均传新的 EvidenceRoot；编译 composer 的其他现有 runner 同样保留。
