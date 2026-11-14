@@ -50,6 +50,10 @@
                 不跟随 ContentControlThemeFontFamily；这里按框架原值（字号 / 字重 / 裁切 / 行距逐项一致）重定义本应用用到的
                 内置文字样式，只把 FontFamily 改为 {ThemeResource ContentControlThemeFontFamily}，使其随 AppFonts 运行期更新。
                 默认值仍是 XamlAutoFontFamily（见 Styles/AppTokens.xaml），未自选字体时外观与框架完全一致。
+                来源版本：Windows App SDK 2.6.5（Microsoft.WindowsAppSDK.WinUI 2.6.5 的 Microsoft.WinUI/Themes/generic.xaml，
+                BaseTextBlockStyle 起于第 11281 行，BodyStrong / BodyLarge / TitleLarge / Display 起于第 29438 行）。
+                2026-11-14 逐项核对：九个样式的 BasedOn 与全部 Setter 与该版本一致，唯一差别是 BaseTextBlockStyle 的 FontFamily。
+                升级 Windows App SDK 时按该文件重新核对，并更新这里的版本号。
                 必须位于下方所有 BasedOn 这些键的派生样式之前（同一字典内 StaticResource 只能向前引用）。
             -->
             <Style x:Key="BaseTextBlockStyle" TargetType="TextBlock">
