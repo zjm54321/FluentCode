@@ -101,6 +101,13 @@ FluentCode 支持运行时深浅主题即时切换，无需重启应用。
 - **被动提示不打断终端**：没有按钮的“信息”消息和“状态未知”胶囊如果会盖到终端，就先不显示、不要租约、也不计时；终端关闭或不再重叠后才出现，从那时开始计时（胶囊只在那时状态仍未知才出现）。完全落在终端卡片标题区内、碰不到终端画面的被动提示照常显示。规则是纯逻辑 `OpenCodeNoticePolicy`（`Pages/OpenCodePage.Notices.Policy.cs`），由 `tests/fluent-motion` 逐种组合测试。
 - **写法不变**：`ShowMessage(InfoBarSeverity, string, string)` 和直接设置 `MessageBar` / `PermissionBar` 的代码照常使用；浮层只观察这些元素（`Pages/OpenCodePage.Notices*.cs`）。
 
+### 5.5 首页项目筛选（药丸）
+窄布局首页搜索框下方的项目筛选是一行实心药丸，不是 `SelectorBar`（`OpenCodeHomeView.RebuildChips`）：
+- **外观**：每个项目一个原生 `ToggleButton`，圆角 15、最小高度 30、内边距 12/4/12/5，间距 8；选中的那个整块填充强调色，其余为描边。右侧“…”按钮同样是药丸形，收纳放不下的项目和“添加项目”。
+- **为什么不用 `SelectorBar`**：筛选会隐藏会话，选中状态必须是这一行里最显眼的；`SelectorBar` 只有一条下划线，看起来像页面标签，还让这一行变高。1.2611.18 换过一次，用户看后要求改回（`tests/opencode-tool-presentation` 有守卫）。
+- **单选**：选中态每次按当前项目回填，再点已选中的药丸不会取消。药丸按项目就地复用，实时刷新不抢焦点。
+- **键盘与无障碍**：Tab 逐个经过，左右方向键和 Home / End 在药丸间移动，回车 / 空格选择。名称是项目名（“全部”读作“全部项目”），选中状态由按钮的开 / 关状态报给讲述人；高对比度用系统按钮配色。
+
 ---
 
 ## 6. 安全富文本渲染管线（`SafeContentRenderer`）

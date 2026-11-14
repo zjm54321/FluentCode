@@ -458,6 +458,13 @@ internal static partial class Program
             && page.Contains("_homeView.SetSettingsButtons(CreateHomeSettingsButton(), wideSettingsButton)", StringComparison.Ordinal), "wide settings overlay and narrow icon registered together");
         Check(home.Contains("SizeChanged += (_, _) => ApplyLayout()", StringComparison.Ordinal)
             && home.Contains("Loaded += (_, _) => { ApplyLayout();", StringComparison.Ordinal), "home settings layout follows load and live resize");
+        // The user asked for the pill row back (2026-11-14): the selected filter must be the filled one, because it hides sessions.
+        Check(!home.Contains("SelectorBar", StringComparison.Ordinal)
+            && home.Contains("StackPanel _chips = new() { Orientation = Orientation.Horizontal, Spacing = 8 }", StringComparison.Ordinal)
+            && home.Contains("new ToggleButton { Tag = key!, CornerRadius = new CornerRadius(15), MinHeight = 30, Padding = new Thickness(12, 4, 12, 5) }", StringComparison.Ordinal)
+            && home.Contains("chip.IsChecked = key == SelectedProject;", StringComparison.Ordinal)
+            && home.Contains("_chips.KeyDown += OnChipKeyDown;", StringComparison.Ordinal),
+            "home project filter is a row of solid pills with the selected one filled, not a tab-like selector bar");
         var narrowStart = settings.IndexOf("private Button CreateHomeSettingsButton()", StringComparison.Ordinal);
         var wideStart = settings.IndexOf("private Button CreateWideHomeSettingsButton()", StringComparison.Ordinal);
         Check(narrowStart >= 0 && wideStart > narrowStart, "separate narrow and wide settings factories");
