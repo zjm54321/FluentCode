@@ -519,13 +519,14 @@ public sealed class OpenCodeToolPartView : IOpenCodeToolDetailSource, IOpenCodeT
             _summaryText.Text = chrome.ComposeSummary(_summaryText.Text);
         }
 
-        // 非零退出码用危险色突出；其余摘要为次要色。
-        var summaryStyle = chrome.IsFailure || (model.Kind == OpenCodeToolKind.Shell && model.ExitCode is { } exit && exit != 0)
+        // 非零退出码用危险色突出；其余摘要为次要色。已取消的行不是失败：即使带退出码也保持次要色。
+        var summaryStyle = chrome.IsFailure
+            || (model.Status != OpenCodeToolRowStatus.Cancelled && model.Kind == OpenCodeToolKind.Shell && model.ExitCode is { } exit && exit != 0)
             ? OpenCodeToolTheme.Text(OpenCodeToolTheme.Critical, OpenCodeInteractionUi.CaptionStyleKey)
             : model.IsEscalation ? OpenCodeToolTheme.Text(OpenCodeToolTheme.Caution, OpenCodeInteractionUi.CaptionStyleKey)
             : OpenCodeInteractionUi.TryStyle(OpenCodeInteractionUi.CaptionSubtleStyleKey);
         OpenCodeToolTheme.Apply(_summaryText, summaryStyle);
-        // Failure text keeps critical chrome; successful processed tool names/targets recede with their group.
+        // Failure text keeps critical chrome; a cancelled row and successful processed tool names/targets recede.
         var textKey = chrome.TextKey ?? OpenCodeProcessedSummaryStyle.RowLabelKey(model.Status);
         var textStyle = textKey is not null
             ? OpenCodeToolTheme.Text(textKey, OpenCodeInteractionUi.CaptionStyleKey)

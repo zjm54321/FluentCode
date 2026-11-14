@@ -124,11 +124,26 @@ internal static partial class Program
             && fallbackRow.DetailText == fallback, "image.error-fallback-body");
         var cancelledBody = "Image request for " + ImageStem + " was cancelled.";
         Check(OpenCodeStepRunPresentation.TryReadAsyncCompletion(ImageNotice("cancelled", cancelledBody), out var cancelled)
-            && OpenCodeStepRunPresentation.DescribeAsyncCompletion(cancelled) is { Summary: "已取消", Status: OpenCodeToolRowStatus.Error } cancelledRow
-            && cancelledRow.DetailText == cancelledBody && cancelledRow.ImagePath is null, "image.cancelled-state");
+            && OpenCodeStepRunPresentation.DescribeAsyncCompletion(cancelled) is { Summary: "已取消", Status: OpenCodeToolRowStatus.Cancelled } cancelledRow
+            && cancelledRow.DetailText == cancelledBody && cancelledRow.ImagePath is null && cancelled.IsCancelled && !failed.IsCancelled
+            && !cancelledRow.AccessibleName.Contains("失败", StringComparison.Ordinal), "image.cancelled-notice-is-neutral-not-a-failure");
+        // The decision is read from metadata.state. Cancellation wording under another state changes nothing.
+        Check(OpenCodeStepRunPresentation.TryReadAsyncCompletion(ImageNotice("error", cancelledBody), out var saysCancelled)
+            && OpenCodeStepRunPresentation.DescribeAsyncCompletion(saysCancelled) is { Status: OpenCodeToolRowStatus.Error, Summary: "失败" }
+            && OpenCodeStepRunPresentation.TryReadAsyncCompletion(ImageNotice("canceled", failure), out var oneL)
+            && OpenCodeStepRunPresentation.DescribeAsyncCompletion(oneL) is { Status: OpenCodeToolRowStatus.Cancelled, Summary: "已取消" },
+            "image.cancelled-comes-from-the-structured-state-not-the-wording");
         var failureChrome = OpenCodeToolRowChrome.For(OpenCodeToolRowStatus.Error);
+        var cancelledChrome = OpenCodeToolRowChrome.For(OpenCodeToolRowStatus.Cancelled);
+        Check(cancelledChrome is { IsFailure: false, BackgroundKey: null, BorderKey: null, BorderThickness: 0, FailureLabel: null, ShowsStatusIcon: false,
+                TextKey: "TextFillColorSecondaryBrush", KindIconKey: "TextFillColorTertiaryBrush" }
+            && cancelledChrome.ComposeSummary("已取消") == "已取消" && ReferenceEquals(cancelledChrome, OpenCodeToolRowChrome.For(OpenCodeToolRowStatus.Cancelled, escalation: true))
+            && OpenCodeProcessedSummaryStyle.RowIconKey(OpenCodeToolRowStatus.Cancelled, cancelledChrome) == "TextFillColorTertiaryBrush"
+            && failureChrome is { IsFailure: true, TextKey: OpenCodeToolRowChrome.CriticalKey, FailureLabel: "失败" }
+            && !cancelledChrome.TextKey!.Contains("Critical", StringComparison.Ordinal) && !cancelledChrome.KindIconKey.Contains("Critical", StringComparison.Ordinal),
+            "image.cancelled-chrome-is-grey-with-no-tint-border-label-or-status-glyph");
         Check(failureChrome.ComposeSummary(failedRow.Summary) == "失败" && failureChrome.ComposeSummary("失败 · 退出码 1") == "失败 · 退出码 1"
-            && failureChrome.ComposeSummary("已取消") == "失败 · 已取消" && failureChrome.ComposeSummary("") == "失败" && failureChrome.ComposeSummary("出错") == "失败"
+            && failureChrome.ComposeSummary("超时") == "失败 · 超时" && failureChrome.ComposeSummary("") == "失败" && failureChrome.ComposeSummary("出错") == "失败"
             && failureChrome.ComposeSummary("后台失败") == "失败 · 后台失败" && OpenCodeToolRowChrome.For(OpenCodeToolRowStatus.Completed).ComposeSummary("失败") == "失败",
             "image.failed-notice-row-does-not-repeat-the-failure-word");
         // A state that claims completion wording but is not "completed" never yields a picture.
@@ -175,7 +190,48 @@ internal static partial class Program
         Check(failedCall.Status == OpenCodeToolRowStatus.Error && failedCall.Name == "失败 · 生成图片" && failedCall.Summary.Length == 0
             && failedCall.ErrorText == failure && failedCall.ResultImagePath is null, "image.tool-row-failed-shows-server-reason");
         var cancelledCall = OpenCodeToolRowPresentation.Build(ImageCall(), cancelled);
-        Check(cancelledCall.Status == OpenCodeToolRowStatus.Error && cancelledCall.Summary == "已取消" && cancelledCall.ErrorText == cancelledBody, "image.tool-row-cancelled");
+        Check(cancelledCall.Status == OpenCodeToolRowStatus.Cancelled && cancelledCall.Name == "生成图片" && cancelledCall.Summary == "已取消"
+            && cancelledCall.StatusText == "已取消" && cancelledCall.ErrorText is null && cancelledCall.ResultImagePath is null && !cancelledCall.IsActive
+            && cancelledCall.IsBackground, "image.tool-row-cancelled-is-neutral");
+        Check(cancelledCall.AccessibleName == "生成图片 工具，已取消，structure_b.png · Flat vector illustration"
+            && cancelledCall.OutputProperties.Single() is { Key: "结果", Value: "已取消，没有生成图片。" }
+            && !OpenCodeToolRowChrome.For(cancelledCall.Status).IsFailure && OpenCodeToolRowChrome.For(failedCall.Status).IsFailure,
+            "image.tool-row-cancelled-says-it-once-and-never-says-failed");
+        Check(OpenCodeToolRowPresentation.BuildGroupSummary(new[] { cancelledCall }) is { ErrorCount: 0, SuccessCount: 0, ActiveCount: 0 } calmGroup
+            && !calmGroup.AccessibleName.Contains("出错", StringComparison.Ordinal)
+            && OpenCodeToolRowPresentation.BuildGroupSummary(new[] { failedCall }).ErrorCount == 1, "image.cancelled-is-not-counted-as-an-error");
+        // The user stopped the turn while the call was still in flight: the stored error type says so.
+        var stopped = OpenCodeToolRowPresentation.Build(ToolPart("experimental_image_generate", new
+            { status = "error", input = new { prompt = "x" }, error = new { type = "aborted", message = "Tool execution interrupted: experimental_image_generate" } }));
+        Check(stopped.Status == OpenCodeToolRowStatus.Cancelled && stopped.Name == "生成图片" && stopped.Summary == "已取消" && stopped.ErrorText is null
+            && stopped.AccessibleName == "生成图片 工具，已取消，x" && stopped.OutputProperties.Single().Value == "已取消，没有生成图片。", "image.tool-call-stopped-by-the-user-is-cancelled");
+        var stoppedRead = OpenCodeToolRowPresentation.Build(ToolPart("read", new
+            { status = "error", input = new { filePath = "/a/b.txt" }, error = new { type = "aborted", message = "Tool execution interrupted: read" } }));
+        Check(stoppedRead.Status == OpenCodeToolRowStatus.Error && stoppedRead.Name.StartsWith("失败 · ", StringComparison.Ordinal), "image.other-tools-keep-their-interrupted-failure-row");
+
+        // ---- the same neutral row for every background job that reports "cancelled" (shared code) ----
+        OpenCodeAsyncCompletion Job(OpenCodeAsyncCompletionKind jobKind, string state, int? exit = null)
+            => new(jobKind, "job_1", state, "sleep 60", exit, "body", jobKind == OpenCodeAsyncCompletionKind.Subagent ? "ses_child" : null, null);
+        var shellCall = ToolPart("shell", new { status = "completed", input = new { command = "sleep 60", background = true }, metadata = new { background = true } });
+        var shellCancelled = OpenCodeToolRowPresentation.Build(shellCall, Job(OpenCodeAsyncCompletionKind.Shell, "cancelled", 130));
+        Check(shellCancelled.Status == OpenCodeToolRowStatus.Cancelled && shellCancelled.Summary == "已取消 · 退出码 130" && shellCancelled.ErrorText is null
+            && !shellCancelled.Name.Contains("失败", StringComparison.Ordinal) && shellCancelled.StatusText == "已取消", "cancelled.background-shell-row-is-neutral");
+        Check(OpenCodeToolRowPresentation.Build(shellCall, Job(OpenCodeAsyncCompletionKind.Shell, "killed", 137)) is { Status: OpenCodeToolRowStatus.Error } shellKilled
+            && shellKilled.Name.StartsWith("失败 · ", StringComparison.Ordinal), "cancelled.killed-shell-is-still-a-failure");
+        Check(OpenCodeStepRunPresentation.DescribeAsyncCompletion(Job(OpenCodeAsyncCompletionKind.Shell, "cancelled")) is { Status: OpenCodeToolRowStatus.Cancelled, Summary: "已取消" }
+            && OpenCodeStepRunPresentation.DescribeAsyncCompletion(Job(OpenCodeAsyncCompletionKind.Task, "cancelled")) is { Status: OpenCodeToolRowStatus.Cancelled, Summary: "已取消" },
+            "cancelled.shell-and-plugin-task-notices-are-neutral");
+        Check(OpenCodeToolRowPresentation.Build(ToolPart("shell", new
+                { status = "completed", input = new { command = "sleep 60" }, metadata = new { background = true, status = "cancelled" } }))
+            is { Status: OpenCodeToolRowStatus.Cancelled, Summary: "已取消", ErrorText: null }, "cancelled.recorded-background-status-is-neutral");
+        foreach (var ending in new[] { "error", "failed", "killed", "timeout", "interrupted", "aborted" })
+            foreach (var producer in new[] { OpenCodeAsyncCompletionKind.Image, OpenCodeAsyncCompletionKind.Shell, OpenCodeAsyncCompletionKind.Task })
+                Check(Job(producer, ending).RowStatus == OpenCodeToolRowStatus.Error && !Job(producer, ending).IsCancelled, "cancelled.only-cancelled-is-neutral " + producer + " " + ending);
+        // A cancelled subagent keeps its own design (amber notice, launch row counted as failed).
+        Check(Job(OpenCodeAsyncCompletionKind.Subagent, "cancelled").RowStatus == OpenCodeToolRowStatus.Error
+            && Job(OpenCodeAsyncCompletionKind.Image, "completed").RowStatus == OpenCodeToolRowStatus.Completed
+            && Job(OpenCodeAsyncCompletionKind.Image, "running").RowStatus == OpenCodeToolRowStatus.Running
+            && Job(OpenCodeAsyncCompletionKind.Shell, "completed", 2).RowStatus == OpenCodeToolRowStatus.Error, "cancelled.other-outcomes-unchanged");
         Check(OpenCodeToolRowPresentation.Build(ImageCall(), unparsedNotice()) is { Status: OpenCodeToolRowStatus.Completed, ResultImagePath: null } noPicture
             && noPicture.OutputProperties.Single().Value == "已完成，但完成通知里没有可用的图片路径。", "image.tool-row-finished-without-a-path");
         var inFlight = OpenCodeToolRowPresentation.Build(ImageCall(status: "running", launched: false));
@@ -274,6 +330,14 @@ internal static partial class Program
         var images = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeToolDetailImages.cs"));
         Check(images.Contains("model.ResultImagePath is not { Length: > 0 } path || SavedImageSource(path) is not { } saved", StringComparison.Ordinal)
             && images.Contains("OpenCodeToolImageResolver.PathMime(path) is not { } mime", StringComparison.Ordinal), "image.tool-row-picture-joins-the-existing-tool-pictures");
+        // A cancelled row must not pick up red from any view branch that keys on something other than its chrome.
+        var partView = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeToolPartView.cs"));
+        var popup = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeToolDetailPopup.cs"));
+        Check(chip.Contains("OpenCodeToolRowStatus.Cancelled => (OpenCodeToolRowChrome.CancelledText, OpenCodeToolTheme.TextSecondary),", StringComparison.Ordinal)
+            && partView.Contains("(model.Status != OpenCodeToolRowStatus.Cancelled && model.Kind == OpenCodeToolKind.Shell && model.ExitCode is { } exit && exit != 0)", StringComparison.Ordinal)
+            && popup.Contains("model.ExitCode is { } exit && model.Status != OpenCodeToolRowStatus.Cancelled", StringComparison.Ordinal)
+            && chip.Contains("_statusIcon.Visibility = active || content.Status is null || !chrome.ShowsStatusIcon ? Visibility.Collapsed", StringComparison.Ordinal)
+            && partView.Contains("|| !chrome.ShowsStatusIcon", StringComparison.Ordinal), "image.cancelled-rows-stay-grey-in-the-row-chip-and-detail-title");
         var surface = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/OpenCodeToolDetailSurface.cs"));
         Check(surface.Contains("CodeBlock(model.RawOutputText ?? model.OutputText ?? \"未提供\")", StringComparison.Ordinal), "image.raw-data-view-keeps-the-server-output");
 

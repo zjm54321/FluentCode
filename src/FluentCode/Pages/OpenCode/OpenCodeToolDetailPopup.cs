@@ -696,7 +696,8 @@ internal sealed class OpenCodeToolDetailPopup
             OpenCodeToolRowStatus.Error => OpenCodeToolTheme.Critical,
             _ => OpenCodeToolTheme.TextSecondary,
         };
-        if (model.Kind == OpenCodeToolKind.Shell && model.ExitCode is { } exit)
+        // A cancelled command keeps the neutral “已取消”; its exit code stays in the row summary, never as a red title.
+        if (model.Kind == OpenCodeToolKind.Shell && model.ExitCode is { } exit && model.Status != OpenCodeToolRowStatus.Cancelled)
         {
             status = "退出码 " + exit.ToString(System.Globalization.CultureInfo.InvariantCulture);
             if (exit != 0) statusKey = OpenCodeToolTheme.Critical;

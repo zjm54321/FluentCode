@@ -39,7 +39,14 @@ internal static partial class Program
         Check(chip.Content.Status == OpenCodeToolRowStatus.Error && chip.Content.Summary == "失败" && chip.Content.ImagePath is null
             && chip.DetailText == "Image request failed for " + ImageNoticeStem + ": quota exceeded", "image.retained-row-reconciles-a-failed-state");
         view.ApplyMessages(new[] { user, ImageJobNotice("cancelled", "Image request for " + ImageNoticeStem + " was cancelled."), answer });
-        Check(chip.Content.Status == OpenCodeToolRowStatus.Error && chip.Content.Summary == "已取消" && chip.Content.ImagePath is null, "image.retained-row-reconciles-a-cancelled-state");
+        // Cancelled is a decision, not a fault: a neutral “已取消” row, no failure chrome, the server's sentence kept in the detail.
+        // (The amber "cancelled" tone belongs to subagent completion notices only; this row is not one.)
+        Check(chip.Content.Status == OpenCodeToolRowStatus.Cancelled && chip.Content.Summary == "已取消" && chip.Content.ImagePath is null
+            && chip.DetailText == "Image request for " + ImageNoticeStem + " was cancelled." && !chip.CompletionNotice
+            && OpenCodeToolRowChrome.For(chip.Content.Status) is { IsFailure: false, FailureLabel: null, BackgroundKey: null, ShowsStatusIcon: false, TextKey: "TextFillColorSecondaryBrush" }
+            && !chip.Content.AccessibleName.Contains("失败", StringComparison.Ordinal), "image.retained-row-reconciles-a-cancelled-state-as-neutral");
+        view.ApplyMessages(new[] { user, ImageJobNotice("error", "Image request failed for " + ImageNoticeStem + "."), answer });
+        Check(chip.Content.Status == OpenCodeToolRowStatus.Error && OpenCodeToolRowChrome.For(chip.Content.Status).IsFailure, "image.a-failure-after-a-cancel-is-a-failure-again");
         view.ClearMessages();
         Check(chip.DisposeCount == 1, "image.session-clear-disposes-notice");
 
@@ -57,6 +64,13 @@ internal static partial class Program
         var folded = Constructed<OpenCodeTimelineChipView>().Single();
         Check(folded.Content.ImagePath == ImageNoticeStem + ".png" && folded.Element.Visibility == Visibility.Collapsed,
             "image.notice-row-folds-into-its-launch-row-in-the-same-chain");
+        // A cancelled job reaches its launch row the same way and settles it as neutral, not failed.
+        var cancelledNotice = ImageJobNotice("cancelled", "Image request for " + ImageNoticeStem + " was cancelled.");
+        linked.ApplyMessages(new[] { user, call, cancelledNotice });
+        Check(tool.AsyncCompletion is { State: "cancelled", IsCancelled: true } called
+            && OpenCodeToolRowPresentation.Build(call.Content!.Single(), called) is { Status: OpenCodeToolRowStatus.Cancelled, Name: "生成图片", Summary: "已取消", ErrorText: null },
+            "image.launch-row-receives-the-cancelled-job-as-neutral");
+        linked.ApplyMessages(new[] { user, call, notice });
         // An answer between them ends the chain: the later notice keeps its own row.
         linked.ApplyMessages(new[] { user, call, answer with { Time = new() { Created = 3, Completed = 4 } }, notice });
         Check(Constructed<OpenCodeTimelineChipView>().Any(row => row.Content.ImagePath is not null && row.Element.Visibility == Visibility.Visible),
