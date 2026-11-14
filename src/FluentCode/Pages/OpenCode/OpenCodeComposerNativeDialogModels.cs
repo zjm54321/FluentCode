@@ -263,9 +263,10 @@ internal sealed class OpenCodeRollbackConfirmationState
     internal string Title => Preview.Kind == OpenCodeRollbackKind.Undo ? "撤回这条消息？" : "恢复已撤回的消息？";
     internal string PrimaryText => Preview.Kind == OpenCodeRollbackKind.Undo ? "撤回" : "恢复";
 
-    /// <summary>The one sentence that says what will happen.</summary>
+    /// <summary>The one sentence that says what will happen. For undo it also says how long 恢复撤回 stays
+    /// possible: sending the next message makes a staged undo final.</summary>
     internal string Summary => Preview.Kind == OpenCodeRollbackKind.Undo
-        ? "这条消息和它之后的回复会被撤回，文字放回输入框。之后可以用“恢复撤回”还原。"
+        ? "这条消息和它之后的回复会被撤回，文字放回输入框。发送下一条消息之前，可以用“恢复撤回”还原。"
         : "已撤回的消息会全部回到会话里，输入框的内容不变。";
 
     internal const string RestoreFilesLabel = "同时恢复文件";

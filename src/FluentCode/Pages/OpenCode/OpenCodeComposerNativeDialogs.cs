@@ -253,8 +253,8 @@ internal static class OpenCodeRollbackConfirmationDialog
             files.Unchecked += (_, _) => state.SetRestoreFiles(false);
             var note = OpenCodeInteractionUi.StyledText(OpenCodeRollbackConfirmationState.RestoreFilesNote,
                 OpenCodeInteractionUi.CaptionSubtleStyleKey);
-            note.Margin = new Thickness(28, 0, 0, 0); // Lines up with the box's label.
-            // A screen reader that reaches the box gets the risk with it, not only as a separate line.
+            note.Margin = new Thickness(28, 0, 0, 0); // 20 px box + 8 px gap of the default CheckBox: meant to sit under its label.
+            // The risk is also the box's help text, so assistive technology can give it with the box, not only as a separate line.
             AutomationProperties.SetHelpText(files, OpenCodeRollbackConfirmationState.RestoreFilesNote);
             var choice = new StackPanel { Spacing = 0 };
             choice.Children.Add(files);
