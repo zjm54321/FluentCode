@@ -1,15 +1,18 @@
-// LANE N1: contract guards for the Native UI effects adapter (C13 celebration, C20 skeleton bars, C12 flip) and for
+// Contract guards for the Native UI effects adapter (C13 celebration, C20 skeleton bars, C12 flip) and for
 // the renderer call sites that consume it. The adapter itself is WinUI code and cannot be instantiated headlessly, so
 // its lifetime, cancellation and motion-policy rules are pinned as structural guards over the production sources, the
 // same way the other WinUI-touching suites in this repository do it. Nothing here opens a window.
+// The part that is executed is the flashcard's turn (FlipStateTests, FlipDriverTests): its state and its driver are
+// WinUI-free, and the driver runs here on a scripted surface in place of the adapter.
 //
-// The cancellation and stale-completion tests below are deliberately order-sensitive: they pin that a burst removed by
-// the duration limit, by unload, by disposal or by a superseding burst cannot leave its animated canvas in the tree,
-// and that a flip whose completion arrives after a newer flip (or after disposal) paints nothing.
+// The cancellation tests below are deliberately order-sensitive: they pin that a burst removed by the duration limit,
+// by unload, by disposal or by a superseding burst cannot leave its animated canvas in the tree.
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using FluentCode.Pages.OpenCode;
 
 internal static class NativeUiEffectsTests
 {
@@ -41,7 +44,7 @@ internal static class NativeUiEffectsTests
 
         // Entry points take app-level inputs and answer with ordinary WinUI elements.
         require(adapter.Contains("internal static CelebrationEffect Celebration() => new();", StringComparison.Ordinal)
-            && adapter.Contains("internal static FlipEffect Flip(FrameworkElement host, Action<bool> renderFace) => new(host, renderFace);", StringComparison.Ordinal)
+            && adapter.Contains("internal static FlipEffect Flip(FrameworkElement host, Action<bool> renderFace, Action repaint) => new(host, renderFace, repaint);", StringComparison.Ordinal)
             && adapter.Contains("internal static FrameworkElement SkeletonBars() => new SkeletonHost().Bars;", StringComparison.Ordinal),
             "The adapter exposes Celebration/Flip/SkeletonBars without a vendor type in its surface");
 
@@ -121,8 +124,8 @@ internal static class NativeUiEffectsTests
 
         // ---------------------------------------------------------------- motion changes while the card is alive
 
-        require(Regex.Matches(adapter, @"FluentMotion\.Bind\(").Count == 2,
-            "Motion is bound once per host: one binding for the celebration, one for the skeleton");
+        require(Regex.Matches(adapter, @"FluentMotion\.Bind\(").Count == 3,
+            "Motion is bound once per host: one binding each for the celebration, the flashcard and the skeleton");
         require(adapter.Contains("FluentMotion.Bind(_band, enabled => { if (!enabled) End(); });", StringComparison.Ordinal),
             "Turning motion off while the card is alive drops a running burst");
         require(adapter.Contains("FluentMotion.Bind(bars, _ => Refresh());", StringComparison.Ordinal),
@@ -150,22 +153,54 @@ internal static class NativeUiEffectsTests
             && statics.Length == 2,
             "Its statics are immutable value data only (found: " + string.Join(" | ", statics) + ")");
 
-        // ---------------------------------------------------------------- C12: flip supersession and reduced motion
+        // ---------------------------------------------------------------- C12: the flashcard's face
 
-        require(adapter.Contains("if (_target == flipped) { if (_displayed == flipped) _render?.Invoke(flipped); return; }", StringComparison.Ordinal),
-            "Re-reporting the current face repaints it without replaying the flip");
-        require(adapter.Contains("Play(++_generation, flipped); // A newer flip supersedes any flip still in flight.", StringComparison.Ordinal),
-            "A newer flip supersedes a flip that is still in flight");
-        require(adapter.Contains("if (_disposed || generation != _generation || _displayed == flipped) return;", StringComparison.Ordinal),
-            "A completion that a newer flip superseded paints nothing");
-        require(adapter.Contains("_disposed = true; ++_generation; _render = null;", StringComparison.Ordinal),
-            "Disposal invalidates the in-flight generation and drops the render callback, so a late completion is inert");
-        require(adapter.Contains("if (!FluentMotion.Enabled) FluentMotion.Settle(_host);", StringComparison.Ordinal),
-            "Reduced motion settles the host, so the flip never leaves a half-rotated card");
-        require(adapter.Contains("private void Play(int generation, bool flipped)", StringComparison.Ordinal)
-            && adapter.Contains("with this generation at the midpoint", StringComparison.Ordinal)
-            && adapter.Contains("the only place the next wave changes", StringComparison.Ordinal),
-            "The flip keeps one animation seam for the next wave, and it already receives the supersession generation");
+        FlipStateTests(require);
+        FlipDriverTests(require);
+        var flipEffect = Slice(adapter, "internal sealed class FlipEffect", "private sealed class SkeletonHost");
+        var flipCode = Code(flipEffect);
+        require(flipEffect.Contains("internal sealed class FlipEffect : IDisposable, INativeUiFlipSurface", StringComparison.Ordinal)
+            && flipEffect.Contains("internal void Request(bool flipped) => _driver.Request(flipped);", StringComparison.Ordinal)
+            && flipEffect.Contains("void INativeUiFlipSurface.Paint(bool back) => _render?.Invoke(back);", StringComparison.Ordinal)
+            && Regex.Matches(flipCode, @"_render\?\.Invoke\(").Count == 1 && Regex.Matches(flipCode, @"_repaint\?\.Invoke\(").Count == 1,
+            "The flashcard adapter is the surface of the executed driver and paints from one place");
+        require(flipEffect.Contains("bool INativeUiFlipSurface.CanTurn => FluentMotion.Enabled && _host.IsLoaded && _host.ActualWidth > 0;", StringComparison.Ordinal),
+            "A turn is animated only while the motion policy allows it and the card is on screen with a size");
+        require(flipCode.Contains("Toolkit.AnimationBuilder.Create()", StringComparison.Ordinal)
+            && flipCode.Contains("layer: Toolkit.FrameworkLayer.Composition)", StringComparison.Ordinal)
+            && flipCode.Contains(".Start(_host, landed);", StringComparison.Ordinal)
+            && !flipCode.Contains("FrameworkLayer.Xaml", StringComparison.Ordinal) && !flipCode.Contains("Storyboard", StringComparison.Ordinal),
+            "The turn is the library's composition-layer rotation with a completion callback: no Storyboard is created");
+        require(adapter.Contains("using Toolkit = CommunityToolkit.WinUI.Animations;", StringComparison.Ordinal)
+            && !Regex.IsMatch(Code(adapter), @"using CommunityToolkit\.WinUI"),
+            "The animation library is reached through an alias, so its extension methods do not meet DevWinUI's");
+        require(flipCode.Contains("to: away ? EdgeOnDegrees : 0", StringComparison.Ordinal) && flipCode.Contains("private const float EdgeOnDegrees = 90;", StringComparison.Ordinal)
+            && !Regex.IsMatch(flipCode, @"\bfrom:"),
+            "A leg ends edge-on or face-on and starts from wherever the card is, so no face is seen mirrored and a reversal does not jump");
+        require(flipCode.Contains("FluentMotion.Duration(away ? FluentMotion.Fast : FluentMotion.Normal)", StringComparison.Ordinal),
+            "Both legs take their length from the shared motion tokens, slow motion included");
+        // The hand-off visual and the strict facade properties exclude each other on one element (see the adapter).
+        require(!flipCode.Contains("FluentMotion.Settle", StringComparison.Ordinal) && !flipCode.Contains("FluentMotion.Animate", StringComparison.Ordinal)
+            && !Regex.IsMatch(flipCode, @"_host\.(Scale|Rotation|CenterPoint|Translation)\b"),
+            "The flashcard never mixes the strict facade properties with the composition visual it turns");
+        require(flipCode.Contains("if (!_turned) return;", StringComparison.Ordinal)
+            && flipCode.Contains("visual.StopAnimation(nameof(Microsoft.UI.Composition.Visual.RotationAngleInDegrees));", StringComparison.Ordinal)
+            && flipCode.Contains("visual.RotationAngleInDegrees = 0;", StringComparison.Ordinal),
+            "Resting stops the rotation and puts the card face-on, and leaves a card that never turned alone");
+        require(Regex.Matches(flipCode, @"FluentMotion\.Bind\(").Count == 1
+            && flipCode.Contains("FluentMotion.Bind(_host, enabled => { if (!enabled) _driver.Halt(); });", StringComparison.Ordinal)
+            && Slice(flipCode, "internal FlipEffect(", "internal void Request").Contains("FluentMotion.Bind(", StringComparison.Ordinal),
+            "The motion policy is bound once, in the constructor, and turning motion off ends a turn in flight");
+        require(flipCode.Contains("_host.Unloaded += OnUnloaded;", StringComparison.Ordinal) && flipCode.Contains("_host.Unloaded -= OnUnloaded;", StringComparison.Ordinal)
+            && flipCode.Contains("timer.Tick += OnOverrun;", StringComparison.Ordinal) && flipCode.Contains("timer.Tick -= OnOverrun; timer.Stop(); _overrun = null;", StringComparison.Ordinal)
+            && !Regex.IsMatch(flipCode, @"(Tick|Unloaded|Loaded|Completed) \+= \(") && flipCode.Contains("timer.IsRepeating = false;", StringComparison.Ordinal),
+            "The unload and overrun handlers are named methods that are removed again, and the timer fires once");
+        var flipDispose = flipCode[flipCode.IndexOf("public void Dispose()", StringComparison.Ordinal)..];
+        require(flipDispose.Contains("_render = null; _repaint = null;", StringComparison.Ordinal) && flipDispose.Contains("_host.Unloaded -= OnUnloaded;", StringComparison.Ordinal)
+            && flipDispose.Contains("StopOverrun();", StringComparison.Ordinal) && flipDispose.Contains("_driver.Dispose();", StringComparison.Ordinal),
+            "Disposal drops both callbacks, the unload handler, the timer and the leg in flight");
+        require(!Regex.IsMatch(flipCode, @"\bstatic\b"),
+            "The flashcard adapter keeps no static state");
 
         // ---------------------------------------------------------------- C12/C13 call sites
 
@@ -174,7 +209,7 @@ internal static class NativeUiEffectsTests
             "The flashcard is still the native Button with its click invocation");
         require(flash.Contains("var flipKey = \"$ui:\" + key + \":flipped\";", StringComparison.Ordinal),
             "The persisted flip key is unchanged");
-        require(flash.Contains("NativeUiCommunityEffects.Flip(flash, RenderFace)", StringComparison.Ordinal)
+        require(flash.Contains("NativeUiCommunityEffects.Flip(flash, RenderFace, Repaint)", StringComparison.Ordinal)
             && flash.Contains("flashVisual.Apply = node => flip.Request(_runtime.Field(flipKey, false) is true);", StringComparison.Ordinal)
             && flash.Contains("flashVisual.Cleanup = flip.Dispose;", StringComparison.Ordinal),
             "The flashcard drives its face through the flip entry point and disposes it with the node");
@@ -201,7 +236,8 @@ internal static class NativeUiEffectsTests
         require(adapter.Contains("private static readonly double[] Fractions = { 0.4, 1, 0.72 };", StringComparison.Ordinal)
             && adapter.Contains("bars.Loaded += OnLoaded; bars.Unloaded += OnUnloaded;", StringComparison.Ordinal),
             "The skeleton keeps the three bar proportions and subscribes on load and unload");
-        require(adapter.Contains("var animated = FluentMotion.Enabled && _contrast?.HighContrast is not true;", StringComparison.Ordinal),
+        require(adapter.Contains("var animated = FluentMotion.Enabled && !HighContrast();", StringComparison.Ordinal)
+            && adapter.Contains("catch (Exception) { return true; }", StringComparison.Ordinal),
             "The bars shimmer only while motion is allowed and only outside high contrast");
         require(adapter.Contains("_rows[index].Children.Add(animated ? Shimmer() : Static());", StringComparison.Ordinal)
             && adapter.Contains("Height = 12, CornerRadius = new CornerRadius(4), IsActive = true", StringComparison.Ordinal)
@@ -210,17 +246,35 @@ internal static class NativeUiEffectsTests
         require(adapter.Contains("_contrast.HighContrastChanged -= OnContrastChanged;", StringComparison.Ordinal)
             && adapter.Contains("_contrast = null;", StringComparison.Ordinal)
             && adapter.Contains("private void OnContrastChanged(AccessibilitySettings sender, object args)", StringComparison.Ordinal)
-            && adapter.Contains("private void OnLoaded(object sender, RoutedEventArgs args) => Refresh();", StringComparison.Ordinal)
             && adapter.Contains("_animated = null;", StringComparison.Ordinal),
             "The named contrast handler is detached on unload, and a reload rebuilds the bars instead of keeping them across the gap");
+        var skeleton = Code(adapter[adapter.IndexOf("private sealed class SkeletonHost", StringComparison.Ordinal)..]);
+        require(Regex.Matches(skeleton, @"HighContrastChanged \+= OnContrastChanged").Count == 1
+            && Slice(skeleton, "private void OnLoaded(", "private void OnUnloaded(").Contains("_contrast.HighContrastChanged += OnContrastChanged;", StringComparison.Ordinal),
+            "The contrast subscription is made on load only, so bars that never enter the tree leave no handler behind");
+        require(adapter.Contains("MinWidth = 0, IsTabStop = false, IsHitTestVisible = false,", StringComparison.Ordinal),
+            "A shimmer bar can be as narrow as its share of the card and is neither a tab stop nor a hit target");
+        var theme = File.ReadAllText(Path.Combine(folder, "NativeUiTheme.cs"));
+        var placeholder = Code(Slice(theme, "internal static Border Placeholder(string? title)", "// ---------------------------------------------------------------- icons"));
+        require(placeholder.Contains("var bars = NativeUiCommunityEffects.SkeletonBars();", StringComparison.Ordinal)
+            && !placeholder.Contains("Storyboard", StringComparison.Ordinal) && !placeholder.Contains("DoubleAnimation", StringComparison.Ordinal)
+            && !Regex.IsMatch(placeholder, @"(Loaded|Unloaded) \+="),
+            "The streaming placeholder takes its bars from the adapter and keeps no animation or handler of its own");
+        require(placeholder.Contains("new ProgressRing { IsActive = true, Width = 16, Height = 16", StringComparison.Ordinal)
+            && placeholder.Contains("Spacing = 12, Children = { new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Children = { ring, heading } }, bars, hint }", StringComparison.Ordinal)
+            && placeholder.Contains("Tag = PlaceholderTag", StringComparison.Ordinal) && adapter.Contains("var bars = new StackPanel { Spacing = 10 };", StringComparison.Ordinal),
+            "The placeholder keeps its ring, heading, hint, spacing and tag around the bars");
+        var appXaml = File.ReadAllText(Path.Combine(repo, "src/FluentCode/App.xaml"));
+        require(appXaml.Contains("x:Key=\"AppStreamingShimmerStyle\" TargetType=\"dev:Shimmer\"", StringComparison.Ordinal),
+            "The style the shimmer bars ask for is declared in App.xaml");
         require(adapter.Contains("private const string BarStyle = \"AppStreamingShimmerStyle\";", StringComparison.Ordinal)
             && adapter.Contains("if (Application.Current.Resources.TryGetValue(BarStyle, out var style) && style is Style shared) shimmer.Style = shared;", StringComparison.Ordinal),
-            "The animated bars wear the app's shared streaming-skeleton style, and an absent key falls back to the library default");
+            "The animated bars wear the app's shared streaming-skeleton style");
         require(adapter.Contains("Style = OpenCodeThemedXaml.BrushStyle(\"Border\", (\"Background\", \"SubtleFillColorSecondaryBrush\"))", StringComparison.Ordinal)
             && !adapter.Contains("bar.Style = shared", StringComparison.Ordinal),
             "The static bar keeps the placeholder's own high-contrast-safe brush, never a style that targets the shimmer control");
         require(adapter.Contains("internal FrameworkElement Bars { get; }", StringComparison.Ordinal),
-            "The skeleton is reachable through one element-returning entry point for lane N0 to wire in");
+            "The skeleton is reachable through one element-returning entry point");
 
         // ---------------------------------------------------------------- C23: native radio group
 
@@ -248,6 +302,256 @@ internal static class NativeUiEffectsTests
             && !radioChange.Contains("if (value ==", StringComparison.Ordinal)
             && radio.Contains("foreach (var tile in radios.Items.OfType<RadioButton>()) NativeUiTheme.RadioCard(tile);", StringComparison.Ordinal),
             "Every selection change repaints the checked-state cards, even when options share a value or selection is cleared");
+    }
+
+    /// <summary>
+    /// C12: the order of a flashcard turn, executed against the state the effects adapter is driven by. Nothing here
+    /// reads source text: each line calls the production type and checks what it answers.
+    /// </summary>
+    private static void FlipStateTests(Action<bool, string> require)
+    {
+        const NativeUiFlipState.Step Paint = NativeUiFlipState.Step.Paint, TurnAway = NativeUiFlipState.Step.TurnAway,
+            TurnBack = NativeUiFlipState.Step.TurnBack, Settle = NativeUiFlipState.Step.Settle;
+        const NativeUiFlipState.Leg Rest = NativeUiFlipState.Leg.Rest, Away = NativeUiFlipState.Leg.Away, Back = NativeUiFlipState.Leg.Back;
+        // A card that already shows its front, with motion allowed.
+        static NativeUiFlipState Front() { var state = new NativeUiFlipState(); state.Request(false, animate: true); return state; }
+
+        foreach (var animate in new[] { false, true })
+            foreach (var face in new[] { false, true })
+            {
+                var first = new NativeUiFlipState();
+                require(!first.Shown && first.Phase == Rest, "A fresh flashcard shows its front and is at rest");
+                require(first.Request(face, animate) == Paint && first.Shown == face && first.Wanted == face && first.Phase == Rest && first.Generation == 0,
+                    "A card's first face is painted without a turn, a restored back face included (face " + face + ", motion " + animate + ")");
+            }
+
+        var still = new NativeUiFlipState(); still.Request(false, animate: false);
+        require(still.Request(true, animate: false) == Settle && still.Shown && still.Phase == Rest,
+            "With motion off the new face shows in the frame of the report");
+        require(still.Request(true, animate: false) == Paint && still.Shown, "An unchanged report repaints the face on screen");
+        require(still.Request(false, animate: false) == Settle && !still.Shown && still.Phase == Rest, "With motion off the card flips back the same way");
+
+        var card = Front();
+        require(card.Request(true, animate: true) == TurnAway && !card.Shown && card.Wanted && card.Phase == Away,
+            "A turn starts away from the viewer with the old face still showing");
+        var away = card.Generation;
+        require(card.Request(true, animate: true) == Paint && !card.Shown && card.Phase == Away && card.Generation == away,
+            "A refresh during the away leg repaints the old face and leaves the leg alone");
+        require(!card.Landed(away) && card.Phase == Away && !card.Shown, "A landing cannot end an away leg");
+        require(card.Midpoint(away) && card.Shown && card.Phase == Back && card.Generation != away,
+            "At edge-on the wanted face becomes the shown one and the back leg takes a new generation");
+        var back = card.Generation;
+        require(!card.Midpoint(away) && !card.Midpoint(back) && card.Shown && card.Phase == Back && card.Generation == back,
+            "The midpoint counts once: reported again it changes nothing");
+        require(card.Request(true, animate: true) == Paint && card.Shown && card.Generation == back, "A refresh during the back leg repaints the new face");
+        require(card.Landed(back) && card.Phase == Rest && card.Shown, "Landing ends the turn on the wanted face");
+        require(!card.Landed(back) && !card.Midpoint(back) && !card.Landed(card.Generation) && card.Phase == Rest && card.Shown,
+            "A completion reported twice, by the animation and by its time limit, counts once");
+
+        var undone = Front(); undone.Request(true, animate: true); var undoneAway = undone.Generation;
+        require(undone.Request(false, animate: true) == TurnBack && !undone.Shown && undone.Phase == Back && undone.Generation != undoneAway,
+            "Taking a turn back before edge-on turns the card back with the face it never stopped showing");
+        require(!undone.Midpoint(undoneAway) && !undone.Shown && undone.Phase == Back, "The away leg that was taken back completes into nothing: no face is swapped");
+        require(undone.Landed(undone.Generation) && !undone.Shown && undone.Phase == Rest, "The card that was taken back lands on its original face");
+
+        var again = Front(); again.Request(true, animate: true); again.Midpoint(again.Generation); var againBack = again.Generation;
+        require(again.Request(false, animate: true) == TurnAway && again.Shown && again.Phase == Away && again.Generation != againBack,
+            "A new flip during the back leg turns away again, still showing the face that was coming in");
+        require(!again.Landed(againBack) && again.Phase == Away, "The back leg that was superseded lands into nothing");
+        require(again.Midpoint(again.Generation) && !again.Shown && again.Landed(again.Generation) && again.Phase == Rest,
+            "The second turn swaps at its own midpoint and lands on the front");
+
+        var halted = Front(); halted.Request(true, animate: true); var haltedAway = halted.Generation;
+        require(halted.Halt() && halted.Shown && halted.Phase == Rest && halted.Generation != haltedAway,
+            "Halting an away leg shows the wanted face at once and reports that the face changed");
+        require(!halted.Midpoint(haltedAway) && !halted.Landed(haltedAway) && halted.Shown && halted.Phase == Rest, "A completion arriving after a halt changes nothing");
+        var haltedGeneration = halted.Generation;
+        require(!halted.Halt() && halted.Generation == haltedGeneration, "Halting a card at rest does nothing");
+        var haltedBack = Front(); haltedBack.Request(true, animate: true); haltedBack.Midpoint(haltedBack.Generation); var haltedBackLeg = haltedBack.Generation;
+        require(!haltedBack.Halt() && haltedBack.Shown && haltedBack.Phase == Rest && !haltedBack.Landed(haltedBackLeg),
+            "Halting a back leg ends it without a repaint: the wanted face is already on screen");
+
+        var switched = Front(); switched.Request(true, animate: true); var switchedAway = switched.Generation;
+        require(switched.Request(false, animate: false) == Settle && !switched.Shown && switched.Phase == Rest && !switched.Midpoint(switchedAway),
+            "A flip reported with motion off ends a turn in flight on the face it asks for");
+
+        // Twenty thousand reports, completions (current and stale) and halts in a fixed pseudo-random order.
+        var walk = Front(); var asked = false; var random = new Random(12611); string? broken = null;
+        for (var index = 0; index < 20000 && broken is null; index++)
+        {
+            void Hold(bool holds, string rule) { if (!holds) broken ??= rule + " (step " + index + ")"; }
+            var shown = walk.Shown; var phase = walk.Phase; var generation = walk.Generation;
+            switch (random.Next(6))
+            {
+                case 0:
+                    asked = !asked; var turn = walk.Request(asked, animate: true);
+                    Hold(turn == (phase == Away ? TurnBack : TurnAway) && walk.Shown == shown && walk.Generation > generation, "an animated flip never changes the face in the frame of the report");
+                    break;
+                case 1:
+                    asked = !asked;
+                    Hold(walk.Request(asked, animate: false) == Settle && walk.Shown == asked && walk.Phase == Rest && walk.Generation > generation, "a flip with motion off settles on the wanted face");
+                    break;
+                case 2:
+                    Hold(walk.Request(asked, random.Next(2) == 0) == Paint && walk.Shown == shown && walk.Phase == phase && walk.Generation == generation, "an unchanged report only repaints");
+                    break;
+                case 3:
+                    var stale = generation - 1 - random.Next(3);
+                    Hold(!walk.Midpoint(stale) && !walk.Landed(stale) && walk.Shown == shown && walk.Phase == phase && walk.Generation == generation, "a stale completion changes nothing");
+                    break;
+                case 4:
+                    if (phase == Away) Hold(walk.Midpoint(generation) && walk.Shown == asked && walk.Phase == Back, "the current away leg swaps the face at its midpoint");
+                    else if (phase == Back) Hold(walk.Landed(generation) && walk.Shown == shown && walk.Phase == Rest, "the current back leg lands without touching the face");
+                    else Hold(!walk.Midpoint(generation) && !walk.Landed(generation) && walk.Generation == generation, "a card at rest has no completion to accept");
+                    break;
+                default:
+                    Hold(walk.Halt() == (shown != asked) && walk.Phase == Rest, "a halt reports a change of face exactly when there was one");
+                    break;
+            }
+            Hold(walk.Wanted == asked, "the wanted face is the last one reported");
+            Hold(walk.Phase == Away ? walk.Shown != asked : walk.Shown == asked, "only an away leg shows the face that was not asked for");
+            Hold(walk.Generation >= generation, "generations never go back");
+        }
+        require(broken is null, "The flip keeps its rules over 20,000 reports, completions and halts in a fixed pseudo-random order (first broken: " + broken + ")");
+    }
+
+    /// <summary>The surface the driver runs on in tests: it records what was asked of it and plays the render pass.</summary>
+    private sealed class FlipScript : INativeUiFlipSurface
+    {
+        internal NativeUiFlipDriver Driver = null!;
+        internal bool Motion = true, Model, InPass, Starts = true, LandsAtOnce, PaintedOutsidePass;
+        internal bool? Painted; // The face on screen.
+        internal bool Resting = true; // False from a started leg until the next Rest.
+        internal int Paints, Repaints, Rests;
+        internal readonly List<(bool Away, Action Landed)> Legs = new();
+        internal Action? DuringRepaint;
+        public bool CanTurn => Motion;
+        public bool Turn(bool away, Action landed)
+        {
+            Legs.Add((away, landed));
+            if (LandsAtOnce) landed();
+            if (Starts) Resting = false;
+            return Starts;
+        }
+        public void Rest() { Rests++; Resting = true; }
+        public void Paint(bool back) { Paints++; Painted = back; if (!InPass) PaintedOutsidePass = true; }
+        public void Repaint() { Repaints++; DuringRepaint?.Invoke(); Pass(); }
+        /// <summary>A render pass: the model reports the face it wants.</summary>
+        internal void Pass() { var outer = InPass; InPass = true; try { Driver.Request(Model); } finally { InPass = outer; } }
+        internal void Flip() { Model = !Model; Pass(); }
+        internal int Live => Legs.Count(leg => ((NativeUiFlipLeg)leg.Landed.Target!).Live);
+        internal static FlipScript Front() { var script = new FlipScript(); script.Driver = new(script); script.Pass(); return script; }
+    }
+
+    /// <summary>
+    /// C12: the turn as the adapter runs it, executed on a scripted surface: which leg starts when, where the face
+    /// is painted, and what a leg that ends late, early or never can still reach.
+    /// </summary>
+    private static void FlipDriverTests(Action<bool, string> require)
+    {
+        const NativeUiFlipState.Leg Rest = NativeUiFlipState.Leg.Rest, Away = NativeUiFlipState.Leg.Away, Back = NativeUiFlipState.Leg.Back;
+
+        var calls = new List<int>(); var one = new NativeUiFlipLeg(7, calls.Add);
+        require(one.Live, "A leg is live until it ends");
+        one.Land(); one.Land();
+        require(calls.SequenceEqual(new[] { 7 }) && !one.Live, "A leg reports its end once, with its generation, and then holds nothing");
+        var dropped = new NativeUiFlipLeg(8, calls.Add); dropped.Drop(); dropped.Land();
+        require(calls.Count == 1 && !dropped.Live, "A dropped leg reaches nothing when its end arrives");
+
+        var card = FlipScript.Front();
+        require(card.Painted == false && card.Paints == 1 && card.Legs.Count == 0 && card.Rests == 0 && card.Repaints == 0,
+            "A card's first face is painted without a turn and without touching the surface");
+        var restored = new FlipScript { Model = true }; restored.Driver = new(restored); restored.Pass();
+        require(restored.Painted == true && restored.Legs.Count == 0 && restored.Rests == 0, "A card restored on its back paints it without a turn");
+
+        card.Flip();
+        require(card.Legs.Count == 1 && card.Legs[0].Away && card.Painted == false && card.Driver.Phase == Away && card.Repaints == 0,
+            "A flip starts the away leg and the old face stays on screen");
+        card.Pass();
+        require(card.Legs.Count == 1 && card.Painted == false && card.Paints == 3, "A refresh mid-turn repaints the old face and starts nothing");
+        card.Legs[0].Landed();
+        require(card.Repaints == 1 && card.Painted == true && card.Legs.Count == 2 && !card.Legs[1].Away && card.Driver.Phase == Back && card.Live == 1,
+            "Edge-on, the face changes in a render pass of its own and the back leg starts");
+        card.Legs[0].Landed();
+        require(card.Repaints == 1 && card.Legs.Count == 2, "The away leg's end counts once");
+        var restsBefore = card.Rests; card.Legs[1].Landed();
+        require(card.Driver.Phase == Rest && card.Resting && card.Rests == restsBefore + 1 && card.Repaints == 1 && card.Live == 0 && card.Painted == true,
+            "Face-on, the turn ends: the surface is rested and no leg is left live");
+        require(!card.PaintedOutsidePass, "Every paint of a whole turn happened inside a render pass");
+
+        var still = FlipScript.Front(); still.Motion = false; still.Flip();
+        require(still.Painted == true && still.Legs.Count == 0 && still.Repaints == 0 && still.Driver.Phase == Rest && still.Resting,
+            "With motion off the face changes in the frame of the report and no leg starts");
+
+        var undone = FlipScript.Front(); undone.Flip(); undone.Flip();
+        require(undone.Legs.Count == 2 && !undone.Legs[1].Away && undone.Painted == false && undone.Driver.Phase == Back && undone.Live == 1,
+            "A flip taken back before edge-on turns the card back, still on the face it never stopped showing");
+        undone.Legs[0].Landed();
+        require(undone.Repaints == 0 && undone.Painted == false, "The away leg that was taken back ends into nothing");
+        undone.Legs[1].Landed();
+        require(undone.Driver.Phase == Rest && undone.Painted == false && undone.Repaints == 0, "The card that was taken back lands on its original face without a repaint");
+
+        var halted = FlipScript.Front(); halted.Flip(); halted.Driver.Halt();
+        require(halted.Repaints == 1 && halted.Painted == true && halted.Driver.Phase == Rest && halted.Resting && halted.Live == 0 && !halted.PaintedOutsidePass,
+            "Halting an away leg rests the card and shows the wanted face through one render pass");
+        halted.Legs[0].Landed();
+        require(halted.Repaints == 1 && halted.Legs.Count == 1, "A leg that ends after a halt reaches nothing");
+        var haltedRests = halted.Rests; halted.Driver.Halt();
+        require(halted.Rests == haltedRests && halted.Repaints == 1, "Halting a card at rest does not touch the surface");
+        var haltedBack = FlipScript.Front(); haltedBack.Flip(); haltedBack.Legs[0].Landed(); haltedBack.Driver.Halt();
+        require(haltedBack.Repaints == 1 && haltedBack.Resting && haltedBack.Driver.Phase == Rest && haltedBack.Painted == true,
+            "Halting a back leg rests the card without another pass: the wanted face is already on screen");
+
+        var refused = FlipScript.Front(); refused.Starts = false; refused.Flip();
+        require(refused.Painted == true && refused.Driver.Phase == Rest && refused.Resting && refused.Repaints == 0 && refused.Live == 0 && !refused.PaintedOutsidePass,
+            "A leg that cannot start changes the face in the frame of the report");
+        var early = FlipScript.Front(); early.LandsAtOnce = true; early.Flip();
+        require(early.Painted == true && early.Driver.Phase == Rest && early.Resting && early.Repaints == 0 && early.Legs.Count == 1 && early.Live == 0,
+            "A leg that reports its end from inside its own start did not run: the face changes at once, with no pass inside a pass");
+        var refusedBack = FlipScript.Front(); refusedBack.Flip(); refusedBack.Starts = false; refusedBack.Legs[0].Landed();
+        require(refusedBack.Painted == true && refusedBack.Driver.Phase == Rest && refusedBack.Resting && refusedBack.Repaints == 1,
+            "A back leg that cannot start leaves the card face-on with the new face, never edge-on");
+        var offAtEdge = FlipScript.Front(); offAtEdge.Flip(); offAtEdge.Motion = false; offAtEdge.Legs[0].Landed();
+        require(offAtEdge.Painted == true && offAtEdge.Driver.Phase == Rest && offAtEdge.Resting && offAtEdge.Legs.Count == 1,
+            "Motion turned off by edge-on: the card rests face-on with the new face and no back leg starts");
+
+        var gone = FlipScript.Front(); gone.Flip(); gone.Driver.Dispose();
+        require(gone.Resting && gone.Live == 0, "Disposal rests the surface and drops the leg in flight");
+        var goneRests = gone.Rests; var gonePaints = gone.Paints;
+        gone.Legs[0].Landed(); gone.Driver.Halt(); gone.Flip(); gone.Driver.Dispose();
+        require(gone.Rests == goneRests && gone.Paints == gonePaints && gone.Repaints == 0 && gone.Legs.Count == 1,
+            "After disposal a late end, a halt, a report and a second disposal reach nothing");
+        var pruned = FlipScript.Front(); pruned.Flip(); pruned.DuringRepaint = pruned.Driver.Dispose; pruned.Legs[0].Landed();
+        require(pruned.Legs.Count == 1 && pruned.Resting, "A card removed by the pass that changes its face starts no back leg");
+        var changed = FlipScript.Front(); changed.Flip(); changed.DuringRepaint = () => { changed.DuringRepaint = null; changed.Model = false; };
+        changed.Legs[0].Landed();
+        require(changed.Legs.Count == 2 && changed.Legs[1].Away && changed.Driver.Phase == Away && changed.Painted == true && changed.Live == 1,
+            "A model that flips again by the time the face changes starts the next away leg, and only that leg");
+
+        // Ten thousand flips, refreshes, ends (current and stale), halts and motion changes in a fixed order.
+        var walk = FlipScript.Front(); var random = new Random(2611); string? broken = null;
+        for (var index = 0; index < 10000 && broken is null; index++)
+        {
+            switch (random.Next(7))
+            {
+                case 0: walk.Flip(); break;
+                case 1: walk.Pass(); break;
+                case 2: if (walk.Legs.Count > 0) walk.Legs[^1].Landed(); break;
+                case 3: if (walk.Legs.Count > 0) walk.Legs[random.Next(walk.Legs.Count)].Landed(); break;
+                case 4: walk.Driver.Halt(); break;
+                case 5: walk.Motion = !walk.Motion; if (!walk.Motion) walk.Driver.Halt(); break;
+                default: walk.Starts = random.Next(8) != 0; walk.LandsAtOnce = random.Next(16) == 0; break;
+            }
+            void Hold(bool holds, string rule) { if (!holds) broken ??= rule + " (step " + index + ")"; }
+            var phase = walk.Driver.Phase;
+            Hold(walk.Painted == walk.Driver.Shown, "the face on screen is the one the driver says is shown");
+            Hold(!walk.PaintedOutsidePass, "a face is only painted inside a render pass");
+            Hold(walk.Live == (phase == Rest ? 0 : 1), "exactly one leg is live during a turn and none at rest");
+            Hold(walk.Resting == (phase == Rest), "the card is at rest exactly when no turn is in flight");
+            Hold(phase == Away ? walk.Painted != walk.Model : walk.Painted == walk.Model, "only an away leg shows the face that was not asked for");
+            Hold(phase != Back || !walk.Legs[^1].Away, "a turn in its second half is on a back leg");
+            if (walk.Legs.Count > 64) walk.Legs.RemoveRange(0, 32); // Only the newest leg can be live.
+        }
+        require(broken is null, "The turn keeps its rules over 10,000 flips, refreshes, ends, halts and motion changes (first broken: " + broken + ")");
     }
 
     /// <summary>The text between two case labels of one renderer file.</summary>

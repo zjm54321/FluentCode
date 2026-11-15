@@ -15,12 +15,12 @@ App notifications, AppInstance and windowing compile against the new packages. C
 
 ## DevWinUI 10.9.1
 
-`DevWinUI` brings `DevWinUI.Base` 10.9.1 and `Microsoft.Graphics.Win2D` 1.4.0. The dependency upgrade itself instantiated no DevWinUI control. Since 1.2611.18 two are in use, each behind one adapter file, and a headless check keeps the vendor namespace out of every other C# file:
+`DevWinUI` brings `DevWinUI.Base` 10.9.1 and `Microsoft.Graphics.Win2D` 1.4.0. The dependency upgrade itself instantiated no DevWinUI control. Three are in use, each behind an adapter file, and a headless check keeps the vendor namespace out of every other C# file:
 
-- `IssueLabel`, through `Controls/CommunityTextBadge.cs`: badges without an icon in Native UI cards. Badges with an icon are still built by hand and styled to match.
+- `IssueLabel`, through `Controls/CommunityTextBadge.cs`: every badge in Native UI cards, with or without an icon. The label takes its text as a string and its look from a title template; an icon is part of that template, never an element assigned to the label.
 - `ConfettiCannon`, through `Pages/OpenCode/NativeUi/NativeUiCommunityEffects.cs`: the Celebration burst.
 
-That effects file also holds an adapter for `Shimmer`, and `App.xaml` a style for it (`AppStreamingShimmerStyle`). Nothing calls them yet: the streaming placeholder still draws its own bars.
+- `Shimmer`, through the same effects file: the three bars of the streaming placeholder of a Native UI card, styled by `AppStreamingShimmerStyle` in `App.xaml`. With motion off or in high contrast the bars are plain Borders and no `Shimmer` is built: the control initializes its composition resources even when inactive, and its high-contrast background resource names a colour where a brush is needed.
 
 Application dictionaries are merged in this order:
 
@@ -35,7 +35,14 @@ The MSIX check asserts this merge order, verifies both Generic XBFs in the prima
 
 ## CommunityToolkit.WinUI.Animations 8.2.251219
 
-Referenced since 1.2611.18 for a flashcard flip animation that is not written yet. The flashcard swaps its faces in one frame, as before, and no application code uses the package.
+Used by one caller: the Native UI flashcard turn (`FlipEffect` in `src/FluentCode/Pages/OpenCode/NativeUi/NativeUiCommunityEffects.cs`). It calls `AnimationBuilder.RotationInDegrees` on the composition layer with `Start(UIElement, Action)`, which creates one scoped batch per leg and no Storyboard. The package is imported through a namespace alias, so its extension methods do not collide with DevWinUI's in that file.
+
+Two constraints to keep when adding another caller:
+
+- The composition layer takes the element's hand-off visual. WinUI then refuses the strict facade properties (`Scale`, `Rotation`, `Translation`, `CenterPoint` and their transitions) on that same element, and `FluentMotion.Animate`/`Settle` set those. An element is animated through one of the two, never both.
+- The XAML layer builds a Storyboard per call. Do not use it for anything that lives in a virtualized list.
+
+The order of a turn is decided by `NativeUiFlipDriver` in `NativeUiStyleMath.cs`, which has no WinUI dependency and is executed by the `native-ui` runner.
 
 ## Net.Codecrete.QrCodeGenerator 3.2.1
 

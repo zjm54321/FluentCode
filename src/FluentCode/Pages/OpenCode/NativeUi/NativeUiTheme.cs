@@ -8,7 +8,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using CommunityToolkit.WinUI.Controls;
 using FluentCode.Controls;
-using FluentCode.Motion;
 using FluentCode.Services.Appearance;
 using FluentCode.Services.NativeUi;
 using Microsoft.UI.Xaml;
@@ -19,7 +18,6 @@ using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 using WinUI.TableView;
 using FontWeights = Microsoft.UI.Text.FontWeights;
 using FontStyle = Windows.UI.Text.FontStyle;
@@ -205,13 +203,12 @@ internal static class NativeUiTheme
                 "lg" => ("SubtitleTextBlockStyle", 0d, 0d, null), "sm" => ("BodyStrongTextBlockStyle", 0d, 0d, null), _ => ("BodyStrongTextBlockStyle", 18d, 24d, null),
             },
             "Caption" => ("CaptionTextBlockStyle", 0d, 0d, null),
-            "Badge" => ("CaptionTextBlockStyle", 0d, 0d, "SemiBold"),
             _ => ("BodyTextBlockStyle", 0d, 0d, null),
         };
-        var token = type == "Badge" ? BadgeTone(color) : color.Length > 0 ? color : type == "Caption" ? "muted" : "ink";
+        var token = color.Length > 0 ? color : type == "Caption" ? "muted" : "ink";
         text.Style = TextStyle("TextBlock", ramp.Style, Foreground(token), ramp.Size, ramp.Line, ramp.Weight);
         // A raw colour (OIU allows any CSS colour) is a local brush; tokens stay theme resources.
-        if (type != "Badge" && Hex(color, out var raw)) text.Foreground = new SolidColorBrush(raw); else text.ClearValue(TextBlock.ForegroundProperty);
+        if (Hex(color, out var raw)) text.Foreground = new SolidColorBrush(raw); else text.ClearValue(TextBlock.ForegroundProperty);
         text.TextWrapping = TextWrapping.Wrap;
         text.IsTextSelectionEnabled = true;
         Typography.SetNumeralAlignment(text, FontNumeralAlignment.Tabular);
@@ -309,48 +306,6 @@ internal static class NativeUiTheme
         _ => CommunityTextBadgeTone.Neutral,
     };
 
-    /// <summary>True when the merged app resources resolve the key to a brush right now.</summary>
-    private static bool TryToneBrush(string key)
-    {
-        try { return Application.Current?.Resources is { } resources && resources.TryGetValue(key, out var value) && value is Brush; }
-        catch { return false; }
-    }
-
-    /// <summary>Styles the badge that carries a leading glyph; a glyph-less badge goes through CommunityTextBadge.</summary>
-    internal static void Badge(Border border, NativeUiElement node)
-    {
-        var color = String(node, "color");
-        var tone = BadgeTone(color);
-        // C06: the icon badge mirrors the adapter pill so both forms read as one component — same box, same 1-DIP
-        // tone ring, same palette. The status tones already share their SystemFillColor* keys through Foreground();
-        // the categorical tones take the library's own IssueLabel* keys (NativeUiStyleMath.BadgeLibraryTone), so a
-        // badge looks the same whether or not it carries an icon.
-        var app = (Box: OpenCodeThemedXaml.BrushStyle("Border", ("Background", Background(tone)), ("BorderBrush", Foreground(tone))),
-            Glyph: OpenCodeThemedXaml.BrushStyle("FontIcon", ("Foreground", Foreground(tone))),
-            Label: TextStyle("TextBlock", "CaptionTextBlockStyle", Foreground(tone), 0d, 0d, "SemiBold"));
-        // Probe before parsing: the style helpers cache a failed parse for good, so a key that is missing (renamed
-        // by a later DevWinUI) or is not a brush must never reach them. Then the app tint is kept — silently; see
-        // the C06 notes.
-        var library = NativeUiStyleMath.BadgeLibraryTone(tone) is { } keys && TryToneBrush(keys.Background) && TryToneBrush(keys.Border) && TryToneBrush(keys.Foreground)
-            ? (Box: OpenCodeThemedXaml.BrushStyle("Border", ("Background", keys.Background), ("BorderBrush", keys.Border)),
-                Glyph: OpenCodeThemedXaml.BrushStyle("FontIcon", ("Foreground", keys.Foreground)),
-                Label: TextStyle("TextBlock", "CaptionTextBlockStyle", keys.Foreground, 0d, 0d, "SemiBold"))
-            : default;
-        var (box, glyph, label) = NativeUiStyleMath.PickBadgePalette(app, library);
-        border.Style = box;
-        border.BorderThickness = new Thickness(1);
-        border.Padding = new Thickness(8, 2, 8, 2); border.MinHeight = 20; border.CornerRadius = new CornerRadius(10);
-        border.HorizontalAlignment = HorizontalAlignment.Left; border.VerticalAlignment = VerticalAlignment.Center;
-        if (border.Child is not StackPanel panel) return;
-        panel.Spacing = 4; panel.VerticalAlignment = VerticalAlignment.Center;
-        foreach (var icon in panel.Children.OfType<FontIcon>())
-        {
-            icon.FontSize = 12; icon.VerticalAlignment = VerticalAlignment.Center;
-            icon.Style = glyph;
-        }
-        // The label keeps the ramp Text() gave it (Caption, SemiBold) and takes the badge's ink.
-        foreach (var text in panel.Children.OfType<TextBlock>()) { text.VerticalAlignment = VerticalAlignment.Center; text.TextWrapping = TextWrapping.NoWrap; text.Style = label; }
-    }
     internal static void Button(Button button, NativeUiElement node)
     {
         // OIU: Button defaults to solid, IconButton to outline.
@@ -667,22 +622,14 @@ internal static class NativeUiTheme
         bar.Loaded += (_, _) => { bar.IsOpen = true; bar.Announce(title, message); };
         Fit(bar, wide: false); return bar;
     }
-    /// <summary>Streaming state: the card surface with a progress ring, the tool title and a pulsing skeleton.</summary>
+    /// <summary>Streaming state: the card surface with a progress ring, the tool title and the skeleton bars.</summary>
     internal static Border Placeholder(string? title)
     {
         var caption = string.IsNullOrWhiteSpace(title) ? "正在生成交互卡片…" : "正在生成「" + title.Trim() + "」…";
         var ring = new ProgressRing { IsActive = true, Width = 16, Height = 16, MinWidth = 16, MinHeight = 16, VerticalAlignment = VerticalAlignment.Center };
         var heading = new TextBlock { Text = caption, VerticalAlignment = VerticalAlignment.Center }; Text(heading, new("Text", new Dictionary<string, object?> { ["color"] = "muted" }));
-        var bars = new StackPanel { Spacing = 10 };
-        foreach (var fraction in new[] { 0.4, 1, 0.72 })
-        {
-            var line = new Grid();
-            line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(fraction, GridUnitType.Star) });
-            if (fraction < 1) line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1 - fraction, GridUnitType.Star) });
-            line.Children.Add(new Border { Height = 12, CornerRadius = new CornerRadius(SmallRadius), Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SubtleFillColorSecondaryBrush")) });
-            bars.Children.Add(line);
-        }
-        AutomationProperties.SetAccessibilityView(bars, AccessibilityView.Raw);
+        // The three bars, their shimmer and its lifetime live in the effects adapter.
+        var bars = NativeUiCommunityEffects.SkeletonBars();
         var hint = new TextBlock { Text = "输入完成后显示原生控件" }; Text(hint, new("Caption", new Dictionary<string, object?> { ["color"] = "faint" }));
         var border = new Border
         {
@@ -691,11 +638,6 @@ internal static class NativeUiTheme
         };
         Frame(border); Fit(border, wide: false);
         AutomationProperties.SetName(border, caption);
-        var pulse = new DoubleAnimation { From = 1, To = 0.55, Duration = TimeSpan.FromMilliseconds(800), AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever };
-        Storyboard.SetTarget(pulse, bars); Storyboard.SetTargetProperty(pulse, "Opacity");
-        var story = new Storyboard { Children = { pulse } };
-        border.Loaded += (_, _) => { if (FluentMotion.Enabled) story.Begin(); };
-        border.Unloaded += (_, _) => { story.Stop(); bars.Opacity = 1; };
         return border;
     }
 

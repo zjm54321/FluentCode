@@ -41,6 +41,18 @@ internal sealed partial class NativeUiRenderer : IDisposable
             catch (Exception error) { _root.Child = NativeUiTheme.Notice("原生卡片主题更新失败", error.ToString(), true); }
         });
     }
+    /// <summary>
+    /// Paints the last model again, for a change in what a card shows that is not a change of the model: a
+    /// flashcard reaching the middle of its turn. It is a whole pass because only a pass counts the nodes of the
+    /// new face against the budget and prunes the elements of the old one. No caller is left to catch a failure
+    /// here, so it is shown in the card with the wording the part view uses for a pass that failed.
+    /// </summary>
+    private void Repaint()
+    {
+        if (_disposed || _lastRoot is not { } root) return;
+        try { Render(root); }
+        catch (Exception error) { _root.Child = NativeUiTheme.Notice("交互卡片无法渲染", NativeUiToolInput.Compact(error.Message), error: true); }
+    }
     internal void Render(NativeUiElement root)
     {
         _lastRoot = root;
@@ -134,33 +146,21 @@ internal sealed partial class NativeUiRenderer : IDisposable
                 };
                 return textVisual;
             case "Badge":
-                // C06: a text-only badge is the shared CommunityTextBadge pill (DevWinUI IssueLabel behind
-                // CONTRACT-F §2). The library template has one text presenter and no icon slot, so a badge whose
-                // `icon` resolves to a glyph keeps the hand-built Border + FontIcon + TextBlock pill.
-                // One host per structural path: the pill is created once and updated in place (Update / SetTone /
-                // SetAccessibleName); only a text-only <-> glyph switch changes the host's single child.
+                // C06: every badge is the shared CommunityTextBadge pill (DevWinUI IssueLabel behind CONTRACT-F §2).
+                // A badge whose `icon` resolves to a glyph hands that glyph to the adapter, which shows it before
+                // the text inside the same pill, so a badge is one control with or without an icon.
+                // One host per structural path: the pill is created once and updated in place.
                 var badgeHost = new Grid { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
-                FrameworkElement? badgePill = null; Border? badgeBox = null; var badgePanel = new StackPanel { Orientation = Orientation.Horizontal }; var badgeText = new TextBlock();
+                FrameworkElement? badgePill = null;
                 var badgeVisual = new Visual(badgeHost);
                 badgeVisual.Apply = node =>
                 {
                     var label = NativeUiTheme.String(node, "text"); var tone = NativeUiTheme.BadgeAdapterTone(NativeUiTheme.String(node, "color"));
-                    var icon = NativeUiTheme.Icon(NativeUiTheme.String(node, "icon"));
-                    if (icon is null)
-                    {
-                        // A Native UI badge is the only carrier of its text, so it stays in the content view with
-                        // its text as the name (the adapter's default would hide it from screen readers).
-                        var pill = badgePill;
-                        if (pill is null) { badgePill = pill = CommunityTextBadge.Create(label, tone, CommunityTextBadgeShape.Pill, label); }
-                        else { CommunityTextBadge.Update(pill, label); CommunityTextBadge.SetTone(pill, tone); CommunityTextBadge.SetAccessibleName(pill, label); }
-                        Sync(badgeHost, new UIElement[] { pill });
-                        return;
-                    }
-                    badgeBox ??= new Border { Child = badgePanel };
-                    badgeText.Text = label; NativeUiTheme.Text(badgeText, node);
-                    Sync(badgePanel, new UIElement[] { icon, badgeText });
-                    NativeUiTheme.Badge(badgeBox, node);
-                    Sync(badgeHost, new UIElement[] { badgeBox });
+                    var glyph = NativeUiStyleMath.Glyph(NativeUiTheme.String(node, "icon"));
+                    // A Native UI badge is the only carrier of its text, so it stays in the content view with
+                    // its text as the name (the adapter's default would hide it from screen readers).
+                    if (badgePill is { } pill) { CommunityTextBadge.SetGlyph(pill, glyph); CommunityTextBadge.Update(pill, label); CommunityTextBadge.SetTone(pill, tone); CommunityTextBadge.SetAccessibleName(pill, label); }
+                    else { badgePill = CommunityTextBadge.Create(label, tone, CommunityTextBadgeShape.Pill, label, glyph); Sync(badgeHost, new UIElement[] { badgePill }); }
                 };
                 return badgeVisual;
             case "Divider":

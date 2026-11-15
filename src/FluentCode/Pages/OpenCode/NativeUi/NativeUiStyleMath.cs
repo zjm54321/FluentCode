@@ -6,8 +6,9 @@ using System.Linq;
 
 namespace FluentCode.Pages.OpenCode;
 
-// WinUI-free colour, length, flex and icon rules shared by the renderer and the
-// native-ui test runner (tests/native-ui/run.ps1 compiles this file directly).
+// WinUI-free colour, length, flex and icon rules, and the flashcard's turn (NativeUiFlipState and
+// NativeUiFlipDriver, below), shared by the renderer and the native-ui test runner (tests/native-ui/run.ps1
+// compiles this file directly).
 internal static class NativeUiStyleMath
 {
     // #rgb, #rrggbb or #aarrggbb; the catalog's only raw colour form (no CSS functions are parsed).
@@ -65,24 +66,6 @@ internal static class NativeUiStyleMath
     // CSS border-radius scales down when it exceeds the box (a "full" radius becomes a pill); before layout keep the request.
     internal static double FitRadius(double radius, double width, double height)
         => width > 0 && height > 0 ? Math.Min(Math.Max(0, radius), Math.Min(width, height) / 2) : Math.Max(0, radius);
-    // C06: the theme-resource keys DevWinUI's IssueLabel paints its categorical severity states from. The library
-    // defines twelve — four tones (Gray, Blue, Purple, Pink) by three roles (fill, ring, text) — and the shared
-    // badge adapter uses them for its Neutral, Attention, Purple and Pink tones, so a badge that carries an icon
-    // reads the same twelve and matches a text-only badge. Names verified in DevWinUI 10.9.1 Themes/Generic.xaml
-    // (each defined in its Default, Light and HighContrast dictionaries). The three status tones are absent on
-    // purpose: both badge forms already paint them from the same SystemFillColor* keys.
-    internal static (string Background, string Border, string Foreground)? BadgeLibraryTone(string tone) => tone switch
-    {
-        "muted" => ("IssueLabelGrayBackgroundBrush", "IssueLabelGrayBorderBrush", "IssueLabelGrayForegroundBrush"),
-        "info" => ("IssueLabelBlueBackgroundBrush", "IssueLabelBlueBorderBrush", "IssueLabelBlueForegroundBrush"),
-        "purple" => ("IssueLabelPurpleBackgroundBrush", "IssueLabelPurpleBorderBrush", "IssueLabelPurpleForegroundBrush"),
-        "pink" => ("IssueLabelPinkBackgroundBrush", "IssueLabelPinkBorderBrush", "IssueLabelPinkForegroundBrush"),
-        _ => null,
-    };
-    // A badge is painted from one palette as a whole: the library's box, glyph and label styles are used only when
-    // all three resolved; if any is missing the app's three are used together, so a badge is never half and half.
-    internal static (T? Box, T? Glyph, T? Label) PickBadgePalette<T>((T? Box, T? Glyph, T? Label) app, (T? Box, T? Glyph, T? Label) library) where T : class
-        => library.Box is not null && library.Glyph is not null && library.Label is not null ? library : app;
     internal static string? Glyph(string name) => name.Length > 0 && Glyphs.TryGetValue(name.Trim().ToLowerInvariant(), out var glyph) ? glyph : null;
     // Lucide names (the OIU icon set) mapped to Segoe Fluent Icons; unknown names render nothing, as upstream.
     private static readonly Dictionary<string, string> Glyphs = new(StringComparer.Ordinal)
@@ -107,4 +90,193 @@ internal static class NativeUiStyleMath
         ["sun"] = "\uE706", ["user-plus"] = "\uE8FA", ["calendar-plus"] = "\uE787", ["circle"] = "\uEA3A", ["dices"] = "\uE7FC", ["hourglass"] = "\uE916",
         ["newspaper"] = "\uE7BC", ["at-sign"] = "\uE715",
     };
+}
+
+/// <summary>
+/// C12: which face a flashcard shows and where its turn is. It lives in this file because the native-ui runner
+/// compiles this file, so the order of a turn is executed by tests instead of being read from source.
+/// A turn has two legs: away to edge-on with the old face still showing, then back with the new one. The face
+/// changes between the legs and never during one.
+/// </summary>
+internal sealed class NativeUiFlipState
+{
+    internal enum Leg { Rest, Away, Back }
+    /// <summary>What a report asks of the caller, besides painting <see cref="Shown"/>.</summary>
+    internal enum Step { Paint, TurnAway, TurnBack, Settle }
+    private bool? _shown; // Null until the first report: a card's first face is painted without a turn.
+    /// <summary>The face on screen. False is the front, which is what a fresh card shows.</summary>
+    internal bool Shown => _shown is true;
+    /// <summary>The face the model asked for last.</summary>
+    internal bool Wanted { get; private set; }
+    internal Leg Phase { get; private set; }
+    /// <summary>
+    /// Names the leg in flight. Every start, reversal, midpoint, landing and halt takes a new one, so a completion
+    /// that arrives late matches nothing.
+    /// </summary>
+    internal int Generation { get; private set; }
+
+    /// <summary>
+    /// The model reports the face it wants. An unchanged report only repaints: mid-turn that is still the old face,
+    /// which keeps it alive until the midpoint. A changed one turns the card, or settles on the new face at once when
+    /// <paramref name="animate"/> is false. A report that takes back a turn still on its way out turns the card back
+    /// with the face it never stopped showing.
+    /// </summary>
+    internal Step Request(bool wanted, bool animate)
+    {
+        if (_shown is null) { _shown = Wanted = wanted; return Step.Paint; }
+        if (wanted == Wanted) return Step.Paint;
+        Wanted = wanted; Generation++;
+        if (!animate) { _shown = wanted; Phase = Leg.Rest; return Step.Settle; }
+        Phase = wanted == _shown ? Leg.Back : Leg.Away;
+        return Phase == Leg.Back ? Step.TurnBack : Step.TurnAway;
+    }
+
+    /// <summary>The away leg reached edge-on: the wanted face becomes the shown one. False when that leg was superseded.</summary>
+    internal bool Midpoint(int generation)
+    {
+        if (generation != Generation || Phase != Leg.Away) return false;
+        _shown = Wanted; Phase = Leg.Back; Generation++;
+        return true;
+    }
+
+    /// <summary>The back leg reached face-on. False when that leg was superseded.</summary>
+    internal bool Landed(int generation)
+    {
+        if (generation != Generation || Phase != Leg.Back) return false;
+        Phase = Leg.Rest; Generation++;
+        return true;
+    }
+
+    /// <summary>
+    /// Ends a turn where it is: the wanted face shows and nothing is in flight. True when that changed the face on
+    /// screen, which the caller then has to paint.
+    /// </summary>
+    internal bool Halt()
+    {
+        if (Phase == Leg.Rest) return false;
+        var changed = _shown != Wanted;
+        _shown = Wanted; Phase = Leg.Rest; Generation++;
+        return changed;
+    }
+}
+
+/// <summary>
+/// C12: what a flashcard's turn needs from the UI. The effects adapter implements it with the animation library;
+/// the native-ui tests implement it with a script, so the order below runs in tests.
+/// </summary>
+internal interface INativeUiFlipSurface
+{
+    /// <summary>Whether a turn can be animated now: motion is allowed and the card is on screen with a size.</summary>
+    bool CanTurn { get; }
+    /// <summary>
+    /// Starts one leg from wherever the card is: to edge-on when <paramref name="away"/>, to face-on otherwise.
+    /// <paramref name="landed"/> is called when the leg ends: later, never from inside this call, at most once
+    /// and possibly never. False when no leg started.
+    /// </summary>
+    bool Turn(bool away, Action landed);
+    /// <summary>Stops any leg and leaves the card face-on.</summary>
+    void Rest();
+    /// <summary>Paints one face. Only ever called inside a render pass.</summary>
+    void Paint(bool back);
+    /// <summary>Runs a render pass, which reports again and so paints the face that shows now.</summary>
+    void Repaint();
+}
+
+/// <summary>
+/// C12: the end of one leg. An animation library keeps its completion handler for as long as its own batch lives,
+/// which this code cannot bound, so that handler is given this object and nothing else. Once the leg has ended or
+/// was dropped it holds nothing, and whatever still holds it reaches no card.
+/// </summary>
+internal sealed class NativeUiFlipLeg(int generation, Action<int> end)
+{
+    private Action<int>? _end = end;
+    /// <summary>False once the leg has ended or was dropped: nothing is reachable through it any more.</summary>
+    internal bool Live => _end is not null;
+    internal void Drop() => _end = null;
+    internal void Land() { var call = _end; _end = null; call?.Invoke(generation); }
+}
+
+/// <summary>
+/// C12: runs a flashcard's turn on a surface. A report arrives inside a render pass and paints there. A leg's end
+/// arrives outside one, so the change of face at edge-on asks for a pass instead of painting: only a pass prunes
+/// the elements of the face that left.
+/// </summary>
+internal sealed class NativeUiFlipDriver(INativeUiFlipSurface owner)
+{
+    private readonly NativeUiFlipState _state = new();
+    private INativeUiFlipSurface? _surface = owner; // Null once disposed: nothing that arrives later does anything.
+    private NativeUiFlipLeg? _leg;
+    private bool _starting; // Inside Turn. A leg that reports its end from there did not run.
+
+    internal bool Shown => _state.Shown;
+    internal NativeUiFlipState.Leg Phase => _state.Phase;
+
+    /// <summary>The model reports the face it wants, inside a render pass. Paints the face that shows.</summary>
+    internal void Request(bool wanted)
+    {
+        if (_surface is not { } surface) return;
+        switch (_state.Request(wanted, surface.CanTurn))
+        {
+            case NativeUiFlipState.Step.TurnAway: Start(surface, away: true); break;
+            case NativeUiFlipState.Step.TurnBack: Start(surface, away: false); break;
+            case NativeUiFlipState.Step.Settle: Stop(surface); break;
+        }
+        surface.Paint(_state.Shown);
+    }
+
+    /// <summary>
+    /// Ends a turn where it is, with the wanted face showing: motion was turned off, the card left the screen, or
+    /// a leg's end never arrived. Called outside a render pass. Does nothing to a card that is not turning.
+    /// </summary>
+    internal void Halt()
+    {
+        if (_surface is not { } surface || _state.Phase == NativeUiFlipState.Leg.Rest) return;
+        var changed = _state.Halt();
+        Stop(surface);
+        if (changed) surface.Repaint();
+    }
+
+    /// <summary>The card is gone: drops the leg in flight, so its end reaches nothing, and rests the surface.</summary>
+    internal void Dispose()
+    {
+        if (_surface is not { } surface) return;
+        _surface = null;
+        Stop(surface);
+    }
+
+    /// <summary>
+    /// A leg that cannot start, or that reports its end before it was started, ends the turn on the wanted face
+    /// instead of leaving the card part-turned. The caller paints: a report does so itself, and after the middle
+    /// of a turn the wanted face is already the one on screen.
+    /// </summary>
+    private void Start(INativeUiFlipSurface surface, bool away)
+    {
+        _leg?.Drop();
+        var leg = _leg = new NativeUiFlipLeg(_state.Generation, away ? EdgeOn : FaceOn);
+        bool started;
+        _starting = true;
+        try { started = surface.Turn(away, leg.Land); }
+        finally { _starting = false; }
+        if (started && leg.Live) return;
+        _state.Halt(); Stop(surface);
+    }
+
+    private void Stop(INativeUiFlipSurface surface) { _leg?.Drop(); _leg = null; surface.Rest(); }
+
+    private void EdgeOn(int generation)
+    {
+        if (_starting || _surface is not { } surface || !_state.Midpoint(generation)) return;
+        var back = _state.Generation;
+        surface.Repaint();
+        if (_surface is null || _state.Generation != back) return; // That pass ended the turn, or the card.
+        // Edge-on the card has no width, so it is never left here: without a back leg it rests face-on at once.
+        if (surface.CanTurn) Start(surface, away: false);
+        else { _state.Halt(); Stop(surface); }
+    }
+
+    private void FaceOn(int generation)
+    {
+        if (_starting || _surface is not { } surface || !_state.Landed(generation)) return;
+        Stop(surface);
+    }
 }
