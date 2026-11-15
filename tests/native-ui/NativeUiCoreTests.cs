@@ -246,13 +246,15 @@ internal static class NativeUiCoreTests
             "Native UI never sets a badge Foreground (it would discard the tone) and never names a DevWinUI type or resource key");
 
         // The adapter's glyph path: string data in, one cached template per glyph, state on the control itself.
-        var glyphTemplate = Between(badgeAdapter, "private static DataTemplate? GlyphTemplate(string glyph)", "\n    /// <summary>安全取应用资源");
+        var glyphTemplate = Between(badgeAdapter, "private static DataTemplate? TitleTemplate(string? glyph, string? ink)", "\n    /// <summary>安全取应用资源");
         Check(badgeAdapter.Contains("string? glyph = null)") && badgeAdapter.Contains("internal static void SetGlyph(FrameworkElement badge, string? glyph)")
             && badgeAdapter.Contains("label.Tag = next;") && badgeAdapter.Contains("if (Equals(label.Tag, next))"),
             "The adapter takes the glyph as a string, keeps it on the control and does nothing when it did not change");
-        Check(badgeAdapter.Contains("label.TitleTemplate = (next is null ? null : GlyphTemplate(next)) ?? TryResource(TitleTemplateKey) as DataTemplate;"),
+        var retitle = Between(badgeAdapter, "private static void Retitle(IssueLabel label)", "private static DataTemplate? TitleTemplate(");
+        Check(retitle.Contains("var template = glyph is null && ink is null ? null : TitleTemplate(glyph, ink);")
+            && retitle.Contains("var next = template ?? TryResource(TitleTemplateKey) as DataTemplate;") && retitle.Contains("label.TitleTemplate = next;"),
             "A badge without a glyph, or whose glyph template cannot be built, uses the shared text template");
-        Check(glyphTemplate.Contains("string.Concat(glyph.Select(character => \"&#x\" + ((int)character).ToString(\"X4\") + \";\"))"),
+        Check(glyphTemplate.Contains(": string.Concat(glyph.Select(character => \"&#x\" + ((int)character).ToString(\"X4\") + \";\"))"),
             "The glyph reaches the template as numeric character references, so its content is never parsed as markup");
         Check(glyphTemplate.Contains("<Grid ColumnSpacing=\\\"4\\\"") && glyphTemplate.Contains("<ColumnDefinition Width=\\\"Auto\\\" /><ColumnDefinition Width=\\\"*\\\" />")
             && glyphTemplate.Contains("FontFamily=\\\"{ThemeResource SymbolThemeFontFamily}\\\" FontSize=\\\"12\\\" FontWeight=\\\"Normal\\\"")
@@ -261,12 +263,13 @@ internal static class NativeUiCoreTests
         Check(glyphTemplate.Contains("Text=\\\"{Binding}\\\" FontFamily=\\\"{ThemeResource ContentControlThemeFontFamily}\\\" TextWrapping=\\\"NoWrap\\\"")
             && glyphTemplate.Contains("IsTextSelectionEnabled=\\\"True\\\""),
             "The text beside a glyph follows the user's font, stays on one line and stays selectable, like the text-only template");
-        Check(!glyphTemplate.Contains("Foreground", StringComparison.Ordinal) && !glyphTemplate.Contains("FontIcon", StringComparison.Ordinal),
-            "Glyph and text take the tone's colour from the title presenter: the template names no colour of its own");
+        Check(glyphTemplate.Contains("var color = ink is null ? string.Empty : \" Foreground=\\\"{ThemeResource \" + InkBrushKey + \"}\\\"\";")
+            && Occurrences(glyphTemplate, "Foreground") == 1 && !glyphTemplate.Contains("FontIcon", StringComparison.Ordinal),
+            "Without an ink, glyph and text take the tone's colour from the title presenter: the template names a colour only for the status tones");
         Check(badgeAdapter.Contains("label.Visibility = string.IsNullOrEmpty(text) && label.Tag is null ? Visibility.Collapsed : Visibility.Visible;"),
             "A badge with a glyph and no text still shows; one with neither does not");
         Check(Regex.Matches(badgeAdapter, @"private static readonly [^\n]*").Select(match => match.Value.Trim())
-                .SequenceEqual(new[] { "private static readonly Dictionary<string, DataTemplate?> GlyphTemplates = new(StringComparer.Ordinal);" }),
+                .SequenceEqual(new[] { "private static readonly Dictionary<string, DataTemplate?> TitleTemplates = new(StringComparer.Ordinal);" }),
             "The adapter's only static state is the template cache, which holds templates, not controls");
 
         // ---- D-10: the info badge follows the accent, like the other info elements on a card ----
@@ -296,6 +299,45 @@ internal static class NativeUiCoreTests
         // Executed with the default Windows accent ramp: the text must stay readable on the tinted fill over a card.
         Check(BadgeContrast(0x99EBFF, Over(0x4CC2FF, 0.12, 0x2C2C2C)) >= 4.5 && BadgeContrast(0x003E92, Over(0x0067C0, 0.12, 0xFFFFFF)) >= 4.5,
             "With the default accent, info badge text on its tint over the card surface clears 4.5:1 in dark and light");
+
+        // ---- D-13: status tones get the same soft outline as the category tones; their text keeps full strength ----
+        var statusRings = Between(badgeAdapter, "private const string StatusRings =", "private const string DarkTones =");
+        Check(new[] { "Success", "Caution", "Critical" }.All(status => statusRings.Contains(
+                "x:Key=\\\"SystemFillColor" + status + "Brush\\\" Color=\\\"{ThemeResource SystemFillColor" + status + "}\\\" Opacity=\\\"0.4\\\" />"))
+            && Occurrences(statusRings, "x:Key=") == 3,
+            "The brush a status badge draws its outline with is overridden on the badge to the same status colour at 40%, the strength of the info outline");
+        Check(darkTones.TrimEnd().EndsWith("+ StatusRings;", StringComparison.Ordinal) && lightTones.TrimEnd().EndsWith("+ StatusRings;", StringComparison.Ordinal),
+            "The soft outline applies in dark and light; high contrast keeps the system's window-text outline");
+        Check(Regex.IsMatch(badgeAdapter, @"IssueLabelSeverity\.Success => ""SystemFillColorSuccess"",\s+IssueLabelSeverity\.Warning => ""SystemFillColorCaution"",\s+IssueLabelSeverity\.Error => ""SystemFillColorCritical"",\s+_ => null,"),
+            "Exactly the three status tones carry their own text colour; the category tones inherit the library's");
+        Check(glyphTemplate.Contains("<ResourceDictionary x:Key=\\\"Default\\\">\" + InkBrush(ink) + \"</ResourceDictionary>")
+            && glyphTemplate.Contains("<ResourceDictionary x:Key=\\\"Light\\\">\" + InkBrush(ink) + \"</ResourceDictionary>")
+            && glyphTemplate.Contains("<ResourceDictionary x:Key=\\\"HighContrast\\\">\" + InkBrush(\"SystemColorWindowTextColor\") + \"</ResourceDictionary>")
+            && glyphTemplate.Contains("\"<Grid.Resources><ResourceDictionary><ResourceDictionary.ThemeDictionaries>\""),
+            "Status text is painted by a brush defined on the title template's own root, full strength in dark and light and window text in high contrast, so the softened outline brush never reaches it");
+        Check(Occurrences(glyphTemplate, "+ color + \"") == 2,
+            "Glyph and text both take the status text colour");
+        Check(retitle.Contains("if (ink is not null && template is null)") && retitle.Contains("label.Resources = new ResourceDictionary();"),
+            "If the status title template cannot be built the badge drops its overrides and keeps the library colours, rather than showing its text at outline strength");
+        Check(Regex.IsMatch(Between(badgeAdapter, "internal static void SetTone(", "internal static void SetAccessibleName("), @"label\.Severity = Severity\(tone\);\s+Retitle\(label\);")
+            && create.Contains("Retitle(label);") && Between(badgeAdapter, "internal static void SetGlyph(", "internal static void SetTone(").Contains("Retitle(label);"),
+            "The title template is chosen again whenever the tone or the glyph changes, and when the badge is created");
+        if (devWinUiTheme is not null && File.Exists(devWinUiTheme))
+        {
+            var library = File.ReadAllText(devWinUiTheme);
+            Check(new[] { ("Success", "Success"), ("Warning", "Caution"), ("Error", "Critical") }.All(pair =>
+                {
+                    var state = Between(library, "<VisualState x:Name=\"Severity" + pair.Item1 + "\">", "</VisualState>");
+                    return state.Contains("<Setter Target=\"SeverityBorder.BorderBrush\" Value=\"{ThemeResource SystemFillColor" + pair.Item2 + "Brush}\" />")
+                        && state.Contains("<Setter Target=\"SeverityTitle.Foreground\" Value=\"{ThemeResource SystemFillColor" + pair.Item2 + "Brush}\" />")
+                        && state.Contains("<Setter Target=\"SeverityBorder.Background\" Value=\"{ThemeResource SystemFillColor" + pair.Item2 + "BackgroundBrush}\" />");
+                }),
+                "The pinned DevWinUI still draws a status badge's outline and text from one shared brush and its fill from another, which is what the override relies on");
+        }
+        // Executed with the WinUI default colours: status text on its fill (unchanged by this row) stays readable.
+        Check(new[] { (0x6CCB5F, 0x393D1B), (0xFCE100, 0x433519), (0xFF99A4, 0x442726), (0x0F7B0F, 0xDFF6DD), (0x9D5D00, 0xFFF4CE), (0xC42B1C, 0xFDE7E9) }
+                .All(pair => BadgeContrast(pair.Item1, pair.Item2) >= 4.5),
+            "Status badge text on its fill clears 4.5:1 in dark and light");
 
         // The library facts the adapter relies on, read from the locked package so an upgrade that changes them
         // fails here (the runner hands us its theme dictionary: tests/native-ui/run.ps1).

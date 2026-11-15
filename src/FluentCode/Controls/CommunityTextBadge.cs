@@ -56,14 +56,15 @@ internal enum CommunityTextBadgeShape
 /// </para>
 /// <para>
 /// <b>前置图标（C06）：</b>库模板没有图标位。带图标的徽标仍然只把字符串交给 <c>Title</c>，图标字形写进该徽标的
-/// <c>TitleTemplate</c>（每个字形一份模板，见 <see cref="GlyphTemplate"/>），所以有无图标是同一个控件、同一套
+/// <c>TitleTemplate</c>（每个字形一份模板，见 <see cref="TitleTemplate"/>），所以有无图标是同一个控件、同一套
 /// 盒子与配色。字形和文字都从标题呈现器继承前景色，因此同样不需要设置 <c>Foreground</c>。
 /// 来源：https://github.com/ghost1372/DevWinUI，提交 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e，
 /// dev/DevWinUI/Themes/Styles/Controls/IssueLabel.xaml（SeverityTitle / LabelTitle 的 ContentTemplate 绑定）。
 /// </para>
 /// <para>
 /// <b>不要设置 <c>Foreground</c>：</b>设置自定义前景会切换到第二个呈现器分支，从而绕过严重度配色。
-/// 色调只通过 <see cref="CommunityTextBadgeTone"/> 表达。
+/// 色调只通过 <see cref="CommunityTextBadgeTone"/> 表达。状态色调的文字颜色写在标题模板里（D-13），
+/// 那是模板内部的颜色，控件自身的 <c>Foreground</c> 仍然不设置。
 /// </para>
 /// </remarks>
 internal static class CommunityTextBadge
@@ -84,22 +85,38 @@ internal static class CommunityTextBadge
     // D-10 强调色调（Attention）跟随系统强调色，与卡片上其他“信息”元素一致：底色为强调色 12%，
     // 描边为强调色 40%，文字为强调文字色（深色 SystemAccentColorLight3，浅色 SystemAccentColorDark2，
     // 即 AccentTextFillColorPrimaryBrush 的取值）。
+    //
+    // D-13 状态色调（成功 / 注意 / 失败）的描边：库模板让描边和文字读同一把画刷（SystemFillColor*Brush），
+    // 描边因此是满强度的状态色，比分类色调的描边重。这里把这把画刷在徽标内覆盖为同色 40%，描边随之变淡；
+    // 文字不能跟着变淡，所以状态色调的标题模板自带一把满强度的文字画刷（见 TitleTemplate）。
+    // 深色与浅色写法相同：颜色键本身随主题取值。高对比度不覆盖：系统在高对比度下把这三把画刷定为窗口文字色，
+    // 而同名的颜色键在高对比度下只是占位值，不能使用。
+    // 来源：https://github.com/microsoft/microsoft-ui-xaml，main 分支，
+    // src/controls/dev/CommonStyles/Common_themeresources_any.xaml（SystemFillColor* 在三个主题字典中的取值）。
+    private const string StatusRings =
+        "<SolidColorBrush x:Key=\"SystemFillColorSuccessBrush\" Color=\"{ThemeResource SystemFillColorSuccess}\" Opacity=\"0.4\" />"
+        + "<SolidColorBrush x:Key=\"SystemFillColorCautionBrush\" Color=\"{ThemeResource SystemFillColorCaution}\" Opacity=\"0.4\" />"
+        + "<SolidColorBrush x:Key=\"SystemFillColorCriticalBrush\" Color=\"{ThemeResource SystemFillColorCritical}\" Opacity=\"0.4\" />";
     private const string DarkTones =
         "<SolidColorBrush x:Key=\"IssueLabelBlueBackgroundBrush\" Color=\"{ThemeResource SystemAccentColorLight2}\" Opacity=\"0.12\" />"
         + "<SolidColorBrush x:Key=\"IssueLabelBlueBorderBrush\" Color=\"{ThemeResource SystemAccentColorLight2}\" Opacity=\"0.4\" />"
-        + "<SolidColorBrush x:Key=\"IssueLabelBlueForegroundBrush\" Color=\"{ThemeResource SystemAccentColorLight3}\" />";
+        + "<SolidColorBrush x:Key=\"IssueLabelBlueForegroundBrush\" Color=\"{ThemeResource SystemAccentColorLight3}\" />"
+        + StatusRings;
     private const string LightTones =
         "<SolidColorBrush x:Key=\"IssueLabelBlueBackgroundBrush\" Color=\"{ThemeResource SystemAccentColorDark1}\" Opacity=\"0.12\" />"
         + "<SolidColorBrush x:Key=\"IssueLabelBlueBorderBrush\" Color=\"{ThemeResource SystemAccentColorDark1}\" Opacity=\"0.4\" />"
-        + "<SolidColorBrush x:Key=\"IssueLabelBlueForegroundBrush\" Color=\"{ThemeResource SystemAccentColorDark2}\" />";
+        + "<SolidColorBrush x:Key=\"IssueLabelBlueForegroundBrush\" Color=\"{ThemeResource SystemAccentColorDark2}\" />"
+        + StatusRings;
     private const string ToneResources =
         "<ResourceDictionary" + Namespaces + XNamespace + "><ResourceDictionary.ThemeDictionaries>"
         + "<ResourceDictionary x:Key=\"Default\">" + DarkTones + "</ResourceDictionary>"
         + "<ResourceDictionary x:Key=\"Light\">" + LightTones + "</ResourceDictionary>"
         + "<ResourceDictionary x:Key=\"HighContrast\" />"
         + "</ResourceDictionary.ThemeDictionaries></ResourceDictionary>";
-    // 每个字形一份模板。模板不是控件，也不持有控件；字形来自应用内固定的图标表，所以条目数有上限。
-    private static readonly Dictionary<string, DataTemplate?> GlyphTemplates = new(StringComparer.Ordinal);
+    private const string InkBrushKey = "CommunityTextBadgeInkBrush";
+    // 每个“字形 + 文字颜色”组合一份模板。模板不是控件，也不持有控件；字形来自应用内固定的图标表，
+    // 文字颜色只有三种状态色，所以条目数有上限。
+    private static readonly Dictionary<string, DataTemplate?> TitleTemplates = new(StringComparer.Ordinal);
 
     /// <summary>构造一个文本徽标；返回普通 <see cref="FrameworkElement"/>（运行时为 IssueLabel）。</summary>
     /// <param name="text">显示文本（纯文本，不接受元素）。</param>
@@ -129,7 +146,13 @@ internal static class CommunityTextBadge
         }
 
         Apply(label, text, tone, accessibleName);
-        SetGlyph(label, glyph);
+        label.Tag = string.IsNullOrEmpty(glyph) ? null : glyph;
+        Retitle(label);
+        if (label.Tag is not null)
+        {
+            label.Visibility = Visibility.Visible;
+        }
+
         return label;
     }
 
@@ -159,8 +182,7 @@ internal static class CommunityTextBadge
 
         // 当前字形记在控件自己的 Tag 上：状态跟着控件走，适配器不为它保留任何引用。
         label.Tag = next;
-        // 字形模板解析失败时退回纯文字模板：徽标少一个图标，但文字和配色不受影响。
-        label.TitleTemplate = (next is null ? null : GlyphTemplate(next)) ?? TryResource(TitleTemplateKey) as DataTemplate;
+        Retitle(label);
         if (next is not null)
         {
             label.Visibility = Visibility.Visible;
@@ -173,6 +195,7 @@ internal static class CommunityTextBadge
         if (badge is IssueLabel label)
         {
             label.Severity = Severity(tone);
+            Retitle(label);
         }
     }
 
@@ -220,38 +243,88 @@ internal static class CommunityTextBadge
 
     private static Style? Style(string key) => TryResource(key) as Style;
 
-    /// <summary>
-    /// 带前置图标的标题模板：12px 图标 + 4 DIP 间距 + 文字，与此前手绘图标徽标的排布一致。文字一侧与
-    /// <c>AppBadgeTitleTemplate</c> 相同（不换行、可选中）。图标用图标字体的 TextBlock 而不是 FontIcon：
-    /// TextBlock 的前景色一定从标题呈现器继承，色调因此不需要在模板里再写一遍。字形逐字符写成数字实体，
-    /// 传入的内容不会被当作标记解析。
-    /// </summary>
-    private static DataTemplate? GlyphTemplate(string glyph)
+    /// <summary>状态色调的文字颜色键；其余色调返回 <c>null</c>，文字从标题呈现器继承库给的颜色。</summary>
+    private static string? Ink(IssueLabelSeverity severity) => severity switch
     {
-        if (GlyphTemplates.TryGetValue(glyph, out var cached))
+        IssueLabelSeverity.Success => "SystemFillColorSuccess",
+        IssueLabelSeverity.Warning => "SystemFillColorCaution",
+        IssueLabelSeverity.Error => "SystemFillColorCritical",
+        _ => null,
+    };
+
+    /// <summary>按徽标当前的字形和色调选标题模板：两者都不需要时用应用的纯文字模板。</summary>
+    private static void Retitle(IssueLabel label)
+    {
+        var glyph = label.Tag as string;
+        var ink = Ink(label.Severity);
+        var template = glyph is null && ink is null ? null : TitleTemplate(glyph, ink);
+        if (ink is not null && template is null)
+        {
+            // 描边变淡靠的是覆盖描边和文字共用的那把画刷，文字要靠模板单独上色。模板建不出来时撤掉这个徽标的
+            // 全部覆盖，整个徽标退回库自带的配色，文字不会跟着变淡。
+            label.Resources = new ResourceDictionary();
+            template = glyph is null ? null : TitleTemplate(glyph, null);
+        }
+
+        // 模板解析失败时退回纯文字模板：徽标少一个图标，但文字照常显示。
+        var next = template ?? TryResource(TitleTemplateKey) as DataTemplate;
+        if (!ReferenceEquals(label.TitleTemplate, next))
+        {
+            label.TitleTemplate = next;
+        }
+    }
+
+    /// <summary>
+    /// 适配器自建的标题模板：可选的 12px 前置图标 + 4 DIP 间距 + 文字，与此前手绘图标徽标的排布一致；文字一侧与
+    /// <c>AppBadgeTitleTemplate</c> 相同（不换行、可选中）。图标用图标字体的 TextBlock 而不是 FontIcon：
+    /// TextBlock 的前景色一定从标题呈现器继承，分类色调因此不需要在模板里写颜色。字形逐字符写成数字实体，
+    /// 传入的内容不会被当作标记解析。
+    /// <para>
+    /// <paramref name="ink"/> 不为空时（状态色调），图标和文字改用模板根上的一把画刷：深色与浅色取该颜色键，
+    /// 高对比度取窗口文字色。画刷定义在模板自己的资源里，离文字最近，所以不受徽标上“描边变淡”覆盖的影响。
+    /// 这是模板内的颜色，不是控件的 <c>Foreground</c>，库模板仍然走严重度呈现器。
+    /// </para>
+    /// </summary>
+    private static DataTemplate? TitleTemplate(string? glyph, string? ink)
+    {
+        var key = (ink ?? string.Empty) + "\n" + (glyph ?? string.Empty);
+        if (TitleTemplates.TryGetValue(key, out var cached))
         {
             return cached;
         }
 
-        var entity = string.Concat(glyph.Select(character => "&#x" + ((int)character).ToString("X4") + ";"));
+        var entity = glyph is null ? string.Empty : string.Concat(glyph.Select(character => "&#x" + ((int)character).ToString("X4") + ";"));
+        var color = ink is null ? string.Empty : " Foreground=\"{ThemeResource " + InkBrushKey + "}\"";
+        string InkBrush(string colorKey) => "<SolidColorBrush x:Key=\"" + InkBrushKey + "\" Color=\"{ThemeResource " + colorKey + "}\" />";
+        var resources = ink is null
+            ? string.Empty
+            : "<Grid.Resources><ResourceDictionary><ResourceDictionary.ThemeDictionaries>"
+                + "<ResourceDictionary x:Key=\"Default\">" + InkBrush(ink) + "</ResourceDictionary>"
+                + "<ResourceDictionary x:Key=\"Light\">" + InkBrush(ink) + "</ResourceDictionary>"
+                + "<ResourceDictionary x:Key=\"HighContrast\">" + InkBrush("SystemColorWindowTextColor") + "</ResourceDictionary>"
+                + "</ResourceDictionary.ThemeDictionaries></ResourceDictionary></Grid.Resources>";
+        var icon = glyph is null
+            ? string.Empty
+            : "<Grid.ColumnDefinitions><ColumnDefinition Width=\"Auto\" /><ColumnDefinition Width=\"*\" /></Grid.ColumnDefinitions>"
+                + "<TextBlock Text=\"" + entity + "\" FontFamily=\"{ThemeResource SymbolThemeFontFamily}\" FontSize=\"12\" FontWeight=\"Normal\""
+                + color + " VerticalAlignment=\"Center\" AutomationProperties.AccessibilityView=\"Raw\" />";
+        // 没有图标的模板与应用的纯文字模板一致，放不下时以省略号结尾。
+        var text = "<TextBlock" + (glyph is null ? " TextTrimming=\"CharacterEllipsis\"" : " Grid.Column=\"1\"")
+            + " Text=\"{Binding}\" FontFamily=\"{ThemeResource ContentControlThemeFontFamily}\" TextWrapping=\"NoWrap\""
+            + color + " IsTextSelectionEnabled=\"True\" VerticalAlignment=\"Center\" />";
         DataTemplate? template;
         try
         {
             template = XamlReader.Load(
-                "<DataTemplate" + Namespaces + "><Grid ColumnSpacing=\"4\" VerticalAlignment=\"Center\" HorizontalAlignment=\"Center\">"
-                + "<Grid.ColumnDefinitions><ColumnDefinition Width=\"Auto\" /><ColumnDefinition Width=\"*\" /></Grid.ColumnDefinitions>"
-                + "<TextBlock Text=\"" + entity + "\" FontFamily=\"{ThemeResource SymbolThemeFontFamily}\" FontSize=\"12\" FontWeight=\"Normal\""
-                + " VerticalAlignment=\"Center\" AutomationProperties.AccessibilityView=\"Raw\" />"
-                + "<TextBlock Grid.Column=\"1\" Text=\"{Binding}\" FontFamily=\"{ThemeResource ContentControlThemeFontFamily}\" TextWrapping=\"NoWrap\""
-                + " IsTextSelectionEnabled=\"True\" VerticalAlignment=\"Center\" />"
-                + "</Grid></DataTemplate>") as DataTemplate;
+                "<DataTemplate" + Namespaces + XNamespace + "><Grid ColumnSpacing=\"4\" VerticalAlignment=\"Center\" HorizontalAlignment=\"Center\">"
+                + resources + icon + text + "</Grid></DataTemplate>") as DataTemplate;
         }
         catch
         {
             template = null;
         }
 
-        GlyphTemplates[glyph] = template;
+        TitleTemplates[key] = template;
         return template;
     }
 
