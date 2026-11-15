@@ -75,6 +75,93 @@ internal static partial class Program
         Check(source.Contains("OpenCodeComposerNativeGeometry.IsRecoverable(error) && renderingToken is { } id")
             && source.Contains("OpenCodeComposerNativeGeometry.PlainToken(document, id, _selection)"),
             "native render COM/argument failures explicitly downgrade only the failing chip");
+        ChipRaster();
         Console.WriteLine($"native composer geometry/paste boundaries: {checks - before} assertions");
+    }
+
+    // RenderTargetBitmap's pixel size for an element of elementDip DIPs: microsoft/microsoft-ui-xaml, tag winui3/release/2.6.5,
+    // src/dxaml/xcp/core/core/elements/RenderTargetElement.cpp, CRenderTargetElementData::UpdateMetrics. The requested size
+    // is in DIPs (0 = natural size) and the rasterization scale is multiplied in afterwards.
+    private static int RenderTargetPixels(double elementDip, int requestedDip, double scale)
+    {
+        var requestScale = requestedDip == 0 ? 1 : requestedDip / elementDip;
+        return (int)Math.Ceiling(elementDip * requestScale * scale - 1e-4);
+    }
+
+    private static void ChipRaster()
+    {
+        void Reject(Action action, string note)
+        {
+            try { action(); Check(false, note); }
+            catch (ArgumentException) { Check(true, note); }
+        }
+        static bool Whole(double value) => Math.Abs(value - Math.Round(value)) < 1e-6;
+
+        Check(OpenCodeComposerNativeGeometry.WholePixelStep(1) == 1 && OpenCodeComposerNativeGeometry.WholePixelStep(1.25) == 4
+            && OpenCodeComposerNativeGeometry.WholePixelStep(1.5) == 2 && OpenCodeComposerNativeGeometry.WholePixelStep(1.75) == 4
+            && OpenCodeComposerNativeGeometry.WholePixelStep(2) == 1 && OpenCodeComposerNativeGeometry.WholePixelStep(2.25) == 4
+            && OpenCodeComposerNativeGeometry.WholePixelStep(1.1) == 10, "whole DIP counts that are whole device pixels");
+        Check(OpenCodeComposerNativeGeometry.WholePixelStep(1.33) == 1, "a scale with no small whole-pixel step keeps whole DIPs");
+        Check(OpenCodeComposerNativeGeometry.RasterSize(4, 20, 1.25) == (5, 25) && OpenCodeComposerNativeGeometry.RasterSize(150, 20, 1.1) == (165, 22),
+            "floating-point noise never adds a pixel to a whole product");
+
+        Console.WriteLine("chip raster per scale (content 121.3 DIP, line 19 DIP, baseline 14.7 DIP)");
+        Console.WriteLine("scale | before: image DIP, bitmap px, drawn px, bitmap/drawn | after: image DIP, bitmap px, drawn px, bitmap/drawn, baseline px");
+        foreach (var scale in new[] { 1d, 1.25, 1.5, 1.75, 2 })
+        {
+            foreach (var content in new[] { 23.2, 121.3, 150, 271.9 })
+            foreach (var line in new[] { 19d, 20, 24 })
+            {
+                var plan = OpenCodeComposerNativeGeometry.ChipRaster(content, line, 14.7, scale);
+                var step = OpenCodeComposerNativeGeometry.WholePixelStep(scale);
+                Check(plan.Height == (int)line && plan.Ascent == 15, "the picture keeps the line height and the rounded baseline");
+                Check(plan.Width >= content && plan.Width - Math.Ceiling(content) < step && plan.Width % step == 0,
+                    "the width grows by less than one whole-pixel step and never clips the chip");
+                Check(plan.Width * scale == plan.PixelWidth, "the width RichEdit draws is exactly the bitmap's pixel width");
+                Check(RenderTargetPixels(plan.LayoutWidth(scale), 0, scale) == plan.PixelWidth
+                    && RenderTargetPixels(plan.LayoutHeight(scale), 0, scale) == plan.PixelHeight,
+                    "the staged visual renders at natural size to exactly the planned pixels");
+                Check(plan.PixelHeight == (int)Math.Ceiling(line * scale - 1e-6) && plan.PixelHeight - line * scale < 1,
+                    "the bitmap covers the line height with less than one spare pixel row");
+                if (Whole(line * scale)) Check(plan.Height * scale == plan.PixelHeight, "a whole-pixel line height is drawn one to one vertically");
+                Check(Whole(plan.LayoutBaseline(scale) * scale) && Math.Abs(plan.BaselinePixel - plan.Ascent * scale) <= .5
+                    && plan.BaselinePixel <= plan.PixelHeight, "the label baseline is the nearest whole pixel row to the line's baseline");
+                if (scale is 1 or 2)
+                    Check(plan.Width == (int)Math.Ceiling(content) && plan.LayoutHeight(scale) == line && plan.LayoutBaseline(scale) == 15,
+                        "whole scales keep the chip's box and baseline unchanged");
+            }
+            var shown = OpenCodeComposerNativeGeometry.ChipRaster(121.3, 19, 14.7, scale);
+            var oldWidth = 122;
+            var oldPixels = (Width: RenderTargetPixels(oldWidth, (int)Math.Ceiling(oldWidth * scale), scale),
+                Height: RenderTargetPixels(19, (int)Math.Ceiling(19 * scale), scale));
+            if (scale > 1)
+                Check(oldPixels.Width > oldWidth * scale * 1.2 && RenderTargetPixels(oldWidth, 0, scale) - oldWidth * scale < 1,
+                    "a requested size in pixels is multiplied by the scale again; the natural size is not");
+            Console.WriteLine(FormattableString.Invariant($"{scale:0.00} | {oldWidth}x19, {oldPixels.Width}x{oldPixels.Height}, {oldWidth * scale:0.##}x{19 * scale:0.##}, {oldPixels.Width / (oldWidth * scale):0.000}x{oldPixels.Height / (19 * scale):0.000} | {shown.Width}x{shown.Height}, {shown.PixelWidth}x{shown.PixelHeight}, {shown.Width * scale:0.##}x{shown.Height * scale:0.##}, {shown.PixelWidth / (shown.Width * scale):0.000}x{shown.PixelHeight / (shown.Height * scale):0.000}, {shown.BaselinePixel} (line baseline {shown.Ascent * scale:0.##})"));
+        }
+        var odd = OpenCodeComposerNativeGeometry.ChipRaster(121.3, 19, 14.7, 1.33);
+        Check(odd.Width == 122 && odd.PixelWidth == 163 && odd.PixelHeight == 26, "an unusual scale still covers the picture with whole pixels");
+        Check(OpenCodeComposerNativeGeometry.ChipRaster(4095.5, 19, 15, 1).Width == 4096, "the image budget stays inclusive");
+        Reject(() => OpenCodeComposerNativeGeometry.ChipRaster(100, 19, 15, 0), "invalid chip scale rejected");
+        Reject(() => OpenCodeComposerNativeGeometry.ChipRaster(100, 19, 20, 1.25), "chip baseline below the line rejected");
+        Reject(() => OpenCodeComposerNativeGeometry.ChipRaster(4096, 19, 15, 1.25), "oversized chip raster rejected");
+
+        // 3x2 source, one distinct value per pixel.
+        var pixels = new byte[3 * 2 * 4];
+        for (var index = 0; index < 6; index++) pixels[index * 4 + 3] = (byte)(index + 1);
+        Check(ReferenceEquals(OpenCodeComposerNativeGeometry.FitPixels(pixels, 3, 2, 3, 2), pixels), "a bitmap of the planned size is used as rendered");
+        var cropped = OpenCodeComposerNativeGeometry.FitPixels(pixels, 3, 2, 2, 1);
+        Check(cropped.Length == 8 && cropped[3] == 1 && cropped[7] == 2, "a spare pixel column and row are cut off, not scaled away");
+        var padded = OpenCodeComposerNativeGeometry.FitPixels(pixels, 3, 2, 4, 3);
+        Check(padded.Length == 48 && padded[3] == 1 && padded[11] == 3 && padded[15] == 0 && padded[16 + 3] == 4 && padded[16 + 11] == 6
+            && padded[32 + 3] == 0, "missing pixels stay transparent and every rendered pixel keeps its place");
+        Reject(() => OpenCodeComposerNativeGeometry.FitPixels(new byte[5], 3, 2, 3, 2), "bitmap data of the wrong length rejected");
+        Reject(() => OpenCodeComposerNativeGeometry.FitPixels(pixels, 3, 2, 0, 2), "empty target bitmap rejected");
+
+        var cache = File.ReadAllText(Path.Combine(SplashRepo(), "src/FluentCode/Pages/OpenCode/OpenCodeComposerBitmapCache.cs"));
+        Check(cache.Contains("await target.RenderAsync(visual);") && !cache.Contains("RenderAsync(visual,")
+            && cache.Contains("OpenCodeComposerNativeGeometry.FitPixels(rendered, target.PixelWidth, target.PixelHeight, plan.PixelWidth, plan.PixelHeight)")
+            && cache.Contains("new Bitmap(png, width, height, ascent, alt)") && cache.Contains("double width = plan.Width, height = plan.Height;"),
+            "the cache renders the chip at natural size and inserts the planned whole-pixel box");
     }
 }

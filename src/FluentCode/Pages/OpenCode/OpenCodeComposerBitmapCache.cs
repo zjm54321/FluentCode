@@ -42,8 +42,9 @@ internal static class OpenCodeComposerBitmapCache
             return cached;
         }
         if (editor.Parent is not Panel parent) throw new InvalidOperationException("Composer bitmap rendering requires its editor panel.");
-        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(6, 0, 6, 0) };
+        // Centred: the picture's width is rounded up to whole device pixels, and the spare width goes to both sides.
+        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Top,
+            HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(6, 0, 6, 0) };
         var dark = key.Theme == ElementTheme.Dark;
         var foreground = editor.Foreground is SolidColorBrush solid ? new SolidColorBrush(solid.Color) : editor.Foreground;
         FrameworkElement icon;
@@ -74,11 +75,14 @@ internal static class OpenCodeComposerBitmapCache
         var label = new TextBlock { Text = token.Label, FontFamily = new FontFamily(key.Font), FontSize = key.Size * key.TextScale,
             IsTextScaleFactorEnabled = false,
             LineHeight = metrics.Height, LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
-            Foreground = foreground, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 260,
+            Foreground = foreground, VerticalAlignment = VerticalAlignment.Top, MaxWidth = 260,
             TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
         label.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
-        var ascent = OpenCodeComposerNativeGeometry.ImageSize(1, metrics.Height, label.BaselineOffset).Ascent;
-        label.RenderTransform = new TranslateTransform { Y = ascent - label.BaselineOffset };
+        // The text's baseline sits on a whole device pixel of the bitmap, as live text does; a baseline between two
+        // pixel rows is soft even when the bitmap is drawn one to one.
+        var line = OpenCodeComposerNativeGeometry.ChipRaster(1, metrics.Height, label.BaselineOffset, scale);
+        var ascent = line.Ascent;
+        label.RenderTransform = new TranslateTransform { Y = line.LayoutBaseline(scale) - label.BaselineOffset };
         content.Children.Add(label);
         var border = new Border { CornerRadius = new CornerRadius(4),
             BorderThickness = new Thickness(1), RequestedTheme = key.Theme,
@@ -90,33 +94,43 @@ internal static class OpenCodeComposerBitmapCache
         var staging = new Grid { Width = 0, Height = 0, IsHitTestVisible = false,
             RenderTransform = new TranslateTransform { X = -10000, Y = -10000 } };
         var visual = new Grid { Height = metrics.Height, RequestedTheme = key.Theme };
-        visual.Children.Add(border);
-        visual.Children.Add(content);
+        // The rendered size is the bounds of the element and its children. The clip keeps the shifted label from
+        // growing those bounds, which would move the whole chip off the pixel grid (same tag,
+        // src/dxaml/xcp/core/core/elements/uielement.cpp, CUIElement::ApplyUIEClipToBounds).
+        var clipped = new Grid();
+        clipped.Children.Add(border);
+        clipped.Children.Add(content);
+        visual.Children.Add(clipped);
         staging.Children.Add(visual);
         parent.Children.Add(staging);
         try
         {
             visual.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
-            var width = Math.Ceiling(visual.DesiredSize.Width);
-            var height = metrics.Height;
-            OpenCodeComposerNativeGeometry.ImageSize(width, height, ascent);
-            var raster = OpenCodeComposerNativeGeometry.RasterSize(width, height, scale);
-            visual.Width = width;
+            var plan = OpenCodeComposerNativeGeometry.ChipRaster(visual.DesiredSize.Width, metrics.Height, label.BaselineOffset, scale);
+            double width = plan.Width, height = plan.Height;
+            var layoutWidth = plan.LayoutWidth(scale);
+            var layoutHeight = plan.LayoutHeight(scale);
+            visual.Width = layoutWidth;
+            visual.Height = layoutHeight;
+            clipped.Clip = new RectangleGeometry { Rect = new(0, 0, layoutWidth, layoutHeight) };
             staging.UpdateLayout();
-            visual.Arrange(new(0, 0, width, height));
+            visual.Arrange(new(0, 0, layoutWidth, layoutHeight));
             var target = new RenderTargetBitmap();
-            await target.RenderAsync(visual, raster.Width, raster.Height);
+            // No requested size: RenderAsync's size arguments are DIPs that it multiplies by the display scale again,
+            // so passing pixels made the bitmap scale-squared and RichEdit shrank it back (blurry above 100%).
+            await target.RenderAsync(visual);
             var pixels = await target.GetPixelsAsync();
-            var bytes = new byte[pixels.Length];
-            using (var reader = DataReader.FromBuffer(pixels)) reader.ReadBytes(bytes);
+            var rendered = new byte[pixels.Length];
+            using (var reader = DataReader.FromBuffer(pixels)) reader.ReadBytes(rendered);
+            var bytes = OpenCodeComposerNativeGeometry.FitPixels(rendered, target.PixelWidth, target.PixelHeight, plan.PixelWidth, plan.PixelHeight);
             var visible = false;
             for (var index = 3; index < bytes.Length; index += 4)
                 if (bytes[index] != 0) { visible = true; break; }
             if (!visible) throw new InvalidOperationException("Composer chip bitmap has no visible pixels.");
             using var stream = new InMemoryRandomAccessStream();
             var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
-            encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied, (uint)target.PixelWidth,
-                (uint)target.PixelHeight, 96 * scale, 96 * scale, bytes);
+            encoder.SetPixelData(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied, (uint)plan.PixelWidth,
+                (uint)plan.PixelHeight, 96 * scale, 96 * scale, bytes);
             await encoder.FlushAsync();
             stream.Seek(0);
             using var pngReader = new DataReader(stream);
