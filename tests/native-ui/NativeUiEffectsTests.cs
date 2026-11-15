@@ -236,7 +236,8 @@ internal static class NativeUiEffectsTests
         require(adapter.Contains("private static readonly double[] Fractions = { 0.4, 1, 0.72 };", StringComparison.Ordinal)
             && adapter.Contains("bars.Loaded += OnLoaded; bars.Unloaded += OnUnloaded;", StringComparison.Ordinal),
             "The skeleton keeps the three bar proportions and subscribes on load and unload");
-        require(adapter.Contains("var animated = FluentMotion.Enabled && _contrast?.HighContrast is not true;", StringComparison.Ordinal),
+        require(adapter.Contains("var animated = FluentMotion.Enabled && !HighContrast();", StringComparison.Ordinal)
+            && adapter.Contains("catch (Exception) { return true; }", StringComparison.Ordinal),
             "The bars shimmer only while motion is allowed and only outside high contrast");
         require(adapter.Contains("_rows[index].Children.Add(animated ? Shimmer() : Static());", StringComparison.Ordinal)
             && adapter.Contains("Height = 12, CornerRadius = new CornerRadius(4), IsActive = true", StringComparison.Ordinal)
@@ -245,17 +246,35 @@ internal static class NativeUiEffectsTests
         require(adapter.Contains("_contrast.HighContrastChanged -= OnContrastChanged;", StringComparison.Ordinal)
             && adapter.Contains("_contrast = null;", StringComparison.Ordinal)
             && adapter.Contains("private void OnContrastChanged(AccessibilitySettings sender, object args)", StringComparison.Ordinal)
-            && adapter.Contains("private void OnLoaded(object sender, RoutedEventArgs args) => Refresh();", StringComparison.Ordinal)
             && adapter.Contains("_animated = null;", StringComparison.Ordinal),
             "The named contrast handler is detached on unload, and a reload rebuilds the bars instead of keeping them across the gap");
+        var skeleton = Code(adapter[adapter.IndexOf("private sealed class SkeletonHost", StringComparison.Ordinal)..]);
+        require(Regex.Matches(skeleton, @"HighContrastChanged \+= OnContrastChanged").Count == 1
+            && Slice(skeleton, "private void OnLoaded(", "private void OnUnloaded(").Contains("_contrast.HighContrastChanged += OnContrastChanged;", StringComparison.Ordinal),
+            "The contrast subscription is made on load only, so bars that never enter the tree leave no handler behind");
+        require(adapter.Contains("MinWidth = 0, IsTabStop = false, IsHitTestVisible = false,", StringComparison.Ordinal),
+            "A shimmer bar can be as narrow as its share of the card and is neither a tab stop nor a hit target");
+        var theme = File.ReadAllText(Path.Combine(folder, "NativeUiTheme.cs"));
+        var placeholder = Code(Slice(theme, "internal static Border Placeholder(string? title)", "// ---------------------------------------------------------------- icons"));
+        require(placeholder.Contains("var bars = NativeUiCommunityEffects.SkeletonBars();", StringComparison.Ordinal)
+            && !placeholder.Contains("Storyboard", StringComparison.Ordinal) && !placeholder.Contains("DoubleAnimation", StringComparison.Ordinal)
+            && !Regex.IsMatch(placeholder, @"(Loaded|Unloaded) \+="),
+            "The streaming placeholder takes its bars from the adapter and keeps no animation or handler of its own");
+        require(placeholder.Contains("new ProgressRing { IsActive = true, Width = 16, Height = 16", StringComparison.Ordinal)
+            && placeholder.Contains("Spacing = 12, Children = { new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Children = { ring, heading } }, bars, hint }", StringComparison.Ordinal)
+            && placeholder.Contains("Tag = PlaceholderTag", StringComparison.Ordinal) && adapter.Contains("var bars = new StackPanel { Spacing = 10 };", StringComparison.Ordinal),
+            "The placeholder keeps its ring, heading, hint, spacing and tag around the bars");
+        var appXaml = File.ReadAllText(Path.Combine(repo, "src/FluentCode/App.xaml"));
+        require(appXaml.Contains("x:Key=\"AppStreamingShimmerStyle\" TargetType=\"dev:Shimmer\"", StringComparison.Ordinal),
+            "The style the shimmer bars ask for is declared in App.xaml");
         require(adapter.Contains("private const string BarStyle = \"AppStreamingShimmerStyle\";", StringComparison.Ordinal)
             && adapter.Contains("if (Application.Current.Resources.TryGetValue(BarStyle, out var style) && style is Style shared) shimmer.Style = shared;", StringComparison.Ordinal),
-            "The animated bars wear the app's shared streaming-skeleton style, and an absent key falls back to the library default");
+            "The animated bars wear the app's shared streaming-skeleton style");
         require(adapter.Contains("Style = OpenCodeThemedXaml.BrushStyle(\"Border\", (\"Background\", \"SubtleFillColorSecondaryBrush\"))", StringComparison.Ordinal)
             && !adapter.Contains("bar.Style = shared", StringComparison.Ordinal),
             "The static bar keeps the placeholder's own high-contrast-safe brush, never a style that targets the shimmer control");
         require(adapter.Contains("internal FrameworkElement Bars { get; }", StringComparison.Ordinal),
-            "The skeleton is reachable through one element-returning entry point for lane N0 to wire in");
+            "The skeleton is reachable through one element-returning entry point");
 
         // ---------------------------------------------------------------- C23: native radio group
 

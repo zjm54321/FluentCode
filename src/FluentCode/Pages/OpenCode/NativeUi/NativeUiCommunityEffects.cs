@@ -37,9 +37,9 @@ internal static class NativeUiCommunityEffects
     /// </summary>
     internal static FlipEffect Flip(FrameworkElement host, Action<bool> renderFace, Action repaint) => new(host, renderFace, repaint);
     /// <summary>
-    /// C20: the three streaming-skeleton bars as one element, replacing the local <c>bars</c> StackPanel and its
-    /// opacity Storyboard in <c>NativeUiTheme.Placeholder</c>. The bars shimmer only while the motion policy allows it
-    /// and are static system-colour bars with reduced motion or in high contrast.
+    /// C20: the three streaming-skeleton bars of <c>NativeUiTheme.Placeholder</c> as one element. The bars shimmer
+    /// only while the motion policy allows it and are static system-colour bars with reduced motion or in high
+    /// contrast.
     /// </summary>
     internal static FrameworkElement SkeletonBars() => new SkeletonHost().Bars;
 
@@ -293,10 +293,15 @@ internal static class NativeUiCommunityEffects
 
     /// <summary>
     /// C20. Builds the skeleton bars once and swaps each row's bar between the library shimmer and a static bar.
+    /// <para>
+    /// Lifetime: nothing outside the bars holds this object. The motion binding lives on the bars themselves, and
+    /// the contrast subscription exists only between Loaded and Unloaded, so bars that are built and dropped
+    /// without entering the tree leave nothing behind.
+    /// </para>
     /// </summary>
     private sealed class SkeletonHost
     {
-        /// <summary>The shared bar-box style the app declares for the streaming skeleton (lane F's P1 contract).</summary>
+        /// <summary>The shared bar-box style App.xaml declares for the streaming skeleton.</summary>
         private const string BarStyle = "AppStreamingShimmerStyle";
         // The proportions of the bars this replaces.
         private static readonly double[] Fractions = { 0.4, 1, 0.72 };
@@ -327,7 +332,14 @@ internal static class NativeUiCommunityEffects
 
         internal FrameworkElement Bars { get; }
 
-        private void OnLoaded(object sender, RoutedEventArgs args) => Refresh(); // Re-reads contrast; a no-op unless it changed.
+        private void OnLoaded(object sender, RoutedEventArgs args)
+        {
+            if (_contrast is null)
+            {
+                try { _contrast = new AccessibilitySettings(); _contrast.HighContrastChanged += OnContrastChanged; } catch (Exception) { _contrast = null; }
+            }
+            Refresh(); // Re-reads contrast; a no-op unless it changed.
+        }
 
         private void OnUnloaded(object sender, RoutedEventArgs args)
         {
@@ -342,8 +354,7 @@ internal static class NativeUiCommunityEffects
         /// <summary>The bars animate only while motion is allowed and only outside high contrast.</summary>
         private void Refresh()
         {
-            SubscribeContrast();
-            var animated = FluentMotion.Enabled && _contrast?.HighContrast is not true;
+            var animated = FluentMotion.Enabled && !HighContrast();
             if (_animated == animated) return;
             _animated = animated;
             for (var index = 0; index < _rows.Length; index++)
@@ -354,26 +365,30 @@ internal static class NativeUiCommunityEffects
         }
 
         /// <summary>
-        /// The shimmer bar. It wears the app's shared skeleton style when that style is present — lane F declares it in
-        /// the next wave, and this file must keep working before that, so an absent key falls back to the library's own
-        /// default. OnApplyTemplate and Loaded try composition initialization even for an inactive Shimmer, so static
-        /// rows use Borders instead. Source: https://github.com/ghost1372/DevWinUI,
-        /// commit 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e, dev/DevWinUI/Controls/Native/Others/Shimmer.cs:65-83.
+        /// The shimmer bar. It wears the app's shared skeleton style; the values a bar cannot do without are also set
+        /// here, so a missing key costs nothing: the library's default style has a 40 DIP minimum width, wider than
+        /// the short bar's share of a narrow card, and a Control is a tab stop unless told otherwise.
+        /// OnApplyTemplate and Loaded try composition initialization even for an inactive Shimmer, so static rows
+        /// use Borders instead. In high contrast the library's background resource names a colour, not a brush,
+        /// which is the other reason those rows are Borders. Source: https://github.com/ghost1372/DevWinUI,
+        /// commit 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e, dev/DevWinUI/Controls/Native/Others/Shimmer.cs:65-83 and
+        /// dev/DevWinUI/Themes/Styles/Controls/Shimmer.xaml:6-24.
         /// </summary>
         private static Shimmer Shimmer()
         {
             var shimmer = new Shimmer
             {
                 Height = 12, CornerRadius = new CornerRadius(4), IsActive = true, HorizontalAlignment = HorizontalAlignment.Stretch,
+                MinWidth = 0, IsTabStop = false, IsHitTestVisible = false,
             };
             if (Application.Current.Resources.TryGetValue(BarStyle, out var style) && style is Style shared) shimmer.Style = shared;
             return shimmer;
         }
 
         /// <summary>
-        /// The static bar, in place of the shimmer under reduced motion or in high contrast. It is the same bar the
-        /// streaming placeholder draws today, so its high-contrast appearance cannot regress; the shared style targets
-        /// the shimmer control, so it is deliberately not applied here.
+        /// The static bar, in place of the shimmer under reduced motion or in high contrast. It is the bar the
+        /// streaming placeholder drew before the shimmer, so those two settings look as they did; the shared style
+        /// targets the shimmer control, so it is deliberately not applied here.
         /// </summary>
         private static Border Static() => new()
         {
@@ -381,10 +396,14 @@ internal static class NativeUiCommunityEffects
             Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SubtleFillColorSecondaryBrush")),
         };
 
-        private void SubscribeContrast()
+        /// <summary>
+        /// Read from the subscription while the bars are loaded, and from a throwaway object before that. When the
+        /// setting cannot be read the bars stay static: that is right in every contrast mode.
+        /// </summary>
+        private bool HighContrast()
         {
-            if (_contrast is not null) return;
-            try { _contrast = new AccessibilitySettings(); _contrast.HighContrastChanged += OnContrastChanged; } catch { _contrast = null; }
+            try { return (_contrast ?? new AccessibilitySettings()).HighContrast; }
+            catch (Exception) { return true; }
         }
 
         private void OnContrastChanged(AccessibilitySettings sender, object args)

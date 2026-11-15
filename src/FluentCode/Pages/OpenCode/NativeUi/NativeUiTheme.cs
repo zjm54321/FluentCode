@@ -8,7 +8,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using CommunityToolkit.WinUI.Controls;
 using FluentCode.Controls;
-using FluentCode.Motion;
 using FluentCode.Services.Appearance;
 using FluentCode.Services.NativeUi;
 using Microsoft.UI.Xaml;
@@ -19,7 +18,6 @@ using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Media.Animation;
 using WinUI.TableView;
 using FontWeights = Microsoft.UI.Text.FontWeights;
 using FontStyle = Windows.UI.Text.FontStyle;
@@ -667,22 +665,14 @@ internal static class NativeUiTheme
         bar.Loaded += (_, _) => { bar.IsOpen = true; bar.Announce(title, message); };
         Fit(bar, wide: false); return bar;
     }
-    /// <summary>Streaming state: the card surface with a progress ring, the tool title and a pulsing skeleton.</summary>
+    /// <summary>Streaming state: the card surface with a progress ring, the tool title and the skeleton bars.</summary>
     internal static Border Placeholder(string? title)
     {
         var caption = string.IsNullOrWhiteSpace(title) ? "正在生成交互卡片…" : "正在生成「" + title.Trim() + "」…";
         var ring = new ProgressRing { IsActive = true, Width = 16, Height = 16, MinWidth = 16, MinHeight = 16, VerticalAlignment = VerticalAlignment.Center };
         var heading = new TextBlock { Text = caption, VerticalAlignment = VerticalAlignment.Center }; Text(heading, new("Text", new Dictionary<string, object?> { ["color"] = "muted" }));
-        var bars = new StackPanel { Spacing = 10 };
-        foreach (var fraction in new[] { 0.4, 1, 0.72 })
-        {
-            var line = new Grid();
-            line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(fraction, GridUnitType.Star) });
-            if (fraction < 1) line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1 - fraction, GridUnitType.Star) });
-            line.Children.Add(new Border { Height = 12, CornerRadius = new CornerRadius(SmallRadius), Style = OpenCodeThemedXaml.BrushStyle("Border", ("Background", "SubtleFillColorSecondaryBrush")) });
-            bars.Children.Add(line);
-        }
-        AutomationProperties.SetAccessibilityView(bars, AccessibilityView.Raw);
+        // The three bars, their shimmer and its lifetime live in the effects adapter.
+        var bars = NativeUiCommunityEffects.SkeletonBars();
         var hint = new TextBlock { Text = "输入完成后显示原生控件" }; Text(hint, new("Caption", new Dictionary<string, object?> { ["color"] = "faint" }));
         var border = new Border
         {
@@ -691,11 +681,6 @@ internal static class NativeUiTheme
         };
         Frame(border); Fit(border, wide: false);
         AutomationProperties.SetName(border, caption);
-        var pulse = new DoubleAnimation { From = 1, To = 0.55, Duration = TimeSpan.FromMilliseconds(800), AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever };
-        Storyboard.SetTarget(pulse, bars); Storyboard.SetTargetProperty(pulse, "Opacity");
-        var story = new Storyboard { Children = { pulse } };
-        border.Loaded += (_, _) => { if (FluentMotion.Enabled) story.Begin(); };
-        border.Unloaded += (_, _) => { story.Stop(); bars.Opacity = 1; };
         return border;
     }
 
