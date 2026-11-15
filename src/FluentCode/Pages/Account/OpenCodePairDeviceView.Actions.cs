@@ -75,6 +75,13 @@ internal sealed partial class OpenCodePairDeviceView
         if (_closed || _generated is not { } generated) return;
         _carry = OpenCodePairingLinkCarry.None;
         _keptText = null;
+        if (_remembered is not null)
+        {
+            // “恢复原链接”同时忘掉为这个服务记住的地址。
+            _remembered = null;
+            _ = _memory.RememberAsync(_source.Identity, null);
+        }
+
         _linkBox.Text = generated;
         RenderLink();
         // 按钮随即隐藏：把焦点交回链接框，键盘用户不会丢焦点。

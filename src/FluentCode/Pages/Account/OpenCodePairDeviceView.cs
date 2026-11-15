@@ -18,6 +18,7 @@ namespace FluentCode.Pages.Account;
 /// 链接框可以直接改（比如把地址换成 Tailscale 的 IP）：二维码、“复制链接”和打开用的都是框里的文字，
 /// 规则在 <see cref="OpenCodePairingLinkEdit"/>。
 /// 配对码是凭据：只存在于本控件的字段与界面里，<see cref="Close"/> 时全部清空；从不记录或持久化。
+/// 唯一会留下来的是用户改成的地址（不含配对码），见 <see cref="OpenCodePairingAddressMemory"/>。
 /// </summary>
 internal sealed partial class OpenCodePairDeviceView : UserControl
 {
@@ -49,6 +50,16 @@ internal sealed partial class OpenCodePairDeviceView : UserControl
     private OpenCodePairingLinkEditKind? _statusKind;
     private bool _edited;
     private string _customText = string.Empty;
+
+    /// <summary>这个服务记住的地址（只有协议、主机、端口）；下次打开时接到新配对码上。</summary>
+    private readonly OpenCodePairingAddressMemory _memory;
+    private string? _remembered;
+
+    /// <summary>由记住的地址拼出来、用户还没动过的链接文字（只影响状态行的说法）。</summary>
+    private string? _rememberedText;
+
+    /// <summary>这次打开期间显示过生成的链接：之后没有修改就表示用户用的是生成的链接。</summary>
+    private bool _hadLink;
     private string? _ownOrigin;
     private long _expiresAtTick;
     private bool _busy;
@@ -56,8 +67,10 @@ internal sealed partial class OpenCodePairDeviceView : UserControl
     private bool _started;
     private readonly double _fallbackScale;
 
-    internal OpenCodePairDeviceView(OpenCodePageSource source, OpenCodePairingConnection connection, double fallbackScale = 1)
+    internal OpenCodePairDeviceView(OpenCodePageSource source, OpenCodePairingConnection connection, double fallbackScale = 1,
+        OpenCodePairingAddressMemory? memory = null)
     {
+        _memory = memory ?? OpenCodePairingAddressMemory.Shared;
         _fallbackScale = fallbackScale;
         _source = source;
         _connection = connection;
@@ -83,6 +96,10 @@ internal sealed partial class OpenCodePairDeviceView : UserControl
             _addresses.AddRange(OpenCodePairingLinks.Candidates(_connection, baseUrl, lan));
             // “在本机浏览器打开”只用 FluentCode 自己正在用的地址：已知这台电脑能访问。
             _ownOrigin = _addresses.Count > 0 ? _addresses[0].Origin : null;
+            // 上次为这个服务改成的地址：当作“只改了地址”的修改，等第一个配对码到手时接上去。
+            _remembered = await _memory.ReadAsync(_source.Identity);
+            if (_closed) return;
+            if (_remembered is { } remembered) _carry = OpenCodePairingLinkCarry.OfAddress(remembered);
         }
         catch (OperationCanceledException) { return; }
         catch (Exception error) when (error is InvalidOperationException or OpenCodeException or ObjectDisposedException)
@@ -93,6 +110,35 @@ internal sealed partial class OpenCodePairDeviceView : UserControl
 
         FillAddresses();
         await CreateAsync();
+    }
+
+    /// <summary>
+    /// 关闭时记下（或忘掉）用户改成的地址。只记地址，不记配对码或整条链接；框里的文字不能用时不动已记住的。
+    /// </summary>
+    private void RememberAddress()
+    {
+        string? address;
+        if (_code is { } code && _generated is not null)
+        {
+            if (!OpenCodePairingAddressMemory.TryDecide(_linkBox.Text, _generated, code.Code, out address)) return;
+        }
+        else if (_carry.Address is { } carried)
+        {
+            address = OpenCodePairingAddressMemory.Normalize(carried);
+            if (address is null) return;
+        }
+        else if (_carry.Text is not null || !_hadLink)
+        {
+            return;
+        }
+        else
+        {
+            address = null;
+        }
+
+        if (string.Equals(address, _remembered, StringComparison.Ordinal)) return;
+        _remembered = address;
+        _ = _memory.RememberAsync(_source.Identity, address);
     }
 
     /// <summary>关闭：停止计时、取消请求、释放客户端，并把配对码从界面与内存清掉。</summary>
@@ -112,6 +158,7 @@ internal sealed partial class OpenCodePairDeviceView : UserControl
         _copy.Click -= OnCopyClick;
         _open.Click -= OnOpenClick;
         _renew.Click -= OnRenewClick;
+        RememberAddress();
         ClearCode();
         _carry = OpenCodePairingLinkCarry.None;
         _customBox.Text = string.Empty;

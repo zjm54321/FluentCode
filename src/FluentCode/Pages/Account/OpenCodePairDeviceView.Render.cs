@@ -54,14 +54,18 @@ internal sealed partial class OpenCodePairDeviceView
         {
             _generated = generated;
             _keptText = null;
+            _rememberedText = null;
             var text = generated ?? string.Empty;
             if (generated is not null && _code is { } current && !_carry.IsNone)
             {
+                var fromMemory = _carry.Address is { } carried && string.Equals(carried, _remembered, StringComparison.Ordinal);
                 text = OpenCodePairingLinkEdit.Apply(_carry, generated, current.Code, out var kept);
                 if (kept) _keptText = text;
+                else if (fromMemory) _rememberedText = text;
                 _carry = OpenCodePairingLinkCarry.None;
             }
 
+            if (generated is not null) _hadLink = true;
             _linkBox.Text = text;
         }
 
@@ -111,7 +115,12 @@ internal sealed partial class OpenCodePairDeviceView
         }
 
         SetQrNote(note);
-        _linkStatus.Text = state.Status;
+        // 用的是上次为这个服务记住的地址：说清楚它从哪来、怎么换回去。
+        var status = state.Kind == OpenCodePairingLinkEditKind.Edited && _rememberedText is not null
+            && string.Equals(_linkBox.Text, _rememberedText, StringComparison.Ordinal)
+            ? "已用上次填的地址；恢复原链接后不再记住。"
+            : state.Status;
+        _linkStatus.Text = status;
         var style = OpenCodeInteractionUi.TryStyle(state.IsProblem ? OpenCodeInteractionUi.QuestionErrorStyleKey : OpenCodeInteractionUi.CaptionSubtleStyleKey);
         if (!ReferenceEquals(_linkStatus.Style, style)) _linkStatus.Style = style;
         _restore.Visibility = state.IsEdited ? Visibility.Visible : Visibility.Collapsed;
@@ -119,7 +128,7 @@ internal sealed partial class OpenCodePairDeviceView
         // 状态变了才播报一次（不是每敲一个字）；刚生成、还没动过的链接不播报提示。
         var first = _statusKind is null;
         _statusKind = state.Kind;
-        if (!first || state.Kind != OpenCodePairingLinkEditKind.Generated) ActionFeedback.Announce(_linkStatus, state.Status);
+        if (!first || state.Kind != OpenCodePairingLinkEditKind.Generated) ActionFeedback.Announce(_linkStatus, status);
     }
 
     /// <summary>
@@ -144,6 +153,7 @@ internal sealed partial class OpenCodePairDeviceView
         _link = null;
         _generated = null;
         _keptText = null;
+        _rememberedText = null;
         _statusKind = null;
         _edited = false;
         _expiresAtTick = 0;
