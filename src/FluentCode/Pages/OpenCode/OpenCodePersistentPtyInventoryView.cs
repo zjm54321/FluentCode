@@ -94,8 +94,7 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         var glyph = OpenCodeQuickAccessStyle.TerminalIcon(); // Shared quick-access icon (>_ window), 16 DIP.
         _toggle.Content = new Grid { Width = 36, Height = 32, Children = { glyph, _live } };
         // Same native frame as the browser entry: transparent rest state, subtle (never accent) checked state.
-        _toggle.Style = (Style)XamlReader.Load(
-            "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource ButtonBorderBrush}\"/><Setter Property=\"BorderThickness\" Value=\"{ThemeResource ButtonBorderThemeThickness}\"/><Setter Property=\"CornerRadius\" Value=\"{ThemeResource ControlCornerRadius}\"/></Style>");
+        _toggle.Style = OpenCodeInteractionUi.TryStyle("OpenCodeQuickAccessToggleButtonStyle");
         Services.Appearance.ThemeResources.Aliases(_toggle,
             ("ToggleButtonBackgroundChecked", "SubtleFillColorSecondaryBrush"),
             ("ToggleButtonBackgroundCheckedPointerOver", "SubtleFillColorSecondaryBrush"),

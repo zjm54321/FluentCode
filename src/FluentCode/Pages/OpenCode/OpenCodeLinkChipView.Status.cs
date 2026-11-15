@@ -19,6 +19,10 @@ internal static partial class OpenCodeLinkChipView
 {
     // Octicons 16 px (MIT, © GitHub): issue-opened, issue-closed, skip, git-pull-request, git-pull-request-draft,
     // git-merge, git-pull-request-closed. Disjoint sub-paths; the default even-odd fill keeps the rings hollow.
+    // Version pin: checked on 2026-11-14 against npm @primer/octicons 19.42.0 (build/svg/<name>-16.svg). All seven
+    // outlines are the same shapes; these strings are a minified rewrite of them, so the text differs and
+    // coordinates differ by at most 0.004 px on the 16 px grid. When re-vendoring, compare against that version
+    // first and update this line and docs/dependencies.md.
     private const string IssueOpenedMark = "M8 9.5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0M1.5 8a6.5 6.5 0 1 0 13 0a6.5 6.5 0 0 0-13 0";
     private const string IssueClosedMark = "M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69L5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0zM16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-1.5 0a6.5 6.5 0 1 0-13 0a6.5 6.5 0 0 0 13 0";
     private const string NotPlannedMark = "M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0M1.5 8a6.5 6.5 0 1 0 13 0a6.5 6.5 0 0 0-13 0m9.78-2.22l-5.5 5.5a.749.749 0 0 1-1.275-.326a.75.75 0 0 1 .215-.734l5.5-5.5a.75.75 0 0 1 1.042.018a.75.75 0 0 1 .018 1.042";

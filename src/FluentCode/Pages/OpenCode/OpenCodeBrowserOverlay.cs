@@ -58,7 +58,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
 
     public OpenCodeBrowserOverlay(Grid shownHost)
     {
-        var smoke = new Border(); Theme(smoke, Border.BackgroundProperty, "SmokeFillColorDefaultBrush");
+        var smoke = new Border { Style = OpenCodeInteractionUi.TryStyle("OpenCodeOverlaySmokeStyle") };
         smoke.Tapped += (_, _) => _workspace?.HideOverlay(); Children.Add(smoke);
         var layout = new Grid();
         layout.RowDefinitions.Add(new() { Height = new(OpenCodeBrowserOverlayLayout.ToolbarHeight) });
@@ -190,8 +190,9 @@ public sealed class OpenCodeBrowserOverlay : Grid
         _presenter.HorizontalContentAlignment = HorizontalAlignment.Stretch; _presenter.VerticalContentAlignment = VerticalAlignment.Stretch;
         // FlyoutPresenter's native template contains a ScrollViewer whose defaults are Left/Top.
         // Stretch that viewport too, otherwise content can keep its natural width inside the surface.
+        // The setters are the shared OpenCodeOverlayViewportScrollViewerStyle; this only makes it implicit for this presenter.
         _presenter.Resources = (ResourceDictionary)Microsoft.UI.Xaml.Markup.XamlReader.Load(
-            "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ScrollViewer\" BasedOn=\"{StaticResource DefaultScrollViewerStyle}\"><Setter Property=\"HorizontalContentAlignment\" Value=\"Stretch\"/><Setter Property=\"VerticalContentAlignment\" Value=\"Stretch\"/></Style></ResourceDictionary>");
+            "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ScrollViewer\" BasedOn=\"{StaticResource OpenCodeOverlayViewportScrollViewerStyle}\"/></ResourceDictionary>");
         _presenter.CornerRadius = new(8); _presenter.BorderThickness = new(OpenCodeBrowserOverlayLayout.BorderWidth);
         Theme(_presenter, Control.BackgroundProperty, "SolidBackgroundFillColorTertiaryBrush");
         // 外层卡片容器只承载“从原位置展开”的合成层动画；presenter 的 Translation(Z=128) 留给阴影，二者不混用。
@@ -203,8 +204,7 @@ public sealed class OpenCodeBrowserOverlay : Grid
         KeyDown += (_, key) => { if (key.Key == VirtualKey.Escape) { if (ExitPageTool?.Invoke() != true) _workspace?.HideOverlay(); key.Handled = true; } };
         _body.SizeChanged += (_, _) => { _agentPill.MaxWidth = Math.Max(0, Math.Min(900, _body.ActualWidth - 28)); ContentSizeChanged?.Invoke(this, EventArgs.Empty); };
         // Keep background and border in one ThemeResource style; no application-theme brush snapshot.
-        _agentPill.Style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load(
-            "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Border\"><Setter Property=\"Background\" Value=\"{ThemeResource AcrylicInAppFillColorDefaultBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource FlyoutBorderThemeBrush}\"/></Style>");
+        _agentPill.Style = OpenCodeInteractionUi.TryStyle("OpenCodeBrowserFloatingPillChromeStyle");
     }
 
     public Grid RightPanelSlot { get; }
@@ -415,8 +415,9 @@ public sealed class OpenCodeBrowserOverlay : Grid
     /// <summary>Icon toggles in the toolbar share the size and checked look of its icon buttons.</summary>
     internal static void ApplyToolToggleStyle(FrameworkElement host)
     {
+        // The setters are the shared OpenCodeBrowserToolToggleStyle; this only makes it implicit for the toggles in this host.
         host.Resources = (ResourceDictionary)Microsoft.UI.Xaml.Markup.XamlReader.Load(
-            "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ToggleButton\" BasedOn=\"{StaticResource DefaultToggleButtonStyle}\"><Setter Property=\"Background\" Value=\"{ThemeResource SubtleFillColorTransparentBrush}\"/><Setter Property=\"BorderThickness\" Value=\"0\"/><Setter Property=\"Width\" Value=\"36\"/><Setter Property=\"Height\" Value=\"32\"/><Setter Property=\"Padding\" Value=\"0\"/></Style></ResourceDictionary>");
+            "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"><Style TargetType=\"ToggleButton\" BasedOn=\"{StaticResource OpenCodeBrowserToolToggleStyle}\"/></ResourceDictionary>");
         Services.Appearance.ThemeResources.Aliases(host,
             ("ToggleButtonBackgroundPointerOver", "SubtleFillColorSecondaryBrush"),
             ("ToggleButtonBackgroundPressed", "SubtleFillColorTertiaryBrush"),

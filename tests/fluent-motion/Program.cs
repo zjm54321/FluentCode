@@ -481,7 +481,9 @@ internal static class Program
         Check(System.Text.RegularExpressions.Regex.IsMatch(app, @"x:Key=""DockCard""[\s\S]{0,300}?SolidBackgroundFillColorQuarternaryBrush"),
             "STATIC DockCard stays opaque (SolidBackgroundFillColorQuarternary)");
 
-        // ---- the lanes' published keys exist under their final names ----
+        // ---- the lanes' published keys exist under their final names, and each one is used ----
+        // A51: a shared key nobody looks up is dead weight, and its inline twin keeps drifting. Comments do not count.
+        var code = string.Join("\n", sources.Select(path => StripComments(File.ReadAllText(path))));
         foreach (var key in new[] {
             "OpenCodeQuickAccessToggleButtonStyle", "OpenCodeOverlayViewportScrollViewerStyle", "OpenCodeOverlayFlyoutPresenterStyle", "OpenCodeOverlaySmokeStyle",
             "OpenCodePickerFlyoutPresenterStyle", "OpenCodeContextMenuFlyoutPresenterStyle", "OpenCodeComposerPopupChromeStyle", "OpenCodeComposerCommandChipChromeStyle",
@@ -490,8 +492,22 @@ internal static class Program
             "OpenCodeAccentFontIconStyle", "OpenCodeSecondaryFontIconStyle", "OpenCodeCriticalFontIconStyle", "OpenCodeSuccessFontIconStyle",
             "OpenCodeContextMenuDividerRectangleStyle", "OpenCodeAgentMenuItemStyle",
             "OpenCodeAgentTreeAccentIconStyle", "OpenCodeAgentTreeCaptionTextStyle",
-            "OpenCodeBrowserFloatingPillChromeStyle", "OpenCodeBrowserToolToggleStyle", "OpenCodeBrowserPreviewTableHeaderTemplate" })
+            "OpenCodeBrowserFloatingPillChromeStyle", "OpenCodeBrowserToolToggleStyle" })
+        {
             Check(app.Contains($"x:Key=\"{key}\""), $"STATIC published contract key exists: {key}");
+            Check(code.Contains("\"" + key + "\"") || code.Contains("{StaticResource " + key + "}"), $"STATIC published contract key has a consumer in the app: {key}");
+        }
+        // B22: the question fallback card had the same two setters as OpenCodeCardChromeStyle and now uses it.
+        Check(!app.Contains("OpenCodeQuestionFallbackChromeStyle") && !code.Contains("OpenCodeQuestionFallbackChromeStyle")
+            && System.Text.RegularExpressions.Regex.IsMatch(app, @"x:Key=""OpenCodeCardChromeStyle"" TargetType=""Border"">\s*<Setter Property=""Background"" Value=""\{ThemeResource CardBackgroundFillColorDefaultBrush\}"" />\s*<Setter Property=""BorderBrush"" Value=""\{ThemeResource CardStrokeColorDefaultBrush\}"" />\s*</Style>"),
+            "STATIC the duplicate question-fallback card style is folded into OpenCodeCardChromeStyle, which keeps exactly its two brushes");
+        // The preview table's header template is not shared: its body font is parsed anew for every table, and a
+        // shared template was not shown to follow a font changed at run time. It stays inline in the preview view.
+        Check(!app.Contains("OpenCodeBrowserPreviewTableHeaderTemplate"), "STATIC the unused preview-table header template key is gone");
+        // Same-value fixes made when the consumers moved over: neither key may pick a font the inline original did not.
+        Check(!StyleBlock("OpenCodePickerFlyoutPresenterStyle").Contains("Property=\"FontFamily\"")
+            && !StyleBlock("OpenCodeAgentTreeCaptionTextStyle").Contains("Property=\"FontFamily\""),
+            "STATIC the picker presenter and agent-tree caption styles carry no font setter (the picker reads the body font per open; the caption inherits)");
 
         FloatingNotices(repo, app);
 

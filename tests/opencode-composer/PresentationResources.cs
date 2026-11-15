@@ -22,13 +22,21 @@ internal static partial class Program
             Check(view.Contains($"AppFonts.Apply({element}, AppFontSlot.Monospace);", StringComparison.Ordinal),
                 "composer candidate font tracks the user monospace slot: " + element);
         var picker = Source("OpenCodePickerFlyout.cs");
-        Check(picker.Contains("{ThemeResource AppBodyFontFamily}", StringComparison.Ordinal)
-            && picker.Contains("{ThemeResource OverlayCornerRadius}", StringComparison.Ordinal),
-            "explicit picker presenter follows body font while retaining its overlay radius");
-        Check(picker.Contains("new Setter(Control.PaddingProperty, new Thickness(4))", StringComparison.Ordinal)
-            && picker.Contains("new Setter(FrameworkElement.MinWidthProperty, 0d)", StringComparison.Ordinal)
-            && picker.Contains("Math.Max(1, anchor.XamlRoot.Size.Width - 24)", StringComparison.Ordinal),
-            "picker presenter extraction must preserve padding and owner-dependent width");
+        // The fixed presenter chrome moved to App.xaml; the body font and the owner-dependent width stay per open.
+        Check(picker.Contains("BasedOn = OpenCodeInteractionUi.TryStyle(\"OpenCodePickerFlyoutPresenterStyle\")", StringComparison.Ordinal)
+            && picker.Contains("Application.Current.Resources.TryGetValue(FluentCode.Services.Appearance.AppFonts.BodyResourceKey, out var bodyFont)", StringComparison.Ordinal)
+            && picker.Contains("new Setter(Control.FontFamilyProperty, bodyFont)", StringComparison.Ordinal)
+            && !picker.Contains("XamlReader", StringComparison.Ordinal),
+            "explicit picker presenter reads the body font on every open and takes its fixed chrome from the shared style");
+        Check(picker.Contains("new Setter(FrameworkElement.MaxWidthProperty, Math.Max(1, anchor.XamlRoot.Size.Width - 24))", StringComparison.Ordinal),
+            "picker presenter keeps its owner-dependent width");
+        var pickerStyle = XDocument.Load(Path.Combine(repo, "src/FluentCode/App.xaml")).Descendants()
+            .Single(s => s.Name.LocalName == "Style" && s.Attributes().Any(a => a.Name.LocalName == "Key" && a.Value == "OpenCodePickerFlyoutPresenterStyle"));
+        var pickerSetters = pickerStyle.Elements().Where(e => e.Name.LocalName == "Setter")
+            .Select(e => (string?)e.Attribute("Property") + "=" + (string?)e.Attribute("Value")).ToArray();
+        Check((string?)pickerStyle.Attribute("TargetType") == "FlyoutPresenter" && pickerStyle.Attribute("BasedOn") is null
+            && pickerSetters.SequenceEqual(new[] { "CornerRadius={ThemeResource OverlayCornerRadius}", "Padding=4", "MinWidth=0" }),
+            "shared picker presenter style keeps the overlay radius, padding 4 and no minimum width, and nothing else");
         var dialogs = Source("OpenCodeComposerNativeDialogs.cs");
         Check(dialogs.Contains("Style = OpenCodeInteractionUi.TryStyle(\"SubtleButtonStyle\")", StringComparison.Ordinal)
             && dialogs.Contains("Debug.Assert(favorite.Style is not null", StringComparison.Ordinal),

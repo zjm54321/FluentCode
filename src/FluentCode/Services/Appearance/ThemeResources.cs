@@ -50,6 +50,16 @@ internal static class ThemeResources
     internal static Brush Brush(FrameworkElement scope, string key)
         => ResolveBrush(scope.ActualTheme, key);
 
+    // Why this still goes through the XAML parser (audit row B26 asked for a direct resource lookup; not done):
+    // a {ThemeResource} on an element with RequestedTheme is resolved by the framework in that element's theme,
+    // and in the high-contrast dictionary while high contrast is on. A lookup from code cannot ask for a theme:
+    // Application.Current.Resources[key] always answers for the application theme, and the window root's theme
+    // can differ from it (AppThemeController sets RequestedTheme on the root, not on the application). Indexing
+    // ThemeDictionaries["Light" / "Default" / "HighContrast"] by hand would have to repeat the framework's
+    // merge order and has not been compared with this path on screen. Do not replace it with a plain lookup.
+    // Framework source read for this: microsoft-ui-xaml main (9402930972f2), dxaml/xcp/components/DependencyObject/
+    // Theming.cpp (SetThemeResourceBinding), dxaml/xcp/core/core/elements/Resources.cpp (EnsureActiveThemeDictionary),
+    // dxaml/xcp/dxaml/lib/ResourceDictionary_partial.cpp (GetItem).
     private static Brush ResolveBrush(ElementTheme theme, string key)
     {
         try

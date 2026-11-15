@@ -84,8 +84,7 @@ internal sealed class OpenCodeBrowserSelection : IDisposable
         done.Click += (_, _) => Run(FinishAsync); pillRow.Children.Add(done);
         _pill = new Border { Child = pillRow, Height = 44, CornerRadius = new(22), Padding = new(16, 0, 6, 0), Margin = new(16), BorderThickness = new(1), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Visibility = Visibility.Collapsed,
             Shadow = new ThemeShadow(), Translation = new System.Numerics.Vector3(0, 0, 32) };
-        _pill.Style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load(
-            "<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Border\"><Setter Property=\"Background\" Value=\"{ThemeResource AcrylicInAppFillColorDefaultBrush}\"/><Setter Property=\"BorderBrush\" Value=\"{ThemeResource FlyoutBorderThemeBrush}\"/></Style>");
+        _pill.Style = OpenCodeInteractionUi.TryStyle("OpenCodeBrowserFloatingPillChromeStyle");
         overlay.PageToolSurface.Children.Add(_pill);
         overlay.SelectionBindingChanged += BindingChanged; overlay.AddPageRequested += AddPage;
         overlay.ExitPageTool = Exit;

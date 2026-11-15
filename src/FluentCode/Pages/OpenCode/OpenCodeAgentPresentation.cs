@@ -2,7 +2,6 @@ using System;
 using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 
 namespace FluentCode.Pages.OpenCode;
@@ -10,8 +9,6 @@ namespace FluentCode.Pages.OpenCode;
 // Presentation only: no agent-ID palette/cache, catalog freshness, or selection authority.
 internal static class OpenCodeAgentPresentation
 {
-    private static Style? _menuStyle;
-
     internal static Windows.UI.Color? Color(string? value)
         => value is { Length: 7 } && value[0] == '#'
             && uint.TryParse(value.AsSpan(1), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var rgb)
@@ -19,11 +16,7 @@ internal static class OpenCodeAgentPresentation
 
     internal static void Apply(Control control, string? color)
     {
-        if (control is MenuFlyoutItem)
-        {
-            _menuStyle ??= XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"MenuFlyoutItem\"><Setter Property=\"Foreground\" Value=\"{ThemeResource AccentTextFillColorPrimaryBrush}\"/></Style>") as Style;
-            if (_menuStyle is not null) control.Style = _menuStyle;
-        }
+        if (control is MenuFlyoutItem && OpenCodeInteractionUi.TryStyle("OpenCodeAgentMenuItemStyle") is { } menuStyle) control.Style = menuStyle;
         control.ClearValue(Control.ForegroundProperty);
         if (Color(color) is { } rgb) control.Foreground = new SolidColorBrush(rgb);
     }

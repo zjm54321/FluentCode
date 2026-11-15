@@ -5,7 +5,6 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Windows.System;
 
@@ -45,9 +44,12 @@ internal static class OpenCodePickerFlyout
         var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         var flyout = new Flyout { Content = content, Placement = FlyoutPlacementMode.TopEdgeAlignedLeft,
             LightDismissOverlayMode = LightDismissOverlayMode.Off };
-        var presenter = (Style)XamlReader.Load("<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"FlyoutPresenter\"><Setter Property=\"CornerRadius\" Value=\"{ThemeResource OverlayCornerRadius}\"/><Setter Property=\"FontFamily\" Value=\"{ThemeResource AppBodyFontFamily}\"/></Style>");
-        presenter.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(4)));
-        presenter.Setters.Add(new Setter(FrameworkElement.MinWidthProperty, 0d));
+        // Fixed chrome (overlay radius, padding 4, no minimum width) is the shared OpenCodePickerFlyoutPresenterStyle.
+        // The body font is read on every open, so a font changed in Settings applies to the next picker, and the
+        // width limit depends on the owner window: both stay on this per-open style.
+        var presenter = new Style(typeof(FlyoutPresenter)) { BasedOn = OpenCodeInteractionUi.TryStyle("OpenCodePickerFlyoutPresenterStyle") };
+        if (Application.Current.Resources.TryGetValue(FluentCode.Services.Appearance.AppFonts.BodyResourceKey, out var bodyFont) && bodyFont is FontFamily)
+            presenter.Setters.Add(new Setter(Control.FontFamilyProperty, bodyFont));
         presenter.Setters.Add(new Setter(FrameworkElement.MaxWidthProperty, Math.Max(1, anchor.XamlRoot.Size.Width - 24)));
         flyout.FlyoutPresenterStyle = presenter;
         wireChoice(value => { completion.TrySetResult(value); flyout.Hide(); });
