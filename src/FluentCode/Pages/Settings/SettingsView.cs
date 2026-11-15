@@ -203,6 +203,7 @@ public sealed partial class SettingsView : UserControl
         }
 
         _unloaded = false;
+        ApplyNativeUiCategoryVisibility();
 
         Subscribe();
     }
@@ -379,7 +380,9 @@ public sealed partial class SettingsView : UserControl
             AutomationProperties.SetAutomationId(item, category.AutomationId);
             _categoryItems.Add(item);
             _navigation.MenuItems.Add(item);
+            if (category.AutomationId == "SettingsCategoryNativeUi") _nativeUiCategoryItem = item;
         }
+        ApplyNativeUiCategoryVisibility();
         _navigation.SelectionChanged += OnNavigationSelectionChanged;
         // 与原手写 ListView（SingleSelectionFollowsFocus 默认开启）一致：键盘在分类间移动时即切换分类，
         // 不需要再按一次 Enter；窄窗口下分类栏也保持展开（Left 固定模式），所以没有折叠按钮。

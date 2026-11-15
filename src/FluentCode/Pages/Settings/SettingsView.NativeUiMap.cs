@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using FluentCode.Models;
 using FluentCode.Motion;
 using FluentCode.Services.NativeUi;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -23,6 +24,20 @@ public sealed partial class SettingsView
     private readonly StackPanel _mapBaidu = new() { Spacing = SettingsCards.RowSpacing, Visibility = Visibility.Collapsed };
     private readonly StackPanel _mapCustom = new() { Spacing = SettingsCards.RowSpacing };
     private readonly Button _mapSave = new() { Content = "保存" };
+
+    private NavigationViewItem? _nativeUiCategoryItem;
+
+    /// <summary>
+    /// 「原生卡片」只在服务端提供原生卡片时出现在分类列表里（判断见 <see cref="OpenCodeServerProduct.ShowNativeCardSettings"/>）。
+    /// 分类内容照常构建、设置值照常保存和读取，隐藏的只是入口；有未保存的地图草稿时不隐藏。每次进入设置页时判断一次。
+    /// </summary>
+    private void ApplyNativeUiCategoryVisibility()
+    {
+        if (_nativeUiCategoryItem is not { } item) return;
+        var show = _mapDirty || OpenCodeServerProduct.ShowNativeCardSettings(OpenCodeServerProduct.LastKnownNativeCards);
+        item.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        if (!show && ReferenceEquals(_navigation.SelectedItem, item)) SelectCategory(0);
+    }
 
     private UIElement BuildNativeUiMapSection()
     {
