@@ -54,7 +54,7 @@ python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Dat
 |:---:|---|---|
 | 1 | `tests/opencode-auth/run.ps1` | BaseUrl 格式校验、DPAPI 凭据加密与解密、Basic 与 Bearer 认证请求头组装、禁止自动重定向与凭据脱敏 |
 | 2 | `tests/opencode-connection/run.ps1` | HTTP 连接生命周期、端点拼接规范、请求超时强制熔断、取消令牌链与异常信息脱敏 |
-| 3 | `tests/opencode-pairing/run.ps1` | V2 一次性配对链接解析、合法性校验、显式 GET 兑换流程与非自动持久化约定 |
+| 3 | `tests/opencode-pairing/run.ps1` | V2 一次性配对链接解析、合法性校验、显式 GET 兑换流程与非自动持久化约定；生成配对码、各连接类型的地址、可编辑链接框（二维码内容、可用性、换配对码时保留地址） |
 | 4 | `tests/opencode-event-sync/run.ps1` | SSE 事件流解析、50ms 批量合并、断线恢复；真实页面处理函数/权限卡片/遮罩的子会话请求归属、回复 HTTP/Gate、初始 pending/重连/回退、父子导航、忙碌/IME 与未知拒绝恢复（原生控件为替身） |
 | 5 | `tests/message-pagination/run.ps1` | 会话消息历史双向分页拉取、不透明 Cursor 游标维护、增量更新与分页边界对齐 |
 | 6 | `tests/opencode-view-ack/run.ps1` | 界面确认机制、未处理提示同步、会话未读计数与已观测执行状态 |
