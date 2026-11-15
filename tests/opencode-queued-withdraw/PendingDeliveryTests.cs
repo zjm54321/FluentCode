@@ -27,6 +27,7 @@ internal static partial class Program
             ("always-visible withdraw icon in the queue row", QueueWithdrawControl),
             ("queue header shows link labels, not addresses", QueueHeaderLinks),
             ("a queued row renders finished text: no link waits", QueueRowCompleteText),
+            ("a pending bubble renders finished text: no link waits", SteerBubbleCompleteText),
             ("touch reveal helper", TouchRevealHelper),
             ("receipt-projected steer switch", ReceiptProjectedSwitch),
             ("empty inbox retires uncertainty", EmptyInboxRetiresUncertainty),
@@ -388,7 +389,7 @@ internal static partial class Program
 
     // The message renderer holds back a link at the very end of text that may still be streaming in. A queued prompt
     // is finished text: the row has to say so before it renders, or that link stays an address for a moment.
-    private static TextBlock RenderedMessage(Grid row) => Descendants(row).OfType<TextBlock>().Single(t => t.RenderedAsComplete is not null);
+    private static TextBlock RenderedMessage(UIElement root) => Descendants(root).OfType<TextBlock>().Single(t => t.RenderedAsComplete is not null);
 
     private static async Task QueueRowCompleteText()
     {
@@ -406,6 +407,26 @@ internal static partial class Program
         page.Publish(await client.GetInboxAsync(Session, CancellationToken.None));
         Check(RenderedMessage(QueueRow(page, Inbox)) is { RenderedAsComplete: true, Text: "改过的https://example.com/c" },
             "a row rebuilt for a changed list is complete text too");
+    }
+
+    // The same message as a pending bubble in the conversation (插入当前回合): finished text there as well.
+    private static async Task SteerBubbleCompleteText()
+    {
+        const string ending = "看这个https://github.com/sst/opencode/pull/4821";
+        var server = new FakeServer();
+        server.Inbox.Add(UserItem(Inbox, ending, 1000) with { Delivery = "steer" });
+        using var client = server.Client();
+        var page = await DeliveryPage(server, client);
+        Check(RenderedMessage(page.Conversation) is { RenderedAsComplete: true, Text: ending },
+            "a pending bubble whose message ends in a link renders it, as written, as complete text");
+
+        await page.Change(Inbox, "queue");
+        Check(!Descendants(page.Conversation).OfType<TextBlock>().Any(t => t.RenderedAsComplete is not null)
+            && RenderedMessage(QueueRow(page, Inbox)) is { RenderedAsComplete: true, Text: ending },
+            "switched to the queue, the message is complete text in its row");
+        await page.Change(Inbox, "steer");
+        Check(RenderedMessage(page.Conversation) is { RenderedAsComplete: true, Text: ending },
+            "switched back, the new bubble is complete text again");
     }
 
     // The queue row no longer hides anything, but other views still do (browser strip, tool rows): keep the shared

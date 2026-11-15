@@ -92,9 +92,12 @@ namespace FluentCode.Pages.OpenCode
         public OpenCodeRichTextPresenter() => ConversationViewTestProbe.Record("Construct", this, Element);
         internal Microsoft.UI.Xaml.Controls.Flyout? TextContextFlyout { get; set; }
         internal (int Images, int Pdfs) AttachmentCounts { get; set; }
+        internal bool TextIsComplete { get; set; }
+        // What the real presenter reads when it renders: whether its host declared the text complete (null = never rendered).
+        internal bool? RenderedAsComplete { get; private set; }
         internal string? Source { get; private set; }
         public void Render(string? source, OpenCodeRichTextStyle style)
-        { Source = source; ConversationViewTestProbe.Record("Render", this, source, style); }
+        { Source = source; RenderedAsComplete = TextIsComplete; ConversationViewTestProbe.Record("Render", this, source, style); }
     }
 
     internal sealed class OpenCodeToolDetailOptions { }

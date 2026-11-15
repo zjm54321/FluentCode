@@ -20,6 +20,8 @@ internal static partial class Program
         Check(pending.AttachmentCounts == (1, 0), "pending-image.real-transcript-supplies-own-attachment-count-to-shared-chip-renderer");
         Check(presenters.Single(p => p.Source == "[Image 1]").AttachmentCounts == (0, 0),
             "pending-image.another-message-with-literal-token-does-not-inherit-image-chip");
+        Check(pending.RenderedAsComplete == true && presenters.Single(p => p.Source == "[Image 1]").RenderedAsComplete == true,
+            "pending-image.pending-bubble-text-is-complete-so-no-link-waits-for-streaming-to-end");
         var thumbnails = ConversationViewTestProbe.Records.Where(c => c.Operation == "Attachments").Select(c => c.Subject)
             .OfType<OpenCodeUserAttachmentsView>().Distinct().ToArray();
         var imageView = thumbnails.Single(t => t.Attachments.Count == 1);
@@ -37,6 +39,7 @@ internal static partial class Program
         var sent = Constructed<OpenCodeRichTextPresenter>().Last();
         Check(sent.AttachmentCounts == pending.AttachmentCounts && sent.Source == pending.Source,
             "pending-image.delivered-bubble-receives-identical-text-and-attachment-chip-rule");
+        Check(sent.RenderedAsComplete == true, "pending-image.delivered-bubble-text-is-complete-too");
         Console.WriteLine($"PASS pending image bubbles: {_assertions - before} assertions; production ConversationView/projection, inert rich-text and thumbnail UI boundaries.");
     }
 
@@ -64,6 +67,10 @@ internal static partial class Program
         var presenters = Constructed<OpenCodeRichTextPresenter>().ToArray();
         Check(menus.Length == 3 && presenters.All(p => p.TextContextFlyout is OpenCodeMessageMenuProbe),
             "menu.every-user-bubble-and-assistant-text-shares-one-menu-with-its-text");
+        // A user's message is finished text: the renderer is told so, and makes a chip of a link at its very end at once.
+        Check(presenters.Single(p => p.Source == first.Text).RenderedAsComplete == true
+            && presenters.Single(p => p.Source == last.Text).RenderedAsComplete == true,
+            "transcript.user-bubble-text-is-complete-so-a-link-at-its-end-is-a-chip-at-once");
         var firstMenu = menus.Single(m => m.WholeText() == first.Text);
         var answerMenu = menus.Single(m => m.WholeText() == answer.Content![0].Text);
         var lastMenu = menus.Single(m => m.WholeText() == last.Text);
@@ -100,6 +107,17 @@ internal static partial class Program
 
         view.RollbackContext = null; // Child / read-only windows.
         Check(lastMenu.Rollback!() is null, "menu.no-rollback-without-main-page-host");
+
+        // Assistant text that is still being written stays "possibly streaming": only then does the renderer hold back
+        // a link at its very end until the text pauses, instead of flickering a half-written address into a chip.
+        var writing = new OpenCodeMessage
+        {
+            Id = "msg_menu_a2", Type = "assistant", Time = new() { Created = 6 },
+            Content = new() { new() { Id = "part_menu_writing", Type = "text", Text = "正在输出 https://a.com/x" } },
+        };
+        view.ApplyMessages(new[] { first, answer, last with { Text = "最后一条（已更新）" }, User("msg_menu_u3", "更新后的最后一条", 5), writing });
+        Check(Constructed<OpenCodeRichTextPresenter>().Single(p => p.Source == writing.Content![0].Text).RenderedAsComplete == false,
+            "transcript.assistant-text-still-being-written-is-not-declared-complete");
         Console.WriteLine($"PASS transcript message menu: {_assertions - before} assertions; real ConversationView + policy, inert menu shim.");
     }
 }
