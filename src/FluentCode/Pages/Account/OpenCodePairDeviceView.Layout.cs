@@ -34,6 +34,19 @@ internal sealed partial class OpenCodePairDeviceView
     };
     private readonly StackPanel _linkPanel = new() { Spacing = 6, Visibility = Visibility.Collapsed };
     private readonly Grid _stage = new() { MinHeight = OpenCodePairQrCode.PlateSize };
+
+    /// <summary>二维码不显示时占着同一块位置的空底板（与二维码底板同大同圆角），里面写原因。</summary>
+    private readonly Border _qrSlot = new()
+    {
+        Width = OpenCodePairQrCode.PlateSize,
+        Height = OpenCodePairQrCode.PlateSize,
+        CornerRadius = new CornerRadius(8),
+        BorderThickness = new Thickness(1),
+        Padding = new Thickness(20),
+        HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Center,
+        Style = OpenCodeInteractionUi.TryStyle("OpenCodeSubtleCardChromeStyle"),
+    };
     private readonly Button _copy = new() { Content = "复制链接", IsEnabled = false };
     private readonly Button _open = new() { Content = "在这台电脑的浏览器打开", IsEnabled = false };
     private readonly Button _renew = new() { Content = "重新生成", IsEnabled = false };
@@ -79,11 +92,11 @@ internal sealed partial class OpenCodePairDeviceView
         _renew.Click += OnRenewClick;
 
         // 二维码的位置一直留着：输入过程中二维码出现、消失或换成一句说明，下面的内容都不会上下跳。
+        _qrSlot.Child = _qrNote;
+        _stage.Children.Add(_qrSlot);
         _stage.Children.Add(_qr);
-        _stage.Children.Add(_qrNote);
         _stage.Children.Add(_ring);
         _qrNote.VerticalAlignment = VerticalAlignment.Center;
-        _qrNote.MaxWidth = 300;
         _ring.VerticalAlignment = VerticalAlignment.Center;
 
         var timeRow = new Grid { ColumnSpacing = 12 };

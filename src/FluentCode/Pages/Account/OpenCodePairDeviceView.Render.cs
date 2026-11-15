@@ -75,7 +75,6 @@ internal sealed partial class OpenCodePairDeviceView
     private void RenderLink()
     {
         if (_closed) return;
-        _stage.MinHeight = _busy || _code is not null ? OpenCodePairQrCode.PlateSize : IdleStageHeight;
         if (_code is not { } code || _generated is null)
         {
             _link = null;
@@ -123,8 +122,15 @@ internal sealed partial class OpenCodePairDeviceView
         if (!first || state.Kind != OpenCodePairingLinkEditKind.Generated) ActionFeedback.Announce(_linkStatus, state.Status);
     }
 
+    /// <summary>
+    /// 二维码位置的收尾：正在生成或已有配对码时留出整块位置，二维码没显示就放空底板（里面是原因）；
+    /// 其余时候（出错、已过期）收回到原来的高度。
+    /// </summary>
     private void SetQrNote(string text)
     {
+        var reserved = _busy || _code is not null;
+        _stage.MinHeight = reserved ? OpenCodePairQrCode.PlateSize : IdleStageHeight;
+        _qrSlot.Visibility = reserved && _qr.Visibility != Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
         _qrNote.Text = text;
         _qrNote.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -132,8 +138,8 @@ internal sealed partial class OpenCodePairDeviceView
     private void ClearCode()
     {
         _timer.Stop();
-        // 配对码作废前记下用户对链接的修改；下一个配对码到手时放回去。
-        if (_code is { } old && !_closed) _carry = OpenCodePairingLinkEdit.Capture(_linkBox.Text, _generated, old.Code);
+        // 配对码作废前记下用户对链接的修改；下一个配对码到手时放回去。还没显示过链接时，保留已经在等的修改。
+        if (_code is { } old && _generated is not null && !_closed) _carry = OpenCodePairingLinkEdit.Capture(_linkBox.Text, _generated, old.Code);
         _code = null;
         _link = null;
         _generated = null;
@@ -161,7 +167,7 @@ internal sealed partial class OpenCodePairDeviceView
         _error.Visibility = Visibility.Visible;
         _error.IsOpen = true;
         _renew.IsEnabled = _client is not null;
-        if (!_busy && _code is null) _stage.MinHeight = IdleStageHeight;
+        if (!_busy && _code is null) SetQrNote(string.Empty);
     }
 
     private void HideError()
