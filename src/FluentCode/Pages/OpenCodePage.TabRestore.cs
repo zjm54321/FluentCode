@@ -351,6 +351,13 @@ public sealed partial class OpenCodePage
         try
         {
             var ct = _pageCts?.Token ?? CancellationToken.None;
+            // The same gate as the list read and Home's reads by id: a list read that is under way finishes first,
+            // and the next one starts from a catalog that already holds this row, so it cannot be replaced away.
+            using var flight = await EnterSessionCatalogReadAsync(client, ct);
+            // No gate while the window is hidden: that is no answer yet, not a request that failed.
+            if (flight is null || !Current()) return OpenCodeSavedSessionLookup.Unavailable;
+            if (_sessionItems.ContainsKey(sessionId)) return OpenCodeSavedSessionLookup.Found; // The list brought it meanwhile.
+            var asked = _sessionCatalogEventVersion;
             Task<OpenCodeSessionInfo>? pending = null;
             if (!source.TryExecute(ct, () => pending = client.GetSessionInfoAsync(sessionId, ct)) || pending is null)
                 return OpenCodeSavedSessionLookup.Unavailable;
@@ -358,9 +365,13 @@ public sealed partial class OpenCodePage
             if (!Current()) return OpenCodeSavedSessionLookup.Unavailable;
             if (!IsRootSession(info) || info.Id != sessionId || info.Time?.Archived is not null)
                 return OpenCodeSavedSessionLookup.Gone;
+            // An event about this session arrived while the answer was on its way; it is newer than the answer.
+            if (_sessionCatalogEventVersions.GetValueOrDefault(sessionId) > asked)
+                return _sessionItems.ContainsKey(sessionId) ? OpenCodeSavedSessionLookup.Found : OpenCodeSavedSessionLookup.Unavailable;
             if (!_sessionItems.ContainsKey(sessionId))
             {
-                _sessionItems[sessionId] = info; // Later list reads keep it by id (ReadLoadedSessionDepthAsync).
+                _sessionItems[sessionId] = info; // Later list reads keep it by id (ReadLoadedSessionDepthAsync)...
+                _sessionCatalogDepth.AskedById(sessionId); // ...without reading one more page because of it.
                 OnSessionCatalogChanged();
             }
             return OpenCodeSavedSessionLookup.Found;

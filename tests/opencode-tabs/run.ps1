@@ -1,4 +1,4 @@
-# Offline tests of the saved title-bar tabs (file format, store, restore rules). One production file linked; no NuGet, client or WinUI.
+# Offline tests of the saved title-bar tabs (file format, store, restore rules). Two production files linked; no NuGet, client or WinUI.
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $dotnet = (Get-Command dotnet.exe).Source
@@ -8,7 +8,7 @@ $referencePack = Get-ChildItem (Join-Path $dotnetRoot 'packs/Microsoft.NETCore.A
 if (!$sdk -or !$referencePack) { throw '.NET 10 SDK/reference pack required.' }
 $output = Join-Path ([IO.Path]::GetTempPath()) ('opencode-tabs-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $output | Out-Null
-$production = @(Join-Path "$repo/src/FluentCode/Services/OpenCode" 'OpenCodeSavedTabs.cs')
+$production = @((Join-Path "$repo/src/FluentCode/Services/OpenCode" 'OpenCodeSavedTabs.cs'), (Join-Path "$repo/src/FluentCode/Pages/OpenCode" 'OpenCodeSessionCatalogDepth.cs'))
 $testSource = Join-Path $PSScriptRoot 'Program.cs'
 Write-Output "Evidence directory: $output"
 

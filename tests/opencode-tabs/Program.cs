@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
 
 // Tests of the linked production file (saved title-bar tabs): format, store and the restore rules. The page side is
@@ -38,13 +39,14 @@ internal static class Program
             LeftoversAndBounds();
             SavesAreCoalescedAndAtomic();
             OnlyTabFactsAreStored();
+            ByIdRowsAreNotLoadedDepth();
             PageContracts();
         }
         finally
         {
             try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
         }
-        Console.WriteLine($"PASS: 15 saved-tab scenario groups, {_assertions} assertions; production format/store/rules, offline only.");
+        Console.WriteLine($"PASS: 16 saved-tab scenario groups, {_assertions} assertions; production format/store/rules, offline only.");
     }
 
     private static void Check(bool condition, string label)
@@ -447,6 +449,58 @@ internal static class Program
         Check(names.Count > 0 && names.All(allowed.Contains), "content.only-known-fields");
         Check(typeof(OpenCodeSavedTab).GetProperties().Select(property => property.Name).OrderBy(name => name, StringComparer.Ordinal)
             .SequenceEqual(new[] { "Directory", "Kind", "SessionId", "Title" }), "content.saved-tab-has-no-draft-or-credential-field");
+    }
+
+    private static void ByIdRowsAreNotLoadedDepth()
+    {
+        const int Size = 50;
+        static string[] Listed(int count) => Enumerable.Range(0, count).Select(index => "listed-" + index).ToArray();
+        var depth = new OpenCodeSessionCatalogDepth();
+        Check(depth.PagesToRead(Array.Empty<string>(), Size) == 1 && depth.PagesToRead(Listed(1), Size) == 1
+            && depth.PagesToRead(Listed(50), Size) == 1 && depth.PagesToRead(Listed(51), Size) == 2
+            && depth.PagesToRead(Listed(100), Size) == 2 && depth.PagesToRead(Listed(101), Size) == 3, "depth.as-before-without-by-id-rows");
+
+        var tabs = new[] { "tab-1", "tab-2", "tab-3" };
+        foreach (var id in tabs) depth.AskedById(id);
+        Check(depth.PagesToRead(Listed(50).Concat(tabs), Size) == 1, "depth.50-listed-plus-3-by-id-is-one-page");
+        Check(depth.PagesToRead(Listed(100).Concat(tabs), Size) == 2, "depth.100-listed-plus-3-by-id-is-two-pages");
+        Check(depth.PagesToRead(tabs, Size) == 1, "depth.never-fewer-than-one");
+
+        // Refresh after refresh returns the pages plus the by-id rows; the depth must not creep.
+        var catalog = Listed(50).Concat(tabs).ToArray();
+        var pages = Enumerable.Range(0, 5).Select(_ => depth.PagesToRead(catalog, Size)).ToArray();
+        Check(pages.All(count => count == 1), "depth.repeated-refreshes-do-not-grow");
+
+        // A list page now contains one of them: it counts as listed from then on.
+        depth.Listed("tab-1");
+        Check(!depth.IsAskedById("tab-1") && depth.IsAskedById("tab-2"), "depth.listed-row-is-ordinary-again");
+        Check(depth.PagesToRead(Listed(50).Concat(tabs), Size) == 2, "depth.row-the-pages-contain-counts-as-listed");
+        Check(depth.PagesToRead(Listed(49).Concat(tabs), Size) == 1, "depth.49-listed-plus-one-former-by-id-fits-one-page");
+        depth.Listed("never-asked"); // Ordinary rows pass through here all the time.
+        Check(depth.PagesToRead(Listed(49).Concat(tabs), Size) == 1, "depth.listing-an-ordinary-row-changes-nothing");
+
+        // The catalog was emptied (another connection): nothing is special any more.
+        depth.Clear();
+        Check(!depth.IsAskedById("tab-2") && depth.PagesToRead(Listed(50).Concat(tabs), Size) == 2, "depth.cleared-with-the-catalog");
+        var threw = false;
+        try { depth.PagesToRead(tabs, 0); } catch (ArgumentOutOfRangeException) { threw = true; }
+        Check(threw, "depth.page-size-must-be-positive");
+
+        var repo = Environment.GetEnvironmentVariable("FC_TABS_REPO") ?? throw new InvalidOperationException("Source root is required.");
+        var paging = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.SessionPagination.cs"));
+        var restore = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCodePage.TabRestore.cs"));
+        Check(paging.Contains("var pages = _sessionCatalogDepth.PagesToRead(retained, SessionPageSize);", StringComparison.Ordinal)
+            && !paging.Contains("retained.Length + SessionPageSize", StringComparison.Ordinal)
+            && paging.Split("_sessionCatalogDepth.Listed(", StringSplitOptions.None).Length - 1 == 2
+            && paging.Contains("_sessionCatalogDepth.Clear();", StringComparison.Ordinal)
+            && paging.Contains("foreach (var id in retained.Where(id => !rows.ContainsKey(id)))", StringComparison.Ordinal), "depth.page-uses-the-rule-and-still-rereads-by-id");
+        // The lookup adds its row under the catalog's own read gate, and only there.
+        var gate = restore.IndexOf("using var flight = await EnterSessionCatalogReadAsync(client, ct);", StringComparison.Ordinal);
+        var write = restore.IndexOf("_sessionItems[sessionId] = info;", StringComparison.Ordinal);
+        Check(gate > 0 && write > gate && restore.Split("_sessionItems[", StringSplitOptions.None).Length - 1 == 1
+            && restore.Contains("if (flight is null || !Current()) return OpenCodeSavedSessionLookup.Unavailable;", StringComparison.Ordinal)
+            && restore.Contains("if (_sessionItems.ContainsKey(sessionId)) return OpenCodeSavedSessionLookup.Found; // The list brought it meanwhile.", StringComparison.Ordinal)
+            && restore.Contains("_sessionCatalogDepth.AskedById(sessionId);", StringComparison.Ordinal), "depth.lookup-writes-under-the-catalog-gate");
     }
 
     private static void PageContracts()
