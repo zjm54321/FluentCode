@@ -1,5 +1,5 @@
 // Inert WinUI/page boundaries only. Delivery handlers, receipt projection, list rendering,
-// pending-steer rendering, touch reveal, HTTP transport and ownership predicates are production source.
+// pending-steer rendering, the touch reveal helper, HTTP transport and ownership predicates are production source.
 // The stubs record layout inputs (columns, sizes, style keys, tooltips); nothing here measures or draws.
 using System;
 using System.Collections.Generic;
@@ -128,7 +128,8 @@ namespace FluentCode.Pages.OpenCode
     {
         internal FrameworkElement Element { get; } = new TextBlock();
         internal (int Images, int Pdfs) AttachmentCounts { get; set; }
-        internal object? TextContextFlyout { get; set; }
+        // Like the real presenter, the menu lands on the rendered text itself.
+        internal object? TextContextFlyout { get => Element.ContextFlyout; set => Element.ContextFlyout = value; }
         internal void Render(string? text, OpenCodeRichTextStyle style) => ((TextBlock)Element).Text = text ?? string.Empty;
     }
     internal sealed class OpenCodeUserAttachmentsView : IDisposable
@@ -206,6 +207,8 @@ namespace Microsoft.UI.Xaml
         internal void Focus() => GotFocus?.Invoke(this, new());
         internal void Blur() => LostFocus?.Invoke(this, new());
         internal void MouseExit() => PointerExited?.Invoke(this, new(Microsoft.UI.Input.PointerDeviceType.Mouse));
+        internal void MouseEnter() => PointerEntered?.Invoke(this, new(Microsoft.UI.Input.PointerDeviceType.Mouse));
+        internal void TouchExit() => PointerExited?.Invoke(this, new(Microsoft.UI.Input.PointerDeviceType.Touch));
     }
     public class FrameworkElement : UIElement
     {
