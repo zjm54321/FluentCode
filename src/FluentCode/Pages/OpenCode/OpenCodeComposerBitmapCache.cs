@@ -78,8 +78,8 @@ internal static class OpenCodeComposerBitmapCache
             Foreground = foreground, VerticalAlignment = VerticalAlignment.Top, MaxWidth = 260,
             TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
         label.Measure(new(double.PositiveInfinity, double.PositiveInfinity));
-        // The text's baseline sits on a whole device pixel of the bitmap, as live text does; a baseline between two
-        // pixel rows is soft even when the bitmap is drawn one to one.
+        // The text's baseline sits on a whole pixel row of the bitmap. (The screen does not show the bitmap one to one:
+        // see OpenCodeComposerNativeGeometry.ChipRaster.)
         var line = OpenCodeComposerNativeGeometry.ChipRaster(1, metrics.Height, label.BaselineOffset, scale);
         var ascent = line.Ascent;
         label.RenderTransform = new TranslateTransform { Y = line.LayoutBaseline(scale) - label.BaselineOffset };
@@ -117,7 +117,8 @@ internal static class OpenCodeComposerBitmapCache
             visual.Arrange(new(0, 0, layoutWidth, layoutHeight));
             var target = new RenderTargetBitmap();
             // No requested size: RenderAsync's size arguments are DIPs that it multiplies by the display scale again,
-            // so passing pixels made the bitmap scale-squared and RichEdit shrank it back (blurry above 100%).
+            // so passing pixels made the bitmap scale-squared. RichEdit reduces the picture to one pixel per DIP either
+            // way (OpenCodeComposerNativeGeometry.ChipRaster): this saves pixels, it does not sharpen the chip.
             await target.RenderAsync(visual);
             var pixels = await target.GetPixelsAsync();
             var rendered = new byte[pixels.Length];

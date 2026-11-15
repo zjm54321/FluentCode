@@ -88,6 +88,16 @@ internal static partial class Program
         return (int)Math.Ceiling(elementDip * requestScale * scale - 1e-4);
     }
 
+    // The picture RichEdit keeps and XAML shows for an inserted image, per axis: one pixel per DIP of the box given to
+    // InsertImage, whatever the PNG holds. WinUIEdit.dll (Windows App SDK 2.6.5) CImage::CheckSize sizes the bitmap to the
+    // drawing rectangle times the render target's transform, and CImage::CreateBitmapSource reduces the decoded picture
+    // to that size with a WIC Fant scaler; the XAML host's render target reports an identity transform and 96 DPI
+    // (microsoft/microsoft-ui-xaml, tag winui3/release/2.6.5, src/dxaml/xcp/core/native/text/Controls/HWRenderTarget.cpp,
+    // HWRenderTarget::GetTransform and GetDpi) and XAML draws the picture at its natural size (same tag,
+    // src/dxaml/xcp/core/native/text/Common/D2DTextDrawingContext.cpp, D2DTextDrawingContext::HwRenderImages).
+    // Measured on 1.2611.22 at 125%: a 120x19 DIP chip is a 120x19 pixel picture magnified 1.25 times, linear filtering.
+    private static int RichEditPicturePixels(int boxDip) => boxDip;
+
     private static void ChipRaster()
     {
         void Reject(Action action, string note)
@@ -105,8 +115,8 @@ internal static partial class Program
         Check(OpenCodeComposerNativeGeometry.RasterSize(4, 20, 1.25) == (5, 25) && OpenCodeComposerNativeGeometry.RasterSize(150, 20, 1.1) == (165, 22),
             "floating-point noise never adds a pixel to a whole product");
 
-        Console.WriteLine("chip raster per scale (content 121.3 DIP, line 19 DIP, baseline 14.7 DIP)");
-        Console.WriteLine("scale | before: image DIP, bitmap px, drawn px, bitmap/drawn | after: image DIP, bitmap px, drawn px, bitmap/drawn, baseline px");
+        Console.WriteLine("chip picture per scale (content 121.3 DIP, line 19 DIP); only 100% is one to one on screen");
+        Console.WriteLine("scale | box given to InsertImage, DIP | PNG, px | picture RichEdit keeps, px | PNG to picture | picture to screen, linear");
         foreach (var scale in new[] { 1d, 1.25, 1.5, 1.75, 2 })
         {
             foreach (var content in new[] { 23.2, 121.3, 150, 271.9 })
@@ -117,13 +127,15 @@ internal static partial class Program
                 Check(plan.Height == (int)line && plan.Ascent == 15, "the picture keeps the line height and the rounded baseline");
                 Check(plan.Width >= content && plan.Width - Math.Ceiling(content) < step && plan.Width % step == 0,
                     "the width grows by less than one whole-pixel step and never clips the chip");
-                Check(plan.Width * scale == plan.PixelWidth, "the width RichEdit draws is exactly the bitmap's pixel width");
+                Check(plan.Width * scale == plan.PixelWidth, "the box is a whole number of device pixels wide, so the next chip starts on a whole pixel");
+                Check(plan.PixelWidth >= RichEditPicturePixels(plan.Width) && plan.PixelHeight >= RichEditPicturePixels(plan.Height),
+                    "the PNG holds at least the one pixel per DIP that RichEdit keeps, so RichEdit never has to enlarge it");
                 Check(RenderTargetPixels(plan.LayoutWidth(scale), 0, scale) == plan.PixelWidth
                     && RenderTargetPixels(plan.LayoutHeight(scale), 0, scale) == plan.PixelHeight,
                     "the staged visual renders at natural size to exactly the planned pixels");
                 Check(plan.PixelHeight == (int)Math.Ceiling(line * scale - 1e-6) && plan.PixelHeight - line * scale < 1,
                     "the bitmap covers the line height with less than one spare pixel row");
-                if (Whole(line * scale)) Check(plan.Height * scale == plan.PixelHeight, "a whole-pixel line height is drawn one to one vertically");
+                if (Whole(line * scale)) Check(plan.Height * scale == plan.PixelHeight, "a whole-pixel line height gives a box of whole device pixels in height");
                 Check(Whole(plan.LayoutBaseline(scale) * scale) && Math.Abs(plan.BaselinePixel - plan.Ascent * scale) <= .5
                     && plan.BaselinePixel <= plan.PixelHeight, "the label baseline is the nearest whole pixel row to the line's baseline");
                 if (scale is 1 or 2)
@@ -137,7 +149,8 @@ internal static partial class Program
             if (scale > 1)
                 Check(oldPixels.Width > oldWidth * scale * 1.2 && RenderTargetPixels(oldWidth, 0, scale) - oldWidth * scale < 1,
                     "a requested size in pixels is multiplied by the scale again; the natural size is not");
-            Console.WriteLine(FormattableString.Invariant($"{scale:0.00} | {oldWidth}x19, {oldPixels.Width}x{oldPixels.Height}, {oldWidth * scale:0.##}x{19 * scale:0.##}, {oldPixels.Width / (oldWidth * scale):0.000}x{oldPixels.Height / (19 * scale):0.000} | {shown.Width}x{shown.Height}, {shown.PixelWidth}x{shown.PixelHeight}, {shown.Width * scale:0.##}x{shown.Height * scale:0.##}, {shown.PixelWidth / (shown.Width * scale):0.000}x{shown.PixelHeight / (shown.Height * scale):0.000}, {shown.BaselinePixel} (line baseline {shown.Ascent * scale:0.##})"));
+            var kept = (Width: RichEditPicturePixels(shown.Width), Height: RichEditPicturePixels(shown.Height));
+            Console.WriteLine(FormattableString.Invariant($"{scale:0.00} | {shown.Width}x{shown.Height} | {shown.PixelWidth}x{shown.PixelHeight} | {kept.Width}x{kept.Height} | {kept.Width / (double)shown.PixelWidth:0.000}x{kept.Height / (double)shown.PixelHeight:0.000} | x{scale:0.00}"));
         }
         var odd = OpenCodeComposerNativeGeometry.ChipRaster(121.3, 19, 14.7, 1.33);
         Check(odd.Width == 122 && odd.PixelWidth == 163 && odd.PixelHeight == 26, "an unusual scale still covers the picture with whole pixels");

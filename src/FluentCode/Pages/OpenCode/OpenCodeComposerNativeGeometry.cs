@@ -55,13 +55,20 @@ internal static class OpenCodeComposerNativeGeometry
     }
 
     /// <summary>
-    /// One bitmap pixel per device pixel. RenderTargetBitmap.RenderAsync(element, scaledWidth, scaledHeight) takes DIPs and
-    /// multiplies by the rasterization scale itself (microsoft/microsoft-ui-xaml, tag winui3/release/2.6.5,
+    /// The box and the PNG size of a chip picture. RenderTargetBitmap.RenderAsync(element, scaledWidth, scaledHeight) takes
+    /// DIPs and multiplies by the rasterization scale itself (microsoft/microsoft-ui-xaml, tag winui3/release/2.6.5,
     /// src/dxaml/xcp/core/core/elements/RenderTargetElement.cpp, CRenderTargetElementData::UpdateMetrics), so the chip is
-    /// rendered at its natural size and the scale is applied exactly once. InsertImage takes whole DIPs and RichEdit draws
-    /// the picture into that rectangle times the scale (same tag, src/dxaml/xcp/core/native/text/Controls/HWRenderTarget.cpp,
-    /// HWRenderTarget::DrawBitmap), so the width is rounded up to a DIP count that is a whole number of device pixels.
-    /// The height stays the line height: the line box must not change.
+    /// rendered at its natural size and the scale is applied exactly once. InsertImage takes whole DIPs; the width is
+    /// rounded up to a DIP count that is a whole number of device pixels, so the box ends, and the next chip starts, on a
+    /// whole pixel. The height stays the line height: the line box must not change.
+    /// This does not make the chip sharp above 100%. RichEdit keeps one pixel per DIP of the box whatever the PNG holds:
+    /// WinUIEdit.dll (Windows App SDK 2.6.5) CImage::CheckSize sizes its bitmap to the drawing rectangle times the render
+    /// target's transform and CImage::CreateBitmapSource reduces the picture to it with a WIC Fant scaler, while the XAML
+    /// host reports an identity transform and 96 DPI (same tag, src/dxaml/xcp/core/native/text/Controls/HWRenderTarget.cpp,
+    /// HWRenderTarget::GetTransform and GetDpi). XAML then draws that picture at its natural size, magnified by the display
+    /// scale with linear filtering (same tag, src/dxaml/xcp/core/native/text/Common/D2DTextDrawingContext.cpp,
+    /// D2DTextDrawingContext::HwRenderImages). Measured on 1.2611.22 at 125%: a 120x19 DIP chip is a 120x19 pixel picture
+    /// magnified 1.25 times. Only live XAML can be as sharp as the conversation's chip.
     /// </summary>
     internal static ChipRasterPlan ChipRaster(double contentWidth, double lineHeight, double baseline, double scale)
     {
