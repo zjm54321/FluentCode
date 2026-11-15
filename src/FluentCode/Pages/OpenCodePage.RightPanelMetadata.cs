@@ -89,7 +89,7 @@ public sealed partial class OpenCodePage
         if (_rightPanelMetadata is not { } view) return;
         var info = CurrentServerInfo();
         var connected = OpenCodeRightPanelPresentation.ShowConnectedDot(_pageActive, SourceReady, _connection == ConnectionState.Connected);
-        view.RenderConnection(info.State == OpenCodeInsightState.Loaded ? info.Version : null, connected);
+        view.RenderConnection(info.State == OpenCodeInsightState.Loaded ? info.Version : null, connected, info.Product);
         SetComposerConnectedDot(connected);
         RefreshComposerOverviewTip(view.DirectoryText, view.VersionText, connected);
         RightPanelFooterSlot.Visibility = _pageActive && WorkspaceGrid.Visibility == Visibility.Visible

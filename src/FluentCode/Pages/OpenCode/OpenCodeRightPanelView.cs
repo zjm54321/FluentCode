@@ -1,4 +1,5 @@
 using System;
+using FluentCode.Services.OpenCode;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -114,11 +115,11 @@ internal sealed class OpenCodeRightPanelView
     internal string DirectoryText => _directory.Text;
     internal string VersionText => _version.Text;
 
-    public void RenderConnection(string? version, bool connected)
+    public void RenderConnection(string? version, bool connected, OpenCodeServerProductKind product = OpenCodeServerProductKind.Unknown)
     {
-        _version.Text = OpenCodeRightPanelPresentation.Version(version);
+        _version.Text = OpenCodeRightPanelPresentation.Version(version, product);
         _dot.Visibility = connected ? Visibility.Visible : Visibility.Collapsed;
-        AutomationProperties.SetName(Footer, "OpenCode 服务版本：" + _version.Text + "；查看连接详情");
+        AutomationProperties.SetName(Footer, OpenCodeRightPanelPresentation.ConnectionName(_version.Text, product, version));
     }
 
 }

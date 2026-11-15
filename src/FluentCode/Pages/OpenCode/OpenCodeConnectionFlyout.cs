@@ -11,6 +11,9 @@ namespace FluentCode.Pages.OpenCode;
 /// <summary>GET api/info 的显示状态（页面按来源代际持有；换源即作废）。</summary>
 internal sealed record OpenCodeServerInfoView(OpenCodeInsightState State, string? Version, string Note)
 {
+    /// <summary>Server product read from the plugin list of the same source; Unknown until that list is read.</summary>
+    internal OpenCodeServerProductKind Product { get; init; }
+
     internal static OpenCodeServerInfoView NotLoaded { get; } = new(OpenCodeInsightState.NotLoaded, null, "打开此面板时读取一次。");
     internal static OpenCodeServerInfoView Loading { get; } = new(OpenCodeInsightState.Loading, null, "正在读取…");
 }
@@ -95,9 +98,10 @@ internal static class OpenCodeConnectionFlyout
     {
         var (server, serverRows) = OpenCodeSessionInsightsView.Section("服务", details.ServerInfo.State, "OpenCodeConnectionServer");
         var version = details.ServerInfo.Version is { Length: > 0 } v ? v : null;
-        serverRows.Children.Add(Row("OpenCodeConnectionServer.Row", "OpenCode", version,
+        var product = OpenCodeServerProduct.Name(details.ServerInfo.Product);
+        serverRows.Children.Add(Row("OpenCodeConnectionServer.Row", product, version,
             DotIndicator(details.ServerDotKey, details.StatusText), ServerKey, select,
-            "OpenCode 服务：" + details.StatusText + (version is not null ? "，版本 " + version : "")));
+            product + " 服务：" + details.StatusText + (version is not null ? "，版本 " + version : "")));
         if (pair is not null)
         {
             // 只在服务已连接时出现：生成一次性配对链接与二维码（对话框，不在浮层里显示配对码）。
@@ -322,15 +326,17 @@ internal static class OpenCodeConnectionFlyout
     {
         if (key == ServerKey)
         {
+            var versionLabel = OpenCodeServerProduct.VersionRowLabel(details.ServerInfo.Product);
             var rows = new List<(string, string)>
             {
                 ("连接", details.StatusText),
                 ("服务地址", details.BaseUrl ?? "未配置"),
-                ("OpenCode 版本", details.ServerInfo.Version ?? DescribeUnknown(details.ServerInfo.State)),
+                (versionLabel, details.ServerInfo.Version ?? DescribeUnknown(details.ServerInfo.State)),
             };
-            var page = DetailPage("OpenCodeConnectionServerDetail", "OpenCode", DotIndicator(details.ServerDotKey, details.StatusText), select);
+            var page = DetailPage("OpenCodeConnectionServerDetail", OpenCodeServerProduct.Name(details.ServerInfo.Product),
+                DotIndicator(details.ServerDotKey, details.StatusText), select);
             page.Children.Add(OpenCodeSessionInsightsView.Table(rows,
-                label => (label == "服务地址" && details.BaseUrl is not null) || (label == "OpenCode 版本" && details.ServerInfo.Version is not null)));
+                label => (label == "服务地址" && details.BaseUrl is not null) || (label == versionLabel && details.ServerInfo.Version is not null)));
             page.Children.Add(OpenCodeSessionInsightsView.Caption(details.StatusDetail, 0.75));
             if (details.ServerInfo.State is OpenCodeInsightState.Failed)
             {

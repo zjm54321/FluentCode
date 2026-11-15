@@ -99,7 +99,7 @@ public sealed partial class OpenCodePage
     private readonly Image _homeWordmark = new() { Height = 30, Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
         HorizontalAlignment = HorizontalAlignment.Left };
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _homeChromeTimer;
-    private (string? Version, bool Connected, string? Identity)? _homeChromeShown;
+    private (string? Version, bool Connected, string? Identity, OpenCodeServerProductKind Product)? _homeChromeShown;
 
     private void HomeChromeTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
     {
@@ -331,11 +331,12 @@ public sealed partial class OpenCodePage
     {
         var info = CurrentServerInfo();
         var connected = _pageActive && SourceReady && _connection == ConnectionState.Connected;
-        var chrome = (info.State == OpenCodeInsightState.Loaded ? info.Version : null, connected, HomeConnectionIdentity());
+        var chrome = (info.State == OpenCodeInsightState.Loaded ? info.Version : null, connected, HomeConnectionIdentity(), Product: info.Product);
         if (_homeChromeShown != chrome)
         {
             _homeChromeShown = chrome;
-            _homeView.SetConnection(chrome.Item1, chrome.connected, chrome.Item3);
+            _homeView.SetConnection(OpenCodeServerProduct.HomeVersion(chrome.Product, chrome.Item1), chrome.connected, chrome.Item3,
+                OpenCodeServerProduct.Name(chrome.Product));
         }
     }
 
