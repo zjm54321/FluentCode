@@ -207,33 +207,64 @@ internal static class NativeUiCoreTests
         Check(theme.Contains("internal const double CompactWidth = 480;") && theme.Contains("internal const double WideWidth = 808;")
             && theme.Contains("internal const double MaximumWidth = 640;") && theme.Contains("internal const double WrapCellWidth = 144;"),
             "Card sizing is unchanged: 480 compact, 808 wide, 640 maximum, 144 wrap cell");
-        // ---- C06: the icon badge — same box, ring and weight as the adapter pill, and the same palette ----
-        var badgeStyling = Between(theme, "internal static void Badge(Border border, NativeUiElement node)", "internal static void Button(Button button, NativeUiElement node)");
-        Check(badgeStyling.Contains("border.Style = box;") && badgeStyling.Contains("border.BorderThickness = new Thickness(1);")
-            && badgeStyling.Contains("border.Padding = new Thickness(8, 2, 8, 2); border.MinHeight = 20; border.CornerRadius = new CornerRadius(10);"),
-            "A badge with a leading glyph keeps the pill box and carries the same 1-DIP tone ring as the adapter pill");
-        Check(theme.Contains("\"Badge\" => (\"CaptionTextBlockStyle\", 0d, 0d, \"SemiBold\"),")
-            && badgeStyling.Contains("Label: TextStyle(\"TextBlock\", \"CaptionTextBlockStyle\", Foreground(tone), 0d, 0d, \"SemiBold\"));")
-            && badgeStyling.Contains("Label: TextStyle(\"TextBlock\", \"CaptionTextBlockStyle\", keys.Foreground, 0d, 0d, \"SemiBold\"))"),
-            "The hand-built badge label stays Caption SemiBold in either palette, the weight the adapter pill's style sets");
+        // ---- C06: one badge implementation — the shared pill adapter, with or without an icon ----
+        var badgeAdapter = Source("src/FluentCode/Controls/CommunityTextBadge.cs");
+        var badgeCase = Between(renderer, "case \"Badge\":", "case \"Divider\":");
+        Check(badgeCase.Contains("CommunityTextBadge.Create(label, tone, CommunityTextBadgeShape.Pill, label, glyph)") && Occurrences(badgeCase, "CommunityTextBadge.Create(") == 1,
+            "Every badge is created through CommunityTextBadge as a Pill, named by its own text for screen readers, with its glyph if it has one");
+        Check(badgeCase.Contains("CommunityTextBadge.SetGlyph(pill, glyph); CommunityTextBadge.Update(pill, label); CommunityTextBadge.SetTone(pill, tone); CommunityTextBadge.SetAccessibleName(pill, label);"),
+            "A re-render updates the existing pill in place (glyph, text, tone, accessible name) instead of building a second one");
+        Check(badgeCase.Contains("var badgeVisual = new Visual(badgeHost);") && Occurrences(badgeCase, "new Visual(") == 1
+            && Occurrences(badgeCase, "Sync(badgeHost,") == 1 && badgeCase.Contains("Sync(badgeHost, new UIElement[] { badgePill });"),
+            "One host per structural path carries the one pill, so the element a parent holds never changes across re-render");
+        Check(badgeCase.Contains("var badgeHost = new Grid { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };"),
+            "The badge host stays left-aligned and vertically centred, so a pill never stretches across a card column");
+        Check(badgeCase.Contains("var glyph = NativeUiStyleMath.Glyph(NativeUiTheme.String(node, \"icon\"));")
+            && !badgeCase.Contains("new Border", StringComparison.Ordinal) && !badgeCase.Contains("FontIcon", StringComparison.Ordinal) && !badgeCase.Contains("new TextBlock", StringComparison.Ordinal)
+            && !theme.Contains("internal static void Badge(", StringComparison.Ordinal),
+            "A badge with an icon is no longer built by hand: the renderer resolves the glyph and the adapter shows it");
+        Check(NativeUiStyleMath.Glyph("check") == "\uE73E" && NativeUiStyleMath.Glyph(" Check ") == "\uE73E" && NativeUiStyleMath.Glyph("") is null && NativeUiStyleMath.Glyph("no-such-icon") is null,
+            "An icon name resolves to its glyph regardless of case and padding, and an unknown or empty name to no glyph, which is a badge without an icon");
+        // Comments may name the library; code must not (CONTRACT-F §2: no DevWinUI type on the consumer side).
+        var badgeCode = string.Join('\n', badgeCase.Split('\n').Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
+        Check(!badgeCode.Contains(".Foreground", StringComparison.Ordinal) && !badgeCode.Contains("IssueLabel", StringComparison.Ordinal)
+            && !renderer.Contains("using DevWinUI", StringComparison.Ordinal) && !theme.Contains("using DevWinUI", StringComparison.Ordinal)
+            && !theme.Contains("\"IssueLabel", StringComparison.Ordinal) && !renderer.Contains("\"IssueLabel", StringComparison.Ordinal),
+            "Native UI never sets a badge Foreground (it would discard the tone) and never names a DevWinUI type or resource key");
 
-        // The library's four categorical tones by three roles: the twelve keys the adapter pill paints from (executed).
-        var libraryKeys = new Dictionary<string, string> { ["muted"] = "Gray", ["info"] = "Blue", ["purple"] = "Purple", ["pink"] = "Pink" };
-        Check(libraryKeys.All(pair => NativeUiStyleMath.BadgeLibraryTone(pair.Key) is { } keys
-                && keys.Background == "IssueLabel" + pair.Value + "BackgroundBrush" && keys.Border == "IssueLabel" + pair.Value + "BorderBrush"
-                && keys.Foreground == "IssueLabel" + pair.Value + "ForegroundBrush"),
-            "The icon badge reads the library's own twelve tone keys (grey, blue, purple, pink by fill, ring, text), so both badge forms share one palette");
-        Check(new[] { "success", "warning", "danger", "", "neutral", "chart1", "Info" }.All(tone => NativeUiStyleMath.BadgeLibraryTone(tone) is null),
-            "Only the four normalized categorical tones have library keys; the status tones stay on the SystemFillColor keys both badge forms already share");
-        Check(libraryKeys.Keys.SelectMany(tone => { var keys = NativeUiStyleMath.BadgeLibraryTone(tone)!.Value; return new[] { keys.Background, keys.Border, keys.Foreground }; }).Distinct(StringComparer.Ordinal).Count() == 12,
-            "The twelve library tone keys are distinct");
-        // The keys above are only names until the pinned DevWinUI actually defines them, in every theme: a key defined
-        // for Light but not for High Contrast would fall back in one theme only. The runner hands us the locked
-        // package's theme dictionary (tests/native-ui/run.ps1), so a rename fails here rather than silently
-        // degrading every icon badge back to the app tint.
+        // The adapter's glyph path: string data in, one cached template per glyph, state on the control itself.
+        var glyphTemplate = Between(badgeAdapter, "private static DataTemplate? GlyphTemplate(string glyph)", "\n    /// <summary>安全取应用资源");
+        Check(badgeAdapter.Contains("string? glyph = null)") && badgeAdapter.Contains("internal static void SetGlyph(FrameworkElement badge, string? glyph)")
+            && badgeAdapter.Contains("label.Tag = next;") && badgeAdapter.Contains("if (Equals(label.Tag, next))"),
+            "The adapter takes the glyph as a string, keeps it on the control and does nothing when it did not change");
+        Check(badgeAdapter.Contains("label.TitleTemplate = (next is null ? null : GlyphTemplate(next)) ?? TryResource(TitleTemplateKey) as DataTemplate;"),
+            "A badge without a glyph, or whose glyph template cannot be built, uses the shared text template");
+        Check(glyphTemplate.Contains("string.Concat(glyph.Select(character => \"&#x\" + ((int)character).ToString(\"X4\") + \";\"))"),
+            "The glyph reaches the template as numeric character references, so its content is never parsed as markup");
+        Check(glyphTemplate.Contains("<Grid ColumnSpacing=\\\"4\\\"") && glyphTemplate.Contains("<ColumnDefinition Width=\\\"Auto\\\" /><ColumnDefinition Width=\\\"*\\\" />")
+            && glyphTemplate.Contains("FontFamily=\\\"{ThemeResource SymbolThemeFontFamily}\\\" FontSize=\\\"12\\\" FontWeight=\\\"Normal\\\"")
+            && glyphTemplate.Contains("AutomationProperties.AccessibilityView=\\\"Raw\\\""),
+            "The glyph keeps the hand-built badge's measures: 12px icon font at normal weight, 4 DIP before the text, hidden from screen readers");
+        Check(glyphTemplate.Contains("Text=\\\"{Binding}\\\" FontFamily=\\\"{ThemeResource ContentControlThemeFontFamily}\\\" TextWrapping=\\\"NoWrap\\\"")
+            && glyphTemplate.Contains("IsTextSelectionEnabled=\\\"True\\\""),
+            "The text beside a glyph follows the user's font, stays on one line and stays selectable, like the text-only template");
+        Check(!glyphTemplate.Contains("Foreground", StringComparison.Ordinal) && !glyphTemplate.Contains("FontIcon", StringComparison.Ordinal),
+            "Glyph and text take the tone's colour from the title presenter: the template names no colour of its own");
+        Check(badgeAdapter.Contains("label.Visibility = string.IsNullOrEmpty(text) && label.Tag is null ? Visibility.Collapsed : Visibility.Visible;"),
+            "A badge with a glyph and no text still shows; one with neither does not");
+        Check(Regex.Matches(badgeAdapter, @"private static readonly [^\n]*").Select(match => match.Value.Trim())
+                .SequenceEqual(new[] { "private static readonly Dictionary<string, DataTemplate?> GlyphTemplates = new(StringComparer.Ordinal);" }),
+            "The adapter's only static state is the template cache, which holds templates, not controls");
+
+        // The library facts the adapter relies on, read from the locked package so an upgrade that changes them
+        // fails here (the runner hands us its theme dictionary: tests/native-ui/run.ps1).
         require(devWinUiTheme is not null && File.Exists(devWinUiTheme), "The locked DevWinUI theme dictionary was not passed to the tests: " + (devWinUiTheme ?? "<null>"));
         if (devWinUiTheme is not null && File.Exists(devWinUiTheme))
         {
+            var library = File.ReadAllText(devWinUiTheme);
+            var presenters = Regex.Matches(library, @"<ContentPresenter\s+x:Name=""(SeverityTitle|LabelTitle)""[^>]*>").Select(match => match.Value).ToArray();
+            Check(presenters.Length == 2 && presenters.All(presenter => presenter.Contains("Content=\"{TemplateBinding Title}\"") && presenter.Contains("ContentTemplate=\"{TemplateBinding TitleTemplate}\"")),
+                "The pinned DevWinUI label shows its Title through TitleTemplate in both title presenters, which is where the glyph template goes");
             // The file concatenates several control dictionaries, each with its own Default/Light/HighContrast
             // blocks, so attribute every definition to the theme block that encloses it instead of counting.
             var themesByKey = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
@@ -250,68 +281,15 @@ internal static class NativeUiCoreTests
                 if (!themesByKey.TryGetValue(name, out var themes)) themesByKey[name] = themes = new(StringComparer.Ordinal);
                 themes.Add(currentTheme);
             }
-            var missing = libraryKeys.Keys
-                .SelectMany(tone => { var keys = NativeUiStyleMath.BadgeLibraryTone(tone)!.Value; return new[] { keys.Background, keys.Border, keys.Foreground }; })
+            var missing = new[] { "Gray", "Blue", "Purple", "Pink" }
+                .SelectMany(tone => new[] { "Background", "Border", "Foreground" }.Select(role => "IssueLabel" + tone + role + "Brush"))
                 .Where(key => !themesByKey.TryGetValue(key, out var themes) || !themes.SetEquals(new[] { "Default", "Light", "HighContrast" }))
-                .Order(StringComparer.Ordinal)
-                .Select(key => key + (themesByKey.TryGetValue(key, out var themes) ? " (only in " + string.Join("/", themes.Order(StringComparer.Ordinal)) + ")" : " (not defined)"))
-                .ToArray();
+                .Order(StringComparer.Ordinal).ToArray();
             Check(missing.Length == 0,
-                "The pinned DevWinUI defines all twelve library tone keys in its dark, light and high-contrast theme dictionaries"
-                + (missing.Length == 0 ? "" : "; an icon badge would silently fall back to the app tint for: " + string.Join(", ", missing)));
+                "The pinned DevWinUI defines the twelve categorical tone keys (grey, blue, purple, pink by fill, ring, text) in its dark, light and high-contrast dictionaries"
+                + (missing.Length == 0 ? "" : "; missing: " + string.Join(", ", missing)));
         }
 
-        // Fallback (executed): a badge is painted from one palette as a whole, never half and half.
-        (string? Box, string? Glyph, string? Label) appPalette = ("app-box", "app-glyph", "app-label");
-        (string? Box, string? Glyph, string? Label) libraryPalette = ("library-box", "library-glyph", "library-label");
-        Check(NativeUiStyleMath.PickBadgePalette(appPalette, libraryPalette) == libraryPalette,
-            "When the library's box, glyph and label styles all resolve, the badge is wholly library-toned");
-        var partial = new (string? Box, string? Glyph, string? Label)[]
-        {
-            (null, "library-glyph", "library-label"), ("library-box", null, "library-label"), ("library-box", "library-glyph", null),
-            (null, null, "library-label"), (null, "library-glyph", null), ("library-box", null, null), (null, null, null), default,
-        };
-        Check(partial.All(candidate => NativeUiStyleMath.PickBadgePalette(appPalette, candidate) == appPalette),
-            "If any one of the library's three styles is missing, the badge keeps the app tint for box, glyph and label together");
-        Check(NativeUiStyleMath.PickBadgePalette<string>(default, libraryPalette) == libraryPalette && NativeUiStyleMath.PickBadgePalette<string>(default, default) == default,
-            "The palette choice depends only on the library styles and returns one whole palette");
-
-        // The WinUI half of the fallback: probe the keys before any style is parsed, then pick one whole palette.
-        var probe = badgeStyling.IndexOf("TryToneBrush(keys.Background) && TryToneBrush(keys.Border) && TryToneBrush(keys.Foreground)", StringComparison.Ordinal);
-        var parse = badgeStyling.IndexOf("(Box: OpenCodeThemedXaml.BrushStyle(\"Border\", (\"Background\", keys.Background), (\"BorderBrush\", keys.Border)),", StringComparison.Ordinal);
-        Check(badgeStyling.Contains("var app = (Box: OpenCodeThemedXaml.BrushStyle(\"Border\", (\"Background\", Background(tone)), (\"BorderBrush\", Foreground(tone))),")
-            && badgeStyling.Contains("Glyph: OpenCodeThemedXaml.BrushStyle(\"FontIcon\", (\"Foreground\", Foreground(tone))),")
-            && badgeStyling.Contains("var library = NativeUiStyleMath.BadgeLibraryTone(tone) is { } keys && TryToneBrush(keys.Background)") && probe >= 0 && parse > probe
-            && badgeStyling.Contains("Glyph: OpenCodeThemedXaml.BrushStyle(\"FontIcon\", (\"Foreground\", keys.Foreground)),") && badgeStyling.Contains(": default;")
-            && badgeStyling.Contains("var (box, glyph, label) = NativeUiStyleMath.PickBadgePalette(app, library);")
-            && badgeStyling.Contains("icon.Style = glyph;") && badgeStyling.Contains("text.Style = label;"),
-            "The icon badge builds the app palette and the library palette whole, probes the library keys before parsing any style, and applies exactly one of them");
-        Check(theme.Contains("try { return Application.Current?.Resources is { } resources && resources.TryGetValue(key, out var value) && value is Brush; }")
-            && theme.Contains("catch { return false; }"),
-            "The library key probe is a TryGetValue with a brush type test and never throws");
-        Check(!theme.Contains("\"IssueLabel", StringComparison.Ordinal) && !renderer.Contains("\"IssueLabel", StringComparison.Ordinal),
-            "The library key names live in one place (NativeUiStyleMath), not as literals scattered through the theme or renderer");
-
-        // ---- C06: text-only badges go through the shared pill adapter; identity and tone mapping are kept ----
-        var badgeCase = Between(renderer, "case \"Badge\":", "case \"Divider\":");
-        Check(badgeCase.Contains("CommunityTextBadge.Create(label, tone, CommunityTextBadgeShape.Pill, label)"),
-            "A text-only badge is created through CommunityTextBadge as a Pill, named by its own text for screen readers");
-        Check(Occurrences(badgeCase, "CommunityTextBadge.Create(") == 1
-            && badgeCase.Contains("CommunityTextBadge.Update(pill, label); CommunityTextBadge.SetTone(pill, tone); CommunityTextBadge.SetAccessibleName(pill, label);"),
-            "A re-render updates the existing pill in place (text, tone, accessible name) instead of building a second one");
-        Check(badgeCase.Contains("var badgeVisual = new Visual(badgeHost);") && Occurrences(badgeCase, "new Visual(") == 1
-            && badgeCase.Contains("Sync(badgeHost, new UIElement[] { pill });") && badgeCase.Contains("Sync(badgeHost, new UIElement[] { badgeBox });"),
-            "One host per structural path carries either badge form, so the element a parent holds never changes across re-render");
-        Check(badgeCase.Contains("var badgeHost = new Grid { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };"),
-            "The badge host stays left-aligned and vertically centred, so a pill never stretches across a card column");
-        Check(badgeCase.Contains("if (icon is null)") && badgeCase.Contains("Sync(badgePanel, new UIElement[] { icon, badgeText });")
-            && badgeCase.Contains("NativeUiTheme.Badge(badgeBox, node);"),
-            "A badge whose icon resolves to a glyph keeps the Border + FontIcon + TextBlock path");
-        // Comments may name the library; code must not (CONTRACT-F §2: no DevWinUI type on the consumer side).
-        var badgeCode = string.Join('\n', badgeCase.Split('\n').Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
-        Check(!badgeCode.Contains(".Foreground", StringComparison.Ordinal) && !badgeCode.Contains("IssueLabel", StringComparison.Ordinal)
-            && !renderer.Contains("using DevWinUI", StringComparison.Ordinal) && !theme.Contains("using DevWinUI", StringComparison.Ordinal),
-            "Native UI never sets a badge Foreground (it would discard the tone) and never names a DevWinUI type");
         var toneMap = Between(theme, "internal static CommunityTextBadgeTone BadgeAdapterTone(string color) => BadgeTone(color) switch", "};");
         Check(toneMap.Contains("\"success\" => CommunityTextBadgeTone.Success") && toneMap.Contains("\"warning\" => CommunityTextBadgeTone.Caution")
             && toneMap.Contains("\"danger\" => CommunityTextBadgeTone.Critical") && toneMap.Contains("\"info\" => CommunityTextBadgeTone.Attention")

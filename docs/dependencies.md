@@ -17,7 +17,7 @@ App notifications, AppInstance and windowing compile against the new packages. C
 
 `DevWinUI` brings `DevWinUI.Base` 10.9.1 and `Microsoft.Graphics.Win2D` 1.4.0. The dependency upgrade itself instantiated no DevWinUI control. Three are in use, each behind an adapter file, and a headless check keeps the vendor namespace out of every other C# file:
 
-- `IssueLabel`, through `Controls/CommunityTextBadge.cs`: badges without an icon in Native UI cards. Badges with an icon are still built by hand and styled to match.
+- `IssueLabel`, through `Controls/CommunityTextBadge.cs`: every badge in Native UI cards, with or without an icon. The label takes its text as a string and its look from a title template; an icon is part of that template, never an element assigned to the label.
 - `ConfettiCannon`, through `Pages/OpenCode/NativeUi/NativeUiCommunityEffects.cs`: the Celebration burst.
 
 - `Shimmer`, through the same effects file: the three bars of the streaming placeholder of a Native UI card, styled by `AppStreamingShimmerStyle` in `App.xaml`. With motion off or in high contrast the bars are plain Borders and no `Shimmer` is built: the control initializes its composition resources even when inactive, and its high-contrast background resource names a colour where a brush is needed.

@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using DevWinUI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Markup;
 
 namespace FluentCode.Controls;
 
@@ -37,7 +40,7 @@ internal enum CommunityTextBadgeShape
 }
 
 /// <summary>
-/// 纯文本徽标适配器（PLAN-v2 §3）：把应用级输入（文本 + 语义色调 + 几何）交给 DevWinUI 的
+/// 文本徽标适配器（PLAN-v2 §3）：把应用级输入（文本 + 语义色调 + 几何 + 可选前置图标字形）交给 DevWinUI 的
 /// <c>IssueLabel</c>，对外只返回普通 WinUI 元素，DevWinUI 类型不出现在调用方的可见面上。
 /// </summary>
 /// <remarks>
@@ -52,6 +55,13 @@ internal enum CommunityTextBadgeShape
 /// 必然失败或显示错误。因此这里只赋值字符串，并由 <c>AppBadgeTitleTemplate</c> 提供文本外观。
 /// </para>
 /// <para>
+/// <b>前置图标（C06）：</b>库模板没有图标位。带图标的徽标仍然只把字符串交给 <c>Title</c>，图标字形写进该徽标的
+/// <c>TitleTemplate</c>（每个字形一份模板，见 <see cref="GlyphTemplate"/>），所以有无图标是同一个控件、同一套
+/// 盒子与配色。字形和文字都从标题呈现器继承前景色，因此同样不需要设置 <c>Foreground</c>。
+/// 来源：https://github.com/ghost1372/DevWinUI，提交 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e，
+/// dev/DevWinUI/Themes/Styles/Controls/IssueLabel.xaml（SeverityTitle / LabelTitle 的 ContentTemplate 绑定）。
+/// </para>
+/// <para>
 /// <b>不要设置 <c>Foreground</c>：</b>设置自定义前景会切换到第二个呈现器分支，从而绕过严重度配色。
 /// 色调只通过 <see cref="CommunityTextBadgeTone"/> 表达。
 /// </para>
@@ -62,6 +72,10 @@ internal static class CommunityTextBadge
     internal const string PillStyleKey = "AppPillTextBadgeStyle";
     internal const string TitleTemplateKey = "AppBadgeTitleTemplate";
 
+    private const string Namespaces = " xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"";
+    // 每个字形一份模板。模板不是控件，也不持有控件；字形来自应用内固定的图标表，所以条目数有上限。
+    private static readonly Dictionary<string, DataTemplate?> GlyphTemplates = new(StringComparer.Ordinal);
+
     /// <summary>构造一个文本徽标；返回普通 <see cref="FrameworkElement"/>（运行时为 IssueLabel）。</summary>
     /// <param name="text">显示文本（纯文本，不接受元素）。</param>
     /// <param name="tone">应用语义色调。</param>
@@ -70,24 +84,51 @@ internal static class CommunityTextBadge
     /// 可访问名称。为 <c>null</c> 时标记 <see cref="AccessibilityView.Raw"/>（周围文本已读出同一信息）；
     /// 传入字符串时设置名称并保留在内容视图中。
     /// </param>
+    /// <param name="glyph">前置图标字形（Segoe Fluent Icons 字符）；<c>null</c> 或空表示没有图标。</param>
     internal static FrameworkElement Create(
         string text,
         CommunityTextBadgeTone tone = CommunityTextBadgeTone.Neutral,
         CommunityTextBadgeShape shape = CommunityTextBadgeShape.Compact,
-        string? accessibleName = null)
+        string? accessibleName = null,
+        string? glyph = null)
     {
         var label = new IssueLabel { Style = Style(shape == CommunityTextBadgeShape.Pill ? PillStyleKey : CompactStyleKey) };
         Apply(label, text, tone, accessibleName);
+        SetGlyph(label, glyph);
         return label;
     }
 
-    /// <summary>更新文本（色调、几何与可访问名称保持不变）。</summary>
+    /// <summary>更新文本（色调、几何、图标与可访问名称保持不变）。没有文字也没有图标的徽标不显示。</summary>
     internal static void Update(FrameworkElement badge, string? text)
     {
         if (badge is IssueLabel label)
         {
             label.Title = text ?? string.Empty;
-            label.Visibility = string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+            label.Visibility = string.IsNullOrEmpty(text) && label.Tag is null ? Visibility.Collapsed : Visibility.Visible;
+        }
+    }
+
+    /// <summary>更新前置图标字形；<c>null</c> 或空表示去掉图标。字形未变时什么都不做。</summary>
+    internal static void SetGlyph(FrameworkElement badge, string? glyph)
+    {
+        if (badge is not IssueLabel label)
+        {
+            return;
+        }
+
+        var next = string.IsNullOrEmpty(glyph) ? null : glyph;
+        if (Equals(label.Tag, next))
+        {
+            return;
+        }
+
+        // 当前字形记在控件自己的 Tag 上：状态跟着控件走，适配器不为它保留任何引用。
+        label.Tag = next;
+        // 字形模板解析失败时退回纯文字模板：徽标少一个图标，但文字和配色不受影响。
+        label.TitleTemplate = (next is null ? null : GlyphTemplate(next)) ?? TryResource(TitleTemplateKey) as DataTemplate;
+        if (next is not null)
+        {
+            label.Visibility = Visibility.Visible;
         }
     }
 
@@ -143,6 +184,41 @@ internal static class CommunityTextBadge
     }
 
     private static Style? Style(string key) => TryResource(key) as Style;
+
+    /// <summary>
+    /// 带前置图标的标题模板：12px 图标 + 4 DIP 间距 + 文字，与此前手绘图标徽标的排布一致。文字一侧与
+    /// <c>AppBadgeTitleTemplate</c> 相同（不换行、可选中）。图标用图标字体的 TextBlock 而不是 FontIcon：
+    /// TextBlock 的前景色一定从标题呈现器继承，色调因此不需要在模板里再写一遍。字形逐字符写成数字实体，
+    /// 传入的内容不会被当作标记解析。
+    /// </summary>
+    private static DataTemplate? GlyphTemplate(string glyph)
+    {
+        if (GlyphTemplates.TryGetValue(glyph, out var cached))
+        {
+            return cached;
+        }
+
+        var entity = string.Concat(glyph.Select(character => "&#x" + ((int)character).ToString("X4") + ";"));
+        DataTemplate? template;
+        try
+        {
+            template = XamlReader.Load(
+                "<DataTemplate" + Namespaces + "><Grid ColumnSpacing=\"4\" VerticalAlignment=\"Center\" HorizontalAlignment=\"Center\">"
+                + "<Grid.ColumnDefinitions><ColumnDefinition Width=\"Auto\" /><ColumnDefinition Width=\"*\" /></Grid.ColumnDefinitions>"
+                + "<TextBlock Text=\"" + entity + "\" FontFamily=\"{ThemeResource SymbolThemeFontFamily}\" FontSize=\"12\" FontWeight=\"Normal\""
+                + " VerticalAlignment=\"Center\" AutomationProperties.AccessibilityView=\"Raw\" />"
+                + "<TextBlock Grid.Column=\"1\" Text=\"{Binding}\" FontFamily=\"{ThemeResource ContentControlThemeFontFamily}\" TextWrapping=\"NoWrap\""
+                + " IsTextSelectionEnabled=\"True\" VerticalAlignment=\"Center\" />"
+                + "</Grid></DataTemplate>") as DataTemplate;
+        }
+        catch
+        {
+            template = null;
+        }
+
+        GlyphTemplates[glyph] = template;
+        return template;
+    }
 
     /// <summary>安全取应用资源：键缺失或资源系统不可用（关闭中）时返回 null，控件回退库默认外观。</summary>
     private static object? TryResource(string key)
