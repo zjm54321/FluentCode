@@ -8,7 +8,6 @@ using FluentCode.Services.NativeUi;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
-using Windows.System;
 
 namespace FluentCode.Pages.OpenCode;
 
@@ -131,13 +130,20 @@ internal sealed partial class NativeUiRenderer
                 iconVisual.Apply = node => { iconButton.Content = NativeUiTheme.Icon(S(node, "icon")); AutomationProperties.SetName(iconButton, S(node, "label") is { Length: > 0 } label ? label : S(node, "icon")); ToolTipService.SetToolTip(iconButton, S(node, "label")); NativeUiTheme.Button(iconButton, node); iconButton.IsEnabled = !_runtime.IsExecuting; }; return iconVisual;
             case "Pressable":
                 var tileContent = new StackPanel { Spacing = NativeUiTheme.Gap(2) };
-                // ContentControl's default template draws no Background/Border, so the tile colour, selection ring and
-                // radius were invisible; this template paints them and stretches the content (Col align centres).
-                var tile = new ContentControl { IsTabStop = true, Content = tileContent, Template = NativeUiTheme.TileTemplate, HorizontalContentAlignment = HorizontalAlignment.Stretch, HorizontalAlignment = HorizontalAlignment.Stretch }; var pressable = new Visual(tile);
-                async void Press() { if (!pressable.Disposed && P(pressable.Model, "action") is NativeUiActionPlan plan) await _runtime.ExecuteAsync(plan); }
-                tile.Tapped += (_, args) => { if (args.OriginalSource is DependencyObject source) { for (var parent = source; parent is not null && !ReferenceEquals(parent, tile); parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(parent)) if (parent is Button or TextBox or CheckBox or ComboBox or Slider or RadioButton or Segmented) return; } Press(); args.Handled = true; };
-                tile.KeyDown += (_, args) => { if (ReferenceEquals(args.OriginalSource, tile) && args.Key is VirtualKey.Enter or VirtualKey.Space) { Press(); args.Handled = true; } };
-                pressable.Apply = node => { Slot(tileContent, P(node, "children"), key + "/children", depth); tile.Padding = new(NativeUiTheme.Gap(P(node, "padding"), 3)); tile.Background = ComponentBrush(S(node, "background") is { Length: > 0 } background ? background : "surface", true); tile.RequestedTheme = NativeUiTheme.ContrastTheme(S(node, "background")); tile.BorderThickness = new(B(node, "selected") ? 2 : 1); tile.BorderBrush = ComponentBrush(B(node, "selected") ? "info" : "faint"); tile.CornerRadius = NativeUiComponentTheme.Radius(P(node, "radius")); tile.IsEnabled = !_runtime.IsExecuting; }; return pressable;
+                // A stock Button, neutral at rest (NativeUiPressableButton): hover, pressed, focus and Narrator come from the platform.
+                var tile = new NativeUiPressableButton { Content = tileContent }; var pressable = new Visual(tile);
+                // Pointer, Space, Enter and a screen reader's Invoke all arrive as Click. While the card runs an action the press is
+                // refused here; the tile is not disabled for that, because disabling the focused control moves keyboard focus away.
+                tile.Click += async (_, _) => { if (NativeUiPressable.Accepts(pressable.Disposed, _runtime.IsExecuting) && P(pressable.Model, "action") is NativeUiActionPlan plan) await _runtime.ExecuteAsync(plan); };
+                pressable.Apply = node =>
+                {
+                    Slot(tileContent, P(node, "children"), key + "/children", depth); tile.Quiet();
+                    tile.Padding = new(NativeUiTheme.Gap(P(node, "padding"), 3)); tile.RequestedTheme = NativeUiTheme.ContrastTheme(S(node, "background"));
+                    tile.BorderThickness = new(B(node, "selected") ? 2 : 1); tile.CornerRadius = NativeUiComponentTheme.Radius(P(node, "radius"));
+                    tile.Paint(ComponentBrush(S(node, "background") is { Length: > 0 } background ? background : "surface", true), ComponentBrush(B(node, "selected") ? "info" : "faint"), _root.ActualTheme, ContrastScheme(), _runtime.IsExecuting);
+                    // The tile had no name before (the control it was has no automation peer); a Button is read out, so it is named by its own text.
+                    AutomationProperties.SetName(tile, NativeUiPressable.Name(node, text => string.Concat(NativeUiStyleMath.Inline(text).Select(span => span.Text))));
+                }; return pressable;
             case "Timer":
                 var timerPanel = new StackPanel { Spacing = NativeUiTheme.Gap(2) }; var timerRead = NativeUiComponentTheme.Text(""); var timerButtons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = NativeUiTheme.Gap(2) }; var toggle = new Button { Content = "开始" }; var reset = new Button { Content = "重置" };
                 timerButtons.Children.Add(toggle); timerButtons.Children.Add(reset); timerPanel.Children.Add(timerRead); timerPanel.Children.Add(timerButtons); var timerVisual = new Visual(timerPanel);

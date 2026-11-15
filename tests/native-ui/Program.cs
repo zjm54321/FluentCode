@@ -273,7 +273,7 @@ internal static class Program
                 && NativeUiStyleMath.Inline("2 * 3 * 4").Count == 1, "Text renders OIU inline Markdown instead of literal ** markers");
             Require(NativeUiStyleMath.FitRadius(1000, 300, 6) == 3 && NativeUiStyleMath.FitRadius(8, 300, 40) == 8 && NativeUiStyleMath.FitRadius(1000, 0, 0) == 1000, "A full radius on a thin bar becomes a pill, not a distorted outline");
             var tileSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Controls.cs"));
-            Require(tileSource.Contains("Template = NativeUiTheme.TileTemplate") && themeSource.Contains("Background=\\\"{TemplateBinding Background}\\\"")
+            Require(tileSource.Contains("new NativeUiPressableButton { Content = tileContent }") && themeSource.Contains("Background=\\\"{TemplateBinding Background}\\\"")
                 && !themeSource.Contains("foreach (var button in panel.Children.OfType<Button>()) button.HorizontalAlignment = HorizontalAlignment.Stretch;")
                 && themeSource.Contains("node.TypeName == \"IconButton\" ? \"outline\" : \"solid\""), "Pressable paints its tile; Row buttons keep natural width unless block; IconButton defaults to outline");
             var flexSource = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiFlexPanel.cs"));
