@@ -124,7 +124,7 @@ public partial class App
     private void BeginWindowShutdown(MainWindow window)
     {
         if (!_backgroundLifetime.TryBeginShutdown()) return;
-        _tabsSaved = window.SaveOpenCodeTabsAsync(); // Before the connection is revoked and the page lets go of its tabs.
+        _tabsSaved = window.SaveOpenCodeTabsAsync(final: true); // Before the connection is revoked and the page lets go of its tabs.
         _closing = true;
         ShutdownBackgroundMode();
         _navigationReady = false;

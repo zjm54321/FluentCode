@@ -422,6 +422,10 @@ public static class OpenCodeTabRestoreRules
     /// <summary>Only a definite answer removes a saved tab.</summary>
     public static bool ShouldDrop(OpenCodeSavedSessionLookup lookup) => lookup == OpenCodeSavedSessionLookup.Gone;
 
+    /// <summary>"Gone" is believed only from a connection that has already returned a session list.</summary>
+    public static OpenCodeSavedSessionLookup Weigh(OpenCodeSavedSessionLookup answer, bool listAccepted)
+        => answer == OpenCodeSavedSessionLookup.Gone && !listAccepted ? OpenCodeSavedSessionLookup.Unavailable : answer;
+
     /// <summary>The saved selection is applied only into an untouched start: still on Home, the user has not chosen a
     /// tab, is not typing in another field, holds no read-only draft, and no notification is waiting to open a session.</summary>
     public static bool MayApplySelection(bool homeShown, bool userChoseTab, bool typingElsewhere, bool draftHeld, bool notificationWaiting)
@@ -441,22 +445,31 @@ public sealed class OpenCodeTabRestoreTracker(OpenCodeSavedTabsStore store)
 {
     private readonly HashSet<string> _restored = new(StringComparer.Ordinal);
     private readonly HashSet<string> _unverified = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _failed = new(StringComparer.Ordinal);
     private bool _selectionOffered;
+    private bool _listAccepted;
+    private bool _sealed;
 
     /// <summary>Identity whose tabs the strip currently stands for; it stays while the connection is away.</summary>
     public string? Identity { get; private set; }
-    public bool MayWrite => Identity is not null && _restored.Contains(Identity) && store.CanWrite;
+    /// <summary>True once the saved tabs of the current identity are all in the strip (<see cref="Complete"/>), unless
+    /// creating them failed in this run or the shutdown save has been taken.</summary>
+    public bool MayWrite => !_sealed && Identity is not null && _restored.Contains(Identity) && !_failed.Contains(Identity) && store.CanWrite;
+    /// <summary>The current connection has returned a session list, so it is the server and its 404 means "deleted".</summary>
+    public bool ListAccepted => _listAccepted;
 
     /// <summary>A source for <paramref name="identity"/> arrived. Null while the file has not been read yet (call again
     /// after <see cref="OpenCodeSavedTabsStore.LoadAsync"/>). Otherwise the saved tabs missing from the strip:
     /// sessions by id, Settings when it is not open, and blank tabs beyond the number this identity already has
-    /// there (blank tabs have nothing else to tell them apart). The saved selection is offered once per run.</summary>
+    /// there (blank tabs have nothing else to tell them apart). The saved selection is offered once per run.
+    /// Nothing may be written until the caller has created these tabs and said so with <see cref="Complete"/>.
+    /// Every call stands for a new connection, which has not shown yet that it is the server.</summary>
     public OpenCodeTabRestorePlan? Begin(string identity, IEnumerable<string> sessionsInStrip, int blanksInStrip, bool settingsInStrip)
     {
         if (!store.IsLoaded || !OpenCodeSavedTabSet.ValidId(identity)) return null;
         if (Identity != identity) _unverified.Clear(); // Session ids of another server mean nothing here.
         Identity = identity;
-        _restored.Add(identity);
+        _listAccepted = false;
         var saved = store.Get(identity);
         var present = new HashSet<string>(sessionsInStrip, StringComparer.Ordinal);
         var tabs = new List<OpenCodeSavedTab>();
@@ -478,6 +491,23 @@ public sealed class OpenCodeTabRestoreTracker(OpenCodeSavedTabsStore store)
         return new(tabs, selected);
     }
 
+    /// <summary>Every tab of the last plan is in the strip: from now on the strip is what gets saved.</summary>
+    public void Complete()
+    {
+        if (Identity is not null) _restored.Add(Identity);
+    }
+
+    /// <summary>Creating the planned tabs failed. The strip is incomplete, so for the rest of the run nothing is
+    /// written for this identity and its saved list stays as it is.</summary>
+    public void Fail()
+    {
+        if (Identity is not null) _failed.Add(Identity);
+    }
+
+    /// <summary>The save taken when the application shuts down is the last one: whatever teardown does to the strip
+    /// afterwards is not published.</summary>
+    public void Seal() => _sealed = true;
+
     /// <summary>A source for another identity is about to take over the strip. Call after the last
     /// <see cref="Publish"/> for the old one: nothing is written again until <see cref="Begin"/> for the new one.</summary>
     public void Leave(string nextIdentity)
@@ -494,16 +524,24 @@ public sealed class OpenCodeTabRestoreTracker(OpenCodeSavedTabsStore store)
     /// the most recent page, so absence proves nothing).</summary>
     public IReadOnlyList<string> AcceptCatalog(IEnumerable<string> listedSessionIds)
     {
+        _listAccepted = true;
         foreach (var id in listedSessionIds) _unverified.Remove(id);
         return _unverified.ToArray();
     }
 
     public bool IsUnverified(string sessionId) => _unverified.Contains(sessionId);
 
+    /// <summary>What an answer is worth on the current connection. "Gone" (a 404) counts only after this connection has
+    /// returned a session list; before that it may come from a proxy or another service on that port, so it is no
+    /// answer and the session is asked for again when the list arrives.</summary>
+    public OpenCodeSavedSessionLookup Weigh(OpenCodeSavedSessionLookup answer)
+        => OpenCodeTabRestoreRules.Weigh(answer, _listAccepted);
+
     /// <summary>Record the answer for one restored session. True means: close its tab. No answer keeps the tab and
     /// leaves the session to be asked for again.</summary>
     public bool Resolve(string sessionId, OpenCodeSavedSessionLookup lookup)
     {
+        lookup = Weigh(lookup);
         if (lookup != OpenCodeSavedSessionLookup.Unavailable) _unverified.Remove(sessionId);
         return OpenCodeTabRestoreRules.ShouldDrop(lookup);
     }

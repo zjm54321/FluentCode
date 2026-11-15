@@ -392,7 +392,7 @@ public sealed partial class OpenCodePage : Page
     public void ShutdownPage()
     {
         if (_pageReleased) return;
-        PublishTabsNow(); // Last look at the strip while it is intact; the store writes it off-thread.
+        PublishTabsNow(); // Last look at the strip while it is intact (ignored after the shutdown save); written off-thread.
         _ = OpenCodeSavedTabsStore.Shared.FlushAsync();
         // Force pause even when Window.Closed precedes the native Unloaded notification.
         _pageReleased = true;

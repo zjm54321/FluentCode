@@ -39,6 +39,9 @@ internal static class Program
             LeftoversAndBounds();
             SavesAreCoalescedAndAtomic();
             OnlyTabFactsAreStored();
+            FailedRestoreKeepsTheFile();
+            NotFoundCountsOnlyAfterAList();
+            NothingPublishedAfterShutdownSave();
             ByIdRowsAreNotLoadedDepth();
             PageContracts();
         }
@@ -46,7 +49,7 @@ internal static class Program
         {
             try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
         }
-        Console.WriteLine($"PASS: 16 saved-tab scenario groups, {_assertions} assertions; production format/store/rules, offline only.");
+        Console.WriteLine($"PASS: 19 saved-tab scenario groups, {_assertions} assertions; production format/store/rules, offline only.");
     }
 
     private static void Check(bool condition, string label)
@@ -81,6 +84,14 @@ internal static class Program
         => new(OpenCodeTabStripKind.Blank, Directory: directory, Identity: identity, Live: live, Selected: selected);
     private static OpenCodeTabStripItem Settings(bool selected = false) => new(OpenCodeTabStripKind.Settings, Selected: selected);
 
+    /// <summary>What the page does when a source arrives and creating the planned tabs succeeds.</summary>
+    private static OpenCodeTabRestorePlan? Begin(OpenCodeTabRestoreTracker tracker, string identity, IEnumerable<string> sessionsInStrip, int blanksInStrip, bool settingsInStrip)
+    {
+        var plan = tracker.Begin(identity, sessionsInStrip, blanksInStrip, settingsInStrip);
+        if (plan is not null) tracker.Complete();
+        return plan;
+    }
+
     private static bool Publish(OpenCodeTabRestoreTracker tracker, params OpenCodeTabStripItem[] strip)
         => tracker.Publish(identity => OpenCodeTabRestoreRules.Snapshot(strip, identity));
 
@@ -97,7 +108,7 @@ internal static class Program
         var path = NewPath();
         var store = Open(path);
         var tracker = new OpenCodeTabRestoreTracker(store);
-        Check(tracker.Begin(A, Array.Empty<string>(), 0, false) is { Tabs.Count: 0, Selected: null }, "seed.first-start-has-nothing-to-restore");
+        Check(Begin(tracker, A, Array.Empty<string>(), 0, false) is { Tabs.Count: 0, Selected: null }, "seed.first-start-has-nothing-to-restore");
         Check(Publish(tracker, Home(), Session("s1", "One"), Blank("/work/app"), Session("s2", "Two", selected: true)), "seed.published");
         Flush(store);
         return path;
@@ -109,7 +120,7 @@ internal static class Program
         var store = Open(path);
         Check(store.State == OpenCodeSavedTabsFileState.Missing && store.CanWrite && store.Get(A).Tabs.Count == 0, "roundtrip.missing-file-is-an-empty-start");
         var tracker = new OpenCodeTabRestoreTracker(store);
-        Check(tracker.Begin(A, Array.Empty<string>(), 0, false) is { Tabs.Count: 0 }, "roundtrip.begin-empty");
+        Check(Begin(tracker, A, Array.Empty<string>(), 0, false) is { Tabs.Count: 0 }, "roundtrip.begin-empty");
         Check(Publish(tracker, Home(), Session("s2", "Two"), Blank("/work/app"), Settings(selected: true), Session("s1", "One"), Blank(null)),
             "roundtrip.publish-accepted");
         Flush(store);
@@ -153,7 +164,7 @@ internal static class Program
             var store = Open(path);
             Check(store.State == OpenCodeSavedTabsFileState.Corrupt && store.Get(A).Tabs.Count == 0, "corrupt." + label + ".starts-empty");
             var tracker = new OpenCodeTabRestoreTracker(store);
-            Check(tracker.Begin(A, Array.Empty<string>(), 0, false) is { Tabs.Count: 0, Selected: null }, "corrupt." + label + ".plan-empty");
+            Check(Begin(tracker, A, Array.Empty<string>(), 0, false) is { Tabs.Count: 0, Selected: null }, "corrupt." + label + ".plan-empty");
             Check(Publish(tracker, Home(), Session("s1", "One")), "corrupt." + label + ".next-save-accepted");
             Flush(store);
             Check(Kinds(Open(path).Get(A).Tabs) == "s:s1", "corrupt." + label + ".replaced-by-valid-file");
@@ -168,7 +179,7 @@ internal static class Program
         var newer = Open(newerPath);
         Check(newer.State == OpenCodeSavedTabsFileState.Newer && !newer.CanWrite && newer.Get(A).Tabs.Count == 0, "newer.starts-empty-and-read-only");
         var newerTracker = new OpenCodeTabRestoreTracker(newer);
-        Check(newerTracker.Begin(A, Array.Empty<string>(), 0, false) is { Tabs.Count: 0 } && !newerTracker.MayWrite, "newer.restore-gives-nothing-and-no-write-right");
+        Check(Begin(newerTracker, A, Array.Empty<string>(), 0, false) is { Tabs.Count: 0 } && !newerTracker.MayWrite, "newer.restore-gives-nothing-and-no-write-right");
         Check(!Publish(newerTracker, Home(), Session("s1")) && !newer.Set(A, OpenCodeSavedTabSet.Create(new[] { new OpenCodeSavedTab(OpenCodeSavedTabKind.Settings) }, 0)),
             "newer.saves-refused");
         Flush(newer);
@@ -194,7 +205,7 @@ internal static class Program
         // The file has not been read yet: no plan, and the empty strip must not be saved.
         var unread = new OpenCodeSavedTabsStore(path, TimeSpan.Zero);
         var early = new OpenCodeTabRestoreTracker(unread);
-        Check(early.Begin(A, Array.Empty<string>(), 0, false) is null && !early.MayWrite, "gate.no-plan-before-the-file-is-read");
+        Check(Begin(early, A, Array.Empty<string>(), 0, false) is null && !early.MayWrite, "gate.no-plan-before-the-file-is-read");
         Check(!Publish(early, Home()) && !unread.Set(A, OpenCodeSavedTabSet.Empty), "gate.empty-strip-not-saved-before-read");
         Flush(unread);
         Check(File.ReadAllBytes(path).SequenceEqual(before), "gate.file-untouched-before-read");
@@ -205,7 +216,7 @@ internal static class Program
         Check(!tracker.MayWrite && !Publish(tracker, Home()) && !Publish(tracker, Home(), Session("other")), "gate.no-save-without-restore");
         Flush(store);
         Check(File.ReadAllBytes(path).SequenceEqual(before), "gate.file-untouched-without-connection");
-        Check(tracker.Begin("  ", Array.Empty<string>(), 0, false) is null && !tracker.MayWrite, "gate.invalid-identity-restores-nothing");
+        Check(Begin(tracker, "  ", Array.Empty<string>(), 0, false) is null && !tracker.MayWrite, "gate.invalid-identity-restores-nothing");
     }
 
     private static void UnreachableThenExitKeepsFile()
@@ -214,7 +225,7 @@ internal static class Program
         var before = File.ReadAllBytes(path);
         var store = Open(path);
         var tracker = new OpenCodeTabRestoreTracker(store);
-        var plan = tracker.Begin(A, Array.Empty<string>(), 0, false)!;
+        var plan = Begin(tracker, A, Array.Empty<string>(), 0, false)!;
         Check(Kinds(plan.Tabs) == "s:s1,b:/work/app,s:s2" && plan.Selected?.SessionId == "s2", "down-exit.tabs-shown-from-the-file");
         // The server never answers: no session is confirmed and nothing is dropped.
         Check(!tracker.Resolve("s2", OpenCodeSavedSessionLookup.Unavailable) && tracker.IsUnverified("s1") && tracker.IsUnverified("s2"), "down-exit.no-answer-drops-nothing");
@@ -230,20 +241,20 @@ internal static class Program
         var path = Seed();
         var store = Open(path);
         var tracker = new OpenCodeTabRestoreTracker(store);
-        var plan = tracker.Begin(A, Array.Empty<string>(), 0, false)!;
+        var plan = Begin(tracker, A, Array.Empty<string>(), 0, false)!;
         Check(plan.Tabs.Count == 3 && plan.Selected is not null, "reconnect.first-arrival-restores");
         Check(!tracker.Resolve("s2", OpenCodeSavedSessionLookup.Unavailable), "reconnect.unreachable-keeps-tab");
 
         // A new connection object for the same server (recovery): the unopened tabs are still in the strip.
-        var again = tracker.Begin(A, new[] { "s1", "s2" }, 1, false)!;
+        var again = Begin(tracker, A, new[] { "s1", "s2" }, 1, false)!;
         Check(again.Tabs.Count == 0 && again.Selected is null, "reconnect.same-server-creates-no-duplicates");
         Check(tracker.MayWrite && tracker.IsUnverified("s1") && tracker.IsUnverified("s2"), "reconnect.sessions-still-to-confirm");
 
         // If the strip lost some meanwhile, exactly the missing ones come back, and the selection is not offered again.
-        var refill = tracker.Begin(A, new[] { "s1" }, 1, false)!;
+        var refill = Begin(tracker, A, new[] { "s1" }, 1, false)!;
         Check(Kinds(refill.Tabs) == "s:s2" && refill.Selected is null, "reconnect.missing-session-recreated-once-selection-not-reoffered");
-        Check(Kinds(tracker.Begin(A, new[] { "s1", "s2" }, 0, false)!.Tabs) == "b:/work/app", "reconnect.missing-blank-recreated-once");
-        Check(tracker.Begin(A, new[] { "s1", "s2" }, 5, false)!.Tabs.Count == 0, "reconnect.extra-blanks-create-nothing");
+        Check(Kinds(Begin(tracker, A, new[] { "s1", "s2" }, 0, false)!.Tabs) == "b:/work/app", "reconnect.missing-blank-recreated-once");
+        Check(Begin(tracker, A, new[] { "s1", "s2" }, 5, false)!.Tabs.Count == 0, "reconnect.extra-blanks-create-nothing");
 
         // The server is back: the list confirms s1, s2 is asked for by id and found.
         var ask = tracker.AcceptCatalog(new[] { "s1", "zzz" });
@@ -258,7 +269,7 @@ internal static class Program
         var path = Seed();
         var store = Open(path);
         var tracker = new OpenCodeTabRestoreTracker(store);
-        tracker.Begin(A, Array.Empty<string>(), 0, false);
+        Begin(tracker, A, Array.Empty<string>(), 0, false);
         Check(tracker.AcceptCatalog(new[] { "s1" }).SequenceEqual(new[] { "s2" }), "deleted.asked-by-id");
         Check(tracker.Resolve("s2", OpenCodeSavedSessionLookup.Gone) && !tracker.IsUnverified("s2"), "deleted.definite-answer-closes-tab");
         Check(OpenCodeTabRestoreRules.ShouldDrop(OpenCodeSavedSessionLookup.Gone) && !OpenCodeTabRestoreRules.ShouldDrop(OpenCodeSavedSessionLookup.Found)
@@ -276,12 +287,12 @@ internal static class Program
         var path = NewPath();
         var seed = Open(path);
         var first = new OpenCodeTabRestoreTracker(seed);
-        first.Begin(A, Array.Empty<string>(), 0, false);
+        Begin(first, A, Array.Empty<string>(), 0, false);
         Publish(first, Home(), Session("old-1", "Old one"), Session("old-2", "Old two"), Session("new-1", "New"));
         Flush(seed);
 
         var tracker = new OpenCodeTabRestoreTracker(Open(path));
-        tracker.Begin(A, Array.Empty<string>(), 0, false);
+        Begin(tracker, A, Array.Empty<string>(), 0, false);
         // The list is one page of recent sessions; two saved sessions are older than that page.
         var ask = tracker.AcceptCatalog(Enumerable.Range(0, 50).Select(index => "recent-" + index).Append("new-1"));
         Check(ask.OrderBy(id => id, StringComparer.Ordinal).SequenceEqual(new[] { "old-1", "old-2" }), "outside.absent-from-list-is-not-deleted");
@@ -297,7 +308,7 @@ internal static class Program
     {
         var path = Seed();
         var tracker = new OpenCodeTabRestoreTracker(Open(path));
-        var plan = tracker.Begin(A, Array.Empty<string>(), 0, false)!;
+        var plan = Begin(tracker, A, Array.Empty<string>(), 0, false)!;
         Check(Kinds(plan.Tabs) == "s:s1,b:/work/app,s:s2", "notification.other-tabs-still-restored");
         Check(OpenCodeTabRestoreRules.MayApplySelection(homeShown: true, userChoseTab: false, typingElsewhere: false, draftHeld: false, notificationWaiting: false),
             "notification.untouched-start-applies-selection");
@@ -313,7 +324,7 @@ internal static class Program
         var path = Seed();
         var store = Open(path);
         var tracker = new OpenCodeTabRestoreTracker(store);
-        Check(tracker.Begin(B, Array.Empty<string>(), 0, false) is { Tabs.Count: 0, Selected: null }, "identities.other-server-starts-empty");
+        Check(Begin(tracker, B, Array.Empty<string>(), 0, false) is { Tabs.Count: 0, Selected: null }, "identities.other-server-starts-empty");
         Check(Publish(tracker, Home(), Session("b1", "On B", identity: B, selected: true)), "identities.b-published");
         Flush(store);
         var reread = Open(path);
@@ -322,12 +333,12 @@ internal static class Program
 
         // Changing server in one run: A's tabs were restored, B arrives.
         var run = new OpenCodeTabRestoreTracker(reread);
-        Check(run.Begin(A, Array.Empty<string>(), 0, false)!.Tabs.Count == 3 && run.Identity == A, "identities.run-starts-on-a");
+        Check(Begin(run, A, Array.Empty<string>(), 0, false)!.Tabs.Count == 3 && run.Identity == A, "identities.run-starts-on-a");
         run.Leave(A);
         Check(run.Identity == A && run.MayWrite, "identities.same-server-is-not-a-leave");
         run.Leave(B);
         Check(run.Identity is null && !run.MayWrite && !Publish(run, Home()), "identities.nothing-written-between-servers");
-        var planB = run.Begin(B, Array.Empty<string>(), 0, false)!;
+        var planB = Begin(run, B, Array.Empty<string>(), 0, false)!;
         Check(Kinds(planB.Tabs) == "s:b1" && planB.Selected is null && run.Identity == B, "identities.b-restored-without-moving-selection");
         // The strip now holds a read-only leftover of A (opened earlier) and B's tab. Saving for B must not take A's tab,
         // and must not touch A's list.
@@ -340,7 +351,7 @@ internal static class Program
 
         // Back on A in the same run: what is missing from the strip returns; the leftover is not doubled.
         run.Leave(A);
-        var back = run.Begin(A, new[] { "s1" }, 0, false)!;
+        var back = Begin(run, A, new[] { "s1" }, 0, false)!;
         Check(Kinds(back.Tabs) == "b:/work/app,s:s2" && back.Selected is null, "identities.back-on-a-refills-what-is-missing");
 
         // Many servers: the oldest list leaves first, the newest stay.
@@ -371,10 +382,10 @@ internal static class Program
         var store = Open(Write("{\"version\":1,\"sources\":{\"" + A + "\":{\"tabs\":[{\"kind\":\"settings\"},{\"kind\":\"session\",\"id\":\"s1\"},{\"kind\":\"settings\",\"selected\":true}]}}}"));
         Check(Kinds(store.Get(A).Tabs) == "settings,s:s1", "settings.one-from-file");
         var tracker = new OpenCodeTabRestoreTracker(store);
-        var open = tracker.Begin(A, Array.Empty<string>(), 0, settingsInStrip: true)!;
+        var open = Begin(tracker, A, Array.Empty<string>(), 0, settingsInStrip: true)!;
         Check(Kinds(open.Tabs) == "s:s1", "settings.already-open-not-created-again");
         var fresh = new OpenCodeTabRestoreTracker(Open(Write("{\"version\":1,\"sources\":{\"" + A + "\":{\"tabs\":[{\"kind\":\"settings\",\"selected\":true}]}}}")));
-        var plan = fresh.Begin(A, Array.Empty<string>(), 0, false)!;
+        var plan = Begin(fresh, A, Array.Empty<string>(), 0, false)!;
         Check(Kinds(plan.Tabs) == "settings" && plan.Selected?.Kind == OpenCodeSavedTabKind.Settings, "settings.restored-and-selected");
         // Settings is not a server's tab, but it is stored with the list of the server in use, whoever opened it.
         Check(Kinds(OpenCodeTabRestoreRules.Snapshot(new[] { Home(), Settings(selected: true) }, B).Tabs) == "settings", "settings.stored-for-current-server");
@@ -407,7 +418,7 @@ internal static class Program
         var path = NewPath();
         var store = Open(path, Never);
         var tracker = new OpenCodeTabRestoreTracker(store);
-        tracker.Begin(A, Array.Empty<string>(), 0, false);
+        Begin(tracker, A, Array.Empty<string>(), 0, false);
         Check(Publish(tracker, Home(), Session("s1")) && Publish(tracker, Home(), Session("s1"), Session("s2")) && Publish(tracker, Home(), Session("s2")), "save.changes-accepted");
         Check(!Publish(tracker, Home(), Session("s2")), "save.no-change-no-save");
         Check(!File.Exists(path), "save.delayed-not-per-change");
@@ -449,6 +460,88 @@ internal static class Program
         Check(names.Count > 0 && names.All(allowed.Contains), "content.only-known-fields");
         Check(typeof(OpenCodeSavedTab).GetProperties().Select(property => property.Name).OrderBy(name => name, StringComparer.Ordinal)
             .SequenceEqual(new[] { "Directory", "Kind", "SessionId", "Title" }), "content.saved-tab-has-no-draft-or-credential-field");
+    }
+
+    private static void FailedRestoreKeepsTheFile()
+    {
+        var path = Seed();
+        var before = File.ReadAllBytes(path);
+        var store = Open(path);
+        var tracker = new OpenCodeTabRestoreTracker(store);
+        var plan = tracker.Begin(A, Array.Empty<string>(), 0, false)!;
+        // The plan is handed out but its tabs are not in the strip yet: nothing may be written.
+        Check(plan.Tabs.Count == 3 && !tracker.MayWrite && !Publish(tracker, Home(), Session("s1", "One")), "failed.no-save-while-tabs-are-being-created");
+        tracker.Fail(); // Creating the second tab threw.
+        Check(!tracker.MayWrite && !Publish(tracker, Home(), Session("s1", "One")), "failed.partial-strip-not-saved");
+        tracker.Complete();
+        Check(!tracker.MayWrite, "failed.stays-shut-even-if-completed-later");
+        // A reconnect in the same run restores what is missing, and still writes nothing.
+        var again = tracker.Begin(A, new[] { "s1" }, 0, false)!;
+        tracker.Complete();
+        Check(Kinds(again.Tabs) == "b:/work/app,s:s2" && !tracker.MayWrite
+            && !Publish(tracker, Home(), Session("s1", "One"), Blank("/work/app"), Session("s2", "Two"), Session("extra")), "failed.shut-for-the-rest-of-the-run");
+        Flush(store);
+        Check(File.ReadAllBytes(path).SequenceEqual(before), "failed.file-byte-identical");
+        // Another server is not affected, and coming back does not reopen the failed one.
+        tracker.Leave(B);
+        Begin(tracker, B, Array.Empty<string>(), 0, false);
+        Check(tracker.MayWrite && Publish(tracker, Home(), Session("b1", identity: B)), "failed.other-identity-still-saves");
+        tracker.Leave(A);
+        Begin(tracker, A, new[] { "s1", "s2" }, 1, false);
+        Check(!tracker.MayWrite, "failed.not-reopened-by-switching-back");
+        Flush(store);
+        var reread = Open(path);
+        Check(Kinds(reread.Get(A).Tabs) == "s:s1,b:/work/app,s:s2" && Kinds(reread.Get(B).Tabs) == "s:b1", "failed.saved-list-as-it-was");
+    }
+
+    private static void NotFoundCountsOnlyAfterAList()
+    {
+        var gone = OpenCodeSavedSessionLookup.Gone;
+        var none = OpenCodeSavedSessionLookup.Unavailable;
+        Check(OpenCodeTabRestoreRules.Weigh(gone, listAccepted: false) == none && OpenCodeTabRestoreRules.Weigh(gone, listAccepted: true) == gone
+            && OpenCodeTabRestoreRules.Weigh(OpenCodeSavedSessionLookup.Found, listAccepted: false) == OpenCodeSavedSessionLookup.Found
+            && OpenCodeTabRestoreRules.Weigh(none, listAccepted: true) == none, "unproven.rule");
+
+        var path = Seed();
+        var store = Open(path);
+        var tracker = new OpenCodeTabRestoreTracker(store);
+        Begin(tracker, A, Array.Empty<string>(), 0, false);
+        // Something on that port answers 404 before any session list came back: not a deletion.
+        Check(!tracker.ListAccepted && tracker.Weigh(gone) == none, "unproven.404-before-a-list-is-no-answer");
+        Check(!tracker.Resolve("s2", gone) && tracker.IsUnverified("s2"), "unproven.tab-stays-and-is-asked-again");
+        Check(!tracker.Resolve("s1", OpenCodeSavedSessionLookup.Found) && !tracker.IsUnverified("s1"), "unproven.found-is-believed-at-once");
+        // The list arrives: the session is asked for again, and now a 404 means gone.
+        Check(tracker.AcceptCatalog(Array.Empty<string>()).SequenceEqual(new[] { "s2" }) && tracker.ListAccepted, "unproven.asked-again-when-the-list-arrives");
+        Check(tracker.Weigh(gone) == gone, "unproven.404-after-a-list-means-gone");
+        // A new connection for the same server has to show a list again first.
+        Begin(tracker, A, new[] { "s1", "s2" }, 1, false);
+        Check(!tracker.ListAccepted && !tracker.Resolve("s2", gone) && tracker.IsUnverified("s2"), "unproven.new-connection-starts-unproven");
+        tracker.AcceptCatalog(new[] { "s1" });
+        Check(tracker.Resolve("s2", gone) && !tracker.IsUnverified("s2"), "unproven.proven-again-then-dropped");
+        Flush(store);
+        Check(Kinds(Open(path).Get(A).Tabs) == "s:s1,b:/work/app,s:s2", "unproven.file-untouched-by-answers-alone");
+    }
+
+    private static void NothingPublishedAfterShutdownSave()
+    {
+        var path = Seed();
+        var store = Open(path);
+        var tracker = new OpenCodeTabRestoreTracker(store);
+        Begin(tracker, A, Array.Empty<string>(), 0, false);
+        // Hiding to the tray saves and does not seal: later changes are still saved.
+        Check(Publish(tracker, Home(), Session("s1", "One"), Session("s2", "Two", selected: true)), "sealed.tray-save-published");
+        Check(Publish(tracker, Home(), Session("s2", "Two"), Session("s1", "One", selected: true)), "sealed.changes-after-tray-save-still-saved");
+        // Shutdown: one last publish, then the seal.
+        Check(Publish(tracker, Home(), Session("s2", "Two"), Session("s1", "One"), Settings(selected: true)), "sealed.shutdown-save-published");
+        tracker.Seal();
+        // Teardown empties the strip and moves the selection; none of it reaches the file.
+        Check(!tracker.MayWrite && !Publish(tracker, Home() with { Selected = true }) && !Publish(tracker, Home(), Session("s2", "Two", selected: true)),
+            "sealed.teardown-publishes-ignored");
+        Begin(tracker, A, Array.Empty<string>(), 0, false);
+        Check(!tracker.MayWrite && !Publish(tracker, Home()), "sealed.stays-sealed");
+        Flush(store);
+        var after = Open(path).Get(A);
+        Check(Kinds(after.Tabs) == "s:s2,s:s1,settings" && after.Selected == 2, "sealed.file-holds-the-shutdown-state");
     }
 
     private static void ByIdRowsAreNotLoadedDepth()
@@ -520,7 +613,8 @@ internal static class Program
         Check(restore.Contains("if (lookup == OpenCodeSavedSessionLookup.Unavailable) break;", StringComparison.Ordinal)
             && restore.Contains("catch (OpenCodeApiException error) when (error.StatusCode == 404)", StringComparison.Ordinal)
             && restore.Contains("catch (OpenCodeException)", StringComparison.Ordinal)
-            && restore.Contains("return Current() ? OpenCodeSavedSessionLookup.Gone : OpenCodeSavedSessionLookup.Unavailable;", StringComparison.Ordinal)
+            && restore.Contains("return Current() ? _tabRestore.Weigh(OpenCodeSavedSessionLookup.Gone) : OpenCodeSavedSessionLookup.Unavailable;", StringComparison.Ordinal)
+            && restore.Contains("return _tabRestore.Weigh(OpenCodeSavedSessionLookup.Gone);", StringComparison.Ordinal)
             && restore.Split("OpenCodeSavedSessionLookup.Gone", StringSplitOptions.None).Length - 1 == 2,
             "page.only-a-404-answer-means-gone"); // The two: a 404, and a session that is archived or a child.
         var tabs = Read("Pages/OpenCodePage.Tabs.cs");
@@ -528,7 +622,9 @@ internal static class Program
             && !tabs.Contains("该会话不在当前已加载的会话列表中", StringComparison.Ordinal), "page.unlisted-session-is-asked-by-id-not-refused");
         Check(Read("Pages/OpenCodePage.xaml.cs").Contains("CancelSavedTabSelection(); // A notification's session outranks the saved selection.", StringComparison.Ordinal),
             "page.notification-cancels-saved-selection");
-        Check(Read("App.Notifications.cs").Contains("_tabsSaved = window.SaveOpenCodeTabsAsync();", StringComparison.Ordinal)
+        Check(Read("App.Notifications.cs").Contains("_tabsSaved = window.SaveOpenCodeTabsAsync(final: true);", StringComparison.Ordinal)
+            && Read("MainWindow.Background.cs").Contains("if (final) _cachedOpenCodePage?.PublishTabsForShutdown();", StringComparison.Ordinal)
+            && restore.Contains("PublishTabsNow();\n        _tabRestore.Seal();", StringComparison.Ordinal)
             && Read("App.Notifications.cs").Contains("await _tabsSaved.ConfigureAwait(false);", StringComparison.Ordinal)
             && Read("MainWindow.Background.cs").Contains("_ = SaveOpenCodeTabsAsync();", StringComparison.Ordinal)
             && Read("Pages/OpenCodePage.xaml.cs").Contains("PublishTabsNow(); // Last look at the strip while it is intact", StringComparison.Ordinal),

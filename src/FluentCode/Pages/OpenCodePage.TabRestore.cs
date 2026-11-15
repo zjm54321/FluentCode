@@ -66,6 +66,13 @@ public sealed partial class OpenCodePage
         _tabRestore.Publish(identity => OpenCodeTabRestoreRules.Snapshot(DescribeTabStrip(), identity));
     }
 
+    /// <summary>The save of an application shutdown. Teardown that follows cannot replace it.</summary>
+    internal void PublishTabsForShutdown()
+    {
+        PublishTabsNow();
+        _tabRestore.Seal();
+    }
+
     private List<OpenCodeTabStripItem> DescribeTabStrip()
     {
         var strip = new List<OpenCodeTabStripItem>();
@@ -102,7 +109,7 @@ public sealed partial class OpenCodePage
     private async void BeginTabRestore(OpenCodePageSource source)
     {
         try { await RestoreSavedTabsAsync(source); }
-        catch (Exception) { /* Restoring tabs must never break connecting; the saved list stays as it is. */ }
+        catch (Exception) { /* Restoring tabs must never break connecting; the saved list stays as it is (Fail below). */ }
     }
 
     private async Task RestoreSavedTabsAsync(OpenCodePageSource source)
@@ -127,6 +134,21 @@ public sealed partial class OpenCodePage
         var blanks = _blankTabs.Values.Count(blank => blank.Identity == source.Identity);
         if (_tabRestore.Begin(source.Identity, present, blanks, _settingsTab is not null) is not { } plan) return;
 
+        try { CreatePlannedTabs(plan, source.Identity); }
+        catch (Exception)
+        {
+            _tabRestore.Fail(); // A partly rebuilt strip must never replace the saved list.
+            throw;
+        }
+        _tabRestore.Complete();
+
+        QueueTabSave();
+        TryApplySavedSelection();
+        if (_sessionCatalogAcceptedReads != readsBefore) QueueTabCatalogAccepted(); // The list beat the file.
+    }
+
+    private void CreatePlannedTabs(OpenCodeTabRestorePlan plan, string identity)
+    {
         foreach (var tab in plan.Tabs)
         {
             TabViewItem? item = null;
@@ -135,7 +157,7 @@ public sealed partial class OpenCodePage
                 case OpenCodeSavedTabKind.Session when !_sessionTabs.ContainsKey(tab.SessionId!):
                     CreateSessionTab(tab.SessionId!);
                     var entry = _sessionTabs[tab.SessionId!];
-                    entry.Identity = source.Identity;
+                    entry.Identity = identity;
                     entry.LastTitle = tab.Title;
                     entry.Restored = true;
                     entry.TrackWhenConfirmed = true;
@@ -143,7 +165,7 @@ public sealed partial class OpenCodePage
                     item = entry.Item;
                     break;
                 case OpenCodeSavedTabKind.Blank:
-                    item = AddRestoredBlankTab(tab.Directory, source.Identity);
+                    item = AddRestoredBlankTab(tab.Directory, identity);
                     break;
                 case OpenCodeSavedTabKind.Settings:
                     item = EnsureSettingsTab() ? _settingsTab : null;
@@ -155,10 +177,6 @@ public sealed partial class OpenCodePage
                 _tabSelectionItem = item;
             }
         }
-
-        QueueTabSave();
-        TryApplySavedSelection();
-        if (_sessionCatalogAcceptedReads != readsBefore) QueueTabCatalogAccepted(); // The list beat the file.
     }
 
     /// <summary>Tabs nobody opened in this run: the same server keeps them as they are, another server's are removed
@@ -307,6 +325,8 @@ public sealed partial class OpenCodePage
         _tabCatalogQueued = false;
         if (!_pageActive || _client is null || _source is not { IsRevoked: false } source
             || source.Identity != _tabRestore.Identity) return;
+        // Queued for a list of an earlier connection: it says nothing about this one (a 404 here is still unproven).
+        if (_sessionCatalogAcceptedReads == _tabCatalogReadsSeen) return;
         _tabCatalogReadsSeen = _sessionCatalogAcceptedReads;
         var ask = _tabRestore.AcceptCatalog(_sessionItems.Keys);
         TrackConfirmedTabs();
@@ -364,7 +384,7 @@ public sealed partial class OpenCodePage
             var info = await pending;
             if (!Current()) return OpenCodeSavedSessionLookup.Unavailable;
             if (!IsRootSession(info) || info.Id != sessionId || info.Time?.Archived is not null)
-                return OpenCodeSavedSessionLookup.Gone;
+                return _tabRestore.Weigh(OpenCodeSavedSessionLookup.Gone);
             // An event about this session arrived while the answer was on its way; it is newer than the answer.
             if (_sessionCatalogEventVersions.GetValueOrDefault(sessionId) > asked)
                 return _sessionItems.ContainsKey(sessionId) ? OpenCodeSavedSessionLookup.Found : OpenCodeSavedSessionLookup.Unavailable;
@@ -378,7 +398,8 @@ public sealed partial class OpenCodePage
         }
         catch (OpenCodeApiException error) when (error.StatusCode == 404)
         {
-            return Current() ? OpenCodeSavedSessionLookup.Gone : OpenCodeSavedSessionLookup.Unavailable;
+            // Deleted, if this connection has already returned a session list; otherwise no answer yet.
+            return Current() ? _tabRestore.Weigh(OpenCodeSavedSessionLookup.Gone) : OpenCodeSavedSessionLookup.Unavailable;
         }
         catch (OperationCanceledException) { return OpenCodeSavedSessionLookup.Unavailable; }
         catch (OpenCodeException)

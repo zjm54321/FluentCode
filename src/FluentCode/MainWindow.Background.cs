@@ -17,10 +17,15 @@ public sealed partial class MainWindow
         AppWindow.Hide();
     }
 
-    /// <summary>Hand the current tab strip to its state file and wait until it is written. UI thread; never throws.</summary>
-    internal System.Threading.Tasks.Task SaveOpenCodeTabsAsync()
+    /// <summary>Hand the current tab strip to its state file and wait until it is written. UI thread; never throws.
+    /// <paramref name="final"/> is the shutdown save: nothing is published after it.</summary>
+    internal System.Threading.Tasks.Task SaveOpenCodeTabsAsync(bool final = false)
     {
-        try { _cachedOpenCodePage?.PublishTabsNow(); }
+        try
+        {
+            if (final) _cachedOpenCodePage?.PublishTabsForShutdown();
+            else _cachedOpenCodePage?.PublishTabsNow();
+        }
         catch (System.Exception) { /* Saving tabs must never stand in the way of hiding or closing. */ }
         return Services.OpenCode.OpenCodeSavedTabsStore.Shared.FlushAsync();
     }
