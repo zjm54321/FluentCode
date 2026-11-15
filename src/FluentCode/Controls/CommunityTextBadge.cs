@@ -93,6 +93,15 @@ internal static class CommunityTextBadge
     // 而同名的颜色键在高对比度下只是占位值，不能使用。
     // 来源：https://github.com/microsoft/microsoft-ui-xaml，main 分支，
     // src/controls/dev/CommonStyles/Common_themeresources_any.xaml（SystemFillColor* 在三个主题字典中的取值）。
+    //
+    // D-14 中性色调（Neutral）：库的灰色是偏蓝的固定色值，深色主题下比卡片表面还暗。改用应用自己的中性色：
+    // 底色 ControlAltFillColorTertiary，描边 ControlStrokeColorDefault，文字 TextFillColorSecondary。
+    // 这三个都是叠在表面上的半透明色，所以徽标在任何卡片表面上都比表面略深（浅色）或略亮（深色）一档。
+    // 深色与浅色写法相同：颜色键本身随主题取值。
+    private const string NeutralTone =
+        "<SolidColorBrush x:Key=\"IssueLabelGrayBackgroundBrush\" Color=\"{ThemeResource ControlAltFillColorTertiary}\" />"
+        + "<SolidColorBrush x:Key=\"IssueLabelGrayBorderBrush\" Color=\"{ThemeResource ControlStrokeColorDefault}\" />"
+        + "<SolidColorBrush x:Key=\"IssueLabelGrayForegroundBrush\" Color=\"{ThemeResource TextFillColorSecondary}\" />";
     private const string StatusRings =
         "<SolidColorBrush x:Key=\"SystemFillColorSuccessBrush\" Color=\"{ThemeResource SystemFillColorSuccess}\" Opacity=\"0.4\" />"
         + "<SolidColorBrush x:Key=\"SystemFillColorCautionBrush\" Color=\"{ThemeResource SystemFillColorCaution}\" Opacity=\"0.4\" />"
@@ -101,12 +110,12 @@ internal static class CommunityTextBadge
         "<SolidColorBrush x:Key=\"IssueLabelBlueBackgroundBrush\" Color=\"{ThemeResource SystemAccentColorLight2}\" Opacity=\"0.12\" />"
         + "<SolidColorBrush x:Key=\"IssueLabelBlueBorderBrush\" Color=\"{ThemeResource SystemAccentColorLight2}\" Opacity=\"0.4\" />"
         + "<SolidColorBrush x:Key=\"IssueLabelBlueForegroundBrush\" Color=\"{ThemeResource SystemAccentColorLight3}\" />"
-        + StatusRings;
+        + NeutralTone + StatusRings;
     private const string LightTones =
         "<SolidColorBrush x:Key=\"IssueLabelBlueBackgroundBrush\" Color=\"{ThemeResource SystemAccentColorDark1}\" Opacity=\"0.12\" />"
         + "<SolidColorBrush x:Key=\"IssueLabelBlueBorderBrush\" Color=\"{ThemeResource SystemAccentColorDark1}\" Opacity=\"0.4\" />"
         + "<SolidColorBrush x:Key=\"IssueLabelBlueForegroundBrush\" Color=\"{ThemeResource SystemAccentColorDark2}\" />"
-        + StatusRings;
+        + NeutralTone + StatusRings;
     private const string ToneResources =
         "<ResourceDictionary" + Namespaces + XNamespace + "><ResourceDictionary.ThemeDictionaries>"
         + "<ResourceDictionary x:Key=\"Default\">" + DarkTones + "</ResourceDictionary>"
@@ -276,7 +285,7 @@ internal static class CommunityTextBadge
 
     /// <summary>
     /// 适配器自建的标题模板：可选的 12px 前置图标 + 4 DIP 间距 + 文字，与此前手绘图标徽标的排布一致；文字一侧与
-    /// <c>AppBadgeTitleTemplate</c> 相同（不换行、可选中）。图标用图标字体的 TextBlock 而不是 FontIcon：
+    /// <c>AppBadgeTitleTemplate</c> 相同（不换行、放不下时以省略号结尾、可选中）。图标用图标字体的 TextBlock 而不是 FontIcon：
     /// TextBlock 的前景色一定从标题呈现器继承，分类色调因此不需要在模板里写颜色。字形逐字符写成数字实体，
     /// 传入的内容不会被当作标记解析。
     /// <para>
@@ -308,9 +317,9 @@ internal static class CommunityTextBadge
             : "<Grid.ColumnDefinitions><ColumnDefinition Width=\"Auto\" /><ColumnDefinition Width=\"*\" /></Grid.ColumnDefinitions>"
                 + "<TextBlock Text=\"" + entity + "\" FontFamily=\"{ThemeResource SymbolThemeFontFamily}\" FontSize=\"12\" FontWeight=\"Normal\""
                 + color + " VerticalAlignment=\"Center\" AutomationProperties.AccessibilityView=\"Raw\" />";
-        // 没有图标的模板与应用的纯文字模板一致，放不下时以省略号结尾。
-        var text = "<TextBlock" + (glyph is null ? " TextTrimming=\"CharacterEllipsis\"" : " Grid.Column=\"1\"")
-            + " Text=\"{Binding}\" FontFamily=\"{ThemeResource ContentControlThemeFontFamily}\" TextWrapping=\"NoWrap\""
+        // 与应用的纯文字模板一致：放不下时以省略号结尾。有图标时文字占剩余的那一列，图标不被挤掉。
+        var text = "<TextBlock" + (glyph is null ? string.Empty : " Grid.Column=\"1\"")
+            + " Text=\"{Binding}\" FontFamily=\"{ThemeResource ContentControlThemeFontFamily}\" TextWrapping=\"NoWrap\" TextTrimming=\"CharacterEllipsis\""
             + color + " IsTextSelectionEnabled=\"True\" VerticalAlignment=\"Center\" />";
         DataTemplate? template;
         try

@@ -260,9 +260,11 @@ internal static class NativeUiCoreTests
             && glyphTemplate.Contains("FontFamily=\\\"{ThemeResource SymbolThemeFontFamily}\\\" FontSize=\\\"12\\\" FontWeight=\\\"Normal\\\"")
             && glyphTemplate.Contains("AutomationProperties.AccessibilityView=\\\"Raw\\\""),
             "The glyph keeps the hand-built badge's measures: 12px icon font at normal weight, 4 DIP before the text, hidden from screen readers");
-        Check(glyphTemplate.Contains("Text=\\\"{Binding}\\\" FontFamily=\\\"{ThemeResource ContentControlThemeFontFamily}\\\" TextWrapping=\\\"NoWrap\\\"")
+        Check(glyphTemplate.Contains("Text=\\\"{Binding}\\\" FontFamily=\\\"{ThemeResource ContentControlThemeFontFamily}\\\" TextWrapping=\\\"NoWrap\\\" TextTrimming=\\\"CharacterEllipsis\\\"")
+            && Occurrences(glyphTemplate, "TextTrimming") == 1
+            && Source("src/FluentCode/App.xaml").Contains("TextTrimming=\"CharacterEllipsis\"")
             && glyphTemplate.Contains("IsTextSelectionEnabled=\\\"True\\\""),
-            "The text beside a glyph follows the user's font, stays on one line and stays selectable, like the text-only template");
+            "The text beside a glyph follows the user's font, stays on one line, ends in an ellipsis when it does not fit and stays selectable, like the text-only template (D-14)");
         Check(glyphTemplate.Contains("var color = ink is null ? string.Empty : \" Foreground=\\\"{ThemeResource \" + InkBrushKey + \"}\\\"\";")
             && Occurrences(glyphTemplate, "Foreground") == 1 && !glyphTemplate.Contains("FontIcon", StringComparison.Ordinal),
             "Without an ink, glyph and text take the tone's colour from the title presenter: the template names a colour only for the status tones");
@@ -302,11 +304,12 @@ internal static class NativeUiCoreTests
 
         // ---- D-13: status tones get the same soft outline as the category tones; their text keeps full strength ----
         var statusRings = Between(badgeAdapter, "private const string StatusRings =", "private const string DarkTones =");
+        var neutralTone = Between(badgeAdapter, "private const string NeutralTone =", "private const string StatusRings =");
         Check(new[] { "Success", "Caution", "Critical" }.All(status => statusRings.Contains(
                 "x:Key=\\\"SystemFillColor" + status + "Brush\\\" Color=\\\"{ThemeResource SystemFillColor" + status + "}\\\" Opacity=\\\"0.4\\\" />"))
             && Occurrences(statusRings, "x:Key=") == 3,
             "The brush a status badge draws its outline with is overridden on the badge to the same status colour at 40%, the strength of the info outline");
-        Check(darkTones.TrimEnd().EndsWith("+ StatusRings;", StringComparison.Ordinal) && lightTones.TrimEnd().EndsWith("+ StatusRings;", StringComparison.Ordinal),
+        Check(darkTones.TrimEnd().EndsWith("+ NeutralTone + StatusRings;", StringComparison.Ordinal) && lightTones.TrimEnd().EndsWith("+ NeutralTone + StatusRings;", StringComparison.Ordinal),
             "The soft outline applies in dark and light; high contrast keeps the system's window-text outline");
         Check(Regex.IsMatch(badgeAdapter, @"IssueLabelSeverity\.Success => ""SystemFillColorSuccess"",\s+IssueLabelSeverity\.Warning => ""SystemFillColorCaution"",\s+IssueLabelSeverity\.Error => ""SystemFillColorCritical"",\s+_ => null,"),
             "Exactly the three status tones carry their own text colour; the category tones inherit the library's");
@@ -338,6 +341,21 @@ internal static class NativeUiCoreTests
         Check(new[] { (0x6CCB5F, 0x393D1B), (0xFCE100, 0x433519), (0xFF99A4, 0x442726), (0x0F7B0F, 0xDFF6DD), (0x9D5D00, 0xFFF4CE), (0xC42B1C, 0xFDE7E9) }
                 .All(pair => BadgeContrast(pair.Item1, pair.Item2) >= 4.5),
             "Status badge text on its fill clears 4.5:1 in dark and light");
+
+        // ---- D-14: the neutral badge uses the app's neutral fills, so it never sits darker than its card ----
+        Check(neutralTone.Contains("x:Key=\\\"IssueLabelGrayBackgroundBrush\\\" Color=\\\"{ThemeResource ControlAltFillColorTertiary}\\\" />")
+            && neutralTone.Contains("x:Key=\\\"IssueLabelGrayBorderBrush\\\" Color=\\\"{ThemeResource ControlStrokeColorDefault}\\\" />")
+            && neutralTone.Contains("x:Key=\\\"IssueLabelGrayForegroundBrush\\\" Color=\\\"{ThemeResource TextFillColorSecondary}\\\" />")
+            && Occurrences(neutralTone, "x:Key=") == 3 && !neutralTone.Contains("Opacity", StringComparison.Ordinal),
+            "The neutral badge is the alt fill, the default control stroke and secondary text: translucent colours that sit on whatever the card surface is");
+        Check(theme.Contains("\"muted\" => \"TextFillColorSecondaryBrush\""),
+            "Secondary text is the colour the card already uses for muted text");
+        // Executed with the WinUI default colours over the card surface (dark #2C2C2C, light #FFFFFF).
+        var neutralDark = Over(0xFFFFFF, 0x0B / 255d, 0x2C2C2C); var neutralLight = Over(0x000000, 0x0F / 255d, 0xFFFFFF);
+        Check(BadgeContrast(neutralDark, 0x000000) > BadgeContrast(0x2C2C2C, 0x000000) && BadgeContrast(0x212830, 0x000000) < BadgeContrast(0x2C2C2C, 0x000000),
+            "In dark theme the neutral fill is lighter than the card, where the library grey (#212830) was darker than it");
+        Check(BadgeContrast(Over(0xFFFFFF, 0xC5 / 255d, neutralDark), neutralDark) >= 4.5 && BadgeContrast(Over(0x000000, 0x9E / 255d, neutralLight), neutralLight) >= 4.5,
+            "Neutral badge text on its fill over the card clears 4.5:1 in dark and light");
 
         // The library facts the adapter relies on, read from the locked package so an upgrade that changes them
         // fails here (the runner hands us its theme dictionary: tests/native-ui/run.ps1).
