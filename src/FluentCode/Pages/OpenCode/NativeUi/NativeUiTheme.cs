@@ -227,10 +227,6 @@ internal static class NativeUiTheme
         text.TextTrimming = text.MaxLines > 0 ? TextTrimming.CharacterEllipsis : TextTrimming.None;
         Typography.SetNumeralAlignment(text, Flag(node, "tabularNums") ? FontNumeralAlignment.Tabular : FontNumeralAlignment.Normal);
     }
-    internal static ControlTemplate? TileTemplate => _tileTemplate ??= OpenCodeThemedXaml.Load<ControlTemplate>("ControlTemplate", "TargetType=\"ContentControl\"",
-        "<Border Background=\"{TemplateBinding Background}\" BorderBrush=\"{TemplateBinding BorderBrush}\" BorderThickness=\"{TemplateBinding BorderThickness}\" CornerRadius=\"{TemplateBinding CornerRadius}\" Padding=\"{TemplateBinding Padding}\">"
-        + "<ContentPresenter Content=\"{TemplateBinding Content}\" HorizontalContentAlignment=\"{TemplateBinding HorizontalContentAlignment}\" VerticalContentAlignment=\"Center\" /></Border>");
-    private static ControlTemplate? _tileTemplate;
     internal static void Inline(Run run, NativeUiElement node, NativeUiStyleMath.InlineStyle style = NativeUiStyleMath.InlineStyle.None)
     {
         run.TextDecorations = Flag(node, "lineThrough") || style.HasFlag(NativeUiStyleMath.InlineStyle.Strike) ? TextDecorations.Strikethrough : TextDecorations.None;
