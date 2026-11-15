@@ -338,8 +338,9 @@ internal static class OpenCodeLinkChipParser
     // ------------------------------------------------------------------ finding links in text
 
     /// <summary>
-    /// http(s) links in <paramref name="text"/>. Trailing English/Chinese sentence punctuation is excluded, paired
-    /// brackets inside the URL are kept. With <paramref name="markdown"/>, inline code and fenced code blocks are skipped.
+    /// http(s) links in <paramref name="text"/>. A scheme that is part of something longer is not a link
+    /// (<see cref="IsGlued"/>); CJK text needs no space before one. Trailing English/Chinese sentence punctuation is
+    /// excluded, paired brackets inside the URL are kept. With <paramref name="markdown"/>, inline code and fenced code blocks are skipped.
     /// With <paramref name="streaming"/>, a link that runs to the very end of the text is not yet a link (it may still grow).
     /// </summary>
     internal static IReadOnlyList<OpenCodeLinkMatch> Find(string? text, bool markdown = false, bool streaming = false)
@@ -352,7 +353,7 @@ internal static class OpenCodeLinkChipParser
         {
             var at = IndexOfScheme(text, i);
             if (at < 0) break;
-            if (at > 0 && (char.IsLetterOrDigit(text[at - 1]) || text[at - 1] is '/' or '@' or '\\' or ':'))
+            if (IsGlued(text, at))
             {
                 i = at + 4;
                 continue;
@@ -370,6 +371,18 @@ internal static class OpenCodeLinkChipParser
         return result;
     }
 
+    /// <summary>
+    /// The link a renderer keeps as text for now: the one that runs to the very end of <paramref name="source"/>
+    /// (Markdown; code is skipped), which may still be growing while the text streams in. None when the host knows
+    /// the text is <paramref name="complete"/>, or when exactly this text already sat idle (<paramref name="settled"/>).
+    /// </summary>
+    internal static OpenCodeLinkMatch? PendingTail(string? source, bool complete, string? settled)
+    {
+        if (complete || string.IsNullOrEmpty(source) || string.Equals(settled, source, StringComparison.Ordinal)) return null;
+        var links = Find(source, markdown: true);
+        return links.Count > 0 && links[^1].End == source.Length ? links[^1] : null;
+    }
+
     private static int IndexOfScheme(string text, int from)
     {
         var a = text.IndexOf("http://", from, StringComparison.OrdinalIgnoreCase);
@@ -379,13 +392,35 @@ internal static class OpenCodeLinkChipParser
         return Math.Min(a, b);
     }
 
+    /// <summary>
+    /// The scheme at <paramref name="at"/> belongs to something longer and stays text: a word (<c>abchttps://…</c>),
+    /// a longer address or package reference (<c>proxy/https://…</c>, <c>pkg@https://…</c>), an escaped form
+    /// (<c>\https://…</c>) or another scheme (<c>view-source:https://…</c>).
+    /// CJK text is written without spaces, so it never glues (<c>看这个https://…</c> is a link), and a half-width colon
+    /// right after it is punctuation, not the end of a scheme name (<c>地址:https://…</c>): scheme names are ASCII.
+    /// </summary>
+    private static bool IsGlued(string text, int at)
+    {
+        if (at == 0) return false;
+        var before = text[at - 1];
+        if (IsCjk(before) || IsHangul(before)) return false;
+        if (before == ':') return at < 2 || !(IsCjk(text[at - 2]) || IsHangul(text[at - 2]));
+        return char.IsLetterOrDigit(before) || before is '/' or '@' or '\\';
+    }
+
+    /// <summary>Han, kana and bopomofo with their punctuation and symbols, and the half-width / full-width forms.</summary>
+    private static bool IsCjk(char c) => c >= 0x2E80 && c <= 0x9FFF || c >= 0xF900 && c <= 0xFAFF || c >= 0xFF00 && c <= 0xFFEF;
+
+    /// <summary>Hangul syllables and conjoining jamo (the compatibility jamo are inside <see cref="IsCjk"/>).</summary>
+    private static bool IsHangul(char c) => c >= 0xAC00 && c <= 0xD7FF || c >= 0x1100 && c <= 0x11FF || c >= 0xA960 && c <= 0xA97F;
+
     private static bool IsUrlChar(char c)
     {
         if (char.IsWhiteSpace(c) || char.IsControl(c)) return false;
         if (c is '<' or '>' or '"' or '`' or '{' or '}' or '|' or '\\' or '^') return false;
-        // CJK text and full-width punctuation directly after a URL are prose, not path.
-        if (c >= 0x2E80 && c <= 0x9FFF || c >= 0xF900 && c <= 0xFAFF || c >= 0xFF00 && c <= 0xFFEF || c >= 0x3000 && c <= 0x303F
-            || c is '…' or '‘' or '’' or '“' or '”') return false;
+        // CJK text and full-width punctuation directly after a URL are prose, not path. Hangul syllables are not in
+        // this set: after a URL they still count as part of it.
+        if (IsCjk(c) || c is '…' or '‘' or '’' or '“' or '”') return false;
         return true;
     }
 
@@ -492,6 +527,36 @@ internal static class OpenCodeLinkChipParser
 
     private static bool LooksLikeUrl(string text)
         => text.Contains("://", StringComparison.Ordinal) || Regex.IsMatch(text, @"^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(/\S*)?$", RegexOptions.IgnoreCase);
+
+    // ------------------------------------------------------------------ plain-text preview
+
+    /// <summary>
+    /// Message text for a place that shows plain text only (a one-line header): each link becomes the
+    /// <see cref="OpenCodeLinkChip.Label"/> its chip shows, so the preview never spells out an address the message
+    /// itself shows as a chip. Same links as the rendered message: Markdown link targets count, code is skipped.
+    /// A chip stands apart from the words around it by its outline; as text, the label gets a space on a side where
+    /// a word touches it.
+    /// </summary>
+    internal static string PreviewText(string? text)
+    {
+        var source = RewriteMarkdownLinks(text);
+        var links = Find(source, markdown: true);
+        if (links.Count == 0) return source;
+        var preview = new StringBuilder(source.Length);
+        var at = 0;
+        foreach (var link in links)
+        {
+            preview.Append(source, at, link.Start - at);
+            if (link.Start > 0 && IsWordChar(source[link.Start - 1])) preview.Append(' ');
+            preview.Append(Parse(link.Url)!.Label);
+            if (link.End < source.Length && IsWordChar(source[link.End])) preview.Append(' ');
+            at = link.End;
+        }
+        return preview.Append(source, at, source.Length - at).ToString();
+    }
+
+    /// <summary>A letter or digit of any script, or half of a character outside the BMP (rare Han, emoji).</summary>
+    private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || char.IsSurrogate(c);
 
     // ------------------------------------------------------------------ favicon policy
 

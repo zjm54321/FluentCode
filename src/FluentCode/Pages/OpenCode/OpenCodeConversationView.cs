@@ -617,7 +617,7 @@ public sealed class OpenCodeConversationView : StackPanel
         internal readonly ContentControl Element = new() { Margin = new Thickness(0, 6, 0, 6),
             HorizontalContentAlignment = HorizontalAlignment.Stretch, IsTabStop = false };
         internal readonly StackPanel Content = new() { Spacing = 4 };
-        internal readonly OpenCodeRichTextPresenter Presenter = new();
+        internal readonly OpenCodeRichTextPresenter Presenter = new() { TextIsComplete = true };
         internal readonly OpenCodeUserAttachmentsView Attachments = new();
         // [switch | bubble]: the switch uses the free space left of the right-aligned bubble, so the row is exactly as
         // tall as the bubble and nothing moves when the switch hides or the message is delivered.
@@ -2235,7 +2235,7 @@ public sealed class OpenCodeConversationView : StackPanel
 
     private Entry CreateUserEntry(string key, OpenCodeMessage message)
     {
-        var presenter = new OpenCodeRichTextPresenter { AttachmentCounts = UserAttachmentCounts(message) };
+        var presenter = new OpenCodeRichTextPresenter { AttachmentCounts = UserAttachmentCounts(message), TextIsComplete = true };
         presenter.Render(message.Text, OpenCodeRichTextStyle.Body);
 
         var attachments = new OpenCodeUserAttachmentsView();

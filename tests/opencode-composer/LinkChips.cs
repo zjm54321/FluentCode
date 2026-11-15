@@ -69,6 +69,9 @@ internal static partial class Program
         Check(Urls("abchttps://a.com").Length == 0, "no link glued to a word");
         Check(Urls("go https://a.com/x", streaming: true).Length == 0 && Urls("go https://a.com/x ", streaming: true).Length == 1, "streaming: chip only after a boundary");
         Check(Urls("mailto:a@b.com file:///x").Length == 0, "other schemes stay text");
+        LinkStartRules();
+        LinkPreviewText();
+        LinkTailRules();
         // ---- markdown [text](url)
         Check(OpenCodeLinkChipParser.RewriteMarkdownLinks("[https://good.com](https://evil.io/x)") == "https://evil.io/x", "URL-looking text shows the REAL target");
         Check(OpenCodeLinkChipParser.RewriteMarkdownLinks("read [docs](https://a.com/d).") == "read docs (https://a.com/d).", "ordinary text keeps text + real target");
@@ -217,6 +220,125 @@ internal static partial class Program
         var fav = Src("OpenCodeFaviconCache.cs");
         Check(fav.Contains("ConnectCallback") && fav.Contains("IsPrivateAddress"), "favicon fetch refuses private addresses after DNS");
         await LinkStatus();
+    }
+
+    // What may stand directly before a link. CJK text is written without spaces, so a link starts right after it;
+    // a scheme that is the tail of a word, of a longer address or of another scheme stays text.
+    private static void LinkStartRules()
+    {
+        const string url = "https://a.com/x";
+        static string Show((int Start, string Url)[] found) => "[" + string.Join(", ", found.Select(m => m.Start + ":" + m.Url)) + "]";
+        static (int Start, string Url)[] Found(string text, bool markdown = false)
+            => OpenCodeLinkChipParser.Find(text, markdown).Select(m => (m.Start, m.Url)).ToArray();
+        void Links(string text, string note, params (int Start, string Url)[] expected)
+        {
+            var found = Found(text);
+            Check(found.SequenceEqual(expected), note + ": \"" + text + "\" gave " + Show(found) + ", expected " + Show(expected));
+        }
+        void None(string text, string note) => Links(text, note);
+
+        foreach (var (script, before) in new[]
+        {
+            ("Han", "看这个"), ("Han iteration mark", "人々"), ("Han extension A", "\u3400"), ("compatibility ideograph", "\uF900"),
+            ("Han outside the BMP", "\U00020BB7"), ("hiragana", "これは"), ("katakana", "リンク"), ("katakana long vowel mark", "サーバー"),
+            ("half-width katakana", "ﾘﾝｸ"), ("bopomofo", "ㄅㄆㄇ"), ("hangul", "주소는"), ("hangul compatibility jamo", "ㅋㅋ"),
+            ("full-width letters", "ＡＢＣ"), ("full-width digits", "１２３"),
+            ("full-width colon", "地址："), ("full-width comma", "你看，"), ("ideographic full stop", "好。"), ("full-width bracket", "（"),
+            ("corner bracket", "「"),
+        })
+            Links(before + url, "a link starts directly after " + script, (before.Length, url));
+
+        Links(url, "a link alone", (0, url));
+        Links(url + "看这个", "a link at the start, CJK text directly after it", (0, url));
+        Links("看这个" + url + "然后继续", "CJK text on both sides", (3, url));
+        Links("先看" + url + "再看https://b.com/y", "two links separated only by CJK text", (2, url), (2 + url.Length + 2, "https://b.com/y"));
+        foreach (var after in new[] { "。", "，", "、", "；", "：", "！", "？", "）", "」", "》", "…", "”" })
+            Links("看这个" + url + after + "谢谢", "CJK text before, " + after + " after", (3, url));
+        Links("（看这个" + url + "）", "inside full-width brackets", (4, url));
+        Links("看这个https://en.wikipedia.org/wiki/Foo_(bar)。", "paired brackets survive after CJK text", (3, "https://en.wikipedia.org/wiki/Foo_(bar)"));
+        Check(Found("看这个`https://a.com`再看https://b.com/y", markdown: true).SequenceEqual(new[] { (20, "https://b.com/y") }),
+            "inline code is still skipped when CJK text touches it");
+
+        // A half-width colon typed after CJK text is punctuation: a scheme name is ASCII, so nothing is being nested.
+        Links("地址:" + url, "half-width colon after Han", (3, url));
+        Links("주소:" + url, "half-width colon after hangul", (3, url));
+        Links("（官网）:" + url, "half-width colon after a full-width bracket", (5, url));
+
+        // Still text: the tail of a word. A Latin letter or a digit glues whatever stands before it.
+        None("abc" + url, "Latin word");
+        None("看这个abc" + url, "Latin word after CJK text");
+        None("看这个x" + url, "one Latin letter after CJK text");
+        None("caf\u00E9" + url, "accented Latin letter");
+        None("v2" + url, "digit");
+        None("第3" + url, "digit after CJK text");
+        // Still text: inside a longer address, after an escape, or the payload of another scheme.
+        None("proxy.example/" + url, "path of another address");
+        None("路径/" + url, "slash after CJK text");
+        None("pkg@" + url, "package or user reference");
+        None("用户@" + url, "at sign after CJK text");
+        None("\\" + url, "escaped");
+        None("看这个\\" + url, "backslash after CJK text");
+        None("view-source:" + url, "nested in another scheme");
+        None("blob:" + url, "nested in another scheme (blob)");
+        None("地址url:" + url, "Latin letters before the colon, even inside CJK text");
+        None(":" + url, "colon at the very start");
+        None("see :" + url, "colon after a space");
+        None("abchttps://a.com/proxy/" + url, "the rest of a rejected address");
+        Links("看这个" + url + "和abchttps://b.com", "only the link that is not glued", (3, url));
+
+        // The composer's paste rule shares the scanner but only accepts a link that is the whole clipboard text, so
+        // it is unaffected: text around the link still pastes as plain text.
+        Check(OpenCodeComposerChips.SingleLink(url) == url && OpenCodeComposerChips.SingleLink("看这个" + url) is null
+            && OpenCodeComposerChips.SingleLink(url + "看这个") is null, "paste converts only a clipboard that is exactly one link");
+    }
+
+    // A place that can only show plain text (the queue header) names a link by the label its chip shows.
+    private static void LinkPreviewText()
+    {
+        const string pull = "https://github.com/sst/opencode/pull/4821", generic = "https://blog.example.dev/posts/2026/rich-paste";
+        void Preview(string? text, string expected, string note)
+        {
+            var shown = OpenCodeLinkChipParser.PreviewText(text);
+            Check(shown == expected, note + ": \"" + text + "\" gave \"" + shown + "\", expected \"" + expected + "\"");
+        }
+        Check(Label(pull) == "opencode #4821" && Label(generic) == "blog.example.dev/…/rich-paste", "the labels the chips show for these addresses");
+        Preview(pull, "opencode #4821", "a link alone is its label");
+        Preview("看这个" + pull + "然后合并", "看这个 opencode #4821 然后合并", "a word that touches the label is set off by one space");
+        Preview("看 " + pull + " 谢谢", "看 opencode #4821 谢谢", "spaces that are already there are not doubled");
+        Preview("（" + pull + "）。", "（opencode #4821）。", "punctuation stays tight against the label");
+        Preview("见" + pull + "。谢谢", "见 opencode #4821。谢谢", "a space only on the side where a word touches");
+        Preview("\U0001F449" + pull, "\U0001F449 opencode #4821", "an emoji before the link counts as a word");
+        Preview("对比" + pull + "和" + generic, "对比 opencode #4821 和 blog.example.dev/…/rich-paste", "every link in the text");
+        Preview(pull + "\n" + generic, "opencode #4821\nblog.example.dev/…/rich-paste", "line breaks are kept");
+        Preview("看 [文档](" + generic + ")", "看 文档 (blog.example.dev/…/rich-paste)", "a Markdown link: its text, then the target's label");
+        Preview("[https://good.com](https://evil.io/x)", "evil.io/x", "a link text that looks like an address: only the real target is named");
+        Preview("看https://user:hunter2@example.com/x?token=s3cr3t", "看 example.com/x", "a password or token in the address never reaches the preview");
+        // Text the message itself shows as text is returned as written.
+        Preview("abc" + pull, "abc" + pull, "an address glued to a word");
+        Preview("`" + pull + "` 和" + generic, "`" + pull + "` 和 blog.example.dev/…/rich-paste", "inline code");
+        Preview("```\n" + pull + "\n```", "```\n" + pull + "\n```", "a fenced code block");
+        Preview("ftp://h/x file:///c:/x mailto:a@b.c", "ftp://h/x file:///c:/x mailto:a@b.c", "other schemes");
+        Preview("没有链接", "没有链接", "text without a link");
+        Preview("", "", "empty text");
+        Preview(null, "", "no text");
+    }
+
+    // Which link a renderer holds back as text: only one that ends text which may still be streaming in.
+    private static void LinkTailRules()
+    {
+        const string url = "https://a.com/x", ending = "看这个" + url;
+        static OpenCodeLinkMatch? Tail(string? source, bool complete = false, string? settled = null)
+            => OpenCodeLinkChipParser.PendingTail(source, complete, settled);
+        Check(Tail(ending) is { Start: 3, Url: url }, "text that may still grow: the link at its very end waits");
+        Check(Tail(ending, complete: true) is null, "text its host calls complete: nothing waits");
+        Check(Tail(url, complete: true) is null && Tail("a " + url + " b " + url, complete: true) is null, "complete text, whatever its links");
+        Check(Tail(ending, settled: ending) is null, "text that already sat idle: nothing waits");
+        Check(Tail(ending, settled: ending[..^1]) is { Url: url }, "an earlier, shorter text having sat idle does not release this one");
+        Check(Tail(ending + " ") is null && Tail(ending + "。") is null && Tail(ending + "\n") is null && Tail(ending + "然后") is null,
+            "a link with anything after it is whole already");
+        Check(Tail(url + " 和 https://b.com/y") is { Url: "https://b.com/y" } && Tail(url + " 和 https://b.com/y 。") is null, "only the last link can wait");
+        Check(Tail("`" + url + "`") is null && Tail("```\n" + url) is null, "an address in code is never a link, so it never waits");
+        Check(Tail("abc" + url) is null && Tail("没有链接") is null && Tail("") is null && Tail(null) is null, "no link, nothing waits");
     }
 
     private static async Task ImagePasteEditorRegression()
@@ -507,7 +629,10 @@ internal static partial class Program
                 "pending surface uses same owned-chip eligibility and shared thumbnails: " + relative);
         }
         var presenter = Src("Pages/OpenCode/OpenCodeRichTextPresenter.cs");
-        Check(presenter.Contains("AttachmentCounts != _lastAttachmentCounts") && presenter.Contains("(source, (style, AttachmentCounts),"),
+        Check(presenter.Contains("AttachmentCounts != _lastAttachmentCounts") && presenter.Contains("(source, (style, AttachmentCounts, TextIsComplete),"),
             "same-text pending attachment changes invalidate the real rich-text render cadence and duplicate-render key");
+        Check(presenter.Contains("TextIsComplete != _lastTextIsComplete")
+            && presenter.Contains("OpenCodeLinkChipParser.PendingTail(source, TextIsComplete, _settledSource)"),
+            "a host declaring the same text complete renders it again, and the renderer asks the tested rule which link waits");
     }
 }

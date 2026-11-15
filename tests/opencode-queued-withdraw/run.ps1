@@ -21,6 +21,8 @@ $arguments += Get-ChildItem "$repo/src/FluentCode/Services/OpenCode/*.cs" |
 }
 $arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages/OpenCode" 'OpenCodeQueuedPromptWithdrawal.cs') + '"'
 $arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages/OpenCode" 'OpenCodeQueuedPromptsView.cs') + '"'
+# The queue header takes its link labels from the real scanner and label rules (pure: no UI, no network).
+$arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages/OpenCode" 'OpenCodeLinkChipParser.cs') + '"'
 $arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages/OpenCode" 'OpenCodeTouchInput.cs') + '"'
 $arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages" 'OpenCodePage.ComposerDelivery.cs') + '"'
 $arguments += '"' + (Join-Path "$repo/src/FluentCode/Pages" 'OpenCodePage.SteerChat.cs') + '"'

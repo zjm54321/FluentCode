@@ -98,6 +98,15 @@ public sealed class OpenCodeRichTextPresenter
     // Link chips: a URL at the very end of a still-growing source stays text until the source is idle (no flicker).
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _chipSettleTimer;
     private string? _settledSource;
+
+    /// <summary>
+    /// Set by a host whose text cannot grow (a user's message, a queued prompt): a link at its very end is a chip in
+    /// the first render. Left false, the text may still be streaming, and such a link stays text until the source has
+    /// been idle for a moment, so an address that is still being written never flickers into a chip.
+    /// </summary>
+    internal bool TextIsComplete { get; set; }
+    private bool _lastTextIsComplete;
+
     // A native UI card may inherit the transcript's image scope, but must never use it.
     // This fixed host policy disables images, link/attachment chips and Mermaid's browser renderer.
     private readonly bool _nativeUiSandbox;
@@ -170,11 +179,12 @@ public sealed class OpenCodeRichTextPresenter
     {
         var imageScope = _nativeUiSandbox ? null : OpenCodeImageContext.Find(_root);
         var force = _renderLifetime.IsCanceled || style != _lastStyle || !ReferenceEquals(imageScope, _lastImageScope)
-            || AttachmentCounts != _lastAttachmentCounts;
+            || AttachmentCounts != _lastAttachmentCounts || TextIsComplete != _lastTextIsComplete;
         _lastSource = source;
         _lastStyle = style;
         _lastImageScope = imageScope;
         _lastAttachmentCounts = AttachmentCounts;
+        _lastTextIsComplete = TextIsComplete;
         if (!_renderSchedule.Request(source, force, RenderClockMilliseconds))
         {
             CoalescedRenderCount++;
@@ -204,7 +214,7 @@ public sealed class OpenCodeRichTextPresenter
         _renderTimer?.Stop();
         using var detailScope = OpenCodeToolDetailContent.DetailBuildScope(_expandCodeBlocks);
         var imageScope = _nativeUiSandbox ? null : OpenCodeImageContext.Find(_root);
-        if (!_renderGate.ShouldRender(source, (style, AttachmentCounts), imageScope, _renderLifetime.IsCanceled)) return;
+        if (!_renderGate.ShouldRender(source, (style, AttachmentCounts, TextIsComplete), imageScope, _renderLifetime.IsCanceled)) return;
         var started = Stopwatch.GetTimestamp();
         FullRenderCount++;
         try
@@ -239,14 +249,15 @@ public sealed class OpenCodeRichTextPresenter
         try
         {
             blocks = new List<UIElement>();
-            // A link glued to the end of a growing message may still be streaming: keep it text until idle.
-            var tail = OpenCodeLinkChipParser.Find(source, markdown: true);
-            var pendingTail = !_nativeUiSandbox && tail.Count > 0 && tail[^1].End == source.Length && !string.Equals(_settledSource, source, StringComparison.Ordinal);
-            if (pendingTail) ScheduleChipSettle(source, style);
+            // A link at the very end of text that may still be streaming stays text until the source is idle.
+            // Text the host declared complete has no such link: all its chips form in this render.
+            var pendingTail = _nativeUiSandbox ? null : OpenCodeLinkChipParser.PendingTail(source, TextIsComplete, _settledSource);
+            if (pendingTail is not null) ScheduleChipSettle(source, style);
+            else _chipSettleTimer?.Stop();
             _chips = _nativeUiSandbox ? null : new ChipContext(_root.ActualTheme == ElementTheme.Dark
                 || _root.ActualTheme == ElementTheme.Default && Application.Current.RequestedTheme == ApplicationTheme.Dark,
-                pendingTail ? 1 : 0, AttachmentCounts.Images, AttachmentCounts.Pdfs);
-            _pendingTailUrl = pendingTail ? tail[^1].Url : null;
+                pendingTail is null ? 0 : 1, AttachmentCounts.Images, AttachmentCounts.Pdfs);
+            _pendingTailUrl = pendingTail?.Url;
             foreach (var segment in OpenCodeMarkdownImagePlan.Build(source))
             {
                 if (segment.IsImage)
