@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The one place in Native UI that touches DevWinUI effect controls and library animation calls.
-// Callers pass app-level inputs and receive ordinary WinUI elements; no DevWinUI type appears in this surface
-// or in renderer state. Each effect states its own lifetime rules below.
-// APIs checked against DevWinUI 10.9.1 (source at commit 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e) and WinUI 2.6.5.
+// Callers pass app-level inputs and receive ordinary WinUI elements; no DevWinUI or Toolkit type appears in this
+// surface or in renderer state. Each effect states its own lifetime rules below.
+// APIs checked against DevWinUI 10.9.1 (source at commit 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e),
+// CommunityToolkit.WinUI.Animations 8.2.251219 (CommunityToolkit/Windows, branch rel/8.2.251219, commit
+// a6b4dc451c0e54dd29f58743894a956100e7f713) and WinUI 2.6.5.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,8 +15,11 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI.ViewManagement;
+// An alias, not a using: the Toolkit's extension methods stay out of a file that also imports DevWinUI's.
+using Toolkit = CommunityToolkit.WinUI.Animations;
 
 namespace FluentCode.Pages.OpenCode;
 
@@ -26,10 +31,11 @@ internal static class NativeUiCommunityEffects
     /// </summary>
     internal static CelebrationEffect Celebration() => new();
     /// <summary>
-    /// C12: the flashcard's face. The face changes in the frame of the report; the turn between two faces is not
-    /// animated.
+    /// C12: the flashcard's face and the turn between two faces. <paramref name="renderFace"/> paints one face and
+    /// is only called inside a render pass; <paramref name="repaint"/> runs such a pass, for the change of face at
+    /// the middle of a turn. With motion off the face changes in the frame of the report.
     /// </summary>
-    internal static FlipEffect Flip(FrameworkElement host, Action<bool> renderFace) => new(host, renderFace);
+    internal static FlipEffect Flip(FrameworkElement host, Action<bool> renderFace, Action repaint) => new(host, renderFace, repaint);
     /// <summary>
     /// C20: the three streaming-skeleton bars as one element, replacing the local <c>bars</c> StackPanel and its
     /// opacity Storyboard in <c>NativeUiTheme.Placeholder</c>. The bars shimmer only while the motion policy allows it
@@ -151,35 +157,137 @@ internal static class NativeUiCommunityEffects
     }
 
     /// <summary>
-    /// C12. The flashcard's face. Which face shows, and the order of a turn, are kept by
-    /// <see cref="NativeUiFlipState"/>, which the native-ui tests execute; this class paints what it says.
+    /// C12. The flashcard's face and its turn. <see cref="NativeUiFlipDriver"/>, which the native-ui tests execute,
+    /// decides the order; this class is the surface it runs on, and the one place that calls the animation library.
+    /// <para>
+    /// A turn is two legs on the host's composition visual, about the vertical line through its centre: away to
+    /// edge-on, where the face changes, and back. The card is never turned past edge-on, so no face is ever seen
+    /// mirrored. There is no perspective: that would need a transform on the host's parent, which the renderer
+    /// re-parents.
+    /// </para>
+    /// <para>
+    /// Lifetime: no Storyboard is created (the library only builds one for XAML-layer animations, and none is used
+    /// here). The library's batch keeps its completion handler, so that handler is given a
+    /// <see cref="NativeUiFlipLeg"/>, which holds nothing once the leg ended or was dropped. The Unloaded handler
+    /// and the timer's Tick handler are named methods, removed on disposal; the timer lives for one leg.
+    /// </para>
+    /// <para>
+    /// The first turn takes the host's composition visual. From then on WinUI refuses the strict facade properties
+    /// on that element (<c>Scale</c>, <c>Rotation</c>, <c>CenterPoint</c> and their transitions): it locks an
+    /// element to one of the two models (microsoft/microsoft-ui-xaml, tag winui3/release/2.6.5,
+    /// src/dxaml/xcp/core/core/elements/depends.cpp, StrictOnlyApiCheck). So this class never calls
+    /// <c>FluentMotion.Settle</c> on the host, which sets <c>Scale</c>, and rests the visual itself.
+    /// </para>
     /// </summary>
-    internal sealed class FlipEffect : IDisposable
+    internal sealed class FlipEffect : IDisposable, INativeUiFlipSurface
     {
+        private const float EdgeOnDegrees = 90;
+        // How long past its own length a leg may run before the turn is ended for it. Edge-on the card has no
+        // width, so a leg whose end never arrives must not be allowed to leave it there.
+        private const double OverrunMs = 500;
         private readonly FrameworkElement _host;
-        private readonly NativeUiFlipState _state = new();
+        private readonly NativeUiFlipDriver _driver;
+        // Captured while the card is built on the UI thread, as the celebration does.
+        private readonly DispatcherQueue? _queue = DispatcherQueue.GetForCurrentThread();
         private Action<bool>? _render;
+        private Action? _repaint;
+        private DispatcherQueueTimer? _overrun;
+        private bool _turned; // The host's composition visual was taken. Never true for a card that was not turned.
         private bool _disposed;
 
-        internal FlipEffect(FrameworkElement host, Action<bool> renderFace) { _host = host; _render = renderFace; }
+        internal FlipEffect(FrameworkElement host, Action<bool> renderFace, Action repaint)
+        {
+            _host = host; _render = renderFace; _repaint = repaint; _driver = new(this);
+            _host.Unloaded += OnUnloaded;
+            // Bound once per host, never per render: turning motion off while a card is mid-turn ends the turn.
+            FluentMotion.Bind(_host, enabled => { if (!enabled) _driver.Halt(); });
+        }
 
         /// <summary>
-        /// Reports the face the model wants and paints the face that shows. Every report paints, so a reactive
-        /// refresh reaches the face on screen. The face changes in the frame of the report, for both motion settings.
+        /// Reports the face the model wants, inside a render pass, and paints the face that shows. Every report
+        /// paints, so a reactive refresh reaches the face on screen, which mid-turn is still the old one.
         /// </summary>
-        internal void Request(bool flipped)
+        internal void Request(bool flipped) => _driver.Request(flipped);
+
+        /// <summary>Windows "animation effects" and the app's reduce-motion setting both end up in the motion policy.</summary>
+        bool INativeUiFlipSurface.CanTurn => FluentMotion.Enabled && _host.IsLoaded && _host.ActualWidth > 0;
+
+        void INativeUiFlipSurface.Paint(bool back) => _render?.Invoke(back);
+
+        void INativeUiFlipSurface.Repaint() => _repaint?.Invoke();
+
+        bool INativeUiFlipSurface.Turn(bool away, Action landed)
         {
-            if (_disposed) return;
-            var step = _state.Request(flipped, animate: false);
-            if (step == NativeUiFlipState.Step.Settle && !FluentMotion.Enabled) FluentMotion.Settle(_host);
-            _render?.Invoke(_state.Shown);
+            StopOverrun();
+            if (_queue is null) return false; // Nothing could end a leg whose end never arrives: do not start one.
+            try
+            {
+                var time = FluentMotion.Duration(away ? FluentMotion.Fast : FluentMotion.Normal);
+                var visual = ElementCompositionPreview.GetElementVisual(_host);
+                _turned = true;
+                visual.RotationAxis = System.Numerics.Vector3.UnitY;
+                // The axis is vertical, so only the centre's X matters: a new face of another height needs nothing.
+                visual.CenterPoint = new((float)(_host.ActualWidth / 2), 0, 0);
+                // Composition layer with a completion callback: one scoped batch and no Storyboard
+                // (CommunityToolkit/Windows, branch rel/8.2.251219,
+                // components/Animations/src/Builders/AnimationBuilder.cs, Start(UIElement, Action)). No starting
+                // value is given, so a leg starts from the angle the card is at and a reversal mid-leg does not
+                // jump (same branch, components/Animations/src/Extensions/CompositorExtensions.cs,
+                // CreateScalarKeyFrameAnimation: key frame 0 is only inserted for an explicit "from").
+                // Away turns at a steady rate, 90 degrees in 167ms = 0.54 degrees a millisecond. The width seen is
+                // the cosine of the angle, so a steady turn already starts gently and is fastest edge-on. Back is
+                // the library's sine ease-out, cubic-bezier(0.39, 0.575, 0.565, 1), over 250ms: it starts at
+                // 0.575 / 0.39 x 90 / 250 = 0.53 degrees a millisecond, so the card keeps its speed through
+                // edge-on and slows as the new face comes round.
+                Toolkit.AnimationBuilder.Create()
+                    .RotationInDegrees(
+                        to: away ? EdgeOnDegrees : 0, duration: time,
+                        easingType: away ? Toolkit.EasingType.Linear : Toolkit.EasingType.Sine,
+                        easingMode: Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut,
+                        layer: Toolkit.FrameworkLayer.Composition)
+                    .Start(_host, landed);
+                StartOverrun(time);
+                return true;
+            }
+            catch (Exception) { return false; } // No compositor for this element: the driver changes the face at once.
         }
+
+        void INativeUiFlipSurface.Rest()
+        {
+            StopOverrun();
+            if (!_turned) return; // Never turned: the element's visual was never taken and is left alone.
+            try
+            {
+                var visual = ElementCompositionPreview.GetElementVisual(_host);
+                visual.StopAnimation(nameof(Microsoft.UI.Composition.Visual.RotationAngleInDegrees));
+                visual.RotationAngleInDegrees = 0;
+            }
+            catch (Exception) { }
+        }
+
+        private void StartOverrun(TimeSpan leg)
+        {
+            if (_queue?.CreateTimer() is not { } timer) return;
+            timer.IsRepeating = false; timer.Interval = leg + TimeSpan.FromMilliseconds(OverrunMs);
+            timer.Tick += OnOverrun; timer.Start(); _overrun = timer;
+        }
+
+        private void StopOverrun()
+        {
+            if (_overrun is not { } timer) return;
+            timer.Tick -= OnOverrun; timer.Stop(); _overrun = null;
+        }
+
+        private void OnOverrun(DispatcherQueueTimer sender, object args) { StopOverrun(); _driver.Halt(); }
+        private void OnUnloaded(object sender, RoutedEventArgs args) => _driver.Halt();
 
         public void Dispose()
         {
             if (_disposed) return;
-            _disposed = true; _render = null; // A report arriving after disposal paints nothing.
-            FluentMotion.Settle(_host);
+            _disposed = true; _render = null; _repaint = null; // Whatever arrives after this paints nothing.
+            _host.Unloaded -= OnUnloaded;
+            StopOverrun();
+            _driver.Dispose(); // Drops the leg in flight, so its end reaches nothing, and rests the card.
         }
     }
 

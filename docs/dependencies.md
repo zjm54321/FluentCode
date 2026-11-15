@@ -35,7 +35,14 @@ The MSIX check asserts this merge order, verifies both Generic XBFs in the prima
 
 ## CommunityToolkit.WinUI.Animations 8.2.251219
 
-Referenced since 1.2611.18 for a flashcard flip animation that is not written yet. The flashcard swaps its faces in one frame, as before, and no application code uses the package.
+Used by one caller: the Native UI flashcard turn (`FlipEffect` in `src/FluentCode/Pages/OpenCode/NativeUi/NativeUiCommunityEffects.cs`). It calls `AnimationBuilder.RotationInDegrees` on the composition layer with `Start(UIElement, Action)`, which creates one scoped batch per leg and no Storyboard. The package is imported through a namespace alias, so its extension methods do not collide with DevWinUI's in that file.
+
+Two constraints to keep when adding another caller:
+
+- The composition layer takes the element's hand-off visual. WinUI then refuses the strict facade properties (`Scale`, `Rotation`, `Translation`, `CenterPoint` and their transitions) on that same element, and `FluentMotion.Animate`/`Settle` set those. An element is animated through one of the two, never both.
+- The XAML layer builds a Storyboard per call. Do not use it for anything that lives in a virtualized list.
+
+The order of a turn is decided by `NativeUiFlipDriver` in `NativeUiStyleMath.cs`, which has no WinUI dependency and is executed by the `native-ui` runner.
 
 ## Net.Codecrete.QrCodeGenerator 3.2.1
 

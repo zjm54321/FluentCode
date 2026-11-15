@@ -81,9 +81,9 @@ internal sealed partial class NativeUiRenderer
                     flashHint.Text = flipped ? "点击返回正面" : S(node, "hint") is { Length: > 0 } hint ? hint : "点击翻面";
                     AutomationProperties.SetName(flash, flipped ? "闪卡背面，点击返回" : "闪卡正面，点击翻面");
                 }
-                var flip = NativeUiCommunityEffects.Flip(flash, RenderFace);
-                // The adapter owns the displayed face: it repaints the current one on a reactive refresh, swaps a
-                // changed one, and, once the animation lands, swaps at the midpoint of the flip that is still current.
+                var flip = NativeUiCommunityEffects.Flip(flash, RenderFace, Repaint);
+                // Every pass reports the wanted face and the adapter paints the one that shows: mid-turn that is
+                // still the old face. The face changes edge-on, in a pass of its own that the adapter asks for.
                 flashVisual.Apply = node => flip.Request(_runtime.Field(flipKey, false) is true);
                 flashVisual.Cleanup = flip.Dispose; return flashVisual;
             case "Celebration":

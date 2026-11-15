@@ -6,8 +6,9 @@ using System.Linq;
 
 namespace FluentCode.Pages.OpenCode;
 
-// WinUI-free colour, length, flex and icon rules, and the flashcard's turn order (NativeUiFlipState, below),
-// shared by the renderer and the native-ui test runner (tests/native-ui/run.ps1 compiles this file directly).
+// WinUI-free colour, length, flex and icon rules, and the flashcard's turn (NativeUiFlipState and
+// NativeUiFlipDriver, below), shared by the renderer and the native-ui test runner (tests/native-ui/run.ps1
+// compiles this file directly).
 internal static class NativeUiStyleMath
 {
     // #rgb, #rrggbb or #aarrggbb; the catalog's only raw colour form (no CSS functions are parsed).
@@ -174,5 +175,126 @@ internal sealed class NativeUiFlipState
         var changed = _shown != Wanted;
         _shown = Wanted; Phase = Leg.Rest; Generation++;
         return changed;
+    }
+}
+
+/// <summary>
+/// C12: what a flashcard's turn needs from the UI. The effects adapter implements it with the animation library;
+/// the native-ui tests implement it with a script, so the order below runs in tests.
+/// </summary>
+internal interface INativeUiFlipSurface
+{
+    /// <summary>Whether a turn can be animated now: motion is allowed and the card is on screen with a size.</summary>
+    bool CanTurn { get; }
+    /// <summary>
+    /// Starts one leg from wherever the card is: to edge-on when <paramref name="away"/>, to face-on otherwise.
+    /// <paramref name="landed"/> is called when the leg ends: later, never from inside this call, at most once
+    /// and possibly never. False when no leg started.
+    /// </summary>
+    bool Turn(bool away, Action landed);
+    /// <summary>Stops any leg and leaves the card face-on.</summary>
+    void Rest();
+    /// <summary>Paints one face. Only ever called inside a render pass.</summary>
+    void Paint(bool back);
+    /// <summary>Runs a render pass, which reports again and so paints the face that shows now.</summary>
+    void Repaint();
+}
+
+/// <summary>
+/// C12: the end of one leg. An animation library keeps its completion handler for as long as its own batch lives,
+/// which this code cannot bound, so that handler is given this object and nothing else. Once the leg has ended or
+/// was dropped it holds nothing, and whatever still holds it reaches no card.
+/// </summary>
+internal sealed class NativeUiFlipLeg(int generation, Action<int> end)
+{
+    private Action<int>? _end = end;
+    /// <summary>False once the leg has ended or was dropped: nothing is reachable through it any more.</summary>
+    internal bool Live => _end is not null;
+    internal void Drop() => _end = null;
+    internal void Land() { var call = _end; _end = null; call?.Invoke(generation); }
+}
+
+/// <summary>
+/// C12: runs a flashcard's turn on a surface. A report arrives inside a render pass and paints there. A leg's end
+/// arrives outside one, so the change of face at edge-on asks for a pass instead of painting: only a pass prunes
+/// the elements of the face that left.
+/// </summary>
+internal sealed class NativeUiFlipDriver(INativeUiFlipSurface owner)
+{
+    private readonly NativeUiFlipState _state = new();
+    private INativeUiFlipSurface? _surface = owner; // Null once disposed: nothing that arrives later does anything.
+    private NativeUiFlipLeg? _leg;
+    private bool _starting; // Inside Turn. A leg that reports its end from there did not run.
+
+    internal bool Shown => _state.Shown;
+    internal NativeUiFlipState.Leg Phase => _state.Phase;
+
+    /// <summary>The model reports the face it wants, inside a render pass. Paints the face that shows.</summary>
+    internal void Request(bool wanted)
+    {
+        if (_surface is not { } surface) return;
+        switch (_state.Request(wanted, surface.CanTurn))
+        {
+            case NativeUiFlipState.Step.TurnAway: Start(surface, away: true); break;
+            case NativeUiFlipState.Step.TurnBack: Start(surface, away: false); break;
+            case NativeUiFlipState.Step.Settle: Stop(surface); break;
+        }
+        surface.Paint(_state.Shown);
+    }
+
+    /// <summary>
+    /// Ends a turn where it is, with the wanted face showing: motion was turned off, the card left the screen, or
+    /// a leg's end never arrived. Called outside a render pass. Does nothing to a card that is not turning.
+    /// </summary>
+    internal void Halt()
+    {
+        if (_surface is not { } surface || _state.Phase == NativeUiFlipState.Leg.Rest) return;
+        var changed = _state.Halt();
+        Stop(surface);
+        if (changed) surface.Repaint();
+    }
+
+    /// <summary>The card is gone: drops the leg in flight, so its end reaches nothing, and rests the surface.</summary>
+    internal void Dispose()
+    {
+        if (_surface is not { } surface) return;
+        _surface = null;
+        Stop(surface);
+    }
+
+    /// <summary>
+    /// A leg that cannot start, or that reports its end before it was started, ends the turn on the wanted face
+    /// instead of leaving the card part-turned. The caller paints: a report does so itself, and after the middle
+    /// of a turn the wanted face is already the one on screen.
+    /// </summary>
+    private void Start(INativeUiFlipSurface surface, bool away)
+    {
+        _leg?.Drop();
+        var leg = _leg = new NativeUiFlipLeg(_state.Generation, away ? EdgeOn : FaceOn);
+        bool started;
+        _starting = true;
+        try { started = surface.Turn(away, leg.Land); }
+        finally { _starting = false; }
+        if (started && leg.Live) return;
+        _state.Halt(); Stop(surface);
+    }
+
+    private void Stop(INativeUiFlipSurface surface) { _leg?.Drop(); _leg = null; surface.Rest(); }
+
+    private void EdgeOn(int generation)
+    {
+        if (_starting || _surface is not { } surface || !_state.Midpoint(generation)) return;
+        var back = _state.Generation;
+        surface.Repaint();
+        if (_surface is null || _state.Generation != back) return; // That pass ended the turn, or the card.
+        // Edge-on the card has no width, so it is never left here: without a back leg it rests face-on at once.
+        if (surface.CanTurn) Start(surface, away: false);
+        else { _state.Halt(); Stop(surface); }
+    }
+
+    private void FaceOn(int generation)
+    {
+        if (_starting || _surface is not { } surface || !_state.Landed(generation)) return;
+        Stop(surface);
     }
 }

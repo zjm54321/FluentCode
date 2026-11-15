@@ -41,6 +41,18 @@ internal sealed partial class NativeUiRenderer : IDisposable
             catch (Exception error) { _root.Child = NativeUiTheme.Notice("原生卡片主题更新失败", error.ToString(), true); }
         });
     }
+    /// <summary>
+    /// Paints the last model again, for a change in what a card shows that is not a change of the model: a
+    /// flashcard reaching the middle of its turn. It is a whole pass because only a pass counts the nodes of the
+    /// new face against the budget and prunes the elements of the old one. No caller is left to catch a failure
+    /// here, so it is shown in the card with the wording the part view uses for a pass that failed.
+    /// </summary>
+    private void Repaint()
+    {
+        if (_disposed || _lastRoot is not { } root) return;
+        try { Render(root); }
+        catch (Exception error) { _root.Child = NativeUiTheme.Notice("交互卡片无法渲染", NativeUiToolInput.Compact(error.Message), error: true); }
+    }
     internal void Render(NativeUiElement root)
     {
         _lastRoot = root;
