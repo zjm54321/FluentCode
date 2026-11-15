@@ -594,6 +594,7 @@ internal static class Program
             && restore.Contains("if (flight is null || !Current()) return OpenCodeSavedSessionLookup.Unavailable;", StringComparison.Ordinal)
             && restore.Contains("if (_sessionItems.ContainsKey(sessionId)) return OpenCodeSavedSessionLookup.Found; // The list brought it meanwhile.", StringComparison.Ordinal)
             && restore.Contains("_sessionCatalogDepth.AskedById(sessionId);", StringComparison.Ordinal), "depth.lookup-writes-under-the-catalog-gate");
+        Check(restore.Contains("OnBrowserSessionTabOpened(entry.SessionId);", StringComparison.Ordinal), "page.confirmed-restored-tab-gets-its-browser-peer");
     }
 
     private static void PageContracts()

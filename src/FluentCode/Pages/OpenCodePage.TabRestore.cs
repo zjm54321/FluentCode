@@ -447,6 +447,9 @@ public sealed partial class OpenCodePage
             if (!entry.TrackWhenConfirmed || !_sessionItems.ContainsKey(entry.SessionId)) continue;
             entry.TrackWhenConfirmed = false;
             RaiseSessionTracked(entry.SessionId, OpenCodeSessionTrackReason.Selected);
+            // CreateSessionTab offered it when the directory was not known yet; now it is, so the tab is served
+            // like one the user opened.
+            OnBrowserSessionTabOpened(entry.SessionId);
             tracked = true;
         }
         // The host remembers the last tracked session as the current one; keep that the session on screen.
