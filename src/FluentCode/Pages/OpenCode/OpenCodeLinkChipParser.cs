@@ -371,6 +371,18 @@ internal static class OpenCodeLinkChipParser
         return result;
     }
 
+    /// <summary>
+    /// The link a renderer keeps as text for now: the one that runs to the very end of <paramref name="source"/>
+    /// (Markdown; code is skipped), which may still be growing while the text streams in. None when the host knows
+    /// the text is <paramref name="complete"/>, or when exactly this text already sat idle (<paramref name="settled"/>).
+    /// </summary>
+    internal static OpenCodeLinkMatch? PendingTail(string? source, bool complete, string? settled)
+    {
+        if (complete || string.IsNullOrEmpty(source) || string.Equals(settled, source, StringComparison.Ordinal)) return null;
+        var links = Find(source, markdown: true);
+        return links.Count > 0 && links[^1].End == source.Length ? links[^1] : null;
+    }
+
     private static int IndexOfScheme(string text, int from)
     {
         var a = text.IndexOf("http://", from, StringComparison.OrdinalIgnoreCase);

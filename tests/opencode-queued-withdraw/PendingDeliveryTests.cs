@@ -26,6 +26,7 @@ internal static partial class Program
             ("right-click entries of a queued row", QueueMenuEntries),
             ("always-visible withdraw icon in the queue row", QueueWithdrawControl),
             ("queue header shows link labels, not addresses", QueueHeaderLinks),
+            ("a queued row renders finished text: no link waits", QueueRowCompleteText),
             ("touch reveal helper", TouchRevealHelper),
             ("receipt-projected steer switch", ReceiptProjectedSwitch),
             ("empty inbox retires uncertainty", EmptyInboxRetiresUncertainty),
@@ -383,6 +384,28 @@ internal static partial class Program
         bare.Inbox.Add(UserItem(Inbox, "", 1000));
         using var bareClient = bare.Client();
         Check(QueueHeader(await DeliveryPage(bare, bareClient)).Text == prefix + "（仅附件）", "a message without text keeps its placeholder");
+    }
+
+    // The message renderer holds back a link at the very end of text that may still be streaming in. A queued prompt
+    // is finished text: the row has to say so before it renders, or that link stays an address for a moment.
+    private static TextBlock RenderedMessage(Grid row) => Descendants(row).OfType<TextBlock>().Single(t => t.RenderedAsComplete is not null);
+
+    private static async Task QueueRowCompleteText()
+    {
+        const string ending = "看这个https://github.com/sst/opencode/pull/4821";
+        var server = new FakeServer();
+        server.Inbox.Add(UserItem(Inbox, ending, 1000));
+        server.Inbox.Add(UserItem("msg_other", "链接在中间 https://example.com/b 的第二条", 1100));
+        using var client = server.Client();
+        var page = await DeliveryPage(server, client);
+        Check(RenderedMessage(QueueRow(page, Inbox)) is { RenderedAsComplete: true, Text: ending },
+            "a row whose message ends in a link renders it, as written, as complete text");
+        Check(RenderedMessage(QueueRow(page, "msg_other")).RenderedAsComplete == true, "every row does, wherever its links are");
+
+        server.Inbox[0] = UserItem(Inbox, "改过的https://example.com/c", 1000);
+        page.Publish(await client.GetInboxAsync(Session, CancellationToken.None));
+        Check(RenderedMessage(QueueRow(page, Inbox)) is { RenderedAsComplete: true, Text: "改过的https://example.com/c" },
+            "a row rebuilt for a changed list is complete text too");
     }
 
     // The queue row no longer hides anything, but other views still do (browser strip, tool rows): keep the shared

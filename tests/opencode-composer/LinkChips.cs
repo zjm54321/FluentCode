@@ -71,6 +71,7 @@ internal static partial class Program
         Check(Urls("mailto:a@b.com file:///x").Length == 0, "other schemes stay text");
         LinkStartRules();
         LinkPreviewText();
+        LinkTailRules();
         // ---- markdown [text](url)
         Check(OpenCodeLinkChipParser.RewriteMarkdownLinks("[https://good.com](https://evil.io/x)") == "https://evil.io/x", "URL-looking text shows the REAL target");
         Check(OpenCodeLinkChipParser.RewriteMarkdownLinks("read [docs](https://a.com/d).") == "read docs (https://a.com/d).", "ordinary text keeps text + real target");
@@ -320,6 +321,24 @@ internal static partial class Program
         Preview("没有链接", "没有链接", "text without a link");
         Preview("", "", "empty text");
         Preview(null, "", "no text");
+    }
+
+    // Which link a renderer holds back as text: only one that ends text which may still be streaming in.
+    private static void LinkTailRules()
+    {
+        const string url = "https://a.com/x", ending = "看这个" + url;
+        static OpenCodeLinkMatch? Tail(string? source, bool complete = false, string? settled = null)
+            => OpenCodeLinkChipParser.PendingTail(source, complete, settled);
+        Check(Tail(ending) is { Start: 3, Url: url }, "text that may still grow: the link at its very end waits");
+        Check(Tail(ending, complete: true) is null, "text its host calls complete: nothing waits");
+        Check(Tail(url, complete: true) is null && Tail("a " + url + " b " + url, complete: true) is null, "complete text, whatever its links");
+        Check(Tail(ending, settled: ending) is null, "text that already sat idle: nothing waits");
+        Check(Tail(ending, settled: ending[..^1]) is { Url: url }, "an earlier, shorter text having sat idle does not release this one");
+        Check(Tail(ending + " ") is null && Tail(ending + "。") is null && Tail(ending + "\n") is null && Tail(ending + "然后") is null,
+            "a link with anything after it is whole already");
+        Check(Tail(url + " 和 https://b.com/y") is { Url: "https://b.com/y" } && Tail(url + " 和 https://b.com/y 。") is null, "only the last link can wait");
+        Check(Tail("`" + url + "`") is null && Tail("```\n" + url) is null, "an address in code is never a link, so it never waits");
+        Check(Tail("abc" + url) is null && Tail("没有链接") is null && Tail("") is null && Tail(null) is null, "no link, nothing waits");
     }
 
     private static async Task ImagePasteEditorRegression()
@@ -610,7 +629,10 @@ internal static partial class Program
                 "pending surface uses same owned-chip eligibility and shared thumbnails: " + relative);
         }
         var presenter = Src("Pages/OpenCode/OpenCodeRichTextPresenter.cs");
-        Check(presenter.Contains("AttachmentCounts != _lastAttachmentCounts") && presenter.Contains("(source, (style, AttachmentCounts),"),
+        Check(presenter.Contains("AttachmentCounts != _lastAttachmentCounts") && presenter.Contains("(source, (style, AttachmentCounts, TextIsComplete),"),
             "same-text pending attachment changes invalidate the real rich-text render cadence and duplicate-render key");
+        Check(presenter.Contains("TextIsComplete != _lastTextIsComplete")
+            && presenter.Contains("OpenCodeLinkChipParser.PendingTail(source, TextIsComplete, _settledSource)"),
+            "a host declaring the same text complete renders it again, and the renderer asks the tested rule which link waits");
     }
 }

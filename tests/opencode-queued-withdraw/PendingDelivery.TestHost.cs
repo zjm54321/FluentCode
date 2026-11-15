@@ -128,9 +128,16 @@ namespace FluentCode.Pages.OpenCode
     {
         internal FrameworkElement Element { get; } = new TextBlock();
         internal (int Images, int Pdfs) AttachmentCounts { get; set; }
+        internal bool TextIsComplete { get; set; }
         // Like the real presenter, the menu lands on the rendered text itself.
         internal object? TextContextFlyout { get => Element.ContextFlyout; set => Element.ContextFlyout = value; }
-        internal void Render(string? text, OpenCodeRichTextStyle style) => ((TextBlock)Element).Text = text ?? string.Empty;
+        // Records what the real presenter reads when it renders: the text, and whether its host declared it complete.
+        internal void Render(string? text, OpenCodeRichTextStyle style)
+        {
+            var block = (TextBlock)Element;
+            block.Text = text ?? string.Empty;
+            block.RenderedAsComplete = TextIsComplete;
+        }
     }
     internal sealed class OpenCodeUserAttachmentsView : IDisposable
     {
@@ -285,6 +292,8 @@ namespace Microsoft.UI.Xaml.Controls
         public TextWrapping TextWrapping { get; set; }
         public TextTrimming TextTrimming { get; set; }
         public int MaxLines { get; set; }
+        // Host-only: set by the presenter double on each render (null = this text never came from a presenter).
+        internal bool? RenderedAsComplete;
     }
     public sealed class FontIcon : FrameworkElement { public string Glyph { get; set; } = ""; public double FontSize { get; set; } }
     public class Button : ContentControl

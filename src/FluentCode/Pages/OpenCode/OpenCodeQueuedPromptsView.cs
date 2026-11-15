@@ -234,7 +234,8 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
 
         var files = OpenCodeUserAttachments.FromInbox(item);
         var rawText = ReadText(item.Payload);
-        var presenter = new OpenCodeRichTextPresenter { AttachmentCounts = OpenCodeUserAttachments.Counts(files) };
+        // A queued prompt is finished text: a link at its very end is a chip at once, like every other link in it.
+        var presenter = new OpenCodeRichTextPresenter { AttachmentCounts = OpenCodeUserAttachments.Counts(files), TextIsComplete = true };
         presenter.Render(files.Count == 0 ? text : rawText, OpenCodeRichTextStyle.Body);
         var attachments = new OpenCodeUserAttachmentsView();
         attachments.Update(files, !string.IsNullOrEmpty(rawText));
