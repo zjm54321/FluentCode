@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
 using FluentCode.Services.Notifications;
 using Microsoft.UI.Xaml;
@@ -53,6 +54,8 @@ public sealed partial class OpenCodePage
     private long _sessionCatalogEventVersion;
     private long _sessionCatalogReadVersion;
     private readonly Dictionary<string, long> _sessionCatalogEventVersions = new(StringComparer.Ordinal);
+    // Rows a title-bar tab asked for by id; they are re-read by id but are not loaded page depth.
+    private readonly OpenCodeSessionCatalogDepth _sessionCatalogDepth = new();
 
     private sealed class SessionCatalogReadLease(SemaphoreSlim gate) : IDisposable
     {
@@ -82,7 +85,7 @@ public sealed partial class OpenCodePage
             && ReferenceEquals(source, _source) && ReferenceEquals(client, _client)
             && source.Revision == revision && revision == _sourceRevision && generation == _sourceGeneration;
         var retained = _sessionItems.Keys.ToArray();
-        var pages = Math.Max(1, (retained.Length + SessionPageSize - 1) / SessionPageSize);
+        var pages = _sessionCatalogDepth.PagesToRead(retained, SessionPageSize);
         var rows = new Dictionary<string, OpenCodeSessionInfo>(StringComparer.Ordinal);
         var used = new HashSet<string>(StringComparer.Ordinal);
         OpenCodeSessionsResponse response = new();
@@ -101,7 +104,11 @@ public sealed partial class OpenCodePage
             if (pending is null) throw new OperationCanceledException(ct);
             response = await pending;
             foreach (var info in response.Data ?? new())
-                if (IsRootSession(info) && info.Time?.Archived is null) rows[info.Id!] = info;
+            {
+                if (!IsRootSession(info) || info.Time?.Archived is not null) continue;
+                rows[info.Id!] = info;
+                _sessionCatalogDepth.Listed(info.Id!); // Within the loaded pages now: an ordinary row from here on.
+            }
             if ((response.Data?.Count ?? 0) == 0) { response = response with { Cursor = null }; break; }
             var kind = ClassifySessionCursor(response.Cursor?.Next, out var next);
             if (kind != SessionCursorKind.Valid) break; // RestartSessionPagination owns invalid/missing UI.
@@ -242,6 +249,7 @@ public sealed partial class OpenCodePage
         if (_sessionItems.Count == 0)
         {
             _sessionCatalogEventVersions.Clear();
+            _sessionCatalogDepth.Clear();
             _sessionCatalogReadVersion = _sessionCatalogEventVersion;
         }
     }
@@ -455,6 +463,7 @@ public sealed partial class OpenCodePage
     {
         foreach (var session in sessions)
         {
+            if (IsRootSession(session)) _sessionCatalogDepth.Listed(session.Id!);
             if (!IsRootSession(session) || session?.Id is not { Length: > 0 } id || _sessionItems.ContainsKey(id)
                 || _sessionCatalogEventVersions.GetValueOrDefault(id) > _sessionCatalogReadVersion || session.Time?.Archived is not null)
             {

@@ -124,6 +124,7 @@ public partial class App
     private void BeginWindowShutdown(MainWindow window)
     {
         if (!_backgroundLifetime.TryBeginShutdown()) return;
+        _tabsSaved = window.SaveOpenCodeTabsAsync(final: true); // Before the connection is revoked and the page lets go of its tabs.
         _closing = true;
         ShutdownBackgroundMode();
         _navigationReady = false;
@@ -136,11 +137,13 @@ public partial class App
     }
 
     public Task ShutdownCompletion { get; private set; } = Task.CompletedTask;
+    private Task _tabsSaved = Task.CompletedTask;
 
     private async Task DrainApplicationAsync()
     {
         try
         {
+            await _tabsSaved.ConfigureAwait(false); // The window closes only after ShutdownCompletion.
             if (_activationPipe is { } pipe)
             {
                 await pipe.DisposeAsync().ConfigureAwait(false);

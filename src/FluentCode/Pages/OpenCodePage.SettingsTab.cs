@@ -48,9 +48,17 @@ public sealed partial class OpenCodePage
     /// <summary>打开（或切换到）唯一的设置标签。</summary>
     internal void ShowSettingsTab()
     {
+        if (!EnsureSettingsTab()) return;
+        if (!ReferenceEquals(SessionTabs.SelectedItem, _settingsTab)) SessionTabs.SelectedItem = _settingsTab;
+        else SyncSettingsSurface(null);
+    }
+
+    /// <summary>The Settings tab exists (created without selecting it when missing). False when the host offers no content.</summary>
+    private bool EnsureSettingsTab()
+    {
         if (_settingsTab is null)
         {
-            if (SettingsContentFactory is not { } factory) return;
+            if (SettingsContentFactory is not { } factory) return false;
             _settingsContent = factory();
             SettingsTabHost.Children.Clear();
             SettingsTabHost.Children.Add(_settingsContent);
@@ -71,8 +79,7 @@ public sealed partial class OpenCodePage
             finally { _suppressTabSelection = previous; }
         }
 
-        if (!ReferenceEquals(SessionTabs.SelectedItem, _settingsTab)) SessionTabs.SelectedItem = _settingsTab;
-        else SyncSettingsSurface(null);
+        return true;
     }
 
     /// <summary>选择变化的最先一步：按当前选中项显示/收起设置覆盖层。返回 true 表示本次选择已完全处理。</summary>

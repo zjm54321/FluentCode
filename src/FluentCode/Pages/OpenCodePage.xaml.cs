@@ -392,6 +392,8 @@ public sealed partial class OpenCodePage : Page
     public void ShutdownPage()
     {
         if (_pageReleased) return;
+        PublishTabsNow(); // Last look at the strip while it is intact (ignored after the shutdown save); written off-thread.
+        _ = OpenCodeSavedTabsStore.Shared.FlushAsync();
         // Force pause even when Window.Closed precedes the native Unloaded notification.
         _pageReleased = true;
         PausePage();
@@ -558,6 +560,7 @@ public sealed partial class OpenCodePage : Page
         BindComposer();
         if (_newSessionDraftActive) EnsureBlankPreferences();
         ShowWorkspace();
+        BeginTabRestore(source); // Saved tabs of this server; the page is fully bound to the source by now.
         _ = ReadServerInfoAsync(); // B2 footer: once per installed source, never polled.
         _ = RefreshSessionsAsync();
         _ = TryDrainNavigationQueueAsync();
@@ -3824,6 +3827,7 @@ public sealed partial class OpenCodePage : Page
 
         _connection = state;
         UpdateConnectionStatus();
+        ShowWaitingTabs(noAnswer: state == ConnectionState.Failed); // Restored tabs the server has not confirmed yet.
     }
 
     private FluentCode.Services.OpenCode.Connection.OpenCodeConnectionStatus? _shownSshAlert;
@@ -4281,6 +4285,7 @@ public sealed partial class OpenCodePage : Page
 
     private async Task ProcessNavigationTargetAsync(NotificationNavigationTarget target, NotificationInteractionResult? result)
     {
+        CancelSavedTabSelection(); // A notification's session outranks the saved selection.
         if (!_pageActive)
         {
             EnqueueNavigation(target, result);

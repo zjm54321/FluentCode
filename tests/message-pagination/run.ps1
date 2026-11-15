@@ -57,6 +57,7 @@ $sources = $openCode + @(
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeContextStatusParser.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeLineDiff.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeHomeProjection.cs'),
+    (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeSessionCatalogDepth.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeTurnOutline.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeSessionControlCoordinator.cs'),
     (Join-Path $repo 'src/FluentCode/Pages/OpenCode/OpenCodeSessionTracking.cs'),
