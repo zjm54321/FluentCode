@@ -312,7 +312,8 @@ internal static class OpenCodeRollbackConfirmationDialog
         };
     }
 
-    private static Grid CautionLine(string text, string? automationId)
+    // Shared with the send-after-undo confirmation (OpenCodeComposerContinuationDialog): one caution line, one look.
+    internal static Grid CautionLine(string text, string? automationId)
     {
         var line = new Grid { ColumnSpacing = 8 };
         line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });

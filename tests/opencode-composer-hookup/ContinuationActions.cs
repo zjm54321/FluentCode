@@ -23,6 +23,202 @@ internal static class ContinuationTests
         Console.WriteLine($"PASS: 3 Page-continuation groups, {checks} assertions ({a}/{b}/{checks-a-b}); actual Page/core/backend/input publisher, HTTP/WinUI/dialog/scheduler doubles; no native/live actions.");
         var prior = checks; await ReviewRegressions();
         Console.WriteLine($"PASS: Page review regressions, {checks-prior} assertions; actual source/controller locks, owned uncertainty and no-start/origin-lost contrasts.");
+        prior = checks; SendPromptModel(); await SendAfterUndo();
+        Console.WriteLine($"PASS: send after undo, {checks-prior} assertions; no prompt after a files-free undo that is on screen, one plain confirmation otherwise, changed or unreadable stages never committed silently.");
+    }
+    // The page in these fixtures starts with no undo on screen, so the groups above send into a stage the page was
+    // NOT showing: they keep asking. Shown() puts the undo on screen the way an accepted undo does.
+    private const string SnapshotOnlyStage = "{\"messageID\":\"msg_newer\",\"snapshot\":\"snap\",\"files\":[]}";
+    private const string FileStage = "{\"messageID\":\"msg_newer\",\"snapshot\":\"snap\",\"files\":["
+        + "{\"file\":\"a.txt\",\"patch\":\"\",\"additions\":1,\"deletions\":0,\"status\":\"modified\"},"
+        + "{\"file\":\"b.txt\",\"patch\":\"\",\"additions\":0,\"deletions\":2,\"status\":\"deleted\"}]}";
+    private static void Shown(NativeTests.Fixture f, string stage) { f.Stage = stage; f.Page.AcceptHistory("msg_newer"); }
+    private static int Questions;
+    private static void CountQuestions(Action<OpenCodeContinuationPresentation>? seen = null, OpenCodeContinuationOutcome answer = OpenCodeContinuationOutcome.Cancelled)
+    {
+        Questions = 0;
+        OpenCodeComposerContinuationDialog.Next = p => { Questions++; seen?.Invoke(p); return Task.FromResult(new OpenCodeContinuationResult(answer, p)); };
+    }
+
+    // What the one remaining confirmation says, and which button is the default (WinUI-free state; the dialog only renders it).
+    private static void SendPromptModel()
+    {
+        object basis = new();
+        var files = new OpenCodeContinuationConfirmationState(new(false, 2, basis));
+        Check(files.Title == "发送这条消息？" && OpenCodeContinuationConfirmationState.PrimaryText == "发送"
+            && OpenCodeContinuationConfirmationState.CloseText == "取消" && !files.ConfirmIsDefault,
+            "a question as title, the verb on the button, and 取消 as the default button");
+        Check(files.Summary == "发送后，已撤回的消息会被永久删除，撤回时恢复的 2 个文件保持现在的样子，不能再用“恢复撤回”还原。"
+            && files.Cautions().Count == 0 && files.StageNote is null && files.CommandNote is null,
+            "one sentence: the undone messages are deleted for good and the restored files stay as they are; no general caution lines: " + files.Summary);
+        Check(!(files.Title + files.Summary).Contains("ses_", StringComparison.Ordinal)
+            && typeof(OpenCodeContinuationPresentation).GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
+                .All(property => property.PropertyType != typeof(string)),
+            "the confirmation has no place for a session id or any other caption");
+        var noFiles = new OpenCodeContinuationConfirmationState(new(false, 0, basis));
+        Check(noFiles.Summary == "发送后，已撤回的消息会被永久删除，不能再用“恢复撤回”还原。", "without restored files nothing is said about files");
+
+        var command = new OpenCodeContinuationConfirmationState(new(true, 0, basis));
+        Check(command.Title == "发送这条命令？" && command.Summary.Contains("可能被永久删除", StringComparison.Ordinal)
+            && command.Cautions().Count == 1 && command.Cautions()[0] == command.CommandNote
+            && command.CommandNote!.Contains("无法确认", StringComparison.Ordinal) && command.CommandNote.Contains("重启 FluentCode", StringComparison.Ordinal)
+            && !command.ConfirmIsDefault,
+            "a server command: one caution line that names its own consequence: " + command.CommandNote);
+
+        foreach (var (view, word) in new[] { (OpenCodeContinuationStageView.Moved, "位置"), (OpenCodeContinuationStageView.NotShown, "还没有显示"), (OpenCodeContinuationStageView.Unknown, "还没有加载完") })
+        {
+            var differs = new OpenCodeContinuationConfirmationState(new(false, 0, basis) { StageView = view });
+            Check(differs.Cautions().Count == 1 && differs.StageNote!.Contains(word, StringComparison.Ordinal) && !differs.ConfirmIsDefault,
+                $"an undo that is not the one on screen ({view}) is said in one line: " + differs.StageNote);
+        }
+        var gone = new OpenCodeContinuationConfirmationState(new(true, 3, basis) { HasStagedRevert = false, StageView = OpenCodeContinuationStageView.Moved });
+        Check(gone.Title == "仍然发送这条命令？" && gone.Summary.Contains("已经不存在", StringComparison.Ordinal) && gone.Cautions().Count == 0
+            && !gone.Summary.Contains("永久删除", StringComparison.Ordinal) && !gone.Summary.Contains("文件", StringComparison.Ordinal),
+            "an undo that disappeared while the question was open: nothing is promised about messages or files");
+
+        // The dialog's inputs come from the coordinator's own predicates.
+        var source = new OpenCodePageSource("model-" + Guid.NewGuid(), 1, () => throw new Exception("no client"));
+        var origin = new SessionControlOrigin(source, 1, "ses_test", 1) { ObservedStage = new("msg_newer") };
+        var snapshotOnly = new FluentCode.Services.OpenCode.SessionControlRevert("msg_newer", null, true, 0, new string('A', 64));
+        var described = OpenCodeContinuationPresentation.Describe(origin, snapshotOnly with { FileCount = 2 }, false, basis);
+        Check(described is { RestoredFileCount: 2, IsServerCommand: false, HasStagedRevert: true, StageView: OpenCodeContinuationStageView.AsShown }
+            && ReferenceEquals(described.Basis, basis), "files restored, as shown");
+        Check(snapshotOnly.MayHaveFileEffects && OpenCodeContinuationPresentation.Describe(origin, snapshotOnly, true, basis) is { RestoredFileCount: 0, IsServerCommand: true },
+            "a snapshot alone counts no restored file");
+        Check(OpenCodeContinuationPresentation.Describe(origin, snapshotOnly with { MessageId = "msg_older" }, false, basis).StageView == OpenCodeContinuationStageView.Moved
+            && OpenCodeContinuationPresentation.Describe(origin with { ObservedStage = new(null) }, snapshotOnly, false, basis).StageView == OpenCodeContinuationStageView.NotShown
+            && OpenCodeContinuationPresentation.Describe(origin with { ObservedStage = null }, snapshotOnly, false, basis).StageView == OpenCodeContinuationStageView.Unknown
+            && OpenCodeContinuationPresentation.Describe(origin, null, false, basis) is { HasStagedRevert: false, RestoredFileCount: 0, StageView: OpenCodeContinuationStageView.AsShown },
+            "moved / not shown / unknown / gone are told apart");
+        // Same fact as the redo prompt: it asks exactly when the send does, for the same stage.
+        foreach (var stage in new[] { snapshotOnly, snapshotOnly with { FileCount = 1 }, snapshotOnly with { HasSnapshot = false } })
+        {
+            var redo = new OpenCodeRollbackPreviewPresentation(OpenCodeRollbackKind.Redo, null, stage.FileCount, false, false, true, basis);
+            Check(OpenCodeRollbackConfirmationState.RequiresPrompt(redo) == SessionControlContinuationRule.RestoredFiles(stage)
+                && SessionControlContinuationRule.SendsWithoutAsking(origin, stage, ComposerSubmissionKind.Prompt) != SessionControlContinuationRule.RestoredFiles(stage),
+                "redo and send ask about files for the same stages");
+        }
+
+        // One completion, first wins; closing never confirms.
+        var closed = new OpenCodeContinuationConfirmationState(new(false, 1, basis));
+        Check(closed.Finish().Outcome == OpenCodeContinuationOutcome.Cancelled && !closed.TryConfirm()
+            && closed.Result!.Outcome == OpenCodeContinuationOutcome.Cancelled, "Enter/Esc/取消 cancel, and a late 发送 cannot replace that");
+        var sent = new OpenCodeContinuationConfirmationState(new(false, 1, basis));
+        Check(sent.TryConfirm() && !sent.MarkStale() && sent.Finish() is { Outcome: OpenCodeContinuationOutcome.Confirmed } result
+            && ReferenceEquals(result.Presentation, sent.Presentation), "only the explicit 发送 confirms, with the presentation it was shown with");
+        var stale = new OpenCodeContinuationConfirmationState(new(false, 1, basis));
+        Check(stale.MarkStale() && !stale.TryConfirm() && stale.Finish().Outcome == OpenCodeContinuationOutcome.Stale, "a question the page withdrew cannot be confirmed");
+    }
+
+    private static async Task SendAfterUndo()
+    {
+        // 1. An ordinary message after an undo that restored no file and is on screen: no question at all.
+        foreach (var stage in new[] { "{\"messageID\":\"msg_newer\"}", SnapshotOnlyStage })
+        foreach (var enhanced in new[] { false, true })
+        {
+            using var f = new NativeTests.Fixture(); Shown(f, stage); CountQuestions(answer: OpenCodeContinuationOutcome.Confirmed);
+            if (enhanced) await f.Page.File(); f.Page.Text("edited and sent");
+            await f.Page.Send();
+            Check(Questions == 0 && f.Http.Posts == 1 && f.LastMutationPath!.EndsWith("/prompt", StringComparison.Ordinal)
+                && f.MutationPaths.All(path => !path.Contains("commit")) && f.Page.Receipts == 1 && f.Page.Messages.Count == 0,
+                $"send after a files-free undo goes straight through (attachment={enhanced}, questions={Questions}, posts={f.Http.Posts}, notices={string.Join(";", f.Page.Messages)})");
+            Check(f.Page.HistoryNeedsState && !f.Page.HistoryDeferred, "the committed undo is re-read before the transcript is shown again");
+            using var lease = await OpenCodeInteractionGate.Shared.EnterAsync(f.Source.Identity, "ses_test");
+            Check(lease.GetSessionControlProtection() is null && lease.GetComposerSubmissionProtection() is null,
+                "an accepted prompt settles the continuation protection it started under");
+        }
+
+        // 2. The undo restored files: one confirmation, and 取消 leaves everything as it was.
+        foreach (var enhanced in new[] { false, true })
+        {
+            using var f = new NativeTests.Fixture(); Shown(f, FileStage); OpenCodeContinuationPresentation? asked = null;
+            CountQuestions(p => asked = p);
+            if (enhanced) await f.Page.File(); f.Page.Text("keep me");
+            var attachments = f.Page.Snapshot.Attachments.Count; var boundary = f.Page.Boundary;
+            await f.Page.Send();
+            Check(Questions == 1 && asked is { RestoredFileCount: 2, IsServerCommand: false, HasStagedRevert: true, StageView: OpenCodeContinuationStageView.AsShown },
+                $"an undo that restored files asks once, with the number of files (questions={Questions})");
+            Check(f.Http.Posts == 0 && f.Stage == FileStage && f.Page.Snapshot.Text == "keep me" && f.Page.Snapshot.Attachments.Count == attachments
+                && f.Page.Receipts == 0 && f.Page.Messages.Count == 0 && !f.Page.HistoryDeferred && f.Page.Boundary == boundary,
+                "取消: nothing sent, the undo still pending, the draft and the hidden rows unchanged, no notice: " + string.Join(";", f.Page.Messages));
+            using (var lease = await OpenCodeInteractionGate.Shared.EnterAsync(f.Source.Identity, "ses_test"))
+                Check(lease.CanControlSession(), "取消 leaves no protection behind: 恢复撤回 still works");
+            CountQuestions(answer: OpenCodeContinuationOutcome.Confirmed);
+            await f.Page.Send();
+            Check(Questions == 1 && f.Http.Posts == 1 && f.Page.Receipts == 1, "发送 on the same question sends exactly once");
+        }
+
+        // 3. The undo is not the one that was on screen when Send was pressed: never committed silently.
+        foreach (var change in new[] { "undone-further", "files-now", "during-read" })
+        foreach (var enhanced in new[] { false, true })
+        {
+            using var f = new NativeTests.Fixture(); Shown(f, "{\"messageID\":\"msg_newer\"}"); OpenCodeContinuationPresentation? asked = null;
+            CountQuestions(p => asked = p);
+            if (enhanced) await f.Page.File(); f.Page.Text("old assumption");
+            if (change == "undone-further") f.Stage = "{\"messageID\":\"msg_older\"}"; // Another window undid one more message.
+            if (change == "files-now") f.Stage = FileStage; // Another window redid and undid again, with files.
+            if (change == "during-read")
+            {
+                var read = Program.Signal<bool>(); var respond = f.Http.Respond;
+                f.Http.Respond = async (r, ct) => { if (r.Method == HttpMethod.Get && r.RequestUri!.AbsolutePath == "/api/session/ses_test") await read.Task; return await respond(r, ct); };
+                var send = f.Page.Send();
+                f.Stage = "{\"messageID\":\"msg_older\"}"; read.SetResult(true); await send;
+            }
+            else await f.Page.Send();
+            Check(Questions == 1 && f.Http.Posts == 0 && f.Page.Snapshot.Text == "old assumption", $"{change}/{enhanced}: asks instead of sending (questions={Questions}, posts={f.Http.Posts})");
+            Check(change == "files-now" ? asked is { RestoredFileCount: 2, StageView: OpenCodeContinuationStageView.AsShown }
+                : asked is { RestoredFileCount: 0, StageView: OpenCodeContinuationStageView.Moved }, $"{change}/{enhanced}: the question says what was found");
+        }
+        foreach (var state in new[] { "unreadable", "earlier-unknown" })
+        foreach (var enhanced in new[] { false, true })
+        {
+            using var f = new NativeTests.Fixture(); Shown(f, "{\"messageID\":\"msg_newer\"}"); CountQuestions(answer: OpenCodeContinuationOutcome.Confirmed);
+            if (enhanced) await f.Page.File(); f.Page.Text("refused");
+            if (state == "unreadable")
+            {
+                var respond = f.Http.Respond;
+                f.Http.Respond = (r, ct) => r.Method == HttpMethod.Get && r.RequestUri!.AbsolutePath == "/api/session/ses_test"
+                    ? Task.FromResult(Program.Json("{}")) : respond(r, ct);
+            }
+            else using (var lease = await OpenCodeInteractionGate.Shared.EnterAsync(f.Source.Identity, "ses_test"))
+            {
+                var earlier = Guid.NewGuid();
+                lease.BeginSessionControl(earlier, SessionControlKind.StageRevert, new string('A', 64));
+                lease.CompleteSessionControl(earlier, NotificationInteractionStatus.OutcomeUnknown);
+            }
+            await f.Page.Send();
+            Check(Questions == 0 && f.Http.Posts == 0 && f.Page.Snapshot.Text == "refused" && f.Page.Receipts == 0,
+                $"{state}/{enhanced}: refused as before, not asked and not sent (questions={Questions}, posts={f.Http.Posts})");
+        }
+
+        // 4. A server command after the same plain undo still asks, and this is why: a 204 does not say whether the
+        //    undo was committed, so the session stays protected and refuses the next send.
+        using (var f = new NativeTests.Fixture())
+        {
+            Shown(f, "{\"messageID\":\"msg_newer\"}"); OpenCodeContinuationPresentation? asked = null; CountQuestions(p => asked = p);
+            await f.Page.ServerModelsCommand(); await f.Page.Send();
+            Check(Questions == 1 && f.Http.Posts == 0 && asked is { IsServerCommand: true, RestoredFileCount: 0, StageView: OpenCodeContinuationStageView.AsShown }
+                && new OpenCodeContinuationConfirmationState(asked).CommandNote is not null,
+                $"a server command after a files-free undo asks, with its own line (questions={Questions}, posts={f.Http.Posts})");
+            CountQuestions(answer: OpenCodeContinuationOutcome.Confirmed);
+            f.Mutation = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+            await f.Page.Send();
+            using (var lease = await OpenCodeInteractionGate.Shared.EnterAsync(f.Source.Identity, "ses_test"))
+                Check(f.Http.Posts == 1 && f.LastMutationPath!.EndsWith("/command", StringComparison.Ordinal)
+                    && lease.GetSessionControlProtection()?.Kind == SessionControlKind.RevertContinuation && !lease.CanControlSession(),
+                    "the acknowledged command leaves the undo's outcome unknown and the session protected");
+            f.Mutation = null; f.Page.Discard(); f.Page.Text("next message"); await f.Page.Send();
+            Check(f.Http.Posts == 1 && f.Page.Receipts == 0, "which is the consequence the line names: the next message is not sent");
+        }
+
+        // 5. The undo the page was showing is gone (恢复撤回 in another window): an ordinary send, as before this change.
+        using (var f = new NativeTests.Fixture())
+        {
+            Shown(f, "{\"messageID\":\"msg_newer\"}"); f.Stage = null; CountQuestions(); f.Page.Text("no undo left");
+            await f.Page.Send();
+            Check(Questions == 0 && f.Http.Posts == 1 && f.Page.Receipts == 1 && f.Page.HistoryNeedsState,
+                "nothing is committed, nothing is asked, and the stale cut is re-read");
+        }
     }
     private static void Stage(NativeTests.Fixture f) => f.Stage = "{\"messageID\":\"msg_newer\"}";
     private static void Confirm() => OpenCodeComposerContinuationDialog.Next = p => Task.FromResult(new OpenCodeContinuationResult(OpenCodeContinuationOutcome.Confirmed, p));

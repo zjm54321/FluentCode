@@ -16,7 +16,13 @@ public sealed record SessionControlOrigin(OpenCodePageSource Source, long Revisi
     public ImmutableArray<string> PreviouslyKnownUnresolvedChildSessionIds { get; init; } = ImmutableArray<string>.Empty;
     public bool LocalSubmissionInProgress { get; init; }
     public bool ApplyingSendSelection { get; init; }
+    /// <summary>What the Page was showing when the gesture was made: the staged undo its transcript is cut at.
+    /// Captured once at invocation and never refreshed. Null means the Page does not know (boundary not read yet,
+    /// or a reread is pending); that is never "no undo", and a send then always asks before committing a stage.</summary>
+    public SessionControlObservedStage? ObservedStage { get; init; }
 }
+/// <summary><paramref name="MessageId"/> is the first hidden message, or null when the Page was showing no undo.</summary>
+public sealed record SessionControlObservedStage(string? MessageId);
 /// <summary>Caller-owned exact authoritative draft token/fingerprint, including command/files/IME state.
 /// Empty must mean empty text, command AND files. It is not permission to borrow a newer editor token.</summary>
 public sealed record SessionControlDraft(string Fingerprint, bool Empty);
@@ -60,6 +66,27 @@ public sealed record SessionControlResult(Guid OperationId, SessionControlStatus
 public sealed record SessionControlContinuationConsent(SessionControlOrigin Origin, string StageFingerprint, string DraftFingerprint);
 public sealed record SessionControlContinuationPreparation(SessionControlStatus Status, SessionControlState? State,
     SessionControlContinuationConsent? RequiredConsent, SessionControlContinuationPermit? Permit);
+/// <summary>
+/// When a send may commit a staged undo without asking. Admitting a prompt makes the stage final: the undone
+/// messages are deleted, and the files the undo restored stay as they are now. Three facts must all hold, each
+/// from the fresh read made under the held lease:
+/// the send is an ordinary prompt; the stage restored no file (so the commit changes nothing the transcript does
+/// not already show); and the stage is the one the Page was showing when the gesture was made.
+/// A server command always asks: its 204 does not prove a commit, so the continuation protection it installs stays
+/// unresolved and blocks this session's sends and controls for the rest of the process.
+/// </summary>
+public static class SessionControlContinuationRule
+{
+    /// <summary>The server's <c>revert.files</c>: exactly the files clearing or committing the stage is about.
+    /// A stage that only holds a snapshot restored none. Same fact as the redo prompt's rule.</summary>
+    public static int RestoredFileCount(SessionControlRevert? stage) => stage is null ? 0 : Math.Max(stage.FileCount, 0);
+    public static bool RestoredFiles(SessionControlRevert? stage) => RestoredFileCount(stage) > 0;
+    /// <summary>The stage read now is the one the Page had on screen. Unknown observation is never a match.</summary>
+    public static bool ShownToUser(SessionControlOrigin origin, SessionControlRevert stage)
+        => origin.ObservedStage is { MessageId: { } shown } && shown == stage.MessageId;
+    public static bool SendsWithoutAsking(SessionControlOrigin origin, SessionControlRevert stage, ComposerSubmissionKind? sends)
+        => sends == ComposerSubmissionKind.Prompt && !RestoredFiles(stage) && ShownToUser(origin, stage);
+}
 public sealed class SessionControlContinuationPermit
 {
     internal SessionControlContinuationPermit(SessionControlOrigin origin, OpenCodeInteractionGate.Lease lease,
@@ -213,10 +240,14 @@ public sealed class OpenCodeSessionControlCoordinator
 
     /// <summary>No lease reacquisition and no prompt/commit POST. canStart checks full origin and exact draft
     /// authority. Unknown stage never means unstaged. NoStage is information, NOT send authorization:
-    /// the caller must still apply its existing ordinary/enhanced sender policy.</summary>
+    /// the caller must still apply its existing ordinary/enhanced sender policy.
+    /// A staged undo is committed by the send. Without <paramref name="consent"/> that is permitted only by
+    /// <see cref="SessionControlContinuationRule.SendsWithoutAsking"/>, decided here from this call's own read;
+    /// <paramref name="sends"/> null (kind not stated) always asks. Every other check is the same on both paths,
+    /// and the permit binds the send to the stage read here either way.</summary>
     public async Task<SessionControlContinuationPreparation> PrepareContinuationAsync(SessionControlOrigin origin,
         OpenCodeInteractionGate.Lease heldLease, SessionControlDraft draft, SessionControlContinuationConsent? consent,
-        Func<SessionControlOrigin, bool> canStart, CancellationToken ct = default)
+        Func<SessionControlOrigin, bool> canStart, CancellationToken ct = default, ComposerSubmissionKind? sends = null)
     {
         Validate(origin, new(SessionControlKind.RevertContinuation), draft, canStart);
         if (!heldLease.MatchesScope(origin.Source.Identity, origin.SessionId) || heldLease.GetSessionControlProtection() is not null)
@@ -230,7 +261,9 @@ public sealed class OpenCodeSessionControlCoordinator
                 return new(consent is null ? SessionControlStatus.NoStage : SessionControlStatus.ConfirmationRequired, state, null, null);
             if (!heldLease.CanControlSession()) return new(SessionControlStatus.Blocked, state, null, null);
             var required = new SessionControlContinuationConsent(origin, stage.Fingerprint, draft.Fingerprint);
-            if (required != consent) return new(SessionControlStatus.ConfirmationRequired, state, required, null);
+            // An answer given for another stage or draft is never replaced by the no-ask rule: it asks again.
+            var unasked = consent is null && SessionControlContinuationRule.SendsWithoutAsking(origin, stage, sends);
+            if (required != consent && !unasked) return new(SessionControlStatus.ConfirmationRequired, state, required, null);
             return new(SessionControlStatus.Ready, state, null, new(origin, heldLease, draft, stage));
         }
         catch (Exception e) when (ReadFailure(e) || e is Lost)

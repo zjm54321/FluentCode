@@ -2,7 +2,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Dispatching;
-using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -10,10 +9,12 @@ using Microsoft.UI.Xaml.Controls;
 namespace FluentCode.Pages.OpenCode;
 
 /// <summary>
-/// Confirmation before sending from a session that is viewing a staged undo. Native Fluent ContentDialog; the default
-/// (and Enter/Esc) path is 取消, confirmation needs the explicit “继续发送” button. It never sends, commits, restores or
-/// edits drafts, holds no controller/client/lease, and returns the exact presentation it was shown with. The caller must
-/// invoke it on the owner's UI thread and re-validate stage + draft under its lease after the await.
+/// The one confirmation a send can still need while an undo is pending, in the shape of the undo prompt: a question
+/// as title, one sentence that says what happens, and a caution line only when a fact calls for one. The default
+/// (and Enter/Esc) path is 取消; confirming needs the explicit “发送” button. It never sends, commits, restores or
+/// edits drafts, holds no controller/client/lease, and returns the exact presentation it was shown with. The caller
+/// must invoke it on the owner's UI thread and re-validate stage + draft under its lease after the await.
+/// Wording and rules live in <see cref="OpenCodeContinuationConfirmationState"/>.
 /// </summary>
 internal static class OpenCodeComposerContinuationDialog
 {
@@ -28,41 +29,24 @@ internal static class OpenCodeComposerContinuationDialog
         if (owner is null || dispatcher is null) return state.FailOwner();
         if (cancellation.IsCancellationRequested) { state.MarkStale(); return state.Finish(); }
 
-        var body = new StackPanel { Spacing = 10, MinWidth = 340, MaxWidth = 520 };
-        if (presentation.SessionLabel.Length > 0) body.Children.Add(OpenCodeInteractionUi.Caption(presentation.SessionLabel, 0.75));
-        var warnings = new StackPanel { Spacing = 6 };
-        foreach (var w in state.Warnings())
-        {
-            var line = new Grid { ColumnSpacing = 6 };
-            line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            var icon = new FontIcon
-            {
-                Glyph = "\uE7BA",
-                FontSize = 12,
-                Margin = new Thickness(0, 2, 0, 0),
-                VerticalAlignment = VerticalAlignment.Top,
-                Style = OpenCodeInteractionUi.TryStyle("OpenCodeCautionIconStyle"),
-            };
-            var text = OpenCodeInteractionUi.Caption(w, 0.85);
-            text.TextWrapping = TextWrapping.Wrap;
-            Grid.SetColumn(text, 1);
-            line.Children.Add(icon);
-            line.Children.Add(text);
-            warnings.Children.Add(line);
-        }
-        AutomationProperties.SetName(warnings, "继续发送前的风险说明");
-        body.Children.Add(warnings);
+        // Same measures as the undo prompt, so the two steps of one journey look like one family.
+        var body = new StackPanel { Spacing = 12, MinWidth = 320, MaxWidth = 480 };
+        var summary = OpenCodeInteractionUi.StyledText(state.Summary, OpenCodeInteractionUi.BodyStyleKey);
+        AutomationProperties.SetAutomationId(summary, "OpenCodeContinuationSummary");
+        body.Children.Add(summary);
+        foreach (var caution in state.Cautions())
+            body.Children.Add(OpenCodeRollbackConfirmationDialog.CautionLine(caution,
+                caution == state.CommandNote ? "OpenCodeContinuationCommandNote" : "OpenCodeContinuationStageNote"));
 
         var dialog = new ContentDialog
         {
             XamlRoot = owner,
-            Title = new TextBlock { Text = presentation.HasStagedRevert ? "从撤回处继续发送？" : "撤回状态已变化，继续发送？", FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap },
+            Title = state.Title,
             Content = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
-            PrimaryButtonText = "继续发送",
-            CloseButtonText = "取消",
+            PrimaryButtonText = OpenCodeContinuationConfirmationState.PrimaryText,
+            CloseButtonText = OpenCodeContinuationConfirmationState.CloseText,
             // Focus/Enter land on 取消: a held or IME-confirm Enter carried over from the composer can only cancel.
-            DefaultButton = ContentDialogButton.Close,
+            DefaultButton = state.ConfirmIsDefault ? ContentDialogButton.Primary : ContentDialogButton.Close,
             Style = OpenCodeInteractionUi.TryStyle("DefaultContentDialogStyle"),
         };
         AutomationProperties.SetAutomationId(dialog, "OpenCodeContinuationDialog");

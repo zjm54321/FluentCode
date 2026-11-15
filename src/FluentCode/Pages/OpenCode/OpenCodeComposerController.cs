@@ -808,8 +808,11 @@ internal sealed partial class OpenCodeComposerController : IOpenCodeComposerCont
             }
             using (var lease = await _gate.EnterAsync(binding.Source.Identity, binding.SessionId, linked.Token).ConfigureAwait(false))
             {
+                // The coordinator decides whether a staged undo may be committed without asking; it is told
+                // what is sent, never that the user agreed.
                 var preparation = await _sessionControls.PrepareContinuationAsync(context.Origin, lease,
-                    context.Basis.Draft, context.Consent, CanStart, linked.Token).ConfigureAwait(false);
+                    context.Basis.Draft, context.Consent, CanStart, linked.Token,
+                    command is null ? ComposerSubmissionKind.Prompt : ComposerSubmissionKind.Command).ConfigureAwait(false);
                 permit = preparation.Permit;
                 if (preparation.Status == SessionControlStatus.ConfirmationRequired && preparation.State is not null)
                 {

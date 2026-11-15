@@ -320,7 +320,13 @@ public sealed partial class OpenCodePage
         OpenCodeComposerView view, OpenCodeComposerDraftBasis basis, OpenCodeComposerInputEvidence input, long owner)
     {
         var origin = new SessionControlOrigin(basis.Binding.Source, basis.Binding.Revision, basis.Binding.SessionId, owner)
-        { PreviouslyKnownUnresolvedChildSessionIds = _historyUnresolvedChildren };
+        {
+            PreviouslyKnownUnresolvedChildSessionIds = _historyUnresolvedChildren,
+            // The undo this transcript is cut at when the gesture is made. A pending reread does not withdraw it:
+            // the coordinator compares it with its own fresh read, and anything else found there asks. Before the
+            // first read, or after an undo whose result was not observed, nothing is claimed.
+            ObservedStage = _messageHistoryBoundaryKnown ? new(_messageRevertBoundary) : null,
+        };
         bool Owns(SessionControlOrigin candidate) => ReferenceEquals(candidate, origin)
             && OwnsComposerSubmission(basis.Binding, owner);
         bool CanStart(SessionControlOrigin candidate) => Owns(candidate) && ReferenceEquals(view, _composerView)
@@ -406,9 +412,10 @@ public sealed partial class OpenCodePage
                 var question = required.Question;
                 if (outcome.MutationStarted || !ReferenceEquals(question.Origin, origin)
                     || !ReferenceEquals(question.Basis, basis) || !context.CanStart(origin)) return;
-                var presentation = new OpenCodeContinuationPresentation(binding.SessionId,
-                    basis.ServerCommand is not null, question.ObservedState.Revert?.MayHaveFileEffects == true, question)
-                { HasStagedRevert = question.ObservedState.Revert is not null };
+                // Only reached when the coordinator would not commit the staged undo unasked: the undo restored
+                // files, a server command is being sent, or the stage is not the one this page was showing.
+                var presentation = OpenCodeContinuationPresentation.Describe(origin, question.ObservedState.Revert,
+                    basis.ServerCommand is not null, question);
                 _nativeDialogPending = true;
                 OpenCodeContinuationResult answer;
                 try { answer = await OpenCodeComposerContinuationDialog.ShowAsync(XamlRoot, presentation, lifetime.Token); }
@@ -502,7 +509,7 @@ public sealed partial class OpenCodePage
             bool CanStart(SessionControlOrigin o) => context.OwnsOperation(o) && context.CanStart(o);
             if (!CanStart(origin)) return outcome;
             var prepared = await _sessionControls.PrepareContinuationAsync(origin, lease, basis.Draft,
-                context.Consent, CanStart, ct);
+                context.Consent, CanStart, ct, ComposerSubmissionKind.Prompt);
             permit = prepared.Permit;
             if (prepared.Status == SessionControlStatus.ConfirmationRequired && prepared.State is not null)
                 return new OpenCodeComposerSubmitOutcome.ConfirmationRequired(new(origin, basis, prepared.State, prepared.RequiredConsent));
