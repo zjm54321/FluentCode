@@ -73,7 +73,7 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 | 功能 | 探测 | 服务端没有时 |
 |---|---|---|
 | 模型收藏、自动发现 Billion 地址 | `POST api/rpc/opencode.qol.desktop-bridge/hello` 返回协议版本 1 及 `model.favorites.v1` / `billion.origin.v1` | 入口隐藏 |
-| 持久终端 | `GET api/info` 的 `capabilities.persistentPty` | `false` 或未声明时终端按钮和列表都不显示；只有列表读取成功过之后再失败，才显示“暂时无法读取终端列表” |
+| 持久终端 | `GET api/info` 的 `capabilities.persistentPty` | `false`、未声明或读取失败时终端按钮和列表都不显示（未声明或读取失败不会被记住，下次刷新会重新询问）；服务端声明支持但列表读取失败时，显示“暂时无法读取终端列表” |
 | 原生卡片设置 | `GET api/plugin` 中 `opencode.qol.native-ui` 为 `active` | “设置 › 原生卡片”分类隐藏（设置值保留）；应用启动后尚未得到回答时同样隐藏，断开连接后沿用最近一次回答 |
 
 Desktop Bridge 的握手结果对应五种状态：已连接、未安装（HTTP 404 或 `rpc.method_not_found`）、版本过旧（协议版本 1 但缺少客户端用到的能力）、版本不匹配（没有共同的协议版本）、无法确认（网络、认证或响应格式错误，不视为未安装）。连接详情“服务”下的 Desktop Bridge 行显示该状态。未安装、过旧或不匹配时，每个服务（按连接端点识别）每种状态在应用运行期间只提示一次，重新连接同一服务不再提示。

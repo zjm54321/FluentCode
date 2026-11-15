@@ -113,30 +113,17 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         Render(null, null);
     }
 
-    // Whether the server answered "terminals: yes": for this context (its list was read), and the last answer this view saw.
-    private bool _supportConfirmed;
+    // The last answer this view saw to "does the server have terminals"; decides what a loading session shows.
     private bool? _supportLastKnown;
 
     internal void Render(OpenCodePersistentPtyInventoryContext? context, OpenCodePersistentPtyInventoryState? state)
     {
-        if (_context != context) { _creating = false; _createError = null; _supportConfirmed = false; }
+        if (_context != context) { _creating = false; _createError = null; }
         _context = context; _state = state;
-        // Terminals exist only on servers that offer them: shown on a yes (Ready), hidden on a no (Unsupported), and
-        // hidden while nobody has said yes. Unavailable covers both "the server did not say" and "it has terminals,
-        // but the list could not be read"; only the second is a failure worth a message, and it is recognised by
-        // this session's list having been read before. While loading, the last answer this view saw decides, so
-        // the entry does not blink on every session switch.
-        var phase = state?.Phase;
-        if (phase == OpenCodePersistentPtyInventoryPhase.Ready) { _supportConfirmed = true; _supportLastKnown = true; }
-        else if (phase == OpenCodePersistentPtyInventoryPhase.Unsupported) { _supportConfirmed = false; _supportLastKnown = false; }
-        var readFailed = phase == OpenCodePersistentPtyInventoryPhase.Unavailable && _supportConfirmed;
-        var available = context is not null && phase switch
-        {
-            OpenCodePersistentPtyInventoryPhase.Ready => true,
-            OpenCodePersistentPtyInventoryPhase.Unsupported => false,
-            OpenCodePersistentPtyInventoryPhase.Unavailable => readFailed,
-            _ => _supportConfirmed || _supportLastKnown == true,
-        };
+        // Shown on a yes, hidden on a no and while the answer is not known; see OpenCodePersistentPtySurfaceRule.
+        _supportLastKnown = OpenCodePersistentPtySurfaceRule.Answer(state?.Phase) ?? _supportLastKnown;
+        var (show, readFailed) = OpenCodePersistentPtySurfaceRule.For(state?.Phase, _supportLastKnown);
+        var available = context is not null && show;
         _toggle.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
         _create.IsEnabled = CanCreate;
         _toggle.IsEnabled = !_creating;
@@ -149,8 +136,8 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
             OpenCodePersistentPtyInventoryPhase.Loading => entries.Length == 0 ? "正在读取…" : string.Empty,
             OpenCodePersistentPtyInventoryPhase.Unsupported => string.Empty,
             OpenCodePersistentPtyInventoryPhase.Ready => string.Empty,
-            null => string.Empty,
-            _ => readFailed ? "暂时无法读取终端列表" : string.Empty,
+            OpenCodePersistentPtyInventoryPhase.Unavailable => "暂时无法读取终端列表",
+            _ => string.Empty,
         });
         _status.Visibility = _status.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         Visibility = available && (entries.Length > 0 || _status.Text.Length > 0) ? Visibility.Visible : Visibility.Collapsed;

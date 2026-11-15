@@ -25,7 +25,7 @@ internal static class PersistentPtyBindingTests
     {
         internal bool? Capability = true;
         internal int CapReads, Lists, Snapshots, Tickets, Writes;
-        internal bool EmptyInitially, Created, FailCreate;
+        internal bool EmptyInitially, Created, FailCreate, FailInfo, FailList;
         internal int Creates;
         internal int Removes;
         internal bool FailRemove, Missing, Exited;
@@ -38,7 +38,7 @@ internal static class PersistentPtyBindingTests
         {
             var uri = request.RequestUri!;
             if (uri.AbsolutePath.EndsWith("/api/info", StringComparison.Ordinal))
-            { CapReads++; return Json(new { version = "fixture", capabilities = new { persistentPty = Capability } }); }
+            { CapReads++; if (FailInfo) return new(HttpStatusCode.Unauthorized); return Json(new { version = "fixture", capabilities = new { persistentPty = Capability } }); }
             if (uri.AbsolutePath.Contains("/api/experimental/", StringComparison.Ordinal))
             {
                 Check(uri.Query.Length == 0, "server-scoped PTY routes contain no invented location query");
@@ -73,6 +73,7 @@ internal static class PersistentPtyBindingTests
                 if (uri.AbsolutePath.EndsWith("/terminal", StringComparison.Ordinal))
                 {
                     Lists++; ListEntered?.TrySetResult(true); if (HoldList is { } held) await held.Task;
+                    if (FailList) return new(HttpStatusCode.InternalServerError);
                     return Json(new { data = Created ? new[] { Info with { Id = "pty_created", Title = "终端" } } : EmptyInitially ? Array.Empty<PersistentPtyInfo>() : new[] { Exited ? Info with { Status = "exited", ExitCode = 23 } : Info } });
                 }
                 if (uri.AbsolutePath.EndsWith("/snapshot", StringComparison.Ordinal))
@@ -119,7 +120,7 @@ internal static class PersistentPtyBindingTests
     }
     internal static async Task Run()
     {
-        await Adapter(); await Inventory(); await PageLifecycle(); await Metadata(); await Creation(); await Termination(); await ShellTerminalTests.Run();
+        await Adapter(); await Inventory(); await InventoryCapabilityStates(); await PageLifecycle(); await Metadata(); await Creation(); await Termination(); await ShellTerminalTests.Run();
         Console.WriteLine($"PASS {_checks} PTY Page/renderer-adapter/inventory checks; real typed HTTP/controller and adapter barriers, inert native surface/state projection; no live socket/process/window.");
     }
     private static async Task Metadata()
@@ -217,6 +218,77 @@ internal static class PersistentPtyBindingTests
             catch (PersistentPtyException error) { Check(error.Code == "unsupported-renderer-state", "native renderer failure is finite unsupported, not an endless socket rebootstrap"); }
         }
     }
+    // Which phase each server answer gives, what the entry shows for it, and that "no answer" is asked again.
+    private static async Task InventoryCapabilityStates()
+    {
+        static (bool Show, bool ReadFailed) Surface(OpenCodePersistentPtyInventory inventory, bool? lastKnown = null)
+            => OpenCodePersistentPtySurfaceRule.For(inventory.State.Phase, OpenCodePersistentPtySurfaceRule.Answer(inventory.State.Phase) ?? lastKnown);
+
+        // Capability not declared: unknown, nothing shown, no list request; asked again on a plain refresh.
+        var undeclared = Fixture(); undeclared.Wire.Capability = null;
+        using (var inventory = new OpenCodePersistentPtyInventory(undeclared.Origin, undeclared.Client, _ => true))
+        {
+            await inventory.RefreshAsync();
+            Check(inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Unknown && undeclared.Wire.Lists == 0 && Surface(inventory) == (false, false),
+                "undeclared capability: unknown, entry hidden, no message, no list read");
+            await inventory.RefreshAsync();
+            Check(undeclared.Wire.CapReads == 2 && inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Unknown, "an unknown capability is asked again on the next refresh");
+            undeclared.Wire.Capability = true; await inventory.RefreshAsync();
+            Check(undeclared.Wire.CapReads == 3 && inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready && Surface(inventory) == (true, false),
+                "once the server says yes the entry appears without an explicit recheck");
+            await inventory.RefreshAsync();
+            Check(undeclared.Wire.CapReads == 3, "a definite answer is kept until an explicit recheck");
+        }
+
+        // Capability read itself fails (sign-in): unknown, nothing shown, retried, then recovers.
+        var unreachable = Fixture(); unreachable.Wire.FailInfo = true;
+        using (var inventory = new OpenCodePersistentPtyInventory(unreachable.Origin, unreachable.Client, _ => true))
+        {
+            await inventory.RefreshAsync();
+            Check(inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Unknown && unreachable.Wire.CapReads == 1 && unreachable.Wire.Lists == 0
+                && Surface(inventory) == (false, false), "failed capability read: unknown, entry hidden, not reported as a list failure");
+            await inventory.RefreshAsync();
+            Check(unreachable.Wire.CapReads == 2 && inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Unknown, "a failed capability read is retried on the next refresh");
+            unreachable.Wire.FailInfo = false; await inventory.RefreshAsync();
+            Check(inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready && unreachable.Wire.Lists == 1, "the retry recovers");
+        }
+
+        // Explicit false: unsupported, nothing shown.
+        var without = Fixture(); without.Wire.Capability = false;
+        using (var inventory = new OpenCodePersistentPtyInventory(without.Origin, without.Client, _ => true))
+        {
+            await inventory.RefreshAsync();
+            Check(inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Unsupported && without.Wire.Lists == 0 && Surface(inventory) == (false, false),
+                "explicit false: unsupported, entry hidden");
+        }
+
+        // True and the very first list read fails: a real failure, shown with its message.
+        var failing = Fixture(); failing.Wire.FailList = true;
+        using (var inventory = new OpenCodePersistentPtyInventory(failing.Origin, failing.Client, _ => true))
+        {
+            await inventory.RefreshAsync();
+            Check(inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Unavailable && failing.Wire.Lists == 1 && Surface(inventory) == (true, true),
+                "confirmed capability with a failed first list read: entry shown with the read-failed message");
+            failing.Wire.FailList = false; await inventory.RefreshAsync();
+            Check(inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Ready && failing.Wire.CapReads == 1 && Surface(inventory) == (true, false),
+                "the list recovers on the next refresh without asking the capability again");
+            failing.Wire.FailList = true; await inventory.RefreshAsync();
+            Check(inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Unavailable && Surface(inventory) == (true, true), "a later list failure is reported the same way");
+        }
+
+        // While loading, the last answer decides; unknown never overwrites it.
+        Check(OpenCodePersistentPtySurfaceRule.For(OpenCodePersistentPtyInventoryPhase.Loading, null) == (false, false)
+            && OpenCodePersistentPtySurfaceRule.For(OpenCodePersistentPtyInventoryPhase.Loading, false) == (false, false)
+            && OpenCodePersistentPtySurfaceRule.For(OpenCodePersistentPtyInventoryPhase.Loading, true) == (true, false)
+            && OpenCodePersistentPtySurfaceRule.For(null, true) == (false, false)
+            && OpenCodePersistentPtySurfaceRule.For(OpenCodePersistentPtyInventoryPhase.Unknown, true) == (false, false),
+            "loading follows the last answer; no state and unknown show nothing");
+        Check(OpenCodePersistentPtySurfaceRule.Answer(OpenCodePersistentPtyInventoryPhase.Unknown) is null
+            && OpenCodePersistentPtySurfaceRule.Answer(OpenCodePersistentPtyInventoryPhase.Loading) is null && OpenCodePersistentPtySurfaceRule.Answer(null) is null
+            && OpenCodePersistentPtySurfaceRule.Answer(OpenCodePersistentPtyInventoryPhase.Unavailable) == true
+            && OpenCodePersistentPtySurfaceRule.Answer(OpenCodePersistentPtyInventoryPhase.Unsupported) == false, "only definite phases count as an answer");
+    }
+
     private static async Task Inventory()
     {
         var f = Fixture(); var current = true;
@@ -232,7 +304,7 @@ internal static class PersistentPtyBindingTests
         Check(inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Unsupported && inventory.State.Rows.Length == 0 && f.Wire.Lists == 3,
             "explicit unsupported capability is not an empty supported terminal list");
         f.Wire.Capability = null; await inventory.RefreshAsync(true);
-        Check(inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Unavailable && f.Wire.Lists == 3, "absent capability remains unknown, never treated as support");
+        Check(inventory.State.Phase == OpenCodePersistentPtyInventoryPhase.Unknown && f.Wire.Lists == 3, "absent capability remains unknown, never treated as support");
         current = false; var reads = f.Wire.CapReads; await inventory.RefreshAsync(true);
         Check(f.Wire.CapReads == reads && f.Wire.Writes == 0, "expired inventory owner sends no request and never mutates PTYs");
 
@@ -245,8 +317,8 @@ internal static class PersistentPtyBindingTests
         var retired = Fixture(); retired.Client.Dispose();
         using var disposed = new OpenCodePersistentPtyInventory(retired.Origin, retired.Client, _ => true);
         await disposed.RefreshAsync(); await disposed.RefreshAsync();
-        Check(disposed.State.Phase == OpenCodePersistentPtyInventoryPhase.Unavailable && retired.Wire.Lists == 0,
-            "retired page-client race yields honest unavailable state without faulting the refresh loop or issuing requests");
+        Check(disposed.State.Phase == OpenCodePersistentPtyInventoryPhase.Unknown && retired.Wire.Lists == 0,
+            "retired page-client race yields honest unknown state without faulting the refresh loop or issuing requests");
         var lifecycle = Fixture();
         using var known = new OpenCodePersistentPtyInventory(lifecycle.Origin, lifecycle.Client, _ => true);
         await known.RefreshAsync();

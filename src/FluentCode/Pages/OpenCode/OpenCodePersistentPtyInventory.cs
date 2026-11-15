@@ -90,10 +90,11 @@ internal sealed class OpenCodePersistentPtyInventory : IDisposable
                 if (!_capabilityRead || recheck)
                 {
                     _capability = await ReadAsync(() => _client.GetPersistentPtyCapabilityAsync(_stop.Token)).ConfigureAwait(false);
-                    _capabilityRead = true;
+                    // No answer (not declared, or the read failed) is not kept: the next refresh asks again.
+                    _capabilityRead = _capability is not null;
                 }
                 if (!Current()) break;
-                if (_capability != true) Publish(new(_capability == false ? OpenCodePersistentPtyInventoryPhase.Unsupported : OpenCodePersistentPtyInventoryPhase.Unavailable,
+                if (_capability != true) Publish(new(_capability == false ? OpenCodePersistentPtyInventoryPhase.Unsupported : OpenCodePersistentPtyInventoryPhase.Unknown,
                     ImmutableArray<PersistentPtyInfo>.Empty));
                 else
                 {
@@ -105,7 +106,11 @@ internal sealed class OpenCodePersistentPtyInventory : IDisposable
             }
             catch (OperationCanceledException) when (!Current()) { break; }
             catch (Exception error) when (error is OpenCodeException or PersistentPtyException or OperationCanceledException or ObjectDisposedException)
-            { Publish(new(OpenCodePersistentPtyInventoryPhase.Unavailable, ImmutableArray<PersistentPtyInfo>.Empty)); }
+            {
+                // Only a failure after the server said it has terminals is "could not read the list".
+                Publish(new(_capability == true ? OpenCodePersistentPtyInventoryPhase.Unavailable : OpenCodePersistentPtyInventoryPhase.Unknown,
+                    ImmutableArray<PersistentPtyInfo>.Empty));
+            }
         }
         lock (_sync) _running = null;
     }
