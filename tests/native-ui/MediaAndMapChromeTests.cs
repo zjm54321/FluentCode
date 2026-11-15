@@ -407,6 +407,113 @@ internal static class MediaAndMapChromeTests
             && carouselSource.Contains("scroll.ViewChanged += (_, _) => Edges(); scroll.SizeChanged += (_, _) => Edges();"),
             "Each button is still a named stock Button that is shown only while there is something to page to on its side");
 
-        Console.WriteLine($"PASS lane N2 media/map chrome: Mapsui zoom widget, fixed on-map colours for light tiles, PipsPager and viewer zoom, carousel stops; {checks} checks");
+        // ---------------------------------------------------------------- C08: the Pressable tile is a stock Button
+        // The tile's rules that need no XAML type run here: the hover and press colours, which input is the tile's
+        // own, and the name a screen reader reads.
+        static string Argb((byte A, byte R, byte G, byte B) colour) => $"#{colour.A:X2}{colour.R:X2}{colour.G:X2}{colour.B:X2}";
+        // The platform's subtle hover and press tints (microsoft/microsoft-ui-xaml, tag winui3/release/2.6.5,
+        // src/controls/dev/CommonStyles/Common_themeresources_any.xaml: SubtleFillColorSecondary / Tertiary).
+        (byte A, byte R, byte G, byte B) lightHover = (0x09, 0, 0, 0), lightPress = (0x06, 0, 0, 0), darkHover = (0x0F, 255, 255, 255), darkPress = (0x0A, 255, 255, 255);
+        (byte A, byte R, byte G, byte B) white = (255, 255, 255, 255), darkSurface = (255, 0x2C, 0x2C, 0x2C);
+        Check(Argb(NativeUiPressable.Over(white, lightHover)) == "#FFF6F6F6" && Argb(NativeUiPressable.Over(white, lightPress)) == "#FFF9F9F9",
+            "A white tile goes to F6F6F6 under the pointer and F9F9F9 while pressed: " + Argb(NativeUiPressable.Over(white, lightHover)) + " " + Argb(NativeUiPressable.Over(white, lightPress)));
+        Check(Argb(NativeUiPressable.Over(darkSurface, darkHover)) == "#FF383838" && Argb(NativeUiPressable.Over(darkSurface, darkPress)) == "#FF343434",
+            "A dark tile goes to 383838 under the pointer and 343434 while pressed: " + Argb(NativeUiPressable.Over(darkSurface, darkHover)) + " " + Argb(NativeUiPressable.Over(darkSurface, darkPress)));
+        Check(NativeUiPressable.Over((255, 0xEF, 0xE6, 0xD3), (255, 240, 240, 240)) == ((byte)255, (byte)0xEF, (byte)0xE6, (byte)0xD3)
+            && NativeUiPressable.Over((255, 0xEF, 0xE6, 0xD3), (0, 0, 0, 0)) == ((byte)255, (byte)0xEF, (byte)0xE6, (byte)0xD3),
+            "A tint that would hide the tile's own colour (high contrast gives an opaque one) or that is empty leaves the fill alone, so the tile's text stays readable");
+        var tintProblems = new List<string>();
+        foreach (var fill in new (byte A, byte R, byte G, byte B)[] { white, darkSurface, (255, 0xEF, 0xE6, 0xD3), (255, 0x2F, 0x3E, 0x55), (255, 0, 0, 0), (0x0F, 255, 255, 255), (0x80, 0xC9, 0x78, 0x5A), (0, 0, 0, 0) })
+            foreach (var tint in new[] { lightHover, lightPress, darkHover, darkPress })
+            {
+                var mixed = NativeUiPressable.Over(fill, tint);
+                static bool Between(byte value, byte one, byte other) => value >= Math.Min(one, other) && value <= Math.Max(one, other);
+                // The tile never gets more see-through, and every channel stays between the fill's and the tint's.
+                if (mixed.A < fill.A || mixed.A < tint.A || !Between(mixed.R, fill.R, tint.R) || !Between(mixed.G, fill.G, tint.G) || !Between(mixed.B, fill.B, tint.B))
+                    tintProblems.Add(Argb(fill) + " under " + Argb(tint) + " = " + Argb(mixed));
+                // An opaque fill moves by a few steps at most: the tile keeps its own colour.
+                if (fill.A == 255 && (mixed.A != 255 || Math.Abs(mixed.R - fill.R) > 15 || Math.Abs(mixed.G - fill.G) > 15 || Math.Abs(mixed.B - fill.B) > 15))
+                    tintProblems.Add(Argb(fill) + " moved too far under " + Argb(tint) + ": " + Argb(mixed));
+            }
+        Check(tintProblems.Count == 0, "Hover and press colours stay between the tile's fill and the tint: " + string.Join("; ", tintProblems));
+        Check(NativeUiPressable.Over(white, lightHover) != NativeUiPressable.Over(white, lightPress) && NativeUiPressable.Over(white, lightHover) != white
+            && NativeUiPressable.Over(darkSurface, darkHover) != NativeUiPressable.Over(darkSurface, darkPress) && NativeUiPressable.Over(darkSurface, darkHover) != darkSurface,
+            "Rest, hover and pressed are three different fills on the default surface in both themes");
+
+        // Which input is the tile's own. A small tree stands in for the visual tree: page > flashcard button > tile >
+        // (text, row > button > label, slider).
+        var page = new TreeNode("page", null, false); var outerButton = new TreeNode("flashcard", page, true); var tileNode = new TreeNode("tile", outerButton, true);
+        var tileText = new TreeNode("text", tileNode, false); var tileRow = new TreeNode("row", tileNode, false);
+        var innerButton = new TreeNode("button", tileRow, true); var innerLabel = new TreeNode("label", innerButton, false); var innerSlider = new TreeNode("slider", tileNode, true);
+        var elsewhere = new TreeNode("elsewhere", page, false);
+        bool Inside(TreeNode? source) => NativeUiPressable.InsideNested(source, tileNode, node => node.Parent, node => node.Interactive);
+        Check(!Inside(tileNode) && !Inside(tileText) && !Inside(tileRow) && !Inside(null),
+            "A press on the tile itself, on its text or on its layout presses the tile; that the tile sits inside another button does not matter");
+        Check(Inside(innerButton) && Inside(innerLabel) && Inside(innerSlider),
+            "A press on a control inside the tile, or on anything inside that control, is the control's and does not press the tile");
+        Check(!Inside(elsewhere), "The walk ends at the top of the tree without claiming a control it never met");
+        Check(NativeUiPressable.OwnKey(tileNode, tileNode) && !NativeUiPressable.OwnKey(innerButton, tileNode) && !NativeUiPressable.OwnKey(tileText, tileNode) && !NativeUiPressable.OwnKey(null, tileNode),
+            "Enter and Space press the tile only when the tile itself has the focus, not when the key comes from a control inside it");
+
+        // The name a screen reader reads: the text the tile shows, in order, as displayed.
+        static NativeUiElement El(string type, params (string Key, object? Value)[] props) => new(type, props.ToDictionary(prop => prop.Key, prop => prop.Value));
+        static string Shown(string text) => string.Concat(FluentCode.Pages.OpenCode.NativeUiStyleMath.Inline(text).Select(span => span.Text));
+        var shoppingRow = El("Pressable", ("children", new object?[] { El("Row", ("children", new object?[] {
+            El("Icon", ("name", "circle")), El("Text", ("text", "**Bone-in** leg of lamb")), El("Spacer"), El("Text", ("text", "2.4 kg")) })) }));
+        Check(NativeUiPressable.Name(shoppingRow, Shown) == "Bone-in leg of lamb 2.4 kg",
+            "A tile is named by the text it shows, in reading order, without Markdown markers or the icon's name: " + NativeUiPressable.Name(shoppingRow, Shown));
+        var dayTile = El("Pressable", ("children", new object?[] { El("Row", ("children", new object?[] {
+            El("Box", ("children", new object?[] { El("Title", ("text", "1")) })),
+            El("Col", ("children", new object?[] { El("Text", ("text", "Seattle")), El("Caption", ("text", "Arrive ·\n  overnight")), El("Badge", ("text", "Great match")) })) })) }));
+        Check(NativeUiPressable.Name(dayTile, Shown) == "1 Seattle Arrive · overnight Great match",
+            "Nested layout is read through and line breaks and runs of spaces become one space: " + NativeUiPressable.Name(dayTile, Shown));
+        var mixedTile = El("Pressable", ("action", new Dictionary<string, object?>()), ("children", new object?[] {
+            El("Image", ("src", "https://example.com/a.png"), ("alt", "Ferry Building")), "Plain words", 42d,
+            El("Button", ("label", "Delete")), El("TextInput", ("label", "Note"), ("value", "typed")), El("Code", ("code", "rm -rf")),
+            El("Text", ("text", new object?[] { "with ", El("Badge", ("text", "new")), " *part*" })) }));
+        Check(NativeUiPressable.Name(mixedTile, Shown) == "Ferry Building Plain words 42 with new part",
+            "A picture is named by its description; controls inside the tile keep their own names and code is not read as a name: " + NativeUiPressable.Name(mixedTile, Shown));
+        Check(NativeUiPressable.Name(El("Pressable", ("children", new object?[] { El("Icon", ("name", "circle")), El("Svg") })), Shown) == NativeUiPressable.Unnamed
+            && NativeUiPressable.Name(El("Pressable"), Shown) == NativeUiPressable.Unnamed && NativeUiPressable.Unnamed.Length > 0,
+            "A tile that shows no text still has a name, so a screen reader does not announce a bare 'button'");
+        var longName = NativeUiPressable.Name(El("Pressable", ("children", new object?[] { El("Text", ("text", string.Join(" ", Enumerable.Repeat("word", 200)))) })), Shown);
+        var emojiName = NativeUiPressable.Name(El("Pressable", ("children", new object?[] { El("Title", ("text", new string('a', NativeUiPressable.NameLimit - 1) + "🚪🚪")) })), Shown);
+        Check(longName.Length == NativeUiPressable.NameLimit + 1 && longName.EndsWith('…') && longName.StartsWith("word word", StringComparison.Ordinal)
+            && emojiName.Length == NativeUiPressable.NameLimit && emojiName.EndsWith("a…", StringComparison.Ordinal),
+            "A long name is cut and marked as cut, never in the middle of a character: " + longName.Length + " / " + emojiName.Length);
+
+        // The renderer and the Button subclass call the rules above; these read the two files for that.
+        var tileControls = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiRenderer.Controls.cs"));
+        var pressableCase = tileControls[tileControls.IndexOf("case \"Pressable\":", StringComparison.Ordinal)..tileControls.IndexOf("case \"Timer\":", StringComparison.Ordinal)];
+        var componentTheme = File.ReadAllText(Path.Combine(repo, "src/FluentCode/Pages/OpenCode/NativeUi/NativeUiTheme.Components.cs"));
+        var tileClass = componentTheme[componentTheme.IndexOf("class NativeUiPressableButton : Button", StringComparison.Ordinal)..];
+        Check(pressableCase.Contains("new NativeUiPressableButton { Content = tileContent }") && pressableCase.Contains("tile.Click += ")
+            && !pressableCase.Contains(".Tapped +=") && !pressableCase.Contains(".KeyDown +=") && !pressableCase.Contains("ContentControl") && !pressableCase.Contains("Template ="),
+            "The tile is a Button with the platform's template and is pressed through Click, with no hand-written pointer or key handlers left");
+        Check(pressableCase.Contains("AutomationProperties.SetName(tile, NativeUiPressable.Name(node,") && pressableCase.Contains("tile.Quiet();")
+            && pressableCase.Contains("tile.IsEnabled = !_runtime.IsExecuting;") && pressableCase.Contains("B(node, \"selected\") ? 2 : 1") && pressableCase.Contains("B(node, \"selected\") ? \"info\" : \"faint\""),
+            "The tile is named from its text, its own text cannot swallow the press, it is disabled while an action runs, and the selection ring is unchanged");
+        Check(tileClass.Contains("protected override void OnKeyDown(KeyRoutedEventArgs e) { if (NativeUiPressable.OwnKey(e.OriginalSource, this)) base.OnKeyDown(e); }")
+            && tileClass.Contains("protected override void OnKeyUp(KeyRoutedEventArgs e) { if (NativeUiPressable.OwnKey(e.OriginalSource, this)) base.OnKeyUp(e); }")
+            && tileClass.Contains("if (NativeUiPressable.InsideNested<DependencyObject>(e.OriginalSource as DependencyObject, this, VisualTreeHelper.GetParent, Nested)) return;")
+            && tileClass.Contains("node is Button or TextBox or CheckBox or ComboBox or Slider or RadioButton or Segmented"),
+            "Keys and presses reach the Button only through the tested rules, with the same list of nested controls as before");
+        Check(tileClass.Contains("HorizontalAlignment = HorizontalAlignment.Stretch; VerticalAlignment = VerticalAlignment.Stretch;")
+            && tileClass.Contains("HorizontalContentAlignment = HorizontalAlignment.Stretch; VerticalContentAlignment = VerticalAlignment.Center;")
+            && tileClass.Contains("FocusVisualMargin = new Thickness(0);") && !tileClass.Contains("Style =") && !tileClass.Contains("Template =") && !tileClass.Contains("MinWidth") && !tileClass.Contains("MinHeight"),
+            "What the stock Button style would change at rest is put back, and the stock style and template themselves are kept");
+        Check(new[] { "ButtonBackgroundPointerOver", "ButtonBackgroundPressed", "ButtonBackgroundDisabled", "\"ButtonBorderBrush\" + state", "\"ButtonForeground\" + state", "\"PointerOver\", \"Pressed\", \"Disabled\"" }.All(tileClass.Contains)
+            && tileClass.Contains("Resources[\"ButtonBackgroundDisabled\"] = _rest") && tileClass.Contains("NativeUiPressable.Over(")
+            && tileClass.Contains("\"SubtleFillColorSecondaryBrush\"") && tileClass.Contains("\"SubtleFillColorTertiaryBrush\""),
+            "Every brush the stock states swap in is answered by the tile: fill from the tested tint rule, border and text as at rest, disabled as at rest");
+
+        Console.WriteLine($"PASS lane N2 media/map chrome: Mapsui zoom widget, fixed on-map colours for light tiles, PipsPager and viewer zoom, carousel stops, pressable tile rules; {checks} checks");
     }
+}
+
+internal sealed class TreeNode(string name, TreeNode? parent, bool interactive)
+{
+    internal string Name { get; } = name;
+    internal TreeNode? Parent { get; } = parent;
+    internal bool Interactive { get; } = interactive;
 }
