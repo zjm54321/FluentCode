@@ -14,13 +14,24 @@ namespace FluentCode.Pages.Account;
 /// <summary>
 /// 配对链接的二维码：把模块矩阵画成一条矢量路径（任何缩放都清晰，相邻模块之间没有抗锯齿细缝）。
 /// 始终黑码白底并带 4 模块静区——深色主题与高对比度下也不跟随主题色，否则扫码器读不出来。
+/// 底板大小固定（<see cref="PlateSize"/>）：链接变长变短只改变模块大小，二维码在页面里不会忽大忽小。
 /// 内容是凭据：不缓存、不导出位图，<see cref="Clear"/> 后不留任何几何数据。
 /// </summary>
 internal sealed class OpenCodePairQrCode : UserControl
 {
     private const int QuietZone = 4;
     private const double TargetSize = 232;
-    private readonly Path _path = new() { Fill = new SolidColorBrush(Colors.Black), Stretch = Stretch.None };
+
+    /// <summary>底板边长（含 1 像素描边）；页面按它给二维码留位置。</summary>
+    internal const double PlateSize = TargetSize + 2;
+
+    private readonly Path _path = new()
+    {
+        Fill = new SolidColorBrush(Colors.Black),
+        Stretch = Stretch.None,
+        HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Center,
+    };
     private readonly Border _plate = new();
 
     internal OpenCodePairQrCode()
@@ -29,6 +40,7 @@ internal sealed class OpenCodePairQrCode : UserControl
         _plate.BorderBrush = new SolidColorBrush(Color.FromArgb(0x33, 0, 0, 0));
         _plate.BorderThickness = new Thickness(1);
         _plate.CornerRadius = new CornerRadius(8);
+        _plate.Width = _plate.Height = PlateSize;
         _plate.Child = _path;
         IsTabStop = false;
         HorizontalAlignment = HorizontalAlignment.Center;
@@ -61,7 +73,8 @@ internal sealed class OpenCodePairQrCode : UserControl
 
         _path.Data = geometry;
         _path.Width = _path.Height = qr.Size * module;
-        _plate.Padding = new Thickness(QuietZone * module);
+        // 码居中，四周留白不少于 4 模块。模块已是最小的 2 物理像素仍放不下时（链接极长），底板才跟着变大。
+        _plate.Width = _plate.Height = Math.Max(TargetSize, total * module) + 2;
         Visibility = Visibility.Visible;
     }
 

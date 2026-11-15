@@ -31,7 +31,14 @@ internal static partial class Program
         CustomOrigins();
         TimeText();
         Console.WriteLine("PASS custom origins and time text");
-        Console.WriteLine($"7 groups passed; {_assertions} assertions; fake handlers only, no sockets.");
+        LinkEditEvaluation();
+        Console.WriteLine("PASS editable link: QR text is the box text, loopback, unusable and stale-code texts");
+        LinkEditRenewal();
+        Console.WriteLine("PASS editable link renewal: address carried onto the new code, other edits kept and flagged");
+        AddressMemoryRules();
+        await AddressMemoryFile();
+        Console.WriteLine("PASS remembered address: origin only, per server, own file in a temp directory, damaged input ignored");
+        Console.WriteLine($"10 groups passed; {_assertions} assertions; fake handlers only, no sockets.");
     }
 
     private static void ParseBoundaries()
