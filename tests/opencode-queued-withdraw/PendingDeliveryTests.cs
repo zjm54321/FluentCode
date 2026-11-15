@@ -25,6 +25,7 @@ internal static partial class Program
             ("always-visible steer switch in the queue row", QueueSwitchControl),
             ("right-click entries of a queued row", QueueMenuEntries),
             ("always-visible withdraw icon in the queue row", QueueWithdrawControl),
+            ("queue header shows link labels, not addresses", QueueHeaderLinks),
             ("touch reveal helper", TouchRevealHelper),
             ("receipt-projected steer switch", ReceiptProjectedSwitch),
             ("empty inbox retires uncertainty", EmptyInboxRetiresUncertainty),
@@ -314,6 +315,74 @@ internal static partial class Program
         page.Publish(Array.Empty<OpenCodeInboxItem>());
         entries[1].Run();
         Check(requested.Count == 2 && menu.Actions().All(e => !e.Enabled), "a menu left over from a removed row is inert");
+    }
+
+    private static TextBlock QueueHeader(OpenCodePage page) => (TextBlock)Descendants(page.Queue).OfType<Expander>().Single().Header!;
+
+    // The header previews the next message as one line of plain text, and the row below it shows chips. A link must
+    // read the same in both: the header names it by the label its chip shows, and never spells out the address.
+    private static async Task QueueHeaderLinks()
+    {
+        static string Label(string url) => OpenCodeLinkChipParser.Parse(url)!.Label; // what the row's chip shows for this address
+        const string pull = "https://github.com/sst/opencode/pull/4821", generic = "https://blog.example.dev/posts/2026/rich-paste";
+        const string prefix = "排队 1 条 · 下一条：";
+        Check(Label(pull) == "opencode #4821" && Label(generic) == "blog.example.dev/…/rich-paste", "the labels the chips show for these addresses");
+        foreach (var (text, expected, note) in new[]
+        {
+            ("看这个" + pull + "然后合并", "看这个 " + Label(pull) + " 然后合并", "Chinese text touching the link on both sides"),
+            (pull, Label(pull), "a link alone"),
+            ("看 " + pull + " 谢谢", "看 " + Label(pull) + " 谢谢", "a link that already has spaces around it"),
+            ("（" + pull + "）。", "（" + Label(pull) + "）。", "punctuation around the link"),
+            ("对比" + pull + "和" + generic, "对比 " + Label(pull) + " 和 " + Label(generic), "two links"),
+            ("看 [文档](" + generic + ")", "看 文档 (" + Label(generic) + ")", "a Markdown link"),
+            ("看https://user:hunter2@example.com/x?token=s3cr3t", "看 example.com/x", "a link that carries a password and a token"),
+        })
+        {
+            var server = new FakeServer();
+            server.Inbox.Add(UserItem(Inbox, text, 1000));
+            using var client = server.Client();
+            var page = await DeliveryPage(server, client);
+            var header = QueueHeader(page);
+            Check(header.Text == prefix + expected, note + ": the header shows \"" + header.Text + "\"");
+            Check(!header.Text.Contains("://", StringComparison.Ordinal), note + ": no address is left in the header");
+            Check(Descendants(QueueRow(page, Inbox)).OfType<TextBlock>().Any(t => t.Text == text),
+                note + ": the row is still given the message as written (its renderer makes the chips)");
+            Check(header.TextWrapping == TextWrapping.NoWrap && header.MaxLines == 1 && header.TextTrimming == TextTrimming.CharacterEllipsis,
+                note + ": the header stays one line that ends in an ellipsis when it does not fit");
+        }
+
+        // Where the row keeps an address as text, the header keeps the same text: it never invents a label.
+        foreach (var (text, note) in new[]
+        {
+            ("abc" + pull, "an address glued to a Latin word"),
+            ("`" + pull + "`", "an address in inline code"),
+            ("没有链接的消息", "a message without a link"),
+        })
+        {
+            var server = new FakeServer();
+            server.Inbox.Add(UserItem(Inbox, text, 1000));
+            using var client = server.Client();
+            Check(QueueHeader(await DeliveryPage(server, client)).Text == prefix + text, note + " is shown as written");
+        }
+
+        var queue = new FakeServer();
+        queue.Inbox.Add(UserItem(Inbox, "先看" + pull, 1000));
+        queue.Inbox.Add(UserItem("msg_other", "再看" + generic, 1100));
+        using var queueClient = queue.Client();
+        var two = await DeliveryPage(queue, queueClient);
+        var title = QueueHeader(two);
+        Check(title.Text == "排队 2 条 · 下一条：先看 " + Label(pull), "the header counts every queued message and previews the first: " + title.Text);
+        queue.Inbox.RemoveAt(0);
+        two.Publish(await queueClient.GetInboxAsync(Session, CancellationToken.None));
+        Check(ReferenceEquals(QueueHeader(two), title) && title.Text == prefix + "再看 " + Label(generic),
+            "when the first message leaves, the same header previews the next one: " + title.Text);
+        two.Publish(Array.Empty<OpenCodeInboxItem>());
+        Check(title.Text.Length == 0 && !two.Queue.HasItems, "an empty queue has no header text");
+
+        var bare = new FakeServer();
+        bare.Inbox.Add(UserItem(Inbox, "", 1000));
+        using var bareClient = bare.Client();
+        Check(QueueHeader(await DeliveryPage(bare, bareClient)).Text == prefix + "（仅附件）", "a message without text keeps its placeholder");
     }
 
     // The queue row no longer hides anything, but other views still do (browser strip, tool rows): keep the shared

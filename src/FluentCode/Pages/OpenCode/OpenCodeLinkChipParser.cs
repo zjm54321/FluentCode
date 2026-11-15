@@ -516,6 +516,36 @@ internal static class OpenCodeLinkChipParser
     private static bool LooksLikeUrl(string text)
         => text.Contains("://", StringComparison.Ordinal) || Regex.IsMatch(text, @"^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(/\S*)?$", RegexOptions.IgnoreCase);
 
+    // ------------------------------------------------------------------ plain-text preview
+
+    /// <summary>
+    /// Message text for a place that shows plain text only (a one-line header): each link becomes the
+    /// <see cref="OpenCodeLinkChip.Label"/> its chip shows, so the preview never spells out an address the message
+    /// itself shows as a chip. Same links as the rendered message: Markdown link targets count, code is skipped.
+    /// A chip stands apart from the words around it by its outline; as text, the label gets a space on a side where
+    /// a word touches it.
+    /// </summary>
+    internal static string PreviewText(string? text)
+    {
+        var source = RewriteMarkdownLinks(text);
+        var links = Find(source, markdown: true);
+        if (links.Count == 0) return source;
+        var preview = new StringBuilder(source.Length);
+        var at = 0;
+        foreach (var link in links)
+        {
+            preview.Append(source, at, link.Start - at);
+            if (link.Start > 0 && IsWordChar(source[link.Start - 1])) preview.Append(' ');
+            preview.Append(Parse(link.Url)!.Label);
+            if (link.End < source.Length && IsWordChar(source[link.End])) preview.Append(' ');
+            at = link.End;
+        }
+        return preview.Append(source, at, source.Length - at).ToString();
+    }
+
+    /// <summary>A letter or digit of any script, or half of a character outside the BMP (rare Han, emoji).</summary>
+    private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || char.IsSurrogate(c);
+
     // ------------------------------------------------------------------ favicon policy
 
     /// <summary>

@@ -70,6 +70,7 @@ internal static partial class Program
         Check(Urls("go https://a.com/x", streaming: true).Length == 0 && Urls("go https://a.com/x ", streaming: true).Length == 1, "streaming: chip only after a boundary");
         Check(Urls("mailto:a@b.com file:///x").Length == 0, "other schemes stay text");
         LinkStartRules();
+        LinkPreviewText();
         // ---- markdown [text](url)
         Check(OpenCodeLinkChipParser.RewriteMarkdownLinks("[https://good.com](https://evil.io/x)") == "https://evil.io/x", "URL-looking text shows the REAL target");
         Check(OpenCodeLinkChipParser.RewriteMarkdownLinks("read [docs](https://a.com/d).") == "read docs (https://a.com/d).", "ordinary text keeps text + real target");
@@ -288,6 +289,37 @@ internal static partial class Program
         // it is unaffected: text around the link still pastes as plain text.
         Check(OpenCodeComposerChips.SingleLink(url) == url && OpenCodeComposerChips.SingleLink("看这个" + url) is null
             && OpenCodeComposerChips.SingleLink(url + "看这个") is null, "paste converts only a clipboard that is exactly one link");
+    }
+
+    // A place that can only show plain text (the queue header) names a link by the label its chip shows.
+    private static void LinkPreviewText()
+    {
+        const string pull = "https://github.com/sst/opencode/pull/4821", generic = "https://blog.example.dev/posts/2026/rich-paste";
+        void Preview(string? text, string expected, string note)
+        {
+            var shown = OpenCodeLinkChipParser.PreviewText(text);
+            Check(shown == expected, note + ": \"" + text + "\" gave \"" + shown + "\", expected \"" + expected + "\"");
+        }
+        Check(Label(pull) == "opencode #4821" && Label(generic) == "blog.example.dev/…/rich-paste", "the labels the chips show for these addresses");
+        Preview(pull, "opencode #4821", "a link alone is its label");
+        Preview("看这个" + pull + "然后合并", "看这个 opencode #4821 然后合并", "a word that touches the label is set off by one space");
+        Preview("看 " + pull + " 谢谢", "看 opencode #4821 谢谢", "spaces that are already there are not doubled");
+        Preview("（" + pull + "）。", "（opencode #4821）。", "punctuation stays tight against the label");
+        Preview("见" + pull + "。谢谢", "见 opencode #4821。谢谢", "a space only on the side where a word touches");
+        Preview("\U0001F449" + pull, "\U0001F449 opencode #4821", "an emoji before the link counts as a word");
+        Preview("对比" + pull + "和" + generic, "对比 opencode #4821 和 blog.example.dev/…/rich-paste", "every link in the text");
+        Preview(pull + "\n" + generic, "opencode #4821\nblog.example.dev/…/rich-paste", "line breaks are kept");
+        Preview("看 [文档](" + generic + ")", "看 文档 (blog.example.dev/…/rich-paste)", "a Markdown link: its text, then the target's label");
+        Preview("[https://good.com](https://evil.io/x)", "evil.io/x", "a link text that looks like an address: only the real target is named");
+        Preview("看https://user:hunter2@example.com/x?token=s3cr3t", "看 example.com/x", "a password or token in the address never reaches the preview");
+        // Text the message itself shows as text is returned as written.
+        Preview("abc" + pull, "abc" + pull, "an address glued to a word");
+        Preview("`" + pull + "` 和" + generic, "`" + pull + "` 和 blog.example.dev/…/rich-paste", "inline code");
+        Preview("```\n" + pull + "\n```", "```\n" + pull + "\n```", "a fenced code block");
+        Preview("ftp://h/x file:///c:/x mailto:a@b.c", "ftp://h/x file:///c:/x mailto:a@b.c", "other schemes");
+        Preview("没有链接", "没有链接", "text without a link");
+        Preview("", "", "empty text");
+        Preview(null, "", "no text");
     }
 
     private static async Task ImagePasteEditorRegression()

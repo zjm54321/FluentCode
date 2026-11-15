@@ -156,7 +156,9 @@ internal sealed class OpenCodeQueuedPromptsView : Grid
         }
         _hasItems = rows.Count > 0;
         if (firstItems) _expander.IsExpanded = rows.Count == 1;
-        _header.Text = rows.Count == 0 ? string.Empty : "排队 " + rows.Count + " 条 · 下一条：" + rows[0].Text;
+        // One line of plain text. A link reads as the short label its chip shows in the row below, never as the address.
+        _header.Text = rows.Count == 0 ? string.Empty
+            : "排队 " + rows.Count + " 条 · 下一条：" + OpenCodeLinkChipParser.PreviewText(rows[0].Text);
         ToolTipService.SetToolTip(_expander, "当前回合结束后发送");
         Visibility = rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
