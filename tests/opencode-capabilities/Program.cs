@@ -26,7 +26,8 @@ internal static class Program
         PluginGatesAndCoreChildren();
         await ServerInfo();
         await McpControl();
-        Console.WriteLine($"PASS: 6 capability groups, {assertions} assertions; fake HTTP only; Billion/LSP/private storage/RPC requests: 0.");
+        assertions += await ServerProduct.RunAsync();
+        Console.WriteLine($"PASS: 7 capability groups, {assertions} assertions; fake HTTP only; Billion/LSP/private storage/RPC requests: 0.");
     }
 
     private static void Check(bool condition, string label)

@@ -301,17 +301,20 @@ public sealed class OpenCodeHomeView : UserControl
 
     /// <summary>Real connection facts only: server-reported version, live connected state, and the configured
     /// connection identity (e.g. "WSL · NixOS" / remote host). Unknown parts are omitted, never invented.</summary>
-    public void SetConnection(string? version, bool connected, string? identity)
+    /// <remarks><paramref name="version"/> is shown as given once it starts with a letter (the page passes
+    /// "QoL v2.2.5" on OpenCode QoL: the wordmark above already says OpenCode); a bare number gets its "v".
+    /// <paramref name="product"/> is the full product name for the tooltip and the narrator name.</remarks>
+    public void SetConnection(string? version, bool connected, string? identity, string product = "OpenCode")
     {
         var parts = new List<string>();
-        if (version is { Length: > 0 }) parts.Add(version.StartsWith('v') ? version : "v" + version);
+        if (version is { Length: > 0 }) parts.Add(char.IsLetter(version[0]) ? version : "v" + version);
         if (identity is { Length: > 0 }) parts.Add(identity);
         if (!connected) parts.Add("未连接");
         var text = string.Join(" · ", parts);
         _connectionText.Text = text;
         var dot = connected ? Visibility.Visible : Visibility.Collapsed;
         _connectedDot.Visibility = dot;
-        var name = "OpenCode " + (connected ? "已连接" : "未连接") + (text.Length > 0 ? "，" + text : string.Empty);
+        var name = product + " " + (connected ? "已连接" : "未连接") + (text.Length > 0 ? "，" + text : string.Empty);
         AutomationProperties.SetName(_connectionCard, name);
         ToolTipService.SetToolTip(_connectionCard, name);
     }

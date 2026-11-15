@@ -58,6 +58,26 @@ FluentCode 客户端接入了以下 OpenCode V2 核心端点：
 | `GET` | `api/session/{id}/permission` | — | `{ data: Permission.Request[] }` | 查询当前等待用户审批的敏感权限请求 |
 | `POST` | `api/session/{id}/command` | `{ name, text }` | `204 No Content` | 执行斜杠命令或自定义扩展指令 |
 
+### 服务端产品识别与 QoL 独享功能
+
+`GET api/info` 只返回上游版本号（OpenCode QoL 2.2.5-qol.2 返回 `"version": "2.2.5"`），不能用来区分服务端是不是 OpenCode QoL。客户端在安装连接来源时读取一次 `GET api/plugin`（服务端默认位置），按下面的规则判断，结果只用于显示名称和提示文字：
+
+- **OpenCode QoL**：列表中至少有一个 `id` 以 `opencode.qol.` 开头且 `source.type == "builtin"` 的插件（QoL 把自己的插件编译进服务端）。手动安装的同名插件（`package` / `local` 来源）不算。
+- **OpenCode**：列表读取成功，但没有这样的插件。
+- **未知**：列表尚未读取或读取失败。此时按普通 OpenCode 显示，不会提示“不是 QoL”。
+
+版本号按服务端报告的原样显示（“OpenCode QoL 版本 2.2.5”），客户端不拼接 `-qol.N`。
+
+每项 QoL 独享功能是否可用，由它自己的探测结果决定，与产品名称无关：
+
+| 功能 | 探测 | 服务端没有时 |
+|---|---|---|
+| 模型收藏、自动发现 Billion 地址 | `POST api/rpc/opencode.qol.desktop-bridge/hello` 返回协议版本 1 及 `model.favorites.v1` / `billion.origin.v1` | 入口隐藏 |
+| 持久终端 | `GET api/info` 的 `capabilities.persistentPty` | `false`、未声明或读取失败时终端按钮和列表都不显示（未声明或读取失败不会被记住，下次刷新会重新询问）；服务端声明支持但列表读取失败时，显示“暂时无法读取终端列表” |
+| 原生卡片设置 | `GET api/plugin` 中 `opencode.qol.native-ui` 为 `active` | “设置 › 原生卡片”分类隐藏（设置值保留）；应用启动后尚未得到回答时同样隐藏，断开连接后沿用最近一次回答 |
+
+Desktop Bridge 的握手结果对应五种状态：已连接、未安装（HTTP 404 或 `rpc.method_not_found`）、版本过旧（协议版本 1 但缺少客户端用到的能力）、版本不匹配（没有共同的协议版本）、无法确认（网络、认证或响应格式错误，不视为未安装）。连接详情“服务”下的 Desktop Bridge 行显示该状态。未安装、过旧或不匹配时，每个服务（按连接端点识别）每种状态在应用运行期间只提示一次，重新连接同一服务不再提示。
+
 ### 智能体提及与 OMO 汇报
 - Agent.Info 保留 `id`, `name`, `model`, `request`, `system`, `description`, `mode`, `hidden`, `color`, `steps`, `permissions`。`permissions` 是有序的 `{ action, resource, effect }` 规则数组；OMO 的 `permission.task` 在 V2 中映射为 `action: "subagent"`，`resource` 匹配子智能体 ID。当前主智能体的最后一条匹配规则决定候选可见性，动作与资源支持 `*`，`deny` 隐藏，`allow` / `ask` 保留；没有当前主智能体或匹配规则时保留原候选，服务端继续负责授权。只筛选非隐藏的 `subagent` / `all` 智能体，不筛选 Skill，也不硬编码主智能体的允许名单。
 - `task_report` 的参数为 `kind: "progress" | "escalation"` 与经过修剪、非空、最多 2000 字符的 `message`。两个字符串结果仅说明已向主会话排队（可选“未唤醒”）；详情译为中文并保留“主会话尚未确认处理”，不据此确认子任务结束。

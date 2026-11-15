@@ -188,6 +188,7 @@ internal static partial class Program
         await CanonicalBoundary();
         await UnsupportedBoundary();
         await CancellationBoundary();
+        await BridgeGuidanceBoundary();
         await PreviewReadBoundary();
         await TunnelErrorBoundary();
         Console.WriteLine($"PASS QOL bridge boundary: {_cases} cases, {_checks} checks; offline HttpMessageHandler, production transport and source ownership.");

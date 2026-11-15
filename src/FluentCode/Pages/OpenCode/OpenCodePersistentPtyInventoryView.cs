@@ -112,11 +112,17 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
         Render(null, null);
     }
 
+    // The last answer this view saw to "does the server have terminals"; decides what a loading session shows.
+    private bool? _supportLastKnown;
+
     internal void Render(OpenCodePersistentPtyInventoryContext? context, OpenCodePersistentPtyInventoryState? state)
     {
         if (_context != context) { _creating = false; _createError = null; }
         _context = context; _state = state;
-        var available = context is not null && state?.Phase != OpenCodePersistentPtyInventoryPhase.Unsupported;
+        // Shown on a yes, hidden on a no and while the answer is not known; see OpenCodePersistentPtySurfaceRule.
+        _supportLastKnown = OpenCodePersistentPtySurfaceRule.Answer(state?.Phase) ?? _supportLastKnown;
+        var (show, readFailed) = OpenCodePersistentPtySurfaceRule.For(state?.Phase, _supportLastKnown);
+        var available = context is not null && show;
         _toggle.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
         _create.IsEnabled = CanCreate;
         _toggle.IsEnabled = !_creating;
@@ -129,8 +135,8 @@ internal sealed class OpenCodePersistentPtyInventoryView : Grid
             OpenCodePersistentPtyInventoryPhase.Loading => entries.Length == 0 ? "正在读取…" : string.Empty,
             OpenCodePersistentPtyInventoryPhase.Unsupported => string.Empty,
             OpenCodePersistentPtyInventoryPhase.Ready => string.Empty,
-            null => string.Empty,
-            _ => "暂时无法读取终端列表",
+            OpenCodePersistentPtyInventoryPhase.Unavailable => "暂时无法读取终端列表",
+            _ => string.Empty,
         });
         _status.Visibility = _status.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         Visibility = available && (entries.Length > 0 || _status.Text.Length > 0) ? Visibility.Visible : Visibility.Collapsed;

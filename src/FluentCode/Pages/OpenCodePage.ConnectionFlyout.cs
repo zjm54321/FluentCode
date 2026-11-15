@@ -115,6 +115,7 @@ public sealed partial class OpenCodePage
         var details = new OpenCodeConnectionDetails(text, _connectionStatusDetail, baseUrl, CurrentServerInfo(), capabilities, unavailable)
         {
             ServerDotKey = ConnectionDotKey(text),
+            Bridge = CurrentDesktopBridge(),
             McpBusy = _mcpBusy.ToArray(),
             McpActionError = _mcpActionError,
         };
@@ -243,8 +244,10 @@ public sealed partial class OpenCodePage
 
         var owner = new ServerInfoOwner(source, _sourceRevision, _sourceGeneration, client);
         var request = ++_serverInfoRequest;
+        // A re-read of the same source keeps the product it already identified, so the label does not flip back while loading.
+        var knownProduct = CurrentServerInfo().Product;
         _serverInfoOwner = owner;
-        _serverInfo = OpenCodeServerInfoView.Loading;
+        _serverInfo = OpenCodeServerInfoView.Loading with { Product = knownProduct };
         RenderConnectionFlyoutIfOpen();
 
         // 不链接会话令牌：版本属于来源，切换会话不应取消；来源撤销 / 页面卸载会取消。
@@ -253,10 +256,14 @@ public sealed partial class OpenCodePage
         bool Current() => request == _serverInfoRequest && IsCurrentServerInfoOwner(owner) && !ct.IsCancellationRequested;
 
         Task<OpenCodeServerInfo>? pending = null;
+        Task<IReadOnlyList<OpenCodePluginInfo>>? pendingPlugins = null;
         if (!source.TryExecute(ct, () =>
             {
                 if (!Current()) return;
                 pending = client.GetServerInfoAsync(ct);
+                // Source-wide plugin list (server default location): tells which product this is and whether it offers
+                // native cards. Built-in plugins are the same for every directory.
+                pendingPlugins = client.GetPluginsAsync(null, ct);
             }) || pending is null)
         {
             if (Current())
@@ -295,12 +302,29 @@ public sealed partial class OpenCodePage
             result = new(OpenCodeInsightState.Failed, null, "无法确认服务版本。");
         }
 
+        // The product is a label only: a failed plugin read leaves it unknown and is not reported as an error.
+        IReadOnlyList<OpenCodePluginInfo>? plugins = null;
+        try
+        {
+            if (pendingPlugins is not null) plugins = await pendingPlugins;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception)
+        {
+        }
+
         if (!Current())
         {
             return; // 迟到 / 换源：丢弃。
         }
 
-        _serverInfo = result;
+        var product = OpenCodeServerProduct.Identify(plugins);
+        OpenCodeServerProduct.RecordNativeCards(OpenCodeServerProduct.OffersNativeCards(plugins));
+        _serverInfo = result with { Product = product == OpenCodeServerProductKind.Unknown ? knownProduct : product };
         RenderConnectionFlyoutIfOpen();
+        ShowDesktopBridgeNoticeIfDue(); // its wording depends on the product, which is known only now
     }
 }

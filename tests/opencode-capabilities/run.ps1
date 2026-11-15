@@ -20,13 +20,14 @@ $arguments += Get-ChildItem (Join-Path $referencePack.FullName 'ref/net10.0/*.dl
     'OpenCodeDtos.Common.cs', 'OpenCodeDtos.Location.cs', 'OpenCodeDtos.Sessions.cs', 'OpenCodeDtos.Messages.cs',
     'OpenCodeDtos.Inbox.cs', 'OpenCodeDtos.Permissions.cs', 'OpenCodeDtos.Forms.cs', 'OpenCodeDtos.Agents.cs',
     'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs', 'OpenCodeClient.Projects.cs', 'OpenCodeDtos.Projects.cs', 'OpenCodeClient.Capabilities.cs', 'OpenCodeClient.McpControl.cs', 'OpenCodeClient.ServerInfo.cs', 'OpenCodeDtos.Capabilities.cs',
-    'OpenCodeCapabilityStatus.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeSubagentStatus.cs'
+    'OpenCodeCapabilityStatus.cs', 'OpenCodeTodoReplay.cs', 'OpenCodeSubagentStatus.cs', 'OpenCodeServerProduct.cs'
 ) | ForEach-Object { $arguments += '"' + (Join-Path "$repo/src/FluentCode/Services/OpenCode" $_) + '"' }
 # Agents uses the real bounded session-control transport and its production DTO/gate closure.
 @('OpenCodeInteractionGate.cs', 'NotificationArgumentCodec.cs', 'NotificationInteractions.cs', 'NotificationSource.cs', 'OpenCodeExecutionProjection.cs') |
     ForEach-Object { $arguments += '"' + (Join-Path "$repo/src/FluentCode/Services/Notifications" $_) + '"' }
 $arguments += '"' + (Join-Path $PSScriptRoot 'Program.cs') + '"'
 $arguments += '"' + (Join-Path $PSScriptRoot 'ResponseBounds.cs') + '"'
+$arguments += '"' + (Join-Path $PSScriptRoot 'ServerProduct.cs') + '"'
 $responseFile = Join-Path $output 'compile.rsp'
 $arguments | Set-Content -Encoding UTF8 $responseFile
 & $dotnet exec (Join-Path $sdk.FullName 'Roslyn/bincore/csc.dll') "@$responseFile" 2>&1 | Tee-Object -FilePath (Join-Path $output 'compile.log')
