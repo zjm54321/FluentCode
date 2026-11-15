@@ -73,6 +73,31 @@ internal static class CommunityTextBadge
     internal const string TitleTemplateKey = "AppBadgeTitleTemplate";
 
     private const string Namespaces = " xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"";
+    private const string XNamespace = " xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\"";
+
+    // 色调覆盖：库的分类色是写死的色值，不跟随应用。这里按“轻量样式”的做法，在每个徽标自己的资源里用同名键
+    // 覆盖库模板读取的画刷，控件模板和它的状态切换都不用改；深色与浅色各一份，高对比度留空，沿用库自己的
+    // 高对比度取值（窗口底色 + 窗口文字色）。
+    // 来源：https://github.com/ghost1372/DevWinUI，提交 6c6c70d55cb7487d3a2aa506d0055ffa0e52ef6e，
+    // dev/DevWinUI/Themes/Styles/Controls/IssueLabel.xaml（Severity* 状态用 {ThemeResource IssueLabel*Brush} 取色）。
+    //
+    // D-10 强调色调（Attention）跟随系统强调色，与卡片上其他“信息”元素一致：底色为强调色 12%，
+    // 描边为强调色 40%，文字为强调文字色（深色 SystemAccentColorLight3，浅色 SystemAccentColorDark2，
+    // 即 AccentTextFillColorPrimaryBrush 的取值）。
+    private const string DarkTones =
+        "<SolidColorBrush x:Key=\"IssueLabelBlueBackgroundBrush\" Color=\"{ThemeResource SystemAccentColorLight2}\" Opacity=\"0.12\" />"
+        + "<SolidColorBrush x:Key=\"IssueLabelBlueBorderBrush\" Color=\"{ThemeResource SystemAccentColorLight2}\" Opacity=\"0.4\" />"
+        + "<SolidColorBrush x:Key=\"IssueLabelBlueForegroundBrush\" Color=\"{ThemeResource SystemAccentColorLight3}\" />";
+    private const string LightTones =
+        "<SolidColorBrush x:Key=\"IssueLabelBlueBackgroundBrush\" Color=\"{ThemeResource SystemAccentColorDark1}\" Opacity=\"0.12\" />"
+        + "<SolidColorBrush x:Key=\"IssueLabelBlueBorderBrush\" Color=\"{ThemeResource SystemAccentColorDark1}\" Opacity=\"0.4\" />"
+        + "<SolidColorBrush x:Key=\"IssueLabelBlueForegroundBrush\" Color=\"{ThemeResource SystemAccentColorDark2}\" />";
+    private const string ToneResources =
+        "<ResourceDictionary" + Namespaces + XNamespace + "><ResourceDictionary.ThemeDictionaries>"
+        + "<ResourceDictionary x:Key=\"Default\">" + DarkTones + "</ResourceDictionary>"
+        + "<ResourceDictionary x:Key=\"Light\">" + LightTones + "</ResourceDictionary>"
+        + "<ResourceDictionary x:Key=\"HighContrast\" />"
+        + "</ResourceDictionary.ThemeDictionaries></ResourceDictionary>";
     // 每个字形一份模板。模板不是控件，也不持有控件；字形来自应用内固定的图标表，所以条目数有上限。
     private static readonly Dictionary<string, DataTemplate?> GlyphTemplates = new(StringComparer.Ordinal);
 
@@ -93,6 +118,16 @@ internal static class CommunityTextBadge
         string? glyph = null)
     {
         var label = new IssueLabel { Style = Style(shape == CommunityTextBadgeShape.Pill ? PillStyleKey : CompactStyleKey) };
+        // 色调覆盖要在控件模板套用之前就位，所以在构造时设置；每个徽标一份字典，不共享实例。
+        // 解析失败时不设置：徽标退回库自带的配色，文字和形状不受影响。
+        try
+        {
+            label.Resources = (ResourceDictionary)XamlReader.Load(ToneResources);
+        }
+        catch
+        {
+        }
+
         Apply(label, text, tone, accessibleName);
         SetGlyph(label, glyph);
         return label;

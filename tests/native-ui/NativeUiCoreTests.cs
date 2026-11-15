@@ -40,6 +40,19 @@ internal static class NativeUiCoreTests
         }
         string[] Folder(string relative) => Directory.GetFiles(Path.Combine(repo, relative.Replace('/', Path.DirectorySeparatorChar)), "*.cs");
         static int Occurrences(string text, string value) => text.Split(value, StringSplitOptions.None).Length - 1;
+        // sRGB compositing and WCAG contrast for the badge colour checks (colours as 0xRRGGBB).
+        static int Over(int color, double opacity, int surface)
+        {
+            int Mix(int shift) => (int)Math.Round(((color >> shift) & 0xFF) * opacity + ((surface >> shift) & 0xFF) * (1 - opacity));
+            return (Mix(16) << 16) | (Mix(8) << 8) | Mix(0);
+        }
+        static double BadgeContrast(int first, int second)
+        {
+            static double Channel(int value) { var c = value / 255d; return c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4); }
+            static double Luminance(int color) => 0.2126 * Channel((color >> 16) & 0xFF) + 0.7152 * Channel((color >> 8) & 0xFF) + 0.0722 * Channel(color & 0xFF);
+            var (a, b) = (Luminance(first), Luminance(second));
+            return (Math.Max(a, b) + 0.05) / (Math.Min(a, b) + 0.05);
+        }
         static string Between(string text, string from, string to)
         {
             var start = text.IndexOf(from, StringComparison.Ordinal);
@@ -255,6 +268,34 @@ internal static class NativeUiCoreTests
         Check(Regex.Matches(badgeAdapter, @"private static readonly [^\n]*").Select(match => match.Value.Trim())
                 .SequenceEqual(new[] { "private static readonly Dictionary<string, DataTemplate?> GlyphTemplates = new(StringComparer.Ordinal);" }),
             "The adapter's only static state is the template cache, which holds templates, not controls");
+
+        // ---- D-10: the info badge follows the accent, like the other info elements on a card ----
+        var darkTones = Between(badgeAdapter, "private const string DarkTones =", "private const string LightTones =");
+        var lightTones = Between(badgeAdapter, "private const string LightTones =", "private const string ToneResources =");
+        var toneResources = Between(badgeAdapter, "private const string ToneResources =", "</ResourceDictionary.ThemeDictionaries></ResourceDictionary>\";");
+        Check(darkTones.Contains("x:Key=\\\"IssueLabelBlueBackgroundBrush\\\" Color=\\\"{ThemeResource SystemAccentColorLight2}\\\" Opacity=\\\"0.12\\\"")
+            && lightTones.Contains("x:Key=\\\"IssueLabelBlueBackgroundBrush\\\" Color=\\\"{ThemeResource SystemAccentColorDark1}\\\" Opacity=\\\"0.12\\\"")
+            && theme.Contains("\"@accent\" => light ? \"SystemAccentColorDark1\" : \"SystemAccentColorLight2\",")
+            && theme.Contains("x:Key=\\\"NativeUiAccentTintBrush\\\" Color=\\\"{ThemeResource \" + accent + \"}\\\" Opacity=\\\"0.12\\\""),
+            "The info badge fill is the accent at 12%, the same colour and strength as the card's accent tint");
+        Check(darkTones.Contains("x:Key=\\\"IssueLabelBlueForegroundBrush\\\" Color=\\\"{ThemeResource SystemAccentColorLight3}\\\" />")
+            && lightTones.Contains("x:Key=\\\"IssueLabelBlueForegroundBrush\\\" Color=\\\"{ThemeResource SystemAccentColorDark2}\\\" />")
+            && theme.Contains("\"@accentText\" => light ? \"SystemAccentColorDark2\" : \"SystemAccentColorLight3\","),
+            "The info badge text is the accent text colour the card's info text uses");
+        Check(darkTones.Contains("x:Key=\\\"IssueLabelBlueBorderBrush\\\" Color=\\\"{ThemeResource SystemAccentColorLight2}\\\" Opacity=\\\"0.4\\\"")
+            && lightTones.Contains("x:Key=\\\"IssueLabelBlueBorderBrush\\\" Color=\\\"{ThemeResource SystemAccentColorDark1}\\\" Opacity=\\\"0.4\\\""),
+            "The info badge outline is the accent at 40%");
+        Check(toneResources.Contains("<ResourceDictionary x:Key=\\\"Default\\\">\" + DarkTones") && toneResources.Contains("<ResourceDictionary x:Key=\\\"Light\\\">\" + LightTones")
+            && toneResources.Contains("<ResourceDictionary x:Key=\\\"HighContrast\\\" />"),
+            "The tone overrides exist for dark and light only; high contrast keeps the library's window and window-text colours");
+        var create = Between(badgeAdapter, "internal static FrameworkElement Create(", "internal static void Update(");
+        var resourcesAt = create.IndexOf("label.Resources = (ResourceDictionary)XamlReader.Load(ToneResources);", StringComparison.Ordinal);
+        Check(resourcesAt >= 0 && resourcesAt < create.IndexOf("Apply(label, text, tone, accessibleName);", StringComparison.Ordinal)
+            && Occurrences(badgeAdapter, "XamlReader.Load(ToneResources)") == 1,
+            "Each badge gets its own tone overrides when it is created, before its tone is applied, and they are never shared between badges");
+        // Executed with the default Windows accent ramp: the text must stay readable on the tinted fill over a card.
+        Check(BadgeContrast(0x99EBFF, Over(0x4CC2FF, 0.12, 0x2C2C2C)) >= 4.5 && BadgeContrast(0x003E92, Over(0x0067C0, 0.12, 0xFFFFFF)) >= 4.5,
+            "With the default accent, info badge text on its tint over the card surface clears 4.5:1 in dark and light");
 
         // The library facts the adapter relies on, read from the locked package so an upgrade that changes them
         // fails here (the runner hands us its theme dictionary: tests/native-ui/run.ps1).
