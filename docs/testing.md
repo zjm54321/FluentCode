@@ -79,7 +79,7 @@ python tests/run-suite.py --windows --root "artifacts\windows-ci-suite-$(Get-Dat
 | 25 | `tests/opencode-persistent-pty-transport/run-backend.ps1` | 终端底层 WebSocket 传输协议、VT100 字节流解析、服务端权威网格尺寸协商（Resize）与控制权接管 |
 | 26 | `tests/opencode-tool-presentation/run.ps1` | 工具行呈现：会话/终端类工具按精确名称命名与配图标、不套用文件读取/差异视图，通用详情构建与分组仅标题行悬停高亮；悬停预览与来源行之间让出相邻一整行、详情浮层跟随应用/Windows 主题、完成通知使用 Fluent 完成/出错字形；悬停提示文案简洁，快捷键统一为“名称（快捷键）”，并保留标题、路径等隐藏值 |
 | 27 | `tests/browser-runtime/runtime.test.mjs` | Node.js 侧运行时单元测试：本地 HTTP/CONNECT/WebSocket 隧道代理、TCP 半关闭与背压控制 |
-| 29 | `tests/opencode-tabs/run.ps1` | 标题栏标签的保存与恢复：顺序与选中项往返、损坏/更高版本文件、恢复前不写入（连接失败后退出保留原文件）、重连后恢复、已删除会话移除、列表外会话按 ID 查询、通知目标优先、不同服务器互不影响、首页不记录、设置标签唯一、延迟合并写入与原子替换 |
+| 29 | `tests/opencode-tabs/run.ps1` | 标题栏标签的保存与恢复：顺序与选中项往返、损坏/更高版本文件、恢复前不写入（连接失败后退出保留原文件）、重连后恢复、已删除会话移除、列表外会话按 ID 查询、通知目标优先、不同服务器互不影响、首页不记录、设置标签唯一、延迟合并写入与原子替换、恢复失败后不写入、列表到达前的 404 不算删除、退出保存后不再写入、按 ID 读入的会话不增加刷新页数 |
 | 28 | `tests/browser-runtime/audit.test.mjs` | Node.js 侧审计单元测试：真机 Lighthouse 快照审计、CDP 会话扁平化与审计取消清理 |
 
 ---
