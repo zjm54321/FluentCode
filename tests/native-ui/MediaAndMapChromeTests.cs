@@ -440,6 +440,36 @@ internal static class MediaAndMapChromeTests
             && NativeUiPressable.Over(darkSurface, darkHover) != NativeUiPressable.Over(darkSurface, darkPress) && NativeUiPressable.Over(darkSurface, darkHover) != darkSurface,
             "Rest, hover and pressed are three different fills on the default surface in both themes");
 
+        // When a tile works its colours out again. A card applies every tile on each update, and reading a theme
+        // colour is a XAML parse, so an update that changes nothing the colours depend on must not ask for one.
+        var memo = new NativeUiPressable.Memo(); var tintWork = 0; var textWork = 0;
+        void Apply((byte A, byte R, byte G, byte B) fill, string pageTheme, string ownTheme, string contrast)
+        {
+            if (memo.NeedsTints(fill, ownTheme != "Default" ? ownTheme : pageTheme, contrast)) tintWork++;
+            if (memo.NeedsText(pageTheme, ownTheme, contrast)) textWork++;
+        }
+        Apply(white, "Light", "Default", "");
+        Check(tintWork == 1 && textWork == 1, "The first update of a tile works out its colours: " + tintWork + " / " + textWork);
+        for (var update = 0; update < 100; update++) Apply(white, "Light", "Default", "");
+        Check(tintWork == 1 && textWork == 1, "A hundred updates that change neither fill nor theme do no colour work: " + tintWork + " / " + textWork);
+        Apply((255, 0xEF, 0xE6, 0xD3), "Light", "Default", "");
+        Check(tintWork == 2 && textWork == 1, "A new fill needs new hover and press colours and nothing else: " + tintWork + " / " + textWork);
+        Apply((255, 0xEF, 0xE6, 0xD3), "Dark", "Default", "");
+        Check(tintWork == 3 && textWork == 2, "A theme switch needs both again, also when the fill is a raw colour that did not change: " + tintWork + " / " + textWork);
+        Apply((255, 0xEF, 0xE6, 0xD3), "Dark", "Default", "High Contrast Black"); Apply((255, 0xEF, 0xE6, 0xD3), "Dark", "Default", "High Contrast Black");
+        Check(tintWork == 4 && textWork == 3, "Turning high contrast on is noticed at the next update, once: " + tintWork + " / " + textWork);
+        Apply((255, 0xEF, 0xE6, 0xD3), "Dark", "Default", "High Contrast White"); Apply((255, 0xEF, 0xE6, 0xD3), "Dark", "Default", "");
+        Check(tintWork == 6 && textWork == 5, "So is another contrast scheme, and turning it off: " + tintWork + " / " + textWork);
+        Apply((255, 0xEF, 0xE6, 0xD3), "Dark", "Light", ""); Apply((255, 0xEF, 0xE6, 0xD3), "Light", "Light", "");
+        Check(tintWork == 7 && textWork == 7,
+            "A tile with a theme of its own (raw-colour fill) keeps its tints when the page theme changes, but looks above itself again: " + tintWork + " / " + textWork);
+        memo.Moved(); Apply((255, 0xEF, 0xE6, 0xD3), "Light", "Light", ""); Apply((255, 0xEF, 0xE6, 0xD3), "Light", "Light", "");
+        Check(tintWork == 7 && textWork == 8, "A tile that entered a tree again takes its text colour and font from above once more, and keeps its tints: " + tintWork + " / " + textWork);
+        Apply(white, "Light", "Light", ""); Apply((255, 0xEF, 0xE6, 0xD3), "Light", "Light", "");
+        Check(tintWork == 9 && textWork == 8, "Going back to an earlier fill is a change too; nothing stale is kept: " + tintWork + " / " + textWork);
+        var otherTile = new NativeUiPressable.Memo();
+        Check(otherTile.NeedsTints((255, 0xEF, 0xE6, 0xD3), "Light", "") && otherTile.NeedsText("Light", "Light", ""), "What one tile remembers is not shared with another");
+
         // Which input is the tile's own. A small tree stands in for the visual tree: page > flashcard button > tile >
         // (text, row > button > label, slider).
         var page = new TreeNode("page", null, false); var outerButton = new TreeNode("flashcard", page, true); var tileNode = new TreeNode("tile", outerButton, true);
@@ -504,6 +534,10 @@ internal static class MediaAndMapChromeTests
             "What the stock Button style would change at rest is put back, and the stock style and template themselves are kept");
         Check(new[] { "ButtonBackgroundPointerOver", "ButtonBackgroundPressed", "ButtonBackgroundDisabled", "\"ButtonBorderBrush\" + state", "\"ButtonForeground\" + state", "\"PointerOver\", \"Pressed\", \"Disabled\"" }.All(tileClass.Contains)
             && tileClass.Contains("Resources[\"ButtonBackgroundDisabled\"] = _rest") && tileClass.Contains("NativeUiPressable.Over(")
+            && tileClass.Contains("&& _memo.NeedsTints((solid.Color.A, solid.Color.R, solid.Color.G, solid.Color.B), Theme.ToString(), contrast))")
+            && tileClass.Contains("if (_memo.NeedsText(_pageTheme.ToString(), RequestedTheme.ToString(), _contrast)) TakeTextFromAbove();")
+            && tileClass.Contains("Loading += OnTileLoading;") && tileClass.Contains("{ _memo.Moved(); TakeTextIfNeeded(); }")
+            && Regex.Matches(tileClass, @"TakeTextFromAbove\(\)").Count == 2 && Regex.Matches(tileClass, @"Tinted\(solid\.Color").Count == 2 && !tileClass.Contains(" static readonly ") && !tileClass.Contains("static Dictionary")
             && tileClass.Contains("\"SubtleFillColorSecondaryBrush\"") && tileClass.Contains("\"SubtleFillColorTertiaryBrush\""),
             "Every brush the stock states swap in is answered by the tile: fill from the tested tint rule, border and text as at rest, disabled as at rest");
 

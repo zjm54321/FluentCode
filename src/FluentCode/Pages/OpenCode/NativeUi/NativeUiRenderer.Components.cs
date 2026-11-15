@@ -16,6 +16,16 @@ internal sealed partial class NativeUiRenderer
 {
     private Flyout? _confirmation;
     private Brush ComponentBrush(string token, bool background = false) => NativeUiTheme.Brush(token, background, _root.ActualTheme);
+    // The high contrast scheme in use, or empty. Read on demand, no event is subscribed: turning high contrast on
+    // does not raise ActualThemeChanged (microsoft/microsoft-ui-xaml, tag winui3/release/2.6.5,
+    // src/dxaml/xcp/core/core/elements/framework.cpp, RaiseActiveThemeChangedEventIfChanging), so a component that
+    // remembers theme colours compares this on each update.
+    private Windows.UI.ViewManagement.AccessibilitySettings? _contrastProbe;
+    private string ContrastScheme()
+    {
+        try { _contrastProbe ??= new(); return _contrastProbe.HighContrast ? _contrastProbe.HighContrastScheme ?? "on" : ""; }
+        catch { return ""; }
+    }
     // Spacers and flex Boxes take the Row's free space (OIU `flex: N 1 0%`), in proportion to flex.
     private static void ApplySpacers(Grid row)
     {

@@ -41,6 +41,42 @@ internal static class NativeUiPressable
         return ((byte)Math.Round(alpha * 255, MidpointRounding.AwayFromZero), Mix(tint.R, rest.R), Mix(tint.G, rest.G), Mix(tint.B, rest.B));
     }
 
+    /// <summary>
+    /// What a tile's derived colours were last worked out from. Reading a theme colour costs a XAML parse, and a
+    /// card applies every tile again on each update, so a tile asks here first and does the work only when an
+    /// input changed. One per tile; it holds values only.
+    /// </summary>
+    internal sealed class Memo
+    {
+        private (byte A, byte R, byte G, byte B)? _fill;
+        private string? _tintLook, _textLook;
+
+        /// <summary>
+        /// Whether the hover and press colours have to be worked out again: the fill, the theme the tile is drawn
+        /// in or the contrast scheme differs from the last time. The answer is remembered.
+        /// </summary>
+        internal bool NeedsTints((byte A, byte R, byte G, byte B) fill, string theme, string contrast)
+        {
+            var look = theme + "|" + contrast;
+            if (_fill == fill && _tintLook == look) return false;
+            _fill = fill; _tintLook = look; return true;
+        }
+
+        /// <summary>
+        /// Whether text colour and font have to be taken from the surroundings again: the page theme, the tile's
+        /// own theme or the contrast scheme changed, or <see cref="Moved"/> was called since.
+        /// </summary>
+        internal bool NeedsText(string pageTheme, string ownTheme, string contrast)
+        {
+            var look = pageTheme + "|" + ownTheme + "|" + contrast;
+            if (_textLook == look) return false;
+            _textLook = look; return true;
+        }
+
+        /// <summary>The tile entered a tree: what is above it may be different, the colours are not.</summary>
+        internal void Moved() => _textLook = null;
+    }
+
     /// <summary>A key belongs to the tile only when the tile itself has the focus, not a control inside it.</summary>
     internal static bool OwnKey(object? originalSource, object tile) => ReferenceEquals(originalSource, tile);
 

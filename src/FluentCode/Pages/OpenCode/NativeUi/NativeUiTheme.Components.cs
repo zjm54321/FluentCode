@@ -49,6 +49,9 @@ internal static class NativeUiComponentTheme
 /// let the surroundings through (src/dxaml/xcp/core/core/elements/Control.cpp, PullInheritedTextFormatting).
 /// Both are copied from above when the tile enters the page, so an uncoloured Icon and a Text keep their look.
 /// </para>
+/// <para>Cost. A theme colour is read by parsing a line of XAML, so the state colours and the text colour are
+/// worked out only when what they depend on changed (NativeUiPressable.Memo): the fill, the theme, the contrast
+/// scheme, or the tile entering a tree. An update that changes none of them does no such work here.</para>
 /// <para>Pointer. Selectable text marks the pointer press as handled
 /// (src/dxaml/xcp/core/text/common/TextSelectionManager.cpp, OnPointerPressed) and a Button ignores a handled
 /// press (src/dxaml/xcp/dxaml/lib/ButtonBase_Partial.cpp, OnPointerPressed), so the tile's own text is not
@@ -57,7 +60,9 @@ internal static class NativeUiComponentTheme
 internal sealed partial class NativeUiPressableButton : Button
 {
     private readonly SolidColorBrush _rest = new(), _over = new(), _down = new(), _edge = new(), _ink = new();
+    private readonly NativeUiPressable.Memo _memo = new();
     private ElementTheme _pageTheme = ElementTheme.Default;
+    private string _contrast = "";
 
     internal NativeUiPressableButton()
     {
@@ -68,7 +73,10 @@ internal sealed partial class NativeUiPressableButton : Button
         FocusVisualMargin = new Thickness(0);
         Resources["ButtonBackgroundPointerOver"] = _over; Resources["ButtonBackgroundPressed"] = _down; Resources["ButtonBackgroundDisabled"] = _rest;
         foreach (var state in new[] { "PointerOver", "Pressed", "Disabled" }) { Resources["ButtonBorderBrush" + state] = _edge; Resources["ButtonForeground" + state] = _ink; }
-        Loading += (_, _) => TakeTextFromAbove();
+        // Raised once after each time the tile enters a tree, so also after a move to another parent
+        // (src/dxaml/xcp/core/core/elements/framework.cpp: RaiseLoadingEventIfNeeded raises it in the first
+        // measure, EnterImpl clears the flag). The handler is the tile's own method on the tile's own event.
+        Loading += OnTileLoading;
     }
 
     /// <summary>
@@ -78,19 +86,26 @@ internal sealed partial class NativeUiPressableButton : Button
     internal static bool Nested(DependencyObject node)
         => node is Button or TextBox or CheckBox or ComboBox or Slider or RadioButton or Segmented or Mapsui.UI.WinUI.MapControl;
 
-    /// <summary>Sets the tile's fill and border and derives the state colours from them. Call after RequestedTheme.</summary>
-    internal void Paint(Brush fill, Brush edge, ElementTheme pageTheme)
+    private void OnTileLoading(FrameworkElement sender, object args) { _memo.Moved(); TakeTextIfNeeded(); }
+
+    /// <summary>
+    /// Sets the tile's fill and border and derives the state colours from them. Call after RequestedTheme.
+    /// <paramref name="contrast"/> is the name of the high contrast scheme in use, or empty.
+    /// </summary>
+    internal void Paint(Brush fill, Brush edge, ElementTheme pageTheme, string contrast)
     {
-        _pageTheme = pageTheme;
+        _pageTheme = pageTheme; _contrast = contrast;
         Background = fill; BorderBrush = edge;
-        if (fill is SolidColorBrush solid)
+        if (fill is SolidColorBrush solid && _memo.NeedsTints((solid.Color.A, solid.Color.R, solid.Color.G, solid.Color.B), Theme.ToString(), contrast))
         {
             _rest.Color = solid.Color;
             _over.Color = Tinted(solid.Color, "SubtleFillColorSecondaryBrush"); _down.Color = Tinted(solid.Color, "SubtleFillColorTertiaryBrush");
         }
-        if (edge is SolidColorBrush line) _edge.Color = line.Color;
-        TakeTextFromAbove();
+        if (edge is SolidColorBrush line && _edge.Color != line.Color) _edge.Color = line.Color;
+        TakeTextIfNeeded();
     }
+
+    private void TakeTextIfNeeded() { if (_memo.NeedsText(_pageTheme.ToString(), RequestedTheme.ToString(), _contrast)) TakeTextFromAbove(); }
 
     /// <summary>Switches text selection off in the tile's own content; controls nested in the tile are left alone.</summary>
     internal void Quiet() { if (Content is DependencyObject content) Quiet(content); }

@@ -138,7 +138,7 @@ internal sealed partial class NativeUiRenderer
                     Slot(tileContent, P(node, "children"), key + "/children", depth); tile.Quiet();
                     tile.Padding = new(NativeUiTheme.Gap(P(node, "padding"), 3)); tile.RequestedTheme = NativeUiTheme.ContrastTheme(S(node, "background"));
                     tile.BorderThickness = new(B(node, "selected") ? 2 : 1); tile.CornerRadius = NativeUiComponentTheme.Radius(P(node, "radius"));
-                    tile.Paint(ComponentBrush(S(node, "background") is { Length: > 0 } background ? background : "surface", true), ComponentBrush(B(node, "selected") ? "info" : "faint"), _root.ActualTheme);
+                    tile.Paint(ComponentBrush(S(node, "background") is { Length: > 0 } background ? background : "surface", true), ComponentBrush(B(node, "selected") ? "info" : "faint"), _root.ActualTheme, ContrastScheme());
                     // The tile had no name before (the control it was has no automation peer); a Button is read out, so it is named by its own text.
                     AutomationProperties.SetName(tile, NativeUiPressable.Name(node, text => string.Concat(NativeUiStyleMath.Inline(text).Select(span => span.Text))));
                     tile.IsEnabled = !_runtime.IsExecuting;
