@@ -16,6 +16,7 @@ $sources = @(
     'OpenCodeClient.cs', 'OpenCodeClient.Interactions.cs', 'OpenCodeClient.Agents.cs',
     'OpenCodeClient.SessionControls.cs', 'OpenCodeDtos.SessionControls.cs',
     'OpenCodeDesktopBridge.cs', 'OpenCodeClient.PluginRpc.cs', 'OpenCodeModelFavoritesRpc.cs',
+    'OpenCodeDesktopBridgeGuidance.cs', 'OpenCodeServerProduct.cs', 'OpenCodeDtos.Capabilities.cs',
     'OpenCodeClient.BillionDiscovery.cs', 'OpenCodeDtos.BillionDiscovery.cs',
     'OpenCodeAuthenticationMode.cs', 'OpenCodeClientOptions.cs', 'OpenCodeSocketTransport.cs', 'OpenCodeConstants.cs', 'OpenCodeExceptions.cs',
     'OpenCodeJson.cs', 'OpenCodeInstructionNotice.cs', 'OpenCodeInstructionSource.cs',
@@ -31,6 +32,7 @@ $sources += @(
 $sources += Join-Path $PSScriptRoot 'Program.cs'
 $sources += Join-Path $PSScriptRoot 'PreviewReadTests.cs'
 $sources += Join-Path $PSScriptRoot 'TunnelErrorTests.cs'
+$sources += Join-Path $PSScriptRoot 'BridgeGuidanceTests.cs'
 @('OpenCodeBrowserPreviewRead.cs','OpenCodeBrowserPreviewPolicy.cs','OpenCodeBrowserPreviewResources.cs') | ForEach-Object { $sources += Join-Path "$repo/src/FluentCode/Services/OpenCode/Browser" $_ }
 $assembly = Join-Path $output 'DesktopBridgeQolTests.dll'
 $arguments = @('/nologo', '/target:exe', '/langversion:latest', '/nullable:enable', '/warnaserror+', ('/out:"' + $assembly + '"'))

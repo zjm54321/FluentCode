@@ -115,6 +115,7 @@ public sealed partial class OpenCodePage
         var details = new OpenCodeConnectionDetails(text, _connectionStatusDetail, baseUrl, CurrentServerInfo(), capabilities, unavailable)
         {
             ServerDotKey = ConnectionDotKey(text),
+            Bridge = CurrentDesktopBridge(),
             McpBusy = _mcpBusy.ToArray(),
             McpActionError = _mcpActionError,
         };
@@ -324,5 +325,6 @@ public sealed partial class OpenCodePage
         OpenCodeServerProduct.RecordNativeCards(OpenCodeServerProduct.OffersNativeCards(plugins));
         _serverInfo = result with { Product = product == OpenCodeServerProductKind.Unknown ? knownProduct : product };
         RenderConnectionFlyoutIfOpen();
+        ShowDesktopBridgeNoticeIfDue(); // its wording depends on the product, which is known only now
     }
 }

@@ -30,6 +30,9 @@ internal sealed record OpenCodeConnectionDetails(
     /// <summary>服务行状态点的画刷键（与页头连接圆点相同的语义色）。</summary>
     internal string ServerDotKey { get; init; } = OpenCodeInsightsTheme.Neutral;
 
+    /// <summary>Desktop Bridge 的握手结果（按来源缓存）；null = 尚未确认或握手失败，显示为“无法确认”。</summary>
+    internal OpenCodeDesktopBridgeState? Bridge { get; init; }
+
     /// <summary>正在执行连接/断开请求的 MCP 名称（行与详情显示进度、动作禁用）。</summary>
     internal IReadOnlyCollection<string> McpBusy { get; init; } = Array.Empty<string>();
 
@@ -59,6 +62,7 @@ internal static class OpenCodeConnectionFlyout
 {
     internal const string ServerKey = "server";
     internal const string LspKey = "lsp";
+    internal const string BridgeKey = "bridge";
 
     internal static string McpKey(string name) => "mcp:" + name;
 
@@ -102,6 +106,12 @@ internal static class OpenCodeConnectionFlyout
         serverRows.Children.Add(Row("OpenCodeConnectionServer.Row", product, version,
             DotIndicator(details.ServerDotKey, details.StatusText), ServerKey, select,
             product + " 服务：" + details.StatusText + (version is not null ? "，版本 " + version : "")));
+        // Desktop Bridge：服务端的一部分（随 OpenCode QoL 提供），所以列在“服务”下。状态用文字写出，圆点只作辅助。
+        var bridgeStatus = details.Bridge?.Status ?? OpenCodeDesktopBridgeStatus.Unknown;
+        var bridgeText = OpenCodeDesktopBridgeGuidance.StatusText(bridgeStatus);
+        serverRows.Children.Add(Row("OpenCodeConnectionBridge.Row", OpenCodeDesktopBridgeGuidance.Name, bridgeText,
+            DotIndicator(BridgeDotKey(bridgeStatus, details.ServerInfo.Product), bridgeText), BridgeKey, select,
+            OpenCodeDesktopBridgeGuidance.Name + "：" + bridgeText));
         if (pair is not null)
         {
             // 只在服务已连接时出现：生成一次性配对链接与二维码（对话框，不在浮层里显示配对码）。
@@ -346,6 +356,32 @@ internal static class OpenCodeConnectionFlyout
             return page;
         }
 
+        if (key == BridgeKey)
+        {
+            var status = details.Bridge?.Status ?? OpenCodeDesktopBridgeStatus.Unknown;
+            var text = OpenCodeDesktopBridgeGuidance.StatusText(status);
+            var page = DetailPage("OpenCodeConnectionBridgeDetail", OpenCodeDesktopBridgeGuidance.Name,
+                DotIndicator(BridgeDotKey(status, details.ServerInfo.Product), text), select);
+            page.Children.Add(OpenCodeSessionInsightsView.Table(new List<(string, string)> { ("状态", text) }));
+            page.Children.Add(OpenCodeSessionInsightsView.Caption(OpenCodeDesktopBridgeGuidance.Detail(details.Bridge, details.ServerInfo.Product), 0.85));
+            if (OpenCodeDesktopBridgeGuidance.OffersProjectLink(status))
+            {
+                // 原生链接按钮：用系统浏览器打开项目主页（那里有安装和更新说明）。
+                var link = new HyperlinkButton
+                {
+                    Content = OpenCodeDesktopBridgeGuidance.ProjectLink,
+                    NavigateUri = new Uri(OpenCodeServerProduct.QolProjectUrl),
+                    Padding = new Thickness(0),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                };
+                AutomationProperties.SetAutomationId(link, "OpenCodeConnectionBridgeProject");
+                ToolTipService.SetToolTip(link, OpenCodeServerProduct.QolProjectUrl);
+                page.Children.Add(link);
+            }
+
+            return page;
+        }
+
         if (key == LspKey)
         {
             var state = details.Capabilities.Value?.Lsp ?? new OpenCodeCapabilityState(OpenCodeCapabilityAvailability.Unavailable,
@@ -548,6 +584,12 @@ internal static class OpenCodeConnectionFlyout
 
     /// <summary>版本 / 包目标 / 路径用等宽样式（ThemeResource，跟随用户等宽字体设置）。</summary>
     internal static bool IsMonospaceRow(string label) => label is "包" or "版本" or "路径";
+
+    /// <summary>缺少 Desktop Bridge 在非 QoL 服务上是常态（灰点）；只有需要用户处理时才用提醒色。</summary>
+    internal static string BridgeDotKey(OpenCodeDesktopBridgeStatus status, OpenCodeServerProductKind product)
+        => status == OpenCodeDesktopBridgeStatus.Ready ? OpenCodeInsightsTheme.Success
+            : OpenCodeDesktopBridgeGuidance.NeedsAttention(status, product) ? OpenCodeInsightsTheme.Caution
+            : OpenCodeInsightsTheme.Neutral;
 
     internal static string DotKey(OpenCodeCapabilityAvailability availability) => availability switch
     {
