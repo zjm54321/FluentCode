@@ -77,6 +77,19 @@ internal static class NativeUiPressable
         internal void Moved() => _textLook = null;
     }
 
+    /// <summary>
+    /// Whether a press on the tile may start its action: not once the tile is gone, and not while the card is
+    /// already running an action. The tile stays enabled meanwhile, so it keeps the keyboard focus and works
+    /// again as soon as the action ends.
+    /// </summary>
+    internal static bool Accepts(bool gone, bool busy) => !gone && !busy;
+
+    /// <summary>
+    /// The fill a tile shows under the pointer or while pressed. While the card runs an action a press is refused,
+    /// so the tile does not answer the pointer either and keeps its rest fill.
+    /// </summary>
+    internal static T StateFill<T>(T rest, T tinted, bool busy) => busy ? rest : tinted;
+
     /// <summary>A key belongs to the tile only when the tile itself has the focus, not a control inside it.</summary>
     internal static bool OwnKey(object? originalSource, object tile) => ReferenceEquals(originalSource, tile);
 

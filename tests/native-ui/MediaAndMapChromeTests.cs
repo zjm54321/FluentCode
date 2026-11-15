@@ -470,6 +470,20 @@ internal static class MediaAndMapChromeTests
         var otherTile = new NativeUiPressable.Memo();
         Check(otherTile.NeedsTints((255, 0xEF, 0xE6, 0xD3), "Light", "") && otherTile.NeedsText("Light", "Light", ""), "What one tile remembers is not shared with another");
 
+        // A press while the card runs an action. The tile stays enabled (disabling the focused control makes the
+        // platform move keyboard focus away), so the press itself is what gets refused.
+        var started = 0; var running = false;
+        void Click(bool gone) { if (NativeUiPressable.Accepts(gone, running)) { started++; running = true; } }
+        Click(false); Click(false); Click(false);
+        Check(started == 1, "A second and a third press while the action runs start nothing: " + started);
+        running = false; Click(false);
+        Check(started == 2, "When the action has ended the same tile can be pressed again: " + started);
+        running = false; Click(true);
+        Check(started == 2 && !NativeUiPressable.Accepts(true, true) && NativeUiPressable.Accepts(false, false), "A tile that has been removed from the card starts nothing: " + started);
+        var restFill = NativeUiPressable.Over(white, (0, 0, 0, 0)); var hoverFill = NativeUiPressable.Over(white, lightHover);
+        Check(NativeUiPressable.StateFill(restFill, hoverFill, busy: true) == restFill && NativeUiPressable.StateFill(restFill, hoverFill, busy: false) == hoverFill && restFill != hoverFill,
+            "While a press would be refused the tile does not answer the pointer: its hover and press fill is the rest fill, and the tint returns with the end of the action");
+
         // Which input is the tile's own. A small tree stands in for the visual tree: page > flashcard button > tile >
         // (text, row > button > label, slider).
         var page = new TreeNode("page", null, false); var outerButton = new TreeNode("flashcard", page, true); var tileNode = new TreeNode("tile", outerButton, true);
@@ -521,8 +535,11 @@ internal static class MediaAndMapChromeTests
             && !pressableCase.Contains(".Tapped +=") && !pressableCase.Contains(".KeyDown +=") && !pressableCase.Contains("ContentControl") && !pressableCase.Contains("Template ="),
             "The tile is a Button with the platform's template and is pressed through Click, with no hand-written pointer or key handlers left");
         Check(pressableCase.Contains("AutomationProperties.SetName(tile, NativeUiPressable.Name(node,") && pressableCase.Contains("tile.Quiet();")
-            && pressableCase.Contains("tile.IsEnabled = !_runtime.IsExecuting;") && pressableCase.Contains("B(node, \"selected\") ? 2 : 1") && pressableCase.Contains("B(node, \"selected\") ? \"info\" : \"faint\""),
-            "The tile is named from its text, its own text cannot swallow the press, it is disabled while an action runs, and the selection ring is unchanged");
+            && !pressableCase.Contains("IsEnabled") && !tileClass.Contains("IsEnabled")
+            && pressableCase.Contains("if (NativeUiPressable.Accepts(pressable.Disposed, _runtime.IsExecuting) && P(pressable.Model, \"action\") is NativeUiActionPlan plan) await _runtime.ExecuteAsync(plan);")
+            && pressableCase.Contains("ContrastScheme(), _runtime.IsExecuting);")
+            && tileClass.Contains("NativeUiPressable.StateFill(_rest.Color, _overTint, busy)") && tileClass.Contains("NativeUiPressable.StateFill(_rest.Color, _downTint, busy)") && pressableCase.Contains("B(node, \"selected\") ? 2 : 1") && pressableCase.Contains("B(node, \"selected\") ? \"info\" : \"faint\""),
+            "The tile is named from its text, its own text cannot swallow the press, it stays enabled and refuses a press while an action runs, and the selection ring is unchanged");
         Check(tileClass.Contains("protected override void OnKeyDown(KeyRoutedEventArgs e) { if (NativeUiPressable.OwnKey(e.OriginalSource, this)) base.OnKeyDown(e); }")
             && tileClass.Contains("protected override void OnKeyUp(KeyRoutedEventArgs e) { if (NativeUiPressable.OwnKey(e.OriginalSource, this)) base.OnKeyUp(e); }")
             && tileClass.Contains("if (NativeUiPressable.InsideNested<DependencyObject>(e.OriginalSource as DependencyObject, this, VisualTreeHelper.GetParent, Nested)) return;")
@@ -537,7 +554,7 @@ internal static class MediaAndMapChromeTests
             && tileClass.Contains("&& _memo.NeedsTints((solid.Color.A, solid.Color.R, solid.Color.G, solid.Color.B), Theme.ToString(), contrast))")
             && tileClass.Contains("if (_memo.NeedsText(_pageTheme.ToString(), RequestedTheme.ToString(), _contrast)) TakeTextFromAbove();")
             && tileClass.Contains("Loading += OnTileLoading;") && tileClass.Contains("{ _memo.Moved(); TakeTextIfNeeded(); }")
-            && Regex.Matches(tileClass, @"TakeTextFromAbove\(\)").Count == 2 && Regex.Matches(tileClass, @"Tinted\(solid\.Color").Count == 2 && !tileClass.Contains(" static readonly ") && !tileClass.Contains("static Dictionary")
+            && Regex.Matches(tileClass, @"TakeTextFromAbove\(\)").Count == 2 && Regex.Matches(tileClass, @"Tinted\(solid\.Color").Count == 2 && Regex.Matches(tileClass, @"NativeUiPressable\.StateFill\(").Count == 2 && !tileClass.Contains(" static readonly ") && !tileClass.Contains("static Dictionary")
             && tileClass.Contains("\"SubtleFillColorSecondaryBrush\"") && tileClass.Contains("\"SubtleFillColorTertiaryBrush\""),
             "Every brush the stock states swap in is answered by the tile: fill from the tested tint rule, border and text as at rest, disabled as at rest");
 

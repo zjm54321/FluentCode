@@ -42,8 +42,8 @@ internal static class NativeUiComponentTheme
 /// <para>States. PointerOver, Pressed and Disabled swap fill, border and text colour for the resources named
 /// Button…PointerOver/Pressed/Disabled. Those names are answered from this tile's own Resources: the fill moves
 /// by the platform's subtle hover and press tints over the tile's own colour, the border and the text keep
-/// theirs (a selected tile keeps its ring under the pointer), and a disabled tile looks as at rest, because a
-/// tile is disabled only while the card runs an action. The brushes are the same objects for the tile's life,
+/// theirs (a selected tile keeps its ring under the pointer). The tile is never disabled: while the card runs
+/// an action the renderer refuses the press and the hover and press fills are the rest fill. The brushes are the same objects for the tile's life,
 /// since the template reads a resource once.</para>
 /// <para>Text. A Button gives its content its own text colour and font family; the tile before had neither and
 /// let the surroundings through (src/dxaml/xcp/core/core/elements/Control.cpp, PullInheritedTextFormatting).
@@ -63,6 +63,7 @@ internal sealed partial class NativeUiPressableButton : Button
     private readonly NativeUiPressable.Memo _memo = new();
     private ElementTheme _pageTheme = ElementTheme.Default;
     private string _contrast = "";
+    private Windows.UI.Color _overTint, _downTint;
 
     internal NativeUiPressableButton()
     {
@@ -92,15 +93,20 @@ internal sealed partial class NativeUiPressableButton : Button
     /// Sets the tile's fill and border and derives the state colours from them. Call after RequestedTheme.
     /// <paramref name="contrast"/> is the name of the high contrast scheme in use, or empty.
     /// </summary>
-    internal void Paint(Brush fill, Brush edge, ElementTheme pageTheme, string contrast)
+    /// <param name="busy">The card is running an action: a press is refused, so the tile shows no hover or press fill.</param>
+    internal void Paint(Brush fill, Brush edge, ElementTheme pageTheme, string contrast, bool busy)
     {
         _pageTheme = pageTheme; _contrast = contrast;
         Background = fill; BorderBrush = edge;
         if (fill is SolidColorBrush solid && _memo.NeedsTints((solid.Color.A, solid.Color.R, solid.Color.G, solid.Color.B), Theme.ToString(), contrast))
         {
             _rest.Color = solid.Color;
-            _over.Color = Tinted(solid.Color, "SubtleFillColorSecondaryBrush"); _down.Color = Tinted(solid.Color, "SubtleFillColorTertiaryBrush");
+            _overTint = Tinted(solid.Color, "SubtleFillColorSecondaryBrush"); _downTint = Tinted(solid.Color, "SubtleFillColorTertiaryBrush");
         }
+        // Switching between the remembered colours costs no lookup, so the start and the end of an action are cheap.
+        var over = NativeUiPressable.StateFill(_rest.Color, _overTint, busy); var down = NativeUiPressable.StateFill(_rest.Color, _downTint, busy);
+        if (_over.Color != over) _over.Color = over;
+        if (_down.Color != down) _down.Color = down;
         if (edge is SolidColorBrush line && _edge.Color != line.Color) _edge.Color = line.Color;
         TakeTextIfNeeded();
     }
