@@ -23,6 +23,16 @@ public sealed partial class OpenCodePage
     private sealed class SessionTabEntry(string sessionId, TabViewItem item, TextBlock title, OpenCodeTabStatusSlot status)
     {
         internal OpenCodeDraftSlotKey? DraftSlotKey { get; set; }
+        /// <summary>Source identity the tab belongs to (its saved list).</summary>
+        internal string? Identity { get; set; }
+        /// <summary>Last title shown; outlives the title cache, so a tab keeps its name while the connection is away.</summary>
+        internal string? LastTitle { get; set; }
+        /// <summary>The tab has been the active one in this run (it may own a draft).</summary>
+        internal bool Activated { get; set; }
+        /// <summary>Created from the saved list after a restart.</summary>
+        internal bool Restored { get; set; }
+        /// <summary>Restored and not yet confirmed by the server.</summary>
+        internal bool TrackWhenConfirmed { get; set; }
         internal string SessionId { get; } = sessionId;
         internal TabViewItem Item { get; } = item;
         internal TextBlock Title { get; } = title;
@@ -56,7 +66,11 @@ public sealed partial class OpenCodePage
 
     private void HomeTab_DragStarting(UIElement sender, DragStartingEventArgs args) => args.Cancel = true;
 
-    private void SessionTabs_TabItemsChanged(TabView sender, IVectorChangedEventArgs args) => QueuePinnedHomeNormalization();
+    private void SessionTabs_TabItemsChanged(TabView sender, IVectorChangedEventArgs args)
+    {
+        QueuePinnedHomeNormalization();
+        OnSavedTabsChanged();
+    }
 
     private void QueuePinnedHomeNormalization()
     {
@@ -163,6 +177,11 @@ public sealed partial class OpenCodePage
 
         _closedBoundSessionId = null;
         _activeTabSessionId = sessionId;
+        if (_sessionTabs.TryGetValue(sessionId, out var active))
+        {
+            active.Activated = true;
+            active.Identity ??= _source?.Identity;
+        }
         SelectSessionTabSilently(sessionId);
         UpdateSessionTabsEmptyState();
         OnBrowserSessionTabOpened(sessionId);
@@ -263,6 +282,7 @@ public sealed partial class OpenCodePage
 
     private void SessionTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        OnTabSelectionMoved();
         // 设置标签：覆盖层随选中项显示/收起（静默选择也要同步）；回到被覆盖的同一标签时不再重新导航。
         if (SyncSettingsSurface(e))
         {
@@ -311,15 +331,25 @@ public sealed partial class OpenCodePage
             UpdateSessionTabsEmptyState();
             return;
         }
-        if (_sessionItems.ContainsKey(sessionId))
+        var listed = _sessionItems.ContainsKey(sessionId);
+        if (!listed)
+        {
+            // The loaded list is only the most recent page. Ask for this session by id instead of refusing.
+            var lookup = await LookupTabSessionAsync(sessionId);
+            if (!_pageActive) return;
+            var dropped = ApplyTabLookup(sessionId, lookup);
+            if (dropped) ShowMessage(InfoBarSeverity.Informational, "会话已不存在", "这个会话已在服务端删除或归档，标签已关闭。");
+            // The user may have moved on while the answer was on its way; then their newer choice stands.
+            if (!_sessionTabs.TryGetValue(sessionId, out var clicked) || !ReferenceEquals(SessionTabs.SelectedItem, clicked.Item)) return;
+            listed = lookup == OpenCodeSavedSessionLookup.Found && _sessionItems.ContainsKey(sessionId);
+            if (!listed) ShowMessage(InfoBarSeverity.Informational, "暂时无法打开该会话",
+                "连接尚未就绪，或请求没有成功。连接恢复后再点一次这个标签。");
+        }
+
+        if (listed)
         {
             await SwitchToSessionAsync(sessionId,
                 onBound: () => MirrorSessionSelection(sessionId, userInitiated: true));
-        }
-        else
-        {
-            ShowMessage(InfoBarSeverity.Informational, "无法切换到该会话",
-                "该会话不在当前已加载的会话列表中。请在首页刷新或加载更多后再打开。");
         }
 
         if (!string.Equals(_selectedSessionId, sessionId, StringComparison.Ordinal)
@@ -425,6 +455,7 @@ public sealed partial class OpenCodePage
         entry.Status.Clear();
         if (isCurrent)
         {
+            _tabRestore.Forget(entry.SessionId);
             _sessionTabs.Remove(entry.SessionId);
             OnBrowserSessionTabClosed(entry.SessionId);
         }
@@ -490,7 +521,8 @@ public sealed partial class OpenCodePage
     private void ApplySessionTabState(SessionTabEntry entry)
     {
         if (entry.SessionId == _activeTabSessionId) SessionTitleChanged?.Invoke(CurrentSessionTitle);
-        var title = _sessionTitles.TryGetValue(entry.SessionId, out var known) ? known : entry.SessionId;
+        if (_sessionTitles.TryGetValue(entry.SessionId, out var known)) entry.LastTitle = known;
+        var title = entry.LastTitle ?? entry.SessionId;
         _sessionTabStates.TryGetValue(entry.SessionId, out var state);
         var tone = ClassifySessionIndicator(state);
 

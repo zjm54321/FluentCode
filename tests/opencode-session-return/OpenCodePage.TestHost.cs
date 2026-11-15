@@ -225,6 +225,7 @@ namespace FluentCode.Pages
             => ProcessNavigationTargetAsync(target, result);
         internal IReadOnlyDictionary<string, OpenCodeSessionInfo> Catalog => _sessionItems;
         private void OnSessionCatalogChanged() { }
+        private void CancelSavedTabSelection() { } // Saved-tab selection is covered by opencode-tabs.
         private void MirrorSessionSelection(string id, bool userInitiated) { }
         internal string? Rebuild(List<OpenCodeSessionInfo> sessions) => RebuildSessionList(sessions);
         internal Task Return() => ReturnToSessionAsync();

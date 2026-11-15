@@ -58,10 +58,12 @@ public sealed partial class OpenCodePage
         }
         QueueHomeProjection();
         QueueNewSessionListRefresh();
+        OnTabCatalogChanged();
     }
 
     private void InitializeHomePage()
     {
+        _ = OpenCodeSavedTabsStore.Shared.LoadAsync(); // Off-thread and tolerant; ready before the connection is configured.
         InitializePinnedHomeTab();
         HomePageHost.Children.Add(_homeView);
         var wideSettingsButton = CreateWideHomeSettingsButton();
@@ -583,6 +585,7 @@ public sealed partial class OpenCodePage
                 _homeCatalogLoading = false;
                 QueueHomeProjection();
                 if (_newSessionDraftActive) EnsureBlankPreferences();
+                TryApplySavedSelection(); // A restored blank tab without a directory waits for the default one.
             }
         }
     }

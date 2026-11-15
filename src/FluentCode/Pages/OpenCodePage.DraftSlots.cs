@@ -35,7 +35,14 @@ public sealed partial class OpenCodePage
         internal readonly TabViewItem Item = item;
         internal string? Directory;
         internal PageDraftSlot? Slot;
+        /// <summary>Source identity the tab was opened under (its saved list).</summary>
+        internal string? Identity;
     }
+
+    /// <summary>The tab set, its order, the selection or a blank tab's directory changed (saved-tabs hook).</summary>
+    partial void OnSavedTabsChanged();
+    /// <summary>A tab nobody opened in this run holds no draft, so it need not become a read-only leftover.</summary>
+    partial void KeepSessionTabAcrossSourceGap(SessionTabEntry entry, ref bool keep);
 
     private readonly Dictionary<OpenCodeDraftSlotKey, PageDraftSlot> _draftSlots = new();
     private readonly Dictionary<Guid, BlankTabEntry> _blankTabs = new();
@@ -209,12 +216,16 @@ public sealed partial class OpenCodePage
         ForceSuspendDraftSlot("来源已更换或断开。旧来源草稿只读保留，请先复制需要的内容。");
         // A second replacement must not relabel an already held A recovery as B.
         if (_draftRecoveryPending) _draftRecoveryActor = new object();
-        foreach (var entry in _sessionTabs.Values)
+        foreach (var pair in new List<KeyValuePair<string, SessionTabEntry>>(_sessionTabs))
         {
-            _retiredSessionTabs[entry.Item] = entry;
+            var entry = pair.Value;
             entry.Status.Clear();
+            var keep = false;
+            KeepSessionTabAcrossSourceGap(entry, ref keep);
+            if (keep) continue;
+            _retiredSessionTabs[entry.Item] = entry;
+            _sessionTabs.Remove(pair.Key);
         }
-        _sessionTabs.Clear();
         _sessionTitles.Clear();
         _activeTabSessionId = null;
         _draftSourceEpoch = Guid.NewGuid();
@@ -424,6 +435,7 @@ public sealed partial class OpenCodePage
                 var project = _homeView.SelectedProject;
                 blank.Directory = project is not null && project.SourceId == _homeRuntimeSource && _homeProjects.ContainsKey(project.Directory)
                     ? project.Directory : _homeDefaultDirectory;
+                if (blank.Directory is not null) OnSavedTabsChanged();
             }
             if (string.IsNullOrWhiteSpace(blank.Directory)) return null;
             var key = new OpenCodeDraftSlotKey(_draftSourceEpoch, source.Identity, blank.Directory, null, blankId);
@@ -464,6 +476,7 @@ public sealed partial class OpenCodePage
         RestoreBlankSlotPreferences(slot);
         BindComposer(); // Fresh CAS activation in the same slot identity; text/files are opaque data, not replayed edits.
         EnsureBlankPreferences();
+        OnSavedTabsChanged();
     }
 
     private void ReleaseDraftSlot(PageDraftSlot? slot)
