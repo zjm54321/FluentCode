@@ -74,6 +74,18 @@ FluentCode 严格遵循最小权限与隔离存储原则：
   %LOCALAPPDATA%\FluentCode\settings.json
   ```
 - 应用只使用自身专属的配置目录，首次运行时创建全新配置，绝不扫描、合并或导入其他外部客户端的数据。
+- 同一目录下的状态文件（MSIX 版位于包的 `LocalState`）：
+
+  | 文件 | 内容 | 写入时机 |
+  |---|---|---|
+  | `settings.json` | 连接、外观、浏览器等设置；凭据只存引用 | 保存设置时 |
+  | `opencode-model-recents.json` | 最近使用的模型（按服务器、提供方、模型） | 成功发送消息后 |
+  | `opencode-tabs.json` | 标题栏标签：按服务器身份记录有序的标签列表（会话 ID 与最近标题、空白标签的项目目录、设置标签）和选中的标签 | 标签增减、换序、切换或标题变化后约 0.4 秒；隐藏到托盘、退出和窗口关闭时立即写入 |
+
+- `opencode-tabs.json` 格式：`{"version":1,"sources":{"<服务器身份>":{"tabs":[{"kind":"session","id":"…","title":"…","selected":true},{"kind":"blank","directory":"…"},{"kind":"settings"}]}}}`。没有 `selected` 表示选中首页；首页本身不记录。不含消息内容、输入草稿或凭据。
+  - 文件缺失或损坏时按没有标签启动，下次保存时重建；版本号更高（由更新的版本写入）时按没有标签启动，且本次运行不改写该文件。
+  - 写入方式与 `opencode-model-recents.json` 相同：先写同目录临时文件，再原子替换。
+  - 在当前服务器的标签恢复之前，不会写入该服务器的记录，因此连接失败的启动不会用空标签栏覆盖已保存的列表。只有服务端明确回答会话不存在（HTTP 404）、已归档或是子会话时，才会从列表中移除；规则见 `Services/OpenCode/OpenCodeSavedTabs.cs`，由 `tests/opencode-tabs` 覆盖。
 
 ### 3.2 凭据操作系统级加密（DPAPI）
 - **加密机制**：
