@@ -1,3 +1,6 @@
+using System;
+using FluentCode.Motion;
+using FluentCode.Pages.OpenCode;
 using FluentCode.Services.OpenCode;
 using Microsoft.UI.Xaml;
 
@@ -5,18 +8,21 @@ namespace FluentCode.Pages.Account;
 
 internal sealed partial class OpenCodePairDeviceView
 {
-    /// <summary>按当前地址与配对码刷新链接、二维码与说明。任何显示出来的链接都先经 Compose（内部用现有解析器复核）。</summary>
+    /// <summary>
+    /// 按当前地址与配对码算出“生成的链接”（经 Compose，用现有解析器复核）。它变了才改写链接框：
+    /// 换地址直接替换框里的内容；换配对码时按 <see cref="OpenCodePairingLinkEdit.Apply"/> 把用户改的地址带过来。
+    /// 用户正在输入时这里不碰链接框。
+    /// </summary>
     private void Render()
     {
         if (_closed) return;
         _customBox.Visibility = CustomSelected ? Visibility.Visible : Visibility.Collapsed;
         string? origin = null;
         string? problem = null;
-        var loopback = false;
         if (CustomSelected)
         {
             if (!OpenCodePairingLinks.TryNormalizeOrigin(_customBox.Text, out var custom, out var reason)) problem = reason;
-            else { origin = custom; loopback = OpenCodePairingLinks.IsLoopbackOrigin(custom); }
+            else origin = custom;
             _addressHint.Text = _addresses.Count == 0
                 ? "当前服务地址带路径，不能直接组成配对链接。请填其他设备能访问的服务根地址。FluentCode 不会检查它能否访问。"
                 : "填其他设备能访问的服务根地址。FluentCode 不会检查它能否访问。";
@@ -25,7 +31,6 @@ internal sealed partial class OpenCodePairDeviceView
         {
             var address = _addresses[_addressBox.SelectedIndex];
             origin = address.Origin;
-            loopback = address.IsLoopback;
             _addressHint.Text = address.Kind switch
             {
                 OpenCodePairingAddressKind.Server => "使用已配置的服务地址。",
@@ -37,42 +42,111 @@ internal sealed partial class OpenCodePairDeviceView
             };
         }
 
-        _link = null;
+        string? generated = null;
         if (_code is { } code && origin is not null)
         {
-            try { _link = OpenCodePairingLinks.Compose(origin, code); }
+            try { generated = OpenCodePairingLinks.Compose(origin, code); }
             catch (OpenCodeConfigurationException error) { problem = error.Message; }
         }
 
-        _linkBox.Text = _link ?? string.Empty;
-        _linkBox.Visibility = _link is null ? Visibility.Collapsed : Visibility.Visible;
-        _copy.IsEnabled = _link is not null;
-        _open.IsEnabled = _code is not null && _ownOrigin is not null;
-        if (_link is not null && !loopback)
+        _addressProblem = problem;
+        if (!string.Equals(generated, _generated, StringComparison.Ordinal))
         {
-            _qr.Show(_link, XamlRoot?.RasterizationScale ?? _fallbackScale);
-            _qrNote.Text = string.Empty;
+            _generated = generated;
+            _keptText = null;
+            var text = generated ?? string.Empty;
+            if (generated is not null && _code is { } current && !_carry.IsNone)
+            {
+                text = OpenCodePairingLinkEdit.Apply(_carry, generated, current.Code, out var kept);
+                if (kept) _keptText = text;
+                _carry = OpenCodePairingLinkCarry.None;
+            }
+
+            _linkBox.Text = text;
+        }
+
+        RenderLink();
+    }
+
+    /// <summary>
+    /// 按链接框里现在的文字刷新二维码、状态行与按钮；只读不写链接框，所以不打断输入法。
+    /// 二维码编码的就是框里的文字；文字不能用时不显示二维码，位置照留。
+    /// </summary>
+    private void RenderLink()
+    {
+        if (_closed) return;
+        _stage.MinHeight = _busy || _code is not null ? OpenCodePairQrCode.PlateSize : IdleStageHeight;
+        if (_code is not { } code || _generated is null)
+        {
+            _link = null;
+            _edited = false;
+            _linkPanel.Visibility = Visibility.Collapsed;
+            _copy.IsEnabled = false;
+            _open.IsEnabled = _code is not null && _ownOrigin is not null;
+            _qr.Clear();
+            SetQrNote(_code is not null && _addressProblem is { } problem ? problem : string.Empty);
+            return;
+        }
+
+        var state = OpenCodePairingLinkEdit.Evaluate(_linkBox.Text, _generated, code.Code,
+            renewed: _keptText is not null && string.Equals(_linkBox.Text, _keptText, StringComparison.Ordinal));
+        _link = state.Link;
+        _edited = state.IsEdited;
+        _linkPanel.Visibility = Visibility.Visible;
+        _copy.IsEnabled = state.Link is not null;
+        // 没改过：仍用 FluentCode 自己在用的地址打开。改过：打开框里的链接，所见即所得。
+        _open.IsEnabled = state.IsEdited ? state.Link is not null : _ownOrigin is not null;
+        var note = state.QrNote;
+        if (state.ShowQr)
+        {
+            try { _qr.Show(state.Link!, XamlRoot?.RasterizationScale ?? _fallbackScale); }
+            catch (ArgumentException)
+            {
+                _qr.Clear();
+                note = "链接太长，无法生成二维码。";
+            }
         }
         else
         {
             _qr.Clear();
-            _qrNote.Text = _link is not null ? "这个地址只有这台电脑能打开，所以不显示二维码。"
-                : _code is not null && problem is not null ? problem
-                : string.Empty;
         }
 
-        _qrNote.Visibility = _qrNote.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        SetQrNote(note);
+        _linkStatus.Text = state.Status;
+        var style = OpenCodeInteractionUi.TryStyle(state.IsProblem ? OpenCodeInteractionUi.QuestionErrorStyleKey : OpenCodeInteractionUi.CaptionSubtleStyleKey);
+        if (!ReferenceEquals(_linkStatus.Style, style)) _linkStatus.Style = style;
+        _restore.Visibility = state.IsEdited ? Visibility.Visible : Visibility.Collapsed;
+        if (_statusKind == state.Kind) return;
+        // 状态变了才播报一次（不是每敲一个字）；刚生成、还没动过的链接不播报提示。
+        var first = _statusKind is null;
+        _statusKind = state.Kind;
+        if (!first || state.Kind != OpenCodePairingLinkEditKind.Generated) ActionFeedback.Announce(_linkStatus, state.Status);
+    }
+
+    private void SetQrNote(string text)
+    {
+        _qrNote.Text = text;
+        _qrNote.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void ClearCode()
     {
         _timer.Stop();
+        // 配对码作废前记下用户对链接的修改；下一个配对码到手时放回去。
+        if (_code is { } old && !_closed) _carry = OpenCodePairingLinkEdit.Capture(_linkBox.Text, _generated, old.Code);
         _code = null;
         _link = null;
+        _generated = null;
+        _keptText = null;
+        _statusKind = null;
+        _edited = false;
         _expiresAtTick = 0;
         _qr.Clear();
         _linkBox.Text = string.Empty;
-        _linkBox.Visibility = Visibility.Collapsed;
+        _linkPanel.Visibility = Visibility.Collapsed;
+        _restore.Visibility = Visibility.Collapsed;
+        _linkStatus.Text = string.Empty;
+        SetQrNote(string.Empty);
         _countdown.Text = string.Empty;
         _copy.IsEnabled = false;
         _open.IsEnabled = false;
@@ -87,6 +161,7 @@ internal sealed partial class OpenCodePairDeviceView
         _error.Visibility = Visibility.Visible;
         _error.IsOpen = true;
         _renew.IsEnabled = _client is not null;
+        if (!_busy && _code is null) _stage.MinHeight = IdleStageHeight;
     }
 
     private void HideError()

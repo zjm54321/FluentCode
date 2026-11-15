@@ -36,9 +36,51 @@ internal sealed partial class OpenCodePairDeviceView
 
     private bool CustomSelected => _addressBox.SelectedIndex >= _addresses.Count;
 
-    private void OnAddressChanged(object sender, SelectionChangedEventArgs e) => Render();
+    // 选地址、改自定义地址：生成的链接直接替换框里的内容，之前对链接的修改不再保留。
+    private void OnAddressChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _carry = OpenCodePairingLinkCarry.None;
+        Render();
+    }
 
-    private void OnCustomChanged(object sender, TextChangedEventArgs e) => Render();
+    private void OnCustomChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_closed) return;
+        // TextChanged 是异步触发的：自定义地址其实没变（生成的链接相同）时，不动用户对链接的修改。
+        if (!string.Equals(_customBox.Text, _customText, StringComparison.Ordinal))
+        {
+            _customText = _customBox.Text;
+            _carry = OpenCodePairingLinkCarry.None;
+        }
+
+        Render();
+    }
+
+    /// <summary>链接框的文字变了（用户输入，或程序写入后的回声）：只按新文字刷新，不回写。</summary>
+    private void OnLinkChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_closed) return;
+        if (_keptText is not null && !string.Equals(_linkBox.Text, _keptText, StringComparison.Ordinal)) _keptText = null;
+        RenderLink();
+    }
+
+    /// <summary>对话框的默认按钮是“关闭”：在链接框里按回车不应该把对话框关掉（配对码会跟着清空）。</summary>
+    private void OnLinkKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter) e.Handled = true;
+    }
+
+    private void OnRestoreClick(object sender, RoutedEventArgs e)
+    {
+        if (_closed || _generated is not { } generated) return;
+        _carry = OpenCodePairingLinkCarry.None;
+        _keptText = null;
+        _linkBox.Text = generated;
+        RenderLink();
+        // 按钮随即隐藏：把焦点交回链接框，键盘用户不会丢焦点。
+        _linkBox.Focus(FocusState.Programmatic);
+        ActionFeedback.Announce(_linkBox, "已恢复生成的链接");
+    }
 
     /// <summary>一次显式操作 = 一次 POST。失败只显示原因，不重试。</summary>
     private async Task CreateAsync()
@@ -112,10 +154,12 @@ internal sealed partial class OpenCodePairDeviceView
 
     private async void OnOpenClick(object sender, RoutedEventArgs e)
     {
-        if (_code is not { } code || _ownOrigin is not { } origin) return;
+        if (_code is not { } code) return;
         try
         {
-            var uri = new Uri(OpenCodePairingLinks.Compose(origin, code));
+            var target = _edited ? _link : _ownOrigin is { } origin ? OpenCodePairingLinks.Compose(origin, code) : null;
+            if (target is null) return;
+            var uri = new Uri(target);
             // 链接交给浏览器后就算用掉了：先清掉，再打开。
             ClearCode();
             Render();

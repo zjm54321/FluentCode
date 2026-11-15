@@ -15,6 +15,8 @@ namespace FluentCode.Pages.Account;
 /// <summary>
 /// “连接其他设备”：向当前服务要一个一次性配对码（POST api/pair），显示链接与二维码。
 /// 每次显式操作（打开、重新生成）只发一次请求；不自动重试、不在后台续期，过期就显示已过期。
+/// 链接框可以直接改（比如把地址换成 Tailscale 的 IP）：二维码、“复制链接”和打开用的都是框里的文字，
+/// 规则在 <see cref="OpenCodePairingLinkEdit"/>。
 /// 配对码是凭据：只存在于本控件的字段与界面里，<see cref="Close"/> 时全部清空；从不记录或持久化。
 /// </summary>
 internal sealed partial class OpenCodePairDeviceView : UserControl
@@ -27,7 +29,26 @@ internal sealed partial class OpenCodePairDeviceView : UserControl
     private readonly List<OpenCodePairingAddress> _addresses = new();
     private OpenCodeClient? _client;
     private OpenCodePairingCode? _code;
+    /// <summary>没有配对码、也不在生成时，二维码位置收回到原来的高度。</summary>
+    private const double IdleStageHeight = 120;
+
+    /// <summary>链接框里可用的链接（二维码、复制、打开都用它）；框里的文字不能用时为 null。</summary>
     private string? _link;
+
+    /// <summary>按所选地址与当前配对码生成的链接；“恢复原链接”换回它。</summary>
+    private string? _generated;
+
+    /// <summary>选了“自定义地址”但填得不对时的原因。</summary>
+    private string? _addressProblem;
+
+    /// <summary>换配对码时原样留在框里的旧文字；用户一改就清掉。</summary>
+    private string? _keptText;
+
+    /// <summary>上一个配对码作废时记下的用户修改，等下一个配对码。</summary>
+    private OpenCodePairingLinkCarry _carry = OpenCodePairingLinkCarry.None;
+    private OpenCodePairingLinkEditKind? _statusKind;
+    private bool _edited;
+    private string _customText = string.Empty;
     private string? _ownOrigin;
     private long _expiresAtTick;
     private bool _busy;
@@ -83,7 +104,16 @@ internal sealed partial class OpenCodePairDeviceView : UserControl
         _timer.Tick -= OnTimerTick;
         try { _cts.Cancel(); } catch (ObjectDisposedException) { }
         _cts.Dispose();
+        _addressBox.SelectionChanged -= OnAddressChanged;
+        _customBox.TextChanged -= OnCustomChanged;
+        _linkBox.TextChanged -= OnLinkChanged;
+        _linkBox.KeyDown -= OnLinkKeyDown;
+        _restore.Click -= OnRestoreClick;
+        _copy.Click -= OnCopyClick;
+        _open.Click -= OnOpenClick;
+        _renew.Click -= OnRenewClick;
         ClearCode();
+        _carry = OpenCodePairingLinkCarry.None;
         _customBox.Text = string.Empty;
         _client?.Dispose();
         _client = null;
